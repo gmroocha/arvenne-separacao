@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Check, TriangleAlert } from "lucide-react"
+import FaixaRolavel from "@/components/FaixaRolavel"
 import { Badge } from "@/components/ui/badge"
 import { quando } from "@/lib/formato"
 import { ICONE_ETAPA, PASSOS, passoDe, type StatusPedido } from "@/lib/status"
@@ -40,7 +41,8 @@ export default function Etapas({ status, eventos }: Props) {
         </div>
       )}
 
-      <ol className="hidden items-center overflow-x-auto pb-1 lg:flex" aria-label="Etapas do pedido">
+      <FaixaRolavel chave={status} className="hidden lg:block">
+      <ol className="flex w-max items-center pb-1" aria-label="Etapas do pedido">
         {PASSOS.map((p, i) => {
           const feita = atual >= 0 && i < atual
           const ativa = i === atual
@@ -53,7 +55,7 @@ export default function Etapas({ status, eventos }: Props) {
                 onClick={() => setAberta(aberta === i ? null : i)}
                 aria-current={ativa ? "step" : undefined}
                 className={cn(
-                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors",
+                  "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
                   ativa && "border-primary bg-primary text-primary-foreground",
                   feita && "bg-background text-foreground hover:bg-muted",
                   !feita && !ativa && "bg-muted text-muted-foreground",
@@ -72,6 +74,7 @@ export default function Etapas({ status, eventos }: Props) {
           )
         })}
       </ol>
+      </FaixaRolavel>
       {aberta !== null && aberta < atual && (
         <p className="text-sm text-muted-foreground">
           {PASSOS[aberta].nome}:{" "}

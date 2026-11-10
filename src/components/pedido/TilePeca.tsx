@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { ChevronDown, MoreHorizontal } from "lucide-react"
+import { Check, ChevronDown, MoreHorizontal } from "lucide-react"
 import Foto from "@/components/Foto"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -112,9 +112,10 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
         {itens.map((i) => (
           <div
             key={i.id}
-            className="flex items-center gap-2 rounded-lg border bg-muted/40 p-1.5 animate-in fade-in zoom-in-95 duration-300"
+            className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 animate-in fade-in zoom-in-95 duration-300"
           >
-            <Foto url={i.foto_url} alt={i.nome} ampliar className="size-10 shrink-0 opacity-80" />
+            <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <Foto url={i.foto_url} alt={i.nome} ampliar className="size-10 shrink-0" />
             <div className="min-w-0 flex-1 text-sm leading-tight">
               <div className="truncate font-mono font-semibold">
                 {i.qtd > 1 ? `${i.qtd}× ` : ""}

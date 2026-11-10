@@ -99,15 +99,16 @@ export const ICONE_ETAPA: Record<string, LucideIcon> = {
 export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
   separacao: ["Ache cada peça no estoque.", "Marque \"Achei\" ou avise se faltar ou tiver defeito."],
   conferencia: [
-    "Pegue o saco do modelo e separe a quantidade certa.",
-    "Confira se a peça está sem defeito.",
+    "Pegue o saquinho do modelo e separe a quantidade certa do pedido.",
+    "Examine cada peça com calma, de todos os lados.",
   ],
   etiquetagem: [
     "Coloque a etiqueta em cada peça.",
     "Se a peça já veio etiquetada, marque \"Já tinha etiqueta\".",
   ],
   bipagem: [
-    "Leia o código de cada peça com o leitor.",
+    "Leia o código de cada peça com o leitor, uma unidade por vez.",
+    "Peça com 2 ou mais unidades: bipe uma vez para cada unidade.",
     "O app avisa se alguma peça não for deste pedido.",
   ],
   faturamento: [

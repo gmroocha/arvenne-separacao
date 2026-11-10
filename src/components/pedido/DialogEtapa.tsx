@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import AvisoConferencia from "./AvisoConferencia"
 import { DESCRICAO_ETAPA, ICONE_ETAPA, NOME_ETAPA, destinoAoConcluir, type StatusPedido } from "@/lib/status"
 
 type Props = {
@@ -27,6 +28,7 @@ export default function DialogEtapa({ etapa, aoConfirmar, aoFechar }: Props) {
               <DialogTitle className="text-lg">{nomeConcluida(etapa)} concluída</DialogTitle>
               <DialogDescription>Próxima: {NOME_ETAPA[destino]}</DialogDescription>
             </DialogHeader>
+            {destino === "conferencia" && <AvisoConferencia />}
             <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
               {(DESCRICAO_ETAPA[destino] ?? []).map((t) => (
                 <li key={t}>{t}</li>

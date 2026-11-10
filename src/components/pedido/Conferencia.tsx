@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
+import AvisoConferencia from "./AvisoConferencia"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir: () => void }
 
-// Pega o saco do modelo, separa a quantidade certa e confere defeitos.
+// Pega o saquinho do modelo, separa a quantidade certa e confere defeitos.
 export default function Conferencia({ pedido, acao, aoConcluir }: Props) {
   const achadas = pedido.pedido_itens.filter((i) => i.status === "encontrado")
   const aConferir = achadas.filter((i) => !i.conferido_em)
@@ -17,7 +18,7 @@ export default function Conferencia({ pedido, acao, aoConcluir }: Props) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <ProgressoEtapa titulo="Conferência" feitas={conferidas.length} total={achadas.length} unidade="peças" />
-        <p className="text-sm text-muted-foreground">Pegue o saco do modelo, separe a quantidade certa e confira defeitos.</p>
+        <AvisoConferencia />
       </div>
 
       <section className="flex flex-col gap-2" aria-label="A conferir">

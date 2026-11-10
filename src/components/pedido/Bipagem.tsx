@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Check, Minus, Plus, ScanBarcode, TriangleAlert, Volume2, VolumeX } from "lucide-react"
+import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,12 +10,12 @@ import { registrarBipagem, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
 import { sons } from "@/lib/sons"
 import type { ResultadoBipagem } from "@/lib/tipos"
-import { cn } from "@/lib/utils"
-import { GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir: () => void }
 type Aviso = { tipo: ResultadoBipagem; texto: string }
 
+const agora = () => new Date().toISOString()
 const normalizar = (t: string | null | undefined) => (t ?? "").toUpperCase().replace(/\s+/g, "")
 
 function lerSilencio(): boolean {
@@ -32,6 +33,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
   const [mudo, setMudo] = useState(lerSilencio)
   const [aviso, setAviso] = useState<Aviso | null>(null)
   const [piscando, setPiscando] = useState<string | null>(null)
+  const [ultimaId, setUltimaId] = useState<string | null>(null)
   const tempoAviso = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const tempoPisca = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -53,6 +55,10 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
   const itens = pedido.pedido_itens.filter((i) => i.status === "encontrado")
   const totalPecas = itens.reduce((s, i) => s + i.qtd, 0)
   const bipadas = itens.reduce((s, i) => s + Math.min(i.qtd_bipada, i.qtd), 0)
+  // As que ainda faltam ficam em cima; as completas descem para "Bipadas", em verde, sem sumir.
+  const aBipar = itens.filter((i) => i.qtd_bipada < i.qtd)
+  const completas = itens.filter((i) => i.qtd_bipada >= i.qtd)
+  const ultima = itens.find((i) => i.id === ultimaId) ?? null
 
   const tocar = (som: keyof typeof sons) => {
     if (!mudo) sons[som]()
@@ -70,10 +76,11 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
     const doCodigo = itens.filter((i) => normalizar(i.sku) === codigo)
     const alvo = doCodigo.find((i) => i.qtd_bipada < i.qtd)
     if (alvo) {
-      acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: new Date().toISOString() })
+      acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: agora() })
       void registrarBipagem(pedido.id, alvo.id, codigo, "ok")
       tocar("ok")
       setAviso(null)
+      setUltimaId(alvo.id)
       setPiscando(alvo.id)
       clearTimeout(tempoPisca.current)
       tempoPisca.current = setTimeout(() => setPiscando(null), 600)
@@ -146,40 +153,70 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
         </Alert>
       )}
 
+      {ultima && (
+        <div
+          key={`${ultima.id}-${ultima.qtd_bipada}`}
+          className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-2 animate-in fade-in zoom-in-95 duration-200"
+          aria-live="polite"
+        >
+          <Foto url={ultima.foto_url} alt={ultima.nome} className="size-16 shrink-0" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Última leitura</div>
+            <div className="font-mono text-lg font-semibold break-all">{ultima.sku ?? "sem código"}</div>
+            {ultima.variante && <div className="text-sm font-bold">{ultima.variante}</div>}
+          </div>
+          <Badge className="h-9 bg-emerald-600 px-3 text-xl text-white tabular-nums">
+            <Check /> {Math.min(ultima.qtd_bipada, ultima.qtd)}/{ultima.qtd}
+          </Badge>
+        </div>
+      )}
+
       {itens.length === 0 ? (
         <Vazio>Nenhuma peça para bipar.</Vazio>
       ) : (
-        <GradePecas>
-          {itens.map((i) => {
-            const completa = i.qtd_bipada >= i.qtd
-            return (
-              <TilePeca
-                key={i.id}
-                item={i}
-                piscando={piscando === i.id}
-                esmaecida={completa}
-                contador={
-                  <Badge
-                    variant={completa ? "default" : "secondary"}
-                    className={cn("h-7 px-2.5 text-base tabular-nums shadow-sm")}
+        <>
+          <section className="flex flex-col gap-2" aria-label="A bipar">
+            <h3 className="text-sm font-semibold">A bipar ({aBipar.length})</h3>
+            {aBipar.length === 0 ? (
+              <Vazio>Tudo bipado. Pode concluir a bipagem.</Vazio>
+            ) : (
+              <GradePecas>
+                {aBipar.map((i) => (
+                  <TilePeca
+                    key={i.id}
+                    item={i}
+                    piscando={piscando === i.id}
+                    contador={
+                      <Badge
+                        variant={i.qtd_bipada > 0 ? "default" : "secondary"}
+                        className="h-7 px-2.5 text-base tabular-nums shadow-sm"
+                      >
+                        {i.qtd_bipada}/{i.qtd}
+                      </Badge>
+                    }
                   >
-                    {completa && <Check />}
-                    {Math.min(i.qtd_bipada, i.qtd)}/{i.qtd}
-                  </Badge>
-                }
-              >
-                <MenuPeca rotulo="Ajustar contagem">
-                  <DropdownMenuItem disabled={i.qtd_bipada >= i.qtd} onClick={() => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: new Date().toISOString() })}>
-                    <Plus /> Contar 1 à mão
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled={i.qtd_bipada <= 0} onClick={() => acao(i, { qtd_bipada: i.qtd_bipada - 1 })}>
-                    <Minus /> Tirar 1
-                  </DropdownMenuItem>
-                </MenuPeca>
-              </TilePeca>
-            )
-          })}
-        </GradePecas>
+                    <MenuPeca rotulo="Ajustar contagem">
+                      <DropdownMenuItem onClick={() => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() })}>
+                        <Plus /> Contar 1 à mão
+                      </DropdownMenuItem>
+                      <DropdownMenuItem disabled={i.qtd_bipada <= 0} onClick={() => acao(i, { qtd_bipada: i.qtd_bipada - 1 })}>
+                        <Minus /> Tirar 1
+                      </DropdownMenuItem>
+                    </MenuPeca>
+                  </TilePeca>
+                ))}
+              </GradePecas>
+            )}
+          </section>
+
+          <FaixaFeitas
+            titulo="Bipadas"
+            itens={completas}
+            rotuloDesfazer="Tirar 1"
+            aoDesfazer={(i) => acao(i, { qtd_bipada: Math.max(0, i.qtd_bipada - 1) })}
+            nota={(i) => `${Math.min(i.qtd_bipada, i.qtd)}/${i.qtd} bipadas`}
+          />
+        </>
       )}
 
       <Button className="h-11 w-full text-base" disabled={!etapaCompleta("bipagem", pedido.pedido_itens)} onClick={aoConcluir}>

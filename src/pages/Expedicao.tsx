@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import FaixaRolavel from "@/components/FaixaRolavel"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -160,7 +161,7 @@ export default function Expedicao() {
 
       {/* Celular: faixa da esteira, uma etapa por ícone ligada por linha. Toque filtra a lista. */}
       <div className="lg:hidden">
-        <ScrollArea className="w-full">
+        <FaixaRolavel chave={selecionada}>
           <ol className="flex w-max items-start pb-3" aria-label="Esteira">
             {porColuna.map((c, i) => {
               const Icone = ICONE_ETAPA[c.icone]
@@ -195,8 +196,7 @@ export default function Expedicao() {
               )
             })}
           </ol>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </FaixaRolavel>
 
         {isLoading ? (
           <div className="flex flex-col gap-2">
