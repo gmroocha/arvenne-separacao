@@ -85,9 +85,22 @@ novas todos os dias.
 - **Proposta:** Drive guarda os originais; R2 guarda a cópia leve que o catálogo mostra; o Supabase
   guarda só os dados (texto), que ocupam quase nada.
 
-**Para fazer isso precisamos saber:** qual IA o app do Lovable usa para ler as etiquetas e quem paga cada
-leitura (a regra é custo zero), e como trazer essa lógica de leitura e preço para este projeto. O catálogo
-e o app de precificação podem acabar no mesmo projeto.
+**IA que lê as etiquetas (resposta do app atual, 10/11/2026):**
+- Hoje usa `openai/gpt-6-astra` pelo gateway do Lovable (`src/lib/analyze.functions.ts`). Recebe a foto
+  reduzida a 1400 px e devolve JSON com código, custo, lote, peso e medidas. Quem paga é a conta do
+  Lovable, com créditos de IA do plano; acabando os créditos, a leitura para.
+- Fora do Lovable, o caminho mais barato é o **Gemini Flash** do Google AI Studio, com chave própria
+  guardada numa função do Supabase (nunca no navegador). O app atual diz que há uma faixa grátis de
+  15 requisições por minuto, e que passando disso custaria frações de centavo por lote.
+  **Conferir antes de construir:** limite grátis atual, nome do modelo vigente e se, na faixa grátis, o
+  Google usa as fotos enviadas. O app atual citou o Gemini 1.5, que pode já não existir.
+- OCR no navegador (Tesseract) é grátis, mas erra ao separar peso, comprimento e custo na caixinha. Só
+  como plano B.
+- Plano para o primeiro teste: 10 fotos reais do fornecedor no modelo candidato, comparando com a leitura
+  atual, antes de decidir.
+
+**Ainda falta decidir:** como trazer a lógica de leitura e de preço (acréscimo do lote, tabela de
+correntaria por grama) para este projeto. O catálogo e o app de precificação podem acabar no mesmo projeto.
 
 **Segurança:** se o catálogo for aberto às clientes, a página pública mostra só foto, nome e preço de
 venda. Custo e código do fornecedor nunca saem da equipe.
