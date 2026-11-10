@@ -57,6 +57,7 @@ export default function Romaneio() {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{i.nome}</div>
                   {i.variante && <div className="text-sm text-muted-foreground">{i.variante}</div>}
+                  {i.sku && <div className="font-mono text-xs text-muted-foreground">{i.sku}</div>}
                   <div className="text-sm text-muted-foreground tabular-nums">Quantidade: {i.qtd}</div>
                 </div>
                 <div className="text-sm font-medium tabular-nums">{reais(i.preco)}</div>

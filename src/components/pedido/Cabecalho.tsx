@@ -48,18 +48,11 @@ export default function Cabecalho({ pedido, aoMover, aoCancelar }: Props) {
                 {NOME_ETAPA[e]}
               </DropdownMenuItem>
             ))}
-            {(pedido.shopify_url || pedido.carrinho_url) && <DropdownMenuSeparator />}
+            {pedido.shopify_url && <DropdownMenuSeparator />}
             {pedido.shopify_url && (
               <DropdownMenuItem asChild>
                 <a href={pedido.shopify_url} target="_blank" rel="noreferrer">
                   <ExternalLink /> Abrir na Shopify
-                </a>
-              </DropdownMenuItem>
-            )}
-            {pedido.carrinho_url && (
-              <DropdownMenuItem asChild>
-                <a href={pedido.carrinho_url} target="_blank" rel="noreferrer">
-                  <ExternalLink /> Link do carrinho
                 </a>
               </DropdownMenuItem>
             )}

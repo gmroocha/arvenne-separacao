@@ -135,16 +135,57 @@ export function usePecasClube(busca: string, incluirInativas = false) {
   })
 }
 
+type LinhaCatalogo = {
+  variant_id: number
+  sku: string | null
+  produto: string
+  variante: string | null
+  preco: number | null
+  foto_url: string | null
+}
+
+const paraVariante = (r: LinhaCatalogo): VarianteSite => ({
+  shopify_variant_id: r.variant_id,
+  sku: r.sku,
+  nome: r.produto,
+  variante: r.variante,
+  foto_url: r.foto_url,
+  preco: r.preco,
+})
+
+// Aba "Site": busca no catálogo copiado (catalogo_site), sem chamar a loja.
 export function useBuscaSite(termo: string) {
   return useQuery({
     queryKey: ["busca-site", termo],
     enabled: termo.length >= 2,
-    queryFn: async () => (await chamarFuncao<{ variantes: VarianteSite[] }>("shopify-produtos", { q: termo })).variantes,
+    queryFn: async () => {
+      const t = termo.replace(/[%,()]/g, " ").trim()
+      const { data, error } = await supabase
+        .from("catalogo_site")
+        .select("variant_id, sku, produto, variante, preco, foto_url")
+        .or(`produto.ilike.%${t}%,sku.ilike.%${t}%`)
+        .order("produto")
+        .limit(30)
+      if (error) throw error
+      return (data as LinhaCatalogo[]).map(paraVariante)
+    },
   })
 }
 
+// Resolve as variantes do carrinho só no catálogo local. IDs que faltam voltam em "faltando".
 export async function buscarVariantes(variantIds: string[]) {
-  return (await chamarFuncao<{ variantes: VarianteSite[] }>("shopify-produtos", { variantIds })).variantes
+  const { data, error } = await supabase
+    .from("catalogo_site")
+    .select("variant_id, sku, produto, variante, preco, foto_url")
+    .in("variant_id", variantIds)
+  if (error) throw error
+  const achadas = (data as LinhaCatalogo[]).map(paraVariante)
+  const ids = new Set(achadas.map((v) => String(v.shopify_variant_id)))
+  return { variantes: achadas, faltando: variantIds.filter((id) => !ids.has(String(id))) }
+}
+
+export function useAtualizarCatalogo() {
+  return useAcao(() => chamarFuncao<{ variantes: number }>("catalogo-sync", {}), [["busca-site"]])
 }
 
 function useAcao<A, R = unknown>(fn: (a: A) => Promise<R>, invalidar: unknown[][], aoConcluir?: (r: R, a: A) => void) {
@@ -184,7 +225,7 @@ export type CamposPedido = Partial<
     | "desconto_tipo" | "desconto_valor" | "cupom"
     | "frete_tipo" | "frete_pago_por" | "frete_cobrado" | "frete_custo"
     | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra"
-    | "status" | "rastreio" | "observacoes" | "carrinho_url"
+    | "status" | "rastreio" | "observacoes"
   >
 >
 

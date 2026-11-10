@@ -41,7 +41,6 @@ export type Pedido = {
   token_publico: string
   shopify_order_id: number | null
   shopify_url: string | null
-  carrinho_url: string | null
   rastreio: string | null
   observacoes: string | null
   pedido_em: string
@@ -170,7 +169,7 @@ export type Romaneio = {
   cliente: string | null
   fase: Fase
   status: StatusPedido
-  itens: { nome: string; variante: string | null; foto_url: string | null; qtd: number; preco: number | null }[]
+  itens: { nome: string; variante: string | null; sku: string | null; foto_url: string | null; qtd: number; preco: number | null }[]
   subtotal: number
   desconto: number
   cupom: string | null

@@ -200,7 +200,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
-          <PecasVenda pedido={pedido} aoLerCarrinho={(l) => mudar({ carrinho_url: l })} />
+          <PecasVenda pedido={pedido} />
           <ClienteCard form={form} aoMudar={mudar} aoSalvarCliente={aoSalvarCliente} />
           <Field>
             <FieldLabel htmlFor="v-obs">Observações</FieldLabel>

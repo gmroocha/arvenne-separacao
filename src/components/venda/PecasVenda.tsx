@@ -1,14 +1,14 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { Link2, Minus, Plus, Trash2 } from "lucide-react"
+import { ClipboardPaste, Minus, Plus, Trash2, TriangleAlert } from "lucide-react"
 import AdicionarPecas from "@/components/AdicionarPecas"
 import Foto from "@/components/Foto"
-import RespDialog from "@/components/RespDialog"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
-import { buscarVariantes, useAdicionarItens, useAtualizarItem, type PedidoDetalhe } from "@/lib/api"
+import { buscarVariantes, useAdicionarItens, useAtualizarCatalogo, useAtualizarItem, type PedidoDetalhe } from "@/lib/api"
 import { lerLinkCarrinho } from "@/lib/carrinho"
 import { lerNumero, numeroParaTexto } from "@/lib/formato"
 import { itemDoSite } from "@/lib/itens"
@@ -36,38 +36,55 @@ function PrecoInput({ item, aoSalvar }: { item: Item; aoSalvar: (preco: number |
   )
 }
 
-type Props = { pedido: PedidoDetalhe; aoLerCarrinho: (link: string) => void }
+type Props = { pedido: PedidoDetalhe }
 
-export default function PecasVenda({ pedido, aoLerCarrinho }: Props) {
+export default function PecasVenda({ pedido }: Props) {
   const atualizar = useAtualizarItem()
   const adicionar = useAdicionarItens()
   const [adicionando, setAdicionando] = useState(false)
-  const [lendoLink, setLendoLink] = useState(false)
-  const [link, setLink] = useState("")
+  const atualizarCatalogo = useAtualizarCatalogo()
+  const [colado, setColado] = useState("")
   const [lendo, setLendo] = useState(false)
-  const [formatoErrado, setFormatoErrado] = useState(false)
+  const [faltando, setFaltando] = useState<string[]>([])
+  const [pendente, setPendente] = useState<{ variantId: string; qtd: number }[]>([])
   const itens = pedido.pedido_itens.filter((i) => i.status !== "removido")
 
-  async function lerLink() {
-    setFormatoErrado(false)
-    const lidos = lerLinkCarrinho(link)
-    if (!lidos) return setFormatoErrado(true)
+  // Lê o carrinho colado e adiciona todas as peças sozinho, a partir do catálogo local.
+  async function lerCarrinho(link: string, lidos = lerLinkCarrinho(link)) {
+    if (!lidos) {
+      if (link.trim()) toast.error("Não reconheci o carrinho. Cole o link completo, com /cart/…")
+      return
+    }
     setLendo(true)
     try {
-      const variantes = await buscarVariantes(lidos.map((l) => l.variantId))
+      const { variantes, faltando: sem } = await buscarVariantes(lidos.map((l) => l.variantId))
       const novos = variantes.map((v) =>
         itemDoSite(v, lidos.find((l) => String(l.variantId) === String(v.shopify_variant_id))?.qtd ?? 1),
       )
-      adicionar.mutate({ pedidoId: pedido.id, itens: novos })
-      aoLerCarrinho(link.trim())
-      toast.success(`${novos.length} peças lidas do carrinho`)
-      setLendoLink(false)
-      setLink("")
+      if (novos.length) {
+        await adicionar.mutateAsync({ pedidoId: pedido.id, itens: novos })
+        const total = novos.reduce((s, i) => s + i.qtd, 0)
+        toast.success(`${total} ${total === 1 ? "peça adicionada" : "peças adicionadas"}`)
+      }
+      setFaltando(sem)
+      setPendente(lidos.filter((l) => sem.includes(l.variantId)))
+      setColado("")
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível ler o carrinho")
     } finally {
       setLendo(false)
     }
+  }
+
+  async function atualizarETentar() {
+    const de = pendente
+    try {
+      await atualizarCatalogo.mutateAsync(undefined)
+      toast.success("Catálogo atualizado")
+    } catch {
+      return
+    }
+    await lerCarrinho("", de)
   }
 
   return (
@@ -125,13 +142,40 @@ export default function PecasVenda({ pedido, aoLerCarrinho }: Props) {
         </div>
       ))}
 
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => setAdicionando(true)}>
+      <div className="flex flex-col gap-2">
+        <InputGroup>
+          <InputGroupAddon>{lendo ? <Spinner /> : <ClipboardPaste />}</InputGroupAddon>
+          <InputGroupInput
+            aria-label="Colar carrinho da cliente"
+            placeholder="Colar carrinho da cliente"
+            value={colado}
+            disabled={lendo}
+            onChange={(e) => {
+              setColado(e.target.value)
+              if (lerLinkCarrinho(e.target.value)) void lerCarrinho(e.target.value)
+            }}
+            onBlur={() => colado.trim() && void lerCarrinho(colado)}
+          />
+        </InputGroup>
+        <Button variant="outline" className="w-fit" onClick={() => setAdicionando(true)}>
           <Plus /> Adicionar peça
         </Button>
-        <Button variant="outline" onClick={() => setLendoLink(true)}>
-          <Link2 /> Ler link do carrinho
-        </Button>
+        {faltando.length > 0 && (
+          <Alert>
+            <TriangleAlert />
+            <AlertTitle>
+              {faltando.length} {faltando.length === 1 ? "peça não encontrada" : "peças não encontradas"} no catálogo
+            </AlertTitle>
+            <AlertDescription>
+              <span className="font-mono text-xs">{faltando.join(", ")}</span>
+              <div className="mt-2">
+                <Button size="sm" variant="outline" onClick={atualizarETentar} disabled={atualizarCatalogo.isPending || lendo}>
+                  {atualizarCatalogo.isPending && <Spinner />} Atualizar catálogo e tentar de novo
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       <AdicionarPecas
@@ -139,18 +183,6 @@ export default function PecasVenda({ pedido, aoLerCarrinho }: Props) {
         aoMudar={setAdicionando}
         aoAdicionar={(novos) => adicionar.mutate({ pedidoId: pedido.id, itens: novos })}
       />
-
-      <RespDialog aberto={lendoLink} aoMudar={setLendoLink} titulo="Ler link do carrinho" descricao="Cole o link de carrinho da Shopify">
-        <div className="flex flex-col gap-3">
-          <InputGroup>
-            <InputGroupInput placeholder="https://loja.com.br/cart/..." value={link} onChange={(e) => setLink(e.target.value)} />
-          </InputGroup>
-          {formatoErrado && <p className="text-sm text-destructive">Formato de link não reconhecido.</p>}
-          <Button className="h-11" onClick={lerLink} disabled={!link.trim() || lendo}>
-            {lendo && <Spinner />} Ler peças
-          </Button>
-        </div>
-      </RespDialog>
     </div>
   )
 }

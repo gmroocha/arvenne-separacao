@@ -24,7 +24,6 @@ export type FormVenda = {
   frete_cobrado: string
   frete_custo: string
   observacoes: string
-  carrinho_url: string
 }
 
 export function formDe(p: Pedido): FormVenda {
@@ -49,7 +48,6 @@ export function formDe(p: Pedido): FormVenda {
     frete_cobrado: numeroParaTexto(p.frete_cobrado),
     frete_custo: numeroParaTexto(p.frete_custo),
     observacoes: p.observacoes ?? "",
-    carrinho_url: p.carrinho_url ?? "",
   }
 }
 
@@ -78,6 +76,5 @@ export function camposDe(f: FormVenda): CamposPedido {
     frete_cobrado: lerNumero(f.frete_cobrado),
     frete_custo: lerNumero(f.frete_custo),
     observacoes: t(f.observacoes),
-    carrinho_url: t(f.carrinho_url),
   }
 }
