@@ -174,7 +174,7 @@ export type Cliente = {
 // Cliente achada na Shopify (função shopify-clientes), ainda sem cadastro aqui.
 export type ClienteShopify = {
   shopify_customer_id: number
-  nome: string
+  nome: string | null
   email: string | null
   telefone: string | null
   cep: string | null

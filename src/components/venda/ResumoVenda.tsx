@@ -114,10 +114,9 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoEnviar, aoCopiar,
                 <ToggleGroupItem value="arvenne">Arvenne</ToggleGroupItem>
               </ToggleGroup>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Dinheiro id={p("frete-cobrado")} rotulo="Cobrado" valor={form.frete_cobrado} aoMudar={(v) => aoMudar({ frete_cobrado: v })} />
-              <Dinheiro id={p("frete-custo")} rotulo="Custo real" valor={form.frete_custo} aoMudar={(v) => aoMudar({ frete_custo: v })} />
-            </div>
+            {form.frete_pago_por === "cliente" && (
+              <Dinheiro id={p("frete-cobrado")} rotulo="Frete pago pela cliente" valor={form.frete_cobrado} aoMudar={(v) => aoMudar({ frete_cobrado: v })} />
+            )}
           </>
         )}
       </div>

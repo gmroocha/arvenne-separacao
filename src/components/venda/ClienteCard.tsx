@@ -26,7 +26,7 @@ function parcialDe(c: Achada): Partial<FormVenda> {
   const local = c.origem === "local" ? (c as Cliente) : null
   return {
     cliente_id: local?.id ?? null,
-    cliente_nome: c.nome,
+    cliente_nome: c.nome ?? "",
     cliente_cpf: local?.cpf ? mascaraCpf(local.cpf) : "",
     cliente_email: c.email ?? "",
     cliente_telefone: c.telefone ? mascaraTelefone(c.telefone) : "",
@@ -47,7 +47,7 @@ function Resultado({ c, aoEscolher }: { c: Achada; aoEscolher: () => void }) {
       onClick={aoEscolher}
       className="flex w-full flex-col items-start rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
     >
-      <span className="font-medium">{c.nome}</span>
+      <span className={c.nome ? "font-medium" : "font-medium text-muted-foreground"}>{c.nome ?? "Sem nome"}</span>
       <span className="text-xs text-muted-foreground">
         {[c.telefone ? mascaraTelefone(c.telefone) : null, c.email].filter(Boolean).join(" · ") || "sem contato"}
       </span>
@@ -121,7 +121,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
         </InputGroup>
 
         {termo.length >= 2 && (local.length > 0 || shopify.length > 0 || semResultado) && (
-          <div className="flex flex-col gap-1 rounded-lg border p-1">
+          <div className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg border p-1">
             {local.length > 0 && (
               <>
                 <div className="px-2 pt-1 text-xs font-medium text-muted-foreground">Clientes cadastradas</div>

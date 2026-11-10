@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert, Truck } from "lucide-react"
 import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -55,31 +55,61 @@ function CopiarTudo({ dados }: { dados: Dado[] }) {
   )
 }
 
+// Passo da nota e frete. Pendente: aberto. Feito: recolhe, fica verde e mostra "Desfazer"; tocar no
+// cabeçalho abre de novo para conferir os dados.
 function Passo({
-  numero, icone, titulo, feito, feitoEm, children,
-}: { numero: number; icone: ReactNode; titulo: string; feito: boolean; feitoEm: string | null; children: ReactNode }) {
+  numero, icone, titulo, feito, feitoEm, aoDesfazer, textoDesfazer, children,
+}: {
+  numero: number; icone: ReactNode; titulo: string; feito: boolean; feitoEm: string | null
+  aoDesfazer: () => void; textoDesfazer: string; children: ReactNode
+}) {
+  const [aberto, setAberto] = useState(!feito)
+  const antes = useRef(feito)
+  useEffect(() => {
+    if (antes.current !== feito) setAberto(!feito) // marcou: recolhe; desfez: abre
+    antes.current = feito
+  }, [feito])
   return (
-    <Card size="sm" className={cn(feito && "ring-primary/40")}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <span
-            className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-              feito ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-            )}
-          >
-            {feito ? <Check className="size-4" /> : numero}
-          </span>
-          <span className="flex items-center gap-1.5 [&_svg]:size-4">
-            {icone} {titulo}
-          </span>
-          <Badge variant={feito ? "default" : "outline"} className="ml-auto">
-            {feito && feitoEm ? quando(feitoEm) : "Pendente"}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">{children}</CardContent>
-    </Card>
+    <Collapsible open={aberto} onOpenChange={setAberto}>
+      <Card size="sm" className={cn(feito && "bg-emerald-500/10 ring-emerald-500/40")}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-label={`${titulo}: ${aberto ? "recolher" : "abrir"}`}>
+                <span
+                  className={cn(
+                    "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                    feito ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {feito ? <Check className="size-4" /> : numero}
+                </span>
+                <span className="flex min-w-0 items-center gap-1.5 [&_svg]:size-4">
+                  {icone} <span className="truncate">{titulo}</span>
+                </span>
+                <Badge
+                  variant={feito ? "default" : "outline"}
+                  className={cn("ml-auto shrink-0", feito && "bg-emerald-600 text-white")}
+                >
+                  {feito && feitoEm ? quando(feitoEm) : "Pendente"}
+                </Badge>
+                <ChevronDown className={cn("size-4 shrink-0 transition-transform", aberto && "rotate-180")} />
+              </button>
+            </CollapsibleTrigger>
+          </CardTitle>
+        </CardHeader>
+        {feito && !aberto && (
+          <CardContent>
+            <Button variant="ghost" className="h-11 w-fit sm:h-8" onClick={aoDesfazer}>
+              {textoDesfazer}
+            </Button>
+          </CardContent>
+        )}
+        <CollapsibleContent>
+          <CardContent className="flex flex-col gap-4">{children}</CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   )
 }
 
@@ -189,7 +219,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         </CollapsibleContent>
       </Collapsible>
 
-      <Passo numero={1} icone={<FileText />} titulo="Nota fiscal" feito={nf} feitoEm={pedido.nf_emitida_em}>
+      <Passo numero={1} icone={<FileText />} titulo="Nota fiscal" feito={nf} feitoEm={pedido.nf_emitida_em} aoDesfazer={() => patch({ nf_emitida_em: null })} textoDesfazer="Desfazer nota emitida">
         <Faltando pedido={pedido} patch={patch} />
         <div className="flex flex-col">
           {dadosNota.map((d) => (
@@ -225,7 +255,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         )}
       </Passo>
 
-      <Passo numero={2} icone={<Truck />} titulo="Frete" feito={frete} feitoEm={pedido.frete_gerado_em}>
+      <Passo numero={2} icone={<Truck />} titulo="Frete" feito={frete} feitoEm={pedido.frete_gerado_em} aoDesfazer={() => patch({ frete_gerado_em: null })} textoDesfazer="Desfazer frete gerado">
         <Faltando pedido={pedido} patch={patch} />
         <div className="flex flex-col">
           {dadosFrete.map((d) => (
@@ -270,7 +300,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         )}
       </Passo>
 
-      <Passo numero={3} icone={<Store />} titulo="Pedido de venda LR (fornecedor)" feito={lr} feitoEm={pedido.pedido_fornecedor_em}>
+      <Passo numero={3} icone={<Store />} titulo="Pedido de venda LR (fornecedor)" feito={lr} feitoEm={pedido.pedido_fornecedor_em} aoDesfazer={() => patch({ pedido_fornecedor_em: null })} textoDesfazer="Desfazer pedido LR feito">
         <ul className="flex flex-col gap-1 text-sm">
           {itens.map((i) => (
             <li key={i.id} className="flex gap-2 tabular-nums">

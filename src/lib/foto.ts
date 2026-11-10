@@ -22,3 +22,16 @@ export async function enviarFoto(arquivo: File): Promise<string> {
   if (error) throw new Error(error.message)
   return supabase.storage.from("fotos").getPublicUrl(caminho).data.publicUrl
 }
+
+// Pede à Shopify a foto já redimensionada (nítida e leve). Outras URLs ficam como estão.
+export function fotoTamanho(url: string | null, px: number): string | null {
+  if (!url) return url
+  try {
+    const u = new URL(url)
+    if (u.hostname !== "cdn.shopify.com") return url
+    u.searchParams.set("width", String(px))
+    return u.toString()
+  } catch {
+    return url
+  }
+}

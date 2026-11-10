@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
-import { buscarVariantes, useAdicionarItens, useAtualizarCatalogo, useAtualizarItem, type PedidoDetalhe } from "@/lib/api"
+import { buscarVariantes, useAcoesItemVenda, useAdicionarItens, useAtualizarCatalogo, type PedidoDetalhe } from "@/lib/api"
 import { lerLinkCarrinho } from "@/lib/carrinho"
 import { lerNumero, numeroParaTexto } from "@/lib/formato"
 import { itemDoSite } from "@/lib/itens"
@@ -39,7 +39,7 @@ function PrecoInput({ item, aoSalvar }: { item: Item; aoSalvar: (preco: number |
 type Props = { pedido: PedidoDetalhe }
 
 export default function PecasVenda({ pedido }: Props) {
-  const atualizar = useAtualizarItem()
+  const atualizar = useAcoesItemVenda(pedido.id)
   const adicionar = useAdicionarItens()
   const [adicionando, setAdicionando] = useState(false)
   const atualizarCatalogo = useAtualizarCatalogo()
@@ -62,7 +62,7 @@ export default function PecasVenda({ pedido }: Props) {
         itemDoSite(v, lidos.find((l) => String(l.variantId) === String(v.shopify_variant_id))?.qtd ?? 1),
       )
       if (novos.length) {
-        await adicionar.mutateAsync({ pedidoId: pedido.id, itens: novos })
+        await adicionar.mutateAsync({ pedidoId: pedido.id, itens: novos, somar: true })
         const total = novos.reduce((s, i) => s + i.qtd, 0)
         toast.success(`${total} ${total === 1 ? "peça adicionada" : "peças adicionadas"}`)
       }
@@ -113,19 +113,19 @@ export default function PecasVenda({ pedido }: Props) {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <PrecoInput key={`${i.id}-${i.preco}`} item={i} aoSalvar={(preco) => atualizar.mutate({ itemId: i.id, campos: { preco } })} />
+              <PrecoInput key={`${i.id}-${i.preco}`} item={i} aoSalvar={(preco) => atualizar(i.id, { preco })} />
               <ButtonGroup>
                 <Button
                   variant="outline"
                   size="icon"
                   aria-label="Diminuir"
                   disabled={i.qtd <= 1}
-                  onClick={() => atualizar.mutate({ itemId: i.id, campos: { qtd: i.qtd - 1 } })}
+                  onClick={() => atualizar(i.id, { qtd: i.qtd - 1 })}
                 >
                   <Minus />
                 </Button>
                 <ButtonGroupText className="tabular-nums">{i.qtd}</ButtonGroupText>
-                <Button variant="outline" size="icon" aria-label="Aumentar" onClick={() => atualizar.mutate({ itemId: i.id, campos: { qtd: i.qtd + 1 } })}>
+                <Button variant="outline" size="icon" aria-label="Aumentar" onClick={() => atualizar(i.id, { qtd: i.qtd + 1 })}>
                   <Plus />
                 </Button>
               </ButtonGroup>
@@ -135,7 +135,7 @@ export default function PecasVenda({ pedido }: Props) {
             variant="ghost"
             size="icon"
             aria-label="Remover peça"
-            onClick={() => atualizar.mutate({ itemId: i.id, campos: { status: "removido" } })}
+            onClick={() => atualizar(i.id, { status: "removido" })}
           >
             <Trash2 />
           </Button>
@@ -181,7 +181,7 @@ export default function PecasVenda({ pedido }: Props) {
       <AdicionarPecas
         aberto={adicionando}
         aoMudar={setAdicionando}
-        aoAdicionar={(novos) => adicionar.mutate({ pedidoId: pedido.id, itens: novos })}
+        aoAdicionar={(novos) => adicionar.mutate({ pedidoId: pedido.id, itens: novos, somar: true })}
       />
     </div>
   )

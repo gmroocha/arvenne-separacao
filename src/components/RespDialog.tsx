@@ -29,7 +29,7 @@ export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, 
     )
   return (
     <Dialog open={aberto} onOpenChange={aoMudar}>
-      <DialogContent className={`max-h-[85svh] overflow-y-auto ${largo ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
+      <DialogContent className={`max-h-[85svh] overflow-y-auto ${largo ? "sm:max-w-4xl" : "sm:max-w-lg"}`}>
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription className={descricao ? undefined : "sr-only"}>{descricao ?? titulo}</DialogDescription>

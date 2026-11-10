@@ -7,10 +7,11 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRomaneio } from "@/lib/api"
 import { reais } from "@/lib/formato"
+import { fotoTamanho } from "@/lib/foto"
 
-function Linha({ rotulo, children, forte }: { rotulo: string; children: React.ReactNode; forte?: boolean }) {
+function Linha({ rotulo, children, forte, grande }: { rotulo: string; children: React.ReactNode; forte?: boolean; grande?: boolean }) {
   return (
-    <div className={`flex items-baseline justify-between gap-3 ${forte ? "text-lg font-semibold" : "text-sm"}`}>
+    <div className={`flex items-baseline justify-between gap-3 ${grande ? "text-2xl font-semibold" : forte ? "text-lg font-semibold" : "text-base"}`}>
       <span className={forte ? "" : "text-muted-foreground"}>{rotulo}</span>
       <span className="tabular-nums">{children}</span>
     </div>
@@ -23,7 +24,7 @@ export default function Romaneio() {
   const { data, isLoading } = useRomaneio(token)
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 p-4 pb-10">
+    <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 px-4 pb-12 pt-3">
       <header className="pt-2 text-center text-lg font-semibold tracking-wide">Arvenne</header>
       {isLoading ? (
         <div className="flex flex-col gap-3">
@@ -47,20 +48,22 @@ export default function Romaneio() {
               <h1 className="text-xl font-semibold">Pedido {data.numero.replace(/^#/, "")}</h1>
               {data.fase !== "venda" && data.status !== "perdida" && <Badge variant="secondary">Pagamento confirmado</Badge>}
             </div>
-            {data.cliente && <p className="text-muted-foreground">Olá, {data.cliente}</p>}
+            {data.cliente && !data.cliente.includes("@") && <p className="text-base text-muted-foreground">Olá, {data.cliente}</p>}
           </div>
 
           <ul className="flex flex-col gap-3">
             {data.itens.map((i, n) => (
-              <li key={n} className="flex items-center gap-3">
-                <Foto url={i.foto_url} alt={i.nome} className="size-16 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{i.nome}</div>
+              <li key={n} className="flex gap-3 rounded-xl border bg-card p-3">
+                <Foto url={fotoTamanho(i.foto_url, 600)} alt={i.nome} ampliar className="size-28 shrink-0" />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="text-base font-medium leading-snug">{i.nome}</div>
                   {i.variante && <div className="text-sm text-muted-foreground">{i.variante}</div>}
                   {i.sku && <div className="font-mono text-xs text-muted-foreground">{i.sku}</div>}
-                  <div className="text-sm text-muted-foreground tabular-nums">Quantidade: {i.qtd}</div>
+                  <div className="mt-auto pt-1 text-sm tabular-nums">
+                    Qtd {i.qtd}
+                    {i.preco != null && <span className="font-medium"> × {reais(i.preco)}</span>}
+                  </div>
                 </div>
-                <div className="text-sm font-medium tabular-nums">{reais(i.preco)}</div>
               </li>
             ))}
           </ul>
@@ -77,7 +80,7 @@ export default function Romaneio() {
               </Linha>
             )}
             <Separator className="my-1" />
-            <Linha rotulo="Total" forte>
+            <Linha rotulo="Total" forte grande>
               {reais(data.total)}
             </Linha>
           </div>

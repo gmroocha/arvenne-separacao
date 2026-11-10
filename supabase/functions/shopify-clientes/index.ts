@@ -7,7 +7,7 @@ import { shopify } from "../_shared/shopify.ts";
 
 const QUERY = `
 query Clientes($q: String!) {
-  customers(first: 8, query: $q) {
+  customers(first: 25, query: $q) {
     nodes {
       legacyResourceId
       displayName
@@ -47,6 +47,12 @@ function separarRua(address1: string | null): { logradouro: string | null; numer
   return m ? { logradouro: m[1].trim(), numero: m[2] } : { logradouro: address1.trim(), numero: null };
 }
 
+// Sem nome cadastrado a Shopify devolve o e-mail como nome: vira null.
+function nomeReal(c: Cliente): string | null {
+  const n = (c.displayName ?? "").trim();
+  return !n || n.toLowerCase() === (c.email ?? "").trim().toLowerCase() ? null : n;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const negado = await exigirEquipe(req);
@@ -71,7 +77,7 @@ Deno.serve(async (req) => {
       const { logradouro, numero } = separarRua(a?.address1 ?? null);
       return {
         shopify_customer_id: Number(c.legacyResourceId),
-        nome: c.displayName ?? "Sem nome",
+        nome: nomeReal(c),
         email: c.email,
         telefone: c.phone ?? a?.phone ?? null,
         cep: a?.zip ?? null,

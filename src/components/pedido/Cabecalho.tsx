@@ -1,5 +1,5 @@
 import { Link } from "react-router"
-import { ArrowLeft, ExternalLink, MoreHorizontal, UserRound } from "lucide-react"
+import { ArrowLeft, ExternalLink, MoreHorizontal, RotateCcw, UserRound } from "lucide-react"
 import Prazo from "@/components/pedido/Prazo"
 import { OrigemBadge } from "@/components/StatusBadge"
 import { Button } from "@/components/ui/button"
@@ -13,10 +13,11 @@ type Props = {
   pedido: PedidoDetalhe
   aoMover: (para: StatusPedido) => void
   aoCancelar: () => void
+  aoReiniciar: (tudo: boolean) => void
   aoVerDados?: () => void // só nas etapas de foco, onde a lateral de dados some
 }
 
-export default function Cabecalho({ pedido, aoMover, aoCancelar, aoVerDados }: Props) {
+export default function Cabecalho({ pedido, aoMover, aoCancelar, aoReiniciar, aoVerDados }: Props) {
   return (
     <div className="flex flex-col gap-2">
       <Button variant="ghost" size="sm" asChild className="w-fit">
@@ -56,6 +57,17 @@ export default function Cabecalho({ pedido, aoMover, aoCancelar, aoVerDados }: P
                 {NOME_ETAPA[e]}
               </DropdownMenuItem>
             ))}
+            {pedido.fase === "expedicao" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => aoReiniciar(false)}>
+                  <RotateCcw /> Reiniciar esta etapa
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => aoReiniciar(true)}>
+                  <RotateCcw /> Reiniciar o pedido do zero
+                </DropdownMenuItem>
+              </>
+            )}
             {pedido.shopify_url && <DropdownMenuSeparator />}
             {pedido.shopify_url && (
               <DropdownMenuItem asChild>

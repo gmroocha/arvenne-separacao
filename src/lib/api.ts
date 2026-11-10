@@ -402,6 +402,41 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
   }
 }
 
+// Reiniciar: zera o trabalho de uma etapa (ou de todas) para refazer. Nada é apagado: peças removidas
+// continuam removidas, histórico de bipagens e números digitados (nota, LR) ficam guardados.
+const ZERO_POR_ETAPA: Partial<Record<StatusPedido, { itens?: ItemPatch; pedido?: CamposPedido }>> = {
+  novo: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
+  separacao: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
+  aguardando_cliente: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
+  conferencia: { itens: { conferido_em: null } },
+  etiquetagem: { itens: { etiquetado_em: null, etiqueta_previa: false } },
+  bipagem: { itens: { qtd_bipada: 0, bipado_em: null } },
+  faturamento: { pedido: { nf_emitida_em: null, frete_gerado_em: null, pedido_fornecedor_em: null } },
+  embalagem: { pedido: { embalado_em: null } },
+  pronto_envio: { pedido: { postado_em: null, rastreio_enviado_em: null } },
+}
+
+export function useReiniciar(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async ({ tudo, etapa }: { tudo: boolean; etapa: StatusPedido }) => {
+      const etapas = tudo ? Object.keys(ZERO_POR_ETAPA) as StatusPedido[] : [etapa]
+      const itens: ItemPatch = Object.assign({}, ...etapas.map((e) => ZERO_POR_ETAPA[e]?.itens ?? {}))
+      const pedido: CamposPedido = Object.assign({}, ...etapas.map((e) => ZERO_POR_ETAPA[e]?.pedido ?? {}))
+      if (Object.keys(itens).length) {
+        const { error } = await supabase.from("pedido_itens").update(itens).eq("pedido_id", pedidoId).neq("status", "removido")
+        if (error) throw error
+      }
+      const campos: CamposPedido = { ...pedido, ...(tudo ? { status: "novo" } : {}) }
+      if (Object.keys(campos).length) await atualizarPedido(pedidoId, campos)
+    },
+    onSuccess: (_, a) => toast.success(a.tudo ? "Pedido reiniciado" : "Etapa reiniciada"),
+    onError: (e) => toast.error(msg(e)),
+    onSettled: () => TODAS.forEach((queryKey) => qc.invalidateQueries({ queryKey })),
+  })
+}
+
 // Registra a leitura do leitor de código (histórico em "bipagens"). Não trava a tela.
 export async function registrarBipagem(pedidoId: string, itemId: string | null, codigo: string, resultado: ResultadoBipagem) {
   const { error } = await supabase.from("bipagens").insert({ pedido_id: pedidoId, item_id: itemId, codigo, resultado })
@@ -418,9 +453,67 @@ export function useAtualizarItem() {
   )
 }
 
+// Venda (WhatsApp): qtd, preço e remover mudam na tela na hora; o banco grava em fila.
+// O total continua vindo do banco (v_pedidos) e atualiza quando a fila esvazia.
+export function useAcoesItemVenda(pedidoId: string) {
+  const qc = useQueryClient()
+  const chave = ["item-venda", pedidoId]
+  const gravar = useMutation({
+    mutationKey: chave,
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async ({ itemId, campos }: { itemId: string; campos: ItemPatch }) => {
+      const { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
+      if (error) throw error
+    },
+    onMutate: async ({ itemId, campos }) => {
+      await qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
+      return {
+        anterior: aplicarNoCache(qc, pedidoId, (p) => ({
+          ...p,
+          pedido_itens: p.pedido_itens.map((i) => (i.id === itemId ? { ...i, ...campos } : i)),
+        })),
+      }
+    },
+    onError: (e, _, ctx) => {
+      if (ctx?.anterior) qc.setQueryData(chavePedido(pedidoId), ctx.anterior)
+      toast.error(msg(e))
+    },
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: chave }) <= 1) {
+        qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+        qc.invalidateQueries({ queryKey: ["pedidos"] })
+      }
+    },
+  })
+  return (itemId: string, campos: ItemPatch) => gravar.mutate({ itemId, campos })
+}
+
+// Com somar (só na venda), peça já no pedido ganha quantidade em vez de uma linha nova.
 export function useAdicionarItens() {
   return useAcao(
-    async ({ pedidoId, itens }: { pedidoId: string; itens: NovoItem[] }) => {
+    async ({ pedidoId, itens, somar }: { pedidoId: string; itens: NovoItem[]; somar?: boolean }) => {
+      let novos = itens
+      if (somar) {
+        const { data: vivos, error: e1 } = await supabase
+          .from("pedido_itens")
+          .select("id, qtd, shopify_variant_id, peca_clube_id")
+          .eq("pedido_id", pedidoId)
+          .neq("status", "removido")
+        if (e1) throw e1
+        const existentes = (vivos ?? []) as Pick<Item, "id" | "qtd" | "shopify_variant_id" | "peca_clube_id">[]
+        novos = []
+        for (const i of itens) {
+          const igual = existentes.find((x) =>
+            i.shopify_variant_id != null ? x.shopify_variant_id === i.shopify_variant_id : i.peca_clube_id != null && x.peca_clube_id === i.peca_clube_id,
+          )
+          if (igual) {
+            igual.qtd += i.qtd
+            const { error } = await supabase.from("pedido_itens").update({ qtd: igual.qtd }).eq("id", igual.id)
+            if (error) throw error
+          } else novos.push(i)
+        }
+      }
+      if (!novos.length) return
       const { data: ult } = await supabase
         .from("pedido_itens")
         .select("ordem")
@@ -428,7 +521,7 @@ export function useAdicionarItens() {
         .order("ordem", { ascending: false })
         .limit(1)
       const base = (ult?.[0]?.ordem ?? 0) + 1
-      const linhas = itens.map((i, n) => ({
+      const linhas = novos.map((i, n) => ({
         pedido_id: pedidoId,
         origem: i.origem,
         shopify_variant_id: i.shopify_variant_id,
