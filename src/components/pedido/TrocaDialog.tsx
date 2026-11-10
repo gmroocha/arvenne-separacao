@@ -6,16 +6,19 @@ import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { msg, useCategorias, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, type PedidoDetalhe } from "@/lib/api"
+import { msg, useCategorias, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, useValorPago, type PedidoDetalhe } from "@/lib/api"
 import { mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp, reais } from "@/lib/formato"
 import { fotoTamanho } from "@/lib/foto"
-import { textoSituacao, valorDaOpcao, valorPagoPeca } from "@/lib/trocaTexto"
-import type { Item, ModoSugestao, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca } from "@/lib/tipos"
+import { textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
+import type { CategoriaCatalogo, Item, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca, ValorPago } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -30,6 +33,7 @@ type Props = {
 
 type Aba = "variantes" | "preco" | "buscar"
 type Faixa = "20" | "40" | "qualquer"
+const FAIXAS: Record<Faixa, number | null> = { "20": 0.2, "40": 0.4, qualquer: null }
 
 const opcaoIgual = (o: TrocaOpcao, n: NovoItem) =>
   o.shopify_variant_id != null ? o.shopify_variant_id === n.shopify_variant_id : o.peca_clube_id != null && o.peca_clube_id === n.peca_clube_id
@@ -50,47 +54,171 @@ const doSugestao = (s: Sugestao): NovoItem => ({
 // Primeira palavra do nome (Anel, Brinco, Colar...), igual ao filtro do banco.
 const categoriaDe = (nome: string) => nome.trim().split(/\s+/)[0]?.toUpperCase() ?? ""
 
-function GradeSugestoes({
-  sugestoes,
-  selecionada,
-  aoTocar,
-}: {
-  sugestoes: Sugestao[]
-  selecionada: (n: NovoItem) => boolean
-  aoTocar: (n: NovoItem) => void
-}) {
+// Diferença já calculada no banco (só inverte o sinal para o texto).
+function Diferenca({ s }: { s: Sugestao }) {
+  if (s.situacao === "paga_diferenca") return <span className="text-xs font-medium text-amber-700 tabular-nums dark:text-amber-400">+{reais(s.diferenca)} a pagar</span>
+  if (s.situacao === "credito") return <span className="text-xs font-medium text-emerald-700 tabular-nums dark:text-emerald-400">{reais(-s.diferenca)} de crédito</span>
+  return <span className="text-xs text-muted-foreground">mesmo valor</span>
+}
+
+function CartaoSugestao({ s, marcada, aoTocar }: { s: Sugestao; marcada: boolean; aoTocar: (s: Sugestao) => void }) {
+  const cheioDiferente = s.preco != null && s.preco !== s.preco_cliente
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {sugestoes.map((s) => {
-        const novo = doSugestao(s)
-        const marcada = selecionada(novo)
+    <button
+      type="button"
+      aria-pressed={marcada}
+      onClick={() => aoTocar(s)}
+      className={cn(
+        "flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-1.5 text-left transition-colors hover:bg-muted/50",
+        marcada && "border-primary bg-primary/5",
+      )}
+    >
+      <div className="relative">
+        <Foto url={fotoTamanho(s.foto_url, 300)} alt={s.produto} className="w-full" />
+        {marcada && (
+          <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Check className="size-4" />
+          </span>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-0.5 px-0.5 pb-0.5">
+        <span className="font-mono text-sm leading-tight font-semibold break-all">{s.sku ?? "sem código"}</span>
+        <span className="text-sm leading-tight">{s.variante ?? "sem variante"}</span>
+        <div className="flex flex-wrap items-baseline gap-x-1.5">
+          <span className="text-base leading-tight font-semibold tabular-nums">{reais(s.preco_cliente)}</span>
+          {cheioDiferente && <span className="text-xs text-muted-foreground tabular-nums line-through">{reais(s.preco)}</span>}
+        </div>
+        <Diferenca s={s} />
+      </div>
+    </button>
+  )
+}
+
+// p-1 dá folga para a borda do cartão não ser cortada pelo contêiner rolável.
+function GradeSugestoes({ sugestoes, selecionada, aoTocar }: { sugestoes: Sugestao[]; selecionada: (n: NovoItem) => boolean; aoTocar: (n: NovoItem) => void }) {
+  const tocar = (s: Sugestao) => aoTocar(doSugestao(s))
+  return (
+    <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3">
+      {sugestoes.map((s) => (
+        <CartaoSugestao key={s.variant_id} s={s} marcada={selecionada(doSugestao(s))} aoTocar={tocar} />
+      ))}
+    </div>
+  )
+}
+
+// Seletor das peças em falta (topo): cartões retangulares, coerentes com os demais.
+function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troca: Troca | undefined; atualId: string | undefined; aoEscolher: (id: string) => void }) {
+  return (
+    <div className="sem-barra flex min-w-0 gap-2 overflow-x-auto p-1" role="tablist" aria-label="Peças em falta">
+      {itens.map((i) => {
+        const atual = i.id === atualId
+        const tem = (troca?.pecas.find((x) => x.item_id === i.id)?.opcoes.length ?? 0) > 0
         return (
           <button
-            key={s.variant_id}
+            key={i.id}
             type="button"
-            aria-pressed={marcada}
-            onClick={() => aoTocar(novo)}
-            className={cn(
-              "flex min-w-0 flex-col gap-1.5 rounded-xl p-1.5 text-left ring-1 ring-border transition-colors hover:bg-muted/50",
-              marcada && "bg-primary/5 ring-2 ring-primary",
-            )}
+            role="tab"
+            aria-selected={atual}
+            onClick={() => aoEscolher(i.id)}
+            className={cn("flex shrink-0 items-center gap-2 rounded-lg border bg-card p-1.5 pr-3 text-left text-xs transition-colors", atual && "border-primary bg-primary/5")}
           >
-            <div className="relative">
-              <Foto url={fotoTamanho(s.foto_url, 300)} alt={s.produto} className="w-full" />
-              {marcada && (
-                <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Check className="size-4" />
+            <span className="relative">
+              <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-10" />
+              {tem && (
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-emerald-600 text-white">
+                  <Check className="size-3" />
                 </span>
               )}
-            </div>
-            <div className="flex min-w-0 flex-col gap-0.5 px-0.5 pb-0.5">
-              <span className="font-mono text-sm leading-tight font-semibold break-all">{s.sku ?? "sem código"}</span>
-              <span className="text-sm leading-tight">{s.variante ?? "sem variante"}</span>
-              {s.preco != null && <span className="text-sm text-muted-foreground tabular-nums">{reais(s.preco)}</span>}
-            </div>
+            </span>
+            <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
           </button>
         )
       })}
+    </div>
+  )
+}
+
+// Peça em falta: foto, código, variante e o que a cliente pagou (valores do banco).
+function CabecalhoPeca({ item, pago }: { item: Item; pago: ValorPago | null | undefined }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border p-2.5">
+      <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} ampliar className="size-16 shrink-0" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="font-mono text-base leading-tight font-semibold break-all">{item.sku ?? "sem código"}</span>
+        {item.variante && <span className="text-sm leading-tight">{item.variante}</span>}
+        <span className="line-clamp-1 text-xs text-muted-foreground">{item.nome}</span>
+        {pago && (
+          <span className="text-sm tabular-nums">
+            Cliente pagou {reais(pago.valor_pago)}
+            {pago.qtd > 1 && <span className="text-muted-foreground"> ({reais(pago.valor_pago_unit)} cada)</span>}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Filtros do "Preço parecido": categoria (Select) e faixa (segmentado, com estado ativo bem marcado).
+function FiltroPreco({
+  categorias,
+  carregando,
+  categoria,
+  aoCategoria,
+  faixa,
+  aoFaixa,
+  unitario,
+}: {
+  categorias: CategoriaCatalogo[]
+  carregando: boolean
+  categoria: string
+  aoCategoria: (c: string) => void
+  faixa: Faixa
+  aoFaixa: (f: Faixa) => void
+  unitario: number | undefined
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs text-muted-foreground">Categoria</Label>
+        <Select value={categoria || "todas"} onValueChange={(v) => aoCategoria(v === "todas" ? "" : v)} disabled={carregando}>
+          <SelectTrigger className="h-10 w-full sm:w-64" aria-label="Categoria">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas</SelectItem>
+            {categorias.map((c) => (
+              <SelectItem key={c.categoria} value={c.categoria} className="capitalize">
+                {c.categoria.toLowerCase()}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs text-muted-foreground">Faixa de preço</Label>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          spacing={0}
+          value={faixa}
+          onValueChange={(v) => v && aoFaixa(v as Faixa)}
+          className="w-full sm:w-auto"
+          aria-label="Faixa de preço"
+        >
+          {(["20", "40", "qualquer"] as Faixa[]).map((f) => (
+            <ToggleGroupItem
+              key={f}
+              value={f}
+              className="h-10 flex-1 px-4 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground sm:flex-none"
+            >
+              {f === "qualquer" ? "Qualquer" : `Até ${f}%`}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {unitario != null && faixa !== "qualquer" && (
+          <p className="text-xs text-muted-foreground">Perto de {reais(unitario)}, o que a cliente pagou por unidade</p>
+        )}
+      </div>
     </div>
   )
 }
@@ -112,7 +240,7 @@ function PainelOpcoes({ itens, troca, aoRemover }: { itens: Item[]; troca: Troca
               <p className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">Nenhuma opção ainda.</p>
             ) : (
               opcoes.map((o) => (
-                <div key={o.id} className="flex min-w-0 items-center gap-2 rounded-lg p-1.5 ring-1 ring-border">
+                <div key={o.id} className="flex min-w-0 items-center gap-2 rounded-lg border p-1.5">
                   <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} className="size-12 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-mono text-sm font-semibold">{o.sku ?? "sem código"}</div>
@@ -196,21 +324,15 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
     criarTroca({ pedidoId: pedido.id, itemIds: itens.map((i) => i.id) })
   }
 
-  // Filtros da aba "Preço parecido": categoria (padrão = a da peça) e faixa em torno do preço da peça.
+  // Filtros da aba "Preço parecido": categoria (padrão = a da peça) e faixa em volta do valor pago por unidade.
+  // As contas (valor pago, preço da cliente, diferença) são do banco.
+  const pagoQ = useValorPago(pronta ? item?.id : undefined)
   const categoriaPadrao = item ? categoriaDe(item.nome) : ""
   const listaCats = categorias.data ?? []
   const categoria = item ? (catEscolhida[item.id] ?? (listaCats.some((c) => c.categoria === categoriaPadrao) ? categoriaPadrao : "")) : ""
-  const pct = faixa === "20" ? 0.2 : faixa === "40" ? 0.4 : null
-  const preco = item?.preco ?? null
-  const min = faixa === "qualquer" ? 0 : preco != null ? Math.max(0, preco * (1 - (pct ?? 0))) : null
-  const max = faixa === "qualquer" ? 99_999_999 : preco != null ? preco * (1 + (pct ?? 0)) : null
   // No modo "Preço parecido" espera as categorias chegarem, para não buscar "todas" e depois buscar de novo.
-  const filtrosProntos = aba !== "preco" || !categorias.isPending
-  const sug = useSugestoes(
-    aberto && pronta && aba !== "buscar" && filtrosProntos ? item?.id : undefined,
-    aba === "preco" ? "preco" : ("variantes" as ModoSugestao),
-    aba === "preco" ? { categoria: categoria || null, min, max } : {},
-  )
+  const ativa = aberto && pronta && aba !== "buscar" && (aba !== "preco" || !categorias.isPending)
+  const sug = useSugestoes(item?.id, aba === "preco" ? "preco" : "variantes", { categoria: categoria || null, faixa: FAIXAS[faixa] }, ativa)
 
   const opcoes = peca?.opcoes ?? []
   const selecionada = (n: NovoItem) => opcoes.some((o) => opcaoIgual(o, n))
@@ -292,51 +414,6 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
     </div>
   )
 
-  const chips = ativos.length > 0 && (
-    <div className="sem-barra flex min-w-0 gap-2 overflow-x-auto py-1" role="tablist" aria-label="Peças em falta">
-      {ativos.map((i) => {
-        const p = troca?.pecas.find((x) => x.item_id === i.id)
-        const atual = i.id === item?.id
-        const tem = (p?.opcoes.length ?? 0) > 0
-        return (
-          <button
-            key={i.id}
-            type="button"
-            role="tab"
-            aria-selected={atual}
-            onClick={() => setItemId(i.id)}
-            className={cn(
-              "flex h-11 shrink-0 items-center gap-2 rounded-full pr-3 pl-1 text-left text-xs ring-1 ring-border transition-colors",
-              atual && "bg-primary/5 ring-2 ring-primary",
-            )}
-          >
-            <span className="relative">
-              <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-9" />
-              {tem && (
-                <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-emerald-600 text-white">
-                  <Check className="size-3" />
-                </span>
-              )}
-            </span>
-            <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-
-  const cabecalho = item && (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl p-2.5 ring-1 ring-border">
-      <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} ampliar className="size-16 shrink-0" />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-mono text-base leading-tight font-semibold break-all">{item.sku ?? "sem código"}</span>
-        {item.variante && <span className="text-sm leading-tight">{item.variante}</span>}
-        <span className="line-clamp-1 text-xs text-muted-foreground">{item.nome}</span>
-        {peca && valorPagoPeca(peca) != null && <span className="text-sm tabular-nums">Cliente pagou {reais(valorPagoPeca(peca))}</span>}
-      </div>
-    </div>
-  )
-
   const tentarSug = (
     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
       Não foi possível carregar as sugestões.
@@ -350,7 +427,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
     <>
       {sug.isError && !sug.data && tentarSug}
       {sug.isPending && !sug.isError && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Carregando sugestões">
+        <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3" aria-label="Carregando sugestões">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="aspect-square w-full rounded-xl" />
           ))}
@@ -373,38 +450,15 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   )
 
   const filtrosPreco = aba === "preco" && item && (
-    <div className="flex min-w-0 flex-col gap-2">
-      <div className="sem-barra flex min-w-0 gap-1.5 overflow-x-auto" aria-label="Categoria">
-        <Button
-          size="sm"
-          variant={categoria === "" ? "secondary" : "outline"}
-          className="h-9 shrink-0"
-          onClick={() => setCatEscolhida((c) => ({ ...c, [item.id]: "" }))}
-        >
-          Todas
-        </Button>
-        {listaCats.map((c) => (
-          <Button
-            key={c.categoria}
-            size="sm"
-            variant={categoria === c.categoria ? "secondary" : "outline"}
-            className="h-9 shrink-0 capitalize"
-            onClick={() => setCatEscolhida((x) => ({ ...x, [item.id]: c.categoria }))}
-          >
-            {c.categoria.toLowerCase()}
-          </Button>
-        ))}
-        {categorias.isLoading && <Skeleton className="h-9 w-20 shrink-0" />}
-      </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Faixa de preço">
-        {(["20", "40", "qualquer"] as Faixa[]).map((f) => (
-          <Button key={f} size="sm" variant={faixa === f ? "secondary" : "outline"} className="h-9" onClick={() => setFaixa(f)}>
-            {f === "qualquer" ? "Qualquer preço" : `±${f}%`}
-          </Button>
-        ))}
-        {preco == null && faixa !== "qualquer" && <span className="text-xs text-muted-foreground">Peça sem preço: usando 80% a 120%.</span>}
-      </div>
-    </div>
+    <FiltroPreco
+      categorias={listaCats}
+      carregando={categorias.isPending}
+      categoria={categoria}
+      aoCategoria={(c) => setCatEscolhida((x) => ({ ...x, [item.id]: c }))}
+      faixa={faixa}
+      aoFaixa={setFaixa}
+      unitario={pagoQ.data?.valor_pago_unit}
+    />
   )
 
   const conteudo = (
@@ -430,8 +484,8 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       )}
       {pronta && item && (
         <>
-          {chips}
-          {cabecalho}
+          <ChipsPecas itens={ativos} troca={troca} atualId={item.id} aoEscolher={setItemId} />
+          <CabecalhoPeca item={item} pago={pagoQ.data} />
           <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
             <TabsList className="w-full">
               <TabsTrigger value="variantes">Variantes</TabsTrigger>
@@ -441,7 +495,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
           </Tabs>
           {filtrosPreco}
           {aba === "buscar" ? (
-            aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} />
+            aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} notaPreco="valor com desconto aparece ao escolher" />
           ) : (
             <div className="flex min-w-0 flex-col gap-3">{grade}</div>
           )}
@@ -486,7 +540,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       ) : (
         <div className="flex min-w-0 flex-col gap-4">
           <div className="grid h-[calc(min(90svh,780px)-14rem)] grid-cols-[minmax(0,1fr)_minmax(0,19rem)] gap-6">
-            <div className="min-h-0 min-w-0 overflow-y-auto pr-1">{conteudo}</div>
+            <div className="min-h-0 min-w-0 overflow-y-auto p-1">{conteudo}</div>
             <div className="flex min-h-0 min-w-0 flex-col gap-3 border-l pl-6">
               <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <PackageSearch className="size-4" /> Opções <span className="font-normal text-muted-foreground">({rotuloOpcoes})</span>

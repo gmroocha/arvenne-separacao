@@ -4,7 +4,7 @@ import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import { etapaCompleta } from "@/lib/etapa"
 import { NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor } from "@/lib/tipos"
+import type { CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 export const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 
@@ -804,23 +804,39 @@ export function useTroca(pedidoId: string | undefined) {
   })
 }
 
-export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}) {
+// Sugestões de troca. Só consulta quando `ativo` (aba aberta); preços e diferença vêm prontos do banco.
+export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}, ativo = true) {
+  const categoria = filtros.categoria ?? null
+  const faixa = modo === "preco" ? (filtros.faixa === undefined ? 0.2 : filtros.faixa) : 0.2
   return useQuery({
-    queryKey: ["sugestoes", itemId, modo, filtros.categoria ?? null, filtros.min ?? null, filtros.max ?? null, filtros.busca ?? null],
-    enabled: !!itemId,
+    queryKey: ["sugestoes", itemId, modo, modo === "preco" ? categoria : null, modo === "preco" ? faixa : null],
+    enabled: !!itemId && ativo,
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("sugerir_troca", {
         p_item: itemId,
         p_modo: modo,
-        p_categoria: filtros.categoria ?? null,
-        p_min: filtros.min ?? null,
-        p_max: filtros.max ?? null,
-        p_busca: filtros.busca ?? null,
+        p_categoria: modo === "preco" ? categoria : null,
+        p_faixa: faixa,
+        p_busca: null,
       })
       if (error) throw error
       return (data ?? []) as Sugestao[]
+    },
+  })
+}
+
+// Quanto a cliente pagou pela peça (total e por unidade), para o cabeçalho da troca.
+export function useValorPago(itemId: string | undefined) {
+  return useQuery({
+    queryKey: ["troca-valor-pago", itemId],
+    enabled: !!itemId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("troca_valor_pago", { p_item: itemId })
+      if (error) throw error
+      return ((data ?? [])[0] ?? null) as ValorPago | null
     },
   })
 }

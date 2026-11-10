@@ -21,6 +21,8 @@ export type Tocar = (item: NovoItem) => void
 // Como a busca marca as peças já escolhidas: quantidade no carrinho (Adicionar peça)
 // ou seleção com check (Troca de peça em falta).
 type Marcas = {
+  // Texto pequeno sob o preço (ex.: aviso de que o valor com desconto aparece ao escolher).
+  notaPreco?: string
   quantidade?: (item: NovoItem) => number
   selecionada?: (item: NovoItem) => boolean
 }
@@ -59,7 +61,7 @@ function SemResultado() {
 }
 
 // Resultado da busca: foto quadrada, código (SKU) e variante em destaque, nome pequeno.
-function Resultado({ item, noCarrinho, selecionada, aoTocar }: { item: NovoItem; noCarrinho: number; selecionada: boolean; aoTocar: () => void }) {
+function Resultado({ item, noCarrinho, selecionada, aoTocar, notaPreco }: { item: NovoItem; noCarrinho: number; selecionada: boolean; aoTocar: () => void; notaPreco?: string }) {
   return (
     <Item variant="outline" size="sm" asChild className={cn((selecionada || noCarrinho > 0) && "border-transparent bg-primary/5 ring-1 ring-primary/30")}>
       <button type="button" className="min-w-0 text-left" aria-pressed={selecionada} onClick={aoTocar}>
@@ -77,13 +79,14 @@ function Resultado({ item, noCarrinho, selecionada, aoTocar }: { item: NovoItem;
           )}
           {noCarrinho > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">×{noCarrinho}</Badge>}
           {item.preco != null && <span className="tabular-nums">{reais(item.preco)}</span>}
+          {notaPreco && <span className="max-w-28 text-right text-[11px] leading-tight text-muted-foreground">{notaPreco}</span>}
         </ItemActions>
       </button>
     </Item>
   )
 }
 
-function AbaSite({ aoTocar, quantidade, selecionada }: { aoTocar: Tocar } & Marcas) {
+function AbaSite({ aoTocar, quantidade, selecionada, notaPreco }: { aoTocar: Tocar } & Marcas) {
   const [termo, setTermo] = useState("")
   const busca = useDebounce(termo.trim(), 300)
   const { data, isFetching } = useBuscaSite(busca)
@@ -136,7 +139,7 @@ function AbaSite({ aoTocar, quantidade, selecionada }: { aoTocar: Tocar } & Marc
       <ItemGroup className="gap-2">
         {data?.map((v) => {
           const item = itemDoSite(v)
-          return <Resultado key={v.shopify_variant_id} item={item} noCarrinho={quantidade?.(item) ?? 0} selecionada={selecionada?.(item) ?? false} aoTocar={() => aoTocar(item)} />
+          return <Resultado key={v.shopify_variant_id} item={item} noCarrinho={quantidade?.(item) ?? 0} selecionada={selecionada?.(item) ?? false} aoTocar={() => aoTocar(item)} notaPreco={notaPreco} />
         })}
       </ItemGroup>
       <Button variant="ghost" size="sm" className="w-fit text-muted-foreground" onClick={() => atualizar.mutate(undefined)}>
@@ -146,7 +149,7 @@ function AbaSite({ aoTocar, quantidade, selecionada }: { aoTocar: Tocar } & Marc
   )
 }
 
-function AbaClube({ aoTocar, quantidade, selecionada }: { aoTocar: Tocar } & Marcas) {
+function AbaClube({ aoTocar, quantidade, selecionada, notaPreco }: { aoTocar: Tocar } & Marcas) {
   const [termo, setTermo] = useState("")
   const [novo, setNovo] = useState(false)
   const busca = useDebounce(termo.trim(), 300)
@@ -177,7 +180,7 @@ function AbaClube({ aoTocar, quantidade, selecionada }: { aoTocar: Tocar } & Mar
       <ItemGroup className="gap-2">
         {data?.map((p) => {
           const item = itemDoClube(p)
-          return <Resultado key={p.id} item={item} noCarrinho={quantidade?.(item) ?? 0} selecionada={selecionada?.(item) ?? false} aoTocar={() => aoTocar(item)} />
+          return <Resultado key={p.id} item={item} noCarrinho={quantidade?.(item) ?? 0} selecionada={selecionada?.(item) ?? false} aoTocar={() => aoTocar(item)} notaPreco={notaPreco} />
         })}
       </ItemGroup>
     </div>
@@ -185,7 +188,7 @@ function AbaClube({ aoTocar, quantidade, selecionada }: { aoTocar: Tocar } & Mar
 }
 
 // Busca de peças (abas Site e Clube), reutilizada em "Adicionar peça" e na troca de peça em falta.
-export function BuscaPecas({ aoEscolher, quantidade, selecionada }: { aoEscolher: Tocar } & Marcas) {
+export function BuscaPecas({ aoEscolher, quantidade, selecionada, notaPreco }: { aoEscolher: Tocar } & Marcas) {
   return (
     <Tabs defaultValue="site">
       <TabsList variant="line">
@@ -193,10 +196,10 @@ export function BuscaPecas({ aoEscolher, quantidade, selecionada }: { aoEscolher
         <TabsTrigger value="clube">Clube</TabsTrigger>
       </TabsList>
       <TabsContent value="site">
-        <AbaSite aoTocar={aoEscolher} quantidade={quantidade} selecionada={selecionada} />
+        <AbaSite aoTocar={aoEscolher} quantidade={quantidade} selecionada={selecionada} notaPreco={notaPreco} />
       </TabsContent>
       <TabsContent value="clube">
-        <AbaClube aoTocar={aoEscolher} quantidade={quantidade} selecionada={selecionada} />
+        <AbaClube aoTocar={aoEscolher} quantidade={quantidade} selecionada={selecionada} notaPreco={notaPreco} />
       </TabsContent>
     </Tabs>
   )

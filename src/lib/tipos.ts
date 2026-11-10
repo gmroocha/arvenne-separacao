@@ -294,10 +294,12 @@ export type ModoSugestao = "variantes" | "preco"
 
 export type FiltrosSugestao = {
   categoria?: string | null
-  min?: number | null
-  max?: number | null
-  busca?: string | null
+  // 0.2 = até 20% de diferença do valor pago por unidade; null = qualquer preço.
+  faixa?: number | null
 }
+
+// Resposta de troca_valor_pago: o que a cliente pagou pela peça (com o desconto do pedido).
+export type ValorPago = { valor_pago: number; valor_pago_unit: number; qtd: number }
 
 export type CategoriaCatalogo = { categoria: string; total: number }
 
@@ -311,6 +313,10 @@ export type Sugestao = {
   variante: string | null
   preco: number | null
   foto_url: string | null
+  // Valores já com o desconto da cliente, calculados no banco.
+  preco_cliente: number
+  diferenca: number
+  situacao: "paga_diferenca" | "credito" | "sem_diferenca"
 }
 
 // Resposta de troca_publica (página da cliente).
