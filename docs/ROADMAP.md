@@ -6,6 +6,19 @@ peças repetidas, catálogo do Clube) já está pronta. Nada abaixo foi constru�
 Ordem sugerida: **1 → 2 → 3**. O pedido manual completo vem primeiro porque alimenta a nota fiscal, o
 prazo e a visualização da cliente.
 
+## 0. Pedidos antigos (guardar todos e poder consultar)
+
+Decisão do Gustavo: **nenhum pedido é apagado**, mesmo depois de enviado.
+
+- O banco já recusa a exclusão de pedidos e itens vinda do app (só o painel do Supabase apaga).
+- **Falta a tela:** hoje a lista mostra pedidos abertos e os dos últimos 30 dias. Os mais antigos
+  continuam no banco, mas não aparecem em lugar nenhum. Criar uma tela "Histórico" com busca por
+  número, nome da cliente, telefone e SKU, paginada, sem limite de data.
+- Foto de peça da Shopify é só o link da própria Shopify. Se o produto sair da loja, a foto de pedidos
+  antigos pode sumir. Avaliar copiar a foto para o nosso armazenamento quando o pedido for enviado.
+- Espaço: cada pedido ocupa algo em torno de 10 KB (estimativa, não medida). Medir com o uso real e
+  acompanhar em Supabase → Reports → Database. Plano grátis tem 500 MB de banco e 1 GB de fotos.
+
 ## 1. Pedido manual completo (WhatsApp)
 
 Objetivo: lançar um pedido fora da Shopify com tudo que a nota fiscal e o controle precisam, sem digitar

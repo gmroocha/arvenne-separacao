@@ -259,8 +259,17 @@ alter table public.pedido_itens   enable row level security;
 alter table public.pedido_eventos enable row level security;
 
 create policy equipe on public.pecas_clube    for all to authenticated using (true) with check (true);
-create policy equipe on public.pedidos        for all to authenticated using (true) with check (true);
-create policy equipe on public.pedido_itens   for all to authenticated using (true) with check (true);
+
+-- Pedidos e itens: a equipe lê, cria e altera, mas NÃO apaga. Pedido enviado ou cancelado fica
+-- guardado para sempre. Sem política de DELETE, o banco recusa a exclusão vinda do app.
+-- (Apagar pedido de teste: pelo Table Editor do painel do Supabase, que ignora estas regras.)
+create policy equipe_le    on public.pedidos      for select to authenticated using (true);
+create policy equipe_cria  on public.pedidos      for insert to authenticated with check (true);
+create policy equipe_edita on public.pedidos      for update to authenticated using (true) with check (true);
+create policy equipe_le    on public.pedido_itens for select to authenticated using (true);
+create policy equipe_cria  on public.pedido_itens for insert to authenticated with check (true);
+create policy equipe_edita on public.pedido_itens for update to authenticated using (true) with check (true);
+
 create policy equipe_le on public.pedido_eventos for select to authenticated using (true);
 create policy equipe_nota on public.pedido_eventos for insert to authenticated
   with check (tipo = 'nota');

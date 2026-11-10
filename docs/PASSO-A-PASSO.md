@@ -24,15 +24,19 @@ Conferir: o repositório no GitHub mostra as pastas `src` e `supabase`.
 2. Nome: `arvenne-separacao`. Senha do banco: crie uma forte e **guarde no gerenciador de senhas**.
    Região: **South America (São Paulo)**. Plano: **Free**.
 3. Espere uns 2 minutos até o projeto ficar pronto.
-4. Menu **SQL Editor** → **New query**. Abra o arquivo
-   `supabase/migrations/20261110120000_inicio.sql` no VS Code, `Ctrl+A`, `Ctrl+C`, cole na consulta e
-   clique em **Run**. Deve aparecer "Success".
+4. Menu **SQL Editor** → **New query**. No VS Code, abra o arquivo
+   `supabase/migrations/20261110120000_inicio.sql` (clique nele na lista de pastas à esquerda), aperte
+   `Ctrl+A` e `Ctrl+C` para copiar **o conteúdo** e cole na consulta do Supabase. Não cole o nome do
+   arquivo: isso dá "syntax error at or near supabase". Clique em **Run**. Deve aparecer "Success".
 5. Menu **Authentication** → **Sign In / Providers**: **desligue** "Allow new users to sign up".
    Isso impede que qualquer pessoa crie conta no app.
 6. Menu **Authentication** → **Users** → **Add user** → **Create new user**: e-mail e senha de cada
    pessoa da equipe. Marque **Auto Confirm User**.
-7. Menu **Project Settings** → **API** (ou **API Keys**): copie a **Project URL** e a chave pública
-   (`anon` ou `publishable`). **Nunca** copie nem use a chave `service_role` aqui.
+7. Menu **Project Settings** → **General**: o **Project ID** é o código do projeto (letras e números).
+   A Project URL é `https://` + esse código + `.supabase.co`.
+8. Menu **Project Settings** → **API Keys**: copie a **Publishable key** (começa com `sb_publishable_`).
+   Ela faz o papel da antiga chave `anon` e pode ser pública. **Nunca** copie nem use a **Secret key**
+   (`sb_secret_...`) aqui.
 
 Conferir: em **Table Editor** aparecem as tabelas `pedidos`, `pedido_itens`, `pecas_clube` e
 `pedido_eventos`.
