@@ -22,7 +22,15 @@ async function tokenAdmin(): Promise<string> {
       grant_type: "client_credentials",
     }),
   });
-  if (!res.ok) throw new Error(`Token Shopify falhou (${res.status}): ${await res.text()}`);
+  if (!res.ok) {
+    const texto = await res.text();
+    if (texto.includes("app_not_installed")) {
+      throw new Error("O app da Shopify não está instalado nesta loja. No Dev Dashboard, abra o app e use Instalar app.");
+    }
+    // A Shopify às vezes devolve uma página HTML inteira: reduz a texto curto para a tela.
+    const curto = texto.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+    throw new Error(`Token Shopify falhou (${res.status}): ${curto}`);
+  }
   const { access_token, expires_in } = await res.json();
   cache = { token: access_token, expira: Date.now() + (expires_in ?? 300) * 1000 - 60_000 };
   return access_token;
