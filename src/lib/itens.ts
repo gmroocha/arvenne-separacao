@@ -30,3 +30,7 @@ export function itemDoClube(p: PecaClube): NovoItem {
     preco: p.preco,
   }
 }
+
+// Mesma peça: mesma variante da Shopify ou mesma peça do Clube.
+export const igual = (a: NovoItem, b: NovoItem) =>
+  a.shopify_variant_id != null ? a.shopify_variant_id === b.shopify_variant_id : a.peca_clube_id != null && a.peca_clube_id === b.peca_clube_id

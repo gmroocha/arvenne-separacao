@@ -69,4 +69,4 @@ Também no celular (390 px). Sem rolagem horizontal da página.
 `20261111120000_catalogo_site`, `20261111150000_catalogo_status`, `20261111180000_esteira`,
 `20261111210000_bairro_complemento`, `20261112090000_feedbacks`, `20261112091000_eventos_analise`,
 `20261112120000_avisar_cliente`.
-Nenhuma pendente.
+Pendente de aplicar: `20261112150000_trocas` (troca de peça em falta: sugestões, link `/t/:token`, valores).

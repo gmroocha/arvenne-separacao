@@ -26,3 +26,37 @@ export function textoRastreio(pedido: Pedido): string {
   const rastreio = pedido.rastreio_url ?? pedido.rastreio
   return `Olá${nome}! Seu pedido ${pedido.numero} da Arvenne foi enviado. Acompanhe a entrega: ${rastreio}`
 }
+
+const primeiroNome = (p: Pedido) => {
+  const n = p.cliente_nome?.split(" ")[0]
+  return n && !n.includes("@") ? n : null
+}
+
+const descricaoPeca = (i: Item) => [i.nome, i.variante].filter(Boolean).join(", ")
+
+// Mensagem para a cliente com o link da troca. `credito` já vem formatado (ex.: "R$ 52,00"), do banco.
+export function mensagemTroca(pedido: Pedido, item: Item, link: string, credito?: string | null): string {
+  const nome = primeiroNome(pedido)
+  const peca = descricaoPeca(item)
+  return [
+    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne. A peça *${peca}* do seu pedido ${pedido.numero} ficou sem estoque 😕`,
+    `Separamos opções parecidas para você escolher: ${link}.`,
+    credito ? `Se preferir, fica um crédito de ${credito} para usar quando quiser.` : null,
+    "Qualquer dúvida, é só responder aqui.",
+  ]
+    .filter(Boolean)
+    .join(" ")
+}
+
+// Sem troca montada: aviso simples para a cliente, sem link.
+export function mensagemFaltaSimples(pedido: Pedido, itens: Item[]): string {
+  const nome = primeiroNome(pedido)
+  const faltas = itens.filter((i) => i.status === "falta" || i.status === "defeito")
+  const pecas = faltas.map((i) => `*${descricaoPeca(i)}*`).join(" e ")
+  const plural = faltas.length > 1
+  return [
+    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne.`,
+    `${plural ? "As peças" : "A peça"} ${pecas} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕`,
+    "Podemos trocar por outra peça ou devolver o valor como crédito. O que você prefere?",
+  ].join(" ")
+}

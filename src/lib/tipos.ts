@@ -210,3 +210,86 @@ export type Feedback = {
   resolvido_em: string | null
   pedidos: { numero: string; cliente_nome: string | null; origem: string } | null
 }
+
+export type StatusTroca = "rascunho" | "enviada" | "respondida" | "concluida" | "cancelada"
+export type EscolhaTroca = "opcao" | "credito" | "whatsapp"
+export type SituacaoTroca = "paga_diferenca" | "credito" | "sem_diferenca"
+
+export type TrocaOpcao = {
+  id: string
+  troca_id: string
+  origem: "site" | "clube"
+  shopify_variant_id: number | null
+  peca_clube_id: string | null
+  sku: string | null
+  nome: string
+  variante: string | null
+  foto_url: string | null
+  preco: number | null
+  motivo: "mesmo_modelo" | "mesmo_valor" | "busca"
+  ordem: number
+}
+
+// Uma linha de v_troca_valores: por opção (tipo "opcao") ou o crédito da troca (tipo "credito").
+export type TrocaValor = {
+  troca_id: string
+  pedido_id: string
+  item_id: string
+  opcao_id: string | null
+  tipo: "opcao" | "credito"
+  qtd: number
+  valor_pago_item: number
+  valor_opcao: number
+  diferenca: number
+  situacao: SituacaoTroca
+}
+
+export type Troca = {
+  id: string
+  pedido_id: string
+  item_id: string
+  token: string
+  status: StatusTroca
+  escolha_tipo: EscolhaTroca | null
+  escolha_opcao_id: string | null
+  enviada_em: string | null
+  respondida_em: string | null
+  concluida_em: string | null
+  resultado_diferenca: number | null
+  created_at: string
+  opcoes: TrocaOpcao[]
+  valores: TrocaValor[]
+}
+
+// Linha de sugerir_troca.
+export type Sugestao = {
+  motivo: "mesmo_modelo" | "mesmo_valor"
+  variant_id: number
+  produto_id: number | null
+  sku: string | null
+  produto: string
+  variante: string | null
+  preco: number | null
+  foto_url: string | null
+}
+
+// Resposta de troca_publica (página da cliente).
+export type TrocaPublica = {
+  numero: string
+  cliente: string | null
+  status: StatusTroca
+  escolha_tipo: EscolhaTroca | null
+  escolha_opcao_id: string | null
+  valor_credito: number
+  item: { foto_url: string | null; nome: string; variante: string | null; sku: string | null; qtd: number; valor_pago: number }
+  opcoes: {
+    id: string
+    foto_url: string | null
+    nome: string
+    variante: string | null
+    sku: string | null
+    valor: number
+    diferenca: number
+    situacao: SituacaoTroca
+  }[]
+}

@@ -11,6 +11,7 @@ import Vendas from "@/pages/Vendas"
 import Venda from "@/pages/Venda"
 import NovaVenda from "@/pages/NovaVenda"
 import Romaneio from "@/pages/Romaneio"
+import Troca from "@/pages/Troca"
 import Pedido from "@/pages/Pedido"
 import Repetidas from "@/pages/Repetidas"
 import Clube from "@/pages/Clube"
@@ -37,6 +38,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/r/:token" element={<Romaneio />} />
+      <Route path="/t/:token" element={<Troca />} />
       <Route element={<Protegido />}>
         <Route element={<Layout />}>
           <Route index element={<Expedicao />} />
