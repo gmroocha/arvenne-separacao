@@ -170,6 +170,15 @@ venda. Custo e código do fornecedor nunca saem da equipe.
 - Conferido num pedido real (ARV-1242, 10/11/2026): a Shopify mostra o código de rastreio dos Correios e
   a data do envio, mas **não tem status de entrega** (só o botão manual "Marcar como entregue"). Quem sabe
   a entrega é a Frenet. Então: Enviado automático + rastreio vêm da Shopify; entrega precisa da Frenet.
-- Pergunta aberta: a Frenet expõe consulta de status de rastreio por API ou webhook? A Frenet emite
-  token de API (existe), mas a documentação de rastreio não foi confirmada. Alternativas: API dos
-  Correios (precisa contrato) ou botão manual "Entregue" no app.
+- **Frenet tem API de rastreio** (documentação lida em 10/11/2026, ainda não testada): `POST /tracking/trackinginfo`,
+  cabeçalhos `token: <token da conta>` e `Accept: application/json`. Corpo: `ShippingServiceCode`
+  (obrigatório, código do serviço vindo da cotação; a lista sai de `GET /shipping/info`) e `TrackingNumber`
+  (obrigatório). Resposta: `TrackingEvents` com `EventDateTime`, `EventDescription`, `EventLocation` e
+  `EventType` (0 inicial, 1 em trânsito, 2 atraso, 3 devolvido, 4 extraviado, **9 entregue**). Não há campo
+  "status": a entrega se deduz de um evento tipo 9. O host do rastreio não está na documentação
+  (a cotação usa `api.frenet.com.br`): confirmar na primeira chamada.
+- Plano: função `frenet-rastreio` consulta os pedidos enviados e ainda não entregues a cada poucas horas e
+  grava `entrega_status` e `entregue_em`. O token da Frenet fica em segredo do Supabase
+  (`FRENET_TOKEN`), nunca no chat. A "partner register" da documentação é para plataformas que cadastram
+  clientes, não é necessária.
+- Para testar: o token (painel da Frenet) e um rastreio real, como o do pedido ARV-1242.
