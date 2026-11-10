@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
+import { toast } from "sonner"
 import { ChevronRight, PackageOpen, RefreshCw, Search } from "lucide-react"
 import CardPedido from "@/components/CardPedido"
 import { Badge } from "@/components/ui/badge"
@@ -9,9 +10,9 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
+import { useMudarStatus, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
 import { digitos } from "@/lib/formato"
-import { ICONE_ETAPA, type StatusPedido } from "@/lib/status"
+import { ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import { useAgora } from "@/lib/useAgora"
@@ -65,6 +66,28 @@ export default function Expedicao() {
   const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
   const agora = useAgora()
+  const mudarStatus = useMudarStatus()
+  const [arrastando, setArrastando] = useState<Pedido | null>(null)
+  const [alvo, setAlvo] = useState<string | null>(null)
+
+  // Arrastar um cartão para outra coluna move o pedido de etapa (com Desfazer).
+  function soltar(c: Coluna) {
+    const p = arrastando
+    setArrastando(null)
+    setAlvo(null)
+    if (!p || c.rastreio || c.statuses.includes(p.status)) return
+    const para = c.statuses[0]
+    const de = p.status
+    mudarStatus.mutate(
+      { pedidoId: p.id, para, silencioso: true },
+      {
+        onSuccess: () =>
+          toast.success(`${p.cliente_nome ?? "Pedido"} → ${NOME_ETAPA[para]}`, {
+            action: { label: "Desfazer", onClick: () => mudarStatus.mutate({ pedidoId: p.id, para: de, silencioso: true }) },
+          }),
+      },
+    )
+  }
 
   const atualizar = (mudanca: Record<string, string | null>) => {
     const n = new URLSearchParams(params)
@@ -201,7 +224,24 @@ export default function Expedicao() {
               <Fragment key={c.id}>
                 <section
                   aria-label={c.nome}
-                  className={cn("flex w-64 shrink-0 flex-col gap-2 rounded-xl p-2", c.alerta ? "bg-destructive/10" : "bg-muted/40")}
+                  onDragOver={(e) => {
+                    if (!arrastando || c.rastreio) return
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = "move"
+                    if (alvo !== c.id) setAlvo(c.id)
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setAlvo((a) => (a === c.id ? null : a))
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    soltar(c)
+                  }}
+                  className={cn(
+                    "flex min-h-40 w-64 shrink-0 flex-col gap-2 rounded-xl p-2 transition-colors",
+                    c.alerta ? "bg-destructive/10" : "bg-muted/40",
+                    alvo === c.id && "bg-primary/10 ring-2 ring-primary/50 ring-inset",
+                  )}
                 >
                   <header className="flex items-center gap-2 px-1 py-1 text-sm font-medium">
                     <Icone className={cn("size-4", c.alerta ? "text-destructive" : "text-muted-foreground")} />
@@ -215,7 +255,24 @@ export default function Expedicao() {
                   ) : c.pedidos.length === 0 ? (
                     <p className="px-1 py-6 text-center text-xs text-muted-foreground">Nenhum pedido</p>
                   ) : (
-                    c.pedidos.map((p) => <CardPedido key={p.id} p={p} progresso={progressoDe(p)} />)
+                    c.pedidos.map((p) => (
+                      <div
+                        key={p.id}
+                        draggable={!c.rastreio}
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move"
+                          e.dataTransfer.setData("text/plain", p.id)
+                          setArrastando(p)
+                        }}
+                        onDragEnd={() => {
+                          setArrastando(null)
+                          setAlvo(null)
+                        }}
+                        className={cn(!c.rastreio && "cursor-grab active:cursor-grabbing", arrastando?.id === p.id && "opacity-40")}
+                      >
+                        <CardPedido p={p} progresso={progressoDe(p)} />
+                      </div>
+                    ))
                   )}
                 </section>
                 {i < porColuna.length - 1 && <ChevronRight className="mt-4 size-4 shrink-0 text-muted-foreground/60" aria-hidden />}

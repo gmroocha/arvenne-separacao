@@ -10,6 +10,7 @@ export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: st
   return (
     <Link
       to={`/pedidos/${p.id}`}
+      draggable={false}
       className="flex flex-col gap-2 rounded-xl bg-card p-3 text-sm ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex min-w-0 flex-col">

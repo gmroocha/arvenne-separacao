@@ -267,6 +267,13 @@ export function useMudarStatus() {
     },
     onMutate: async ({ pedidoId, para, campos }) => {
       await qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
+      await qc.cancelQueries({ queryKey: ["pedidos"] })
+      // Listas (esteira) também mudam na hora, para o cartão arrastado não "voltar" até o refetch.
+      qc.setQueriesData({ queryKey: ["pedidos"] }, (old: unknown) =>
+        Array.isArray(old)
+          ? old.map((p: { id: string }) => (p.id === pedidoId ? { ...p, ...campos, status: para, status_desde: new Date().toISOString() } : p))
+          : old,
+      )
       return { anterior: aplicarNoCache(qc, pedidoId, (p) => ({ ...p, ...campos, status: para, status_desde: new Date().toISOString() })) }
     },
     onError: (e, a, ctx) => {

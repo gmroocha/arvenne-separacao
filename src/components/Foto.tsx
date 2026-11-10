@@ -8,7 +8,7 @@ type Props = { url: string | null; alt?: string; ampliar?: boolean; className?: 
 
 function Imagem({ url, alt, className }: { url: string | null; alt: string; className?: string }) {
   return url ? (
-    <img src={url} alt={alt} loading="lazy" className={cn("size-full rounded-md object-cover", className)} />
+    <img draggable={false} src={url} alt={alt} loading="lazy" className={cn("size-full rounded-md object-cover", className)} />
   ) : (
     <div className={cn("flex size-full items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
       <Gem className="size-1/3" />
@@ -33,7 +33,7 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
         <DialogContent className="sm:max-w-xl">
           <DialogTitle className="sr-only">{alt || "Foto da peça"}</DialogTitle>
           <DialogDescription className="sr-only">Foto ampliada</DialogDescription>
-          <img src={url} alt={alt} className="max-h-[80svh] w-full rounded-md object-contain" />
+          <img draggable={false} src={url} alt={alt} className="max-h-[80svh] w-full rounded-md object-contain" />
         </DialogContent>
       </Dialog>
     </>

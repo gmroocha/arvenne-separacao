@@ -1,5 +1,5 @@
 import {
-  Check, FileText, Inbox, ListChecks, MessageCircleWarning, Package, ScanBarcode, Search, Send, Tag, Truck,
+  Check, Eye, FileText, Inbox, ListChecks, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck,
   type LucideIcon,
 } from "lucide-react"
 
@@ -83,7 +83,7 @@ export function proximaEtapa(s: StatusPedido): StatusPedido | null {
 export const ICONE_ETAPA: Record<string, LucideIcon> = {
   fila: Inbox,
   novo: Inbox,
-  separacao: Search,
+  separacao: Eye,
   aguardando_cliente: MessageCircleWarning,
   conferencia: ListChecks,
   etiquetagem: Tag,
