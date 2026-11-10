@@ -5,9 +5,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Layout from "@/components/Layout"
 import Protegido from "@/components/Protegido"
 import Login from "@/pages/Login"
-import Pedidos from "@/pages/Pedidos"
+import Expedicao from "@/pages/Expedicao"
+import Arquivo from "@/pages/Arquivo"
+import Vendas from "@/pages/Vendas"
+import Venda from "@/pages/Venda"
+import NovaVenda from "@/pages/NovaVenda"
+import Romaneio from "@/pages/Romaneio"
 import Pedido from "@/pages/Pedido"
-import NovoPedido from "@/pages/NovoPedido"
 import Repetidas from "@/pages/Repetidas"
 import Clube from "@/pages/Clube"
 
@@ -31,11 +35,15 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/r/:token" element={<Romaneio />} />
       <Route element={<Protegido />}>
         <Route element={<Layout />}>
-          <Route index element={<Pedidos />} />
-          <Route path="pedidos/novo" element={<NovoPedido />} />
+          <Route index element={<Expedicao />} />
+          <Route path="vendas" element={<Vendas />} />
+          <Route path="vendas/nova" element={<NovaVenda />} />
+          <Route path="vendas/:id" element={<Venda />} />
           <Route path="pedidos/:id" element={<Pedido />} />
+          <Route path="arquivo" element={<Arquivo />} />
           <Route path="repetidas" element={<Repetidas />} />
           <Route path="clube" element={<Clube />} />
         </Route>

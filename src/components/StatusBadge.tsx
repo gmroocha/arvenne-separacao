@@ -5,7 +5,11 @@ import type { Origem } from "@/lib/tipos"
 
 export function StatusBadge({ status }: { status: StatusPedido }) {
   const variante =
-    status === "aguardando_cliente" ? "destructive" : status === "enviado" || status === "cancelado" ? "outline" : "secondary"
+    status === "aguardando_cliente"
+      ? "destructive"
+      : status === "enviado" || status === "cancelado" || status === "perdida"
+        ? "outline"
+        : "secondary"
   return <Badge variant={variante}>{NOME_ETAPA[status]}</Badge>
 }
 

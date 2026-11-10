@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
-import { Gem, ListChecks, LogOut, Moon, PackagePlus, Repeat, Sun } from "lucide-react"
+import { Archive, Gem, LogOut, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
 import { useTheme } from "next-themes"
 import { supabase } from "@/lib/supabase"
-import { useRepetidas } from "@/lib/api"
+import { useContagens, useRepetidas } from "@/lib/api"
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +23,7 @@ export default function AppSidebar() {
   const { setOpenMobile } = useSidebar()
   const { resolvedTheme, setTheme } = useTheme()
   const { data: repetidas } = useRepetidas()
+  const { data: contagens } = useContagens()
   const [email, setEmail] = useState("")
 
   useEffect(() => {
@@ -30,10 +31,18 @@ export default function AppSidebar() {
   }, [])
 
   const itens = [
-    { to: "/", nome: "Pedidos", icone: ListChecks, ativo: pathname === "/" || /^\/pedidos\/(?!novo)/.test(pathname) },
-    { to: "/pedidos/novo", nome: "Novo pedido", icone: PackagePlus, ativo: pathname === "/pedidos/novo" },
+    { to: "/vendas", nome: "Vendas", icone: Receipt, ativo: pathname.startsWith("/vendas"), badge: contagens?.emAberto },
+    {
+      to: "/",
+      nome: "Expedição",
+      icone: Truck,
+      ativo: pathname === "/" || pathname.startsWith("/pedidos/"),
+      badge: contagens?.atrasados,
+      alerta: true,
+    },
     { to: "/repetidas", nome: "Peças repetidas", icone: Repeat, ativo: pathname === "/repetidas", badge: repetidas?.length },
     { to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
+    { to: "/arquivo", nome: "Arquivo", icone: Archive, ativo: pathname === "/arquivo" },
   ]
 
   return (
@@ -53,7 +62,9 @@ export default function AppSidebar() {
                       <span>{i.nome}</span>
                     </Link>
                   </SidebarMenuButton>
-                  {i.badge ? <SidebarMenuBadge>{i.badge}</SidebarMenuBadge> : null}
+                  {i.badge ? (
+                    <SidebarMenuBadge className={i.alerta ? "bg-destructive/10 text-destructive" : undefined}>{i.badge}</SidebarMenuBadge>
+                  ) : null}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
