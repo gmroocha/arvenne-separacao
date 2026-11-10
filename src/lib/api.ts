@@ -1,28 +1,75 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
-import { ABERTOS, NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { Evento, Item, NovoItem, PecaClube, PecaRepetida, Pedido } from "@/lib/tipos"
+import { NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
+import type { Cliente, ClienteShopify, Endereco, Evento, Item, NovoItem, PecaClube, PecaRepetida, Pedido, Romaneio } from "@/lib/tipos"
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 
-export type PedidoLista = Pedido & { pedido_itens: Pick<Item, "id" | "foto_url" | "status" | "qtd">[] }
+export type PedidoLista = Pedido
 export type PedidoDetalhe = Pedido & { pedido_itens: Item[]; pedido_eventos: Evento[] }
 export type VarianteSite = Omit<NovoItem, "chave" | "origem" | "peca_clube_id" | "qtd">
 
-export function usePedidos() {
+// Listas de uma fase, lidas de v_pedidos (o banco calcula total, prazo e contagens).
+export function usePedidosFase(fase: "venda" | "expedicao") {
   return useQuery({
-    queryKey: ["pedidos"],
+    queryKey: ["pedidos", fase],
+    refetchInterval: 60_000,
     queryFn: async () => {
-      const desde = new Date(Date.now() - 30 * 86400000).toISOString()
-      const { data, error } = await supabase
-        .from("pedidos")
-        .select("*, pedido_itens(id, foto_url, status, qtd)")
-        .or(`status.in.(${ABERTOS.join(",")}),status_desde.gte.${desde}`)
-        .order("pedido_em", { ascending: false })
-        .limit(300)
+      let q = supabase.from("v_pedidos").select("*").eq("fase", fase).limit(300)
+      q = fase === "expedicao"
+        ? q.order("prazo", { ascending: true, nullsFirst: false })
+        : q.order("pedido_em", { ascending: false })
+      const { data, error } = await q
       if (error) throw error
-      return data as PedidoLista[]
+      return data as Pedido[]
+    },
+  })
+}
+
+export function useArquivo(busca: string, limite: number) {
+  return useQuery({
+    queryKey: ["pedidos", "arquivo", busca, limite],
+    queryFn: async () => {
+      let q = supabase
+        .from("v_pedidos")
+        .select("*")
+        .eq("fase", "arquivo")
+        .order("status_desde", { ascending: false })
+        .limit(limite)
+      const t = busca.trim().replace(/[%,()]/g, " ")
+      if (t) {
+        const d = t.replace(/\D/g, "")
+        q = q.or(
+          [`numero.ilike.%${t}%`, `cliente_nome.ilike.%${t}%`, `cliente_telefone.ilike.%${t}%`, d.length >= 3 ? `cliente_telefone.ilike.%${d}%` : null]
+            .filter(Boolean)
+            .join(","),
+        )
+      }
+      const { data, error } = await q
+      if (error) throw error
+      return data as Pedido[]
+    },
+  })
+}
+
+// Contagens da barra lateral: vendas em aberto e pedidos da expedição atrasados.
+export function useContagens() {
+  return useQuery({
+    queryKey: ["pedidos", "contagem"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const [a, b] = await Promise.all([
+        supabase.from("v_pedidos").select("id", { count: "exact", head: true }).eq("status", "em_aberto"),
+        supabase
+          .from("v_pedidos")
+          .select("id", { count: "exact", head: true })
+          .eq("fase", "expedicao")
+          .lt("prazo", new Date().toISOString()),
+      ])
+      if (a.error) throw a.error
+      if (b.error) throw b.error
+      return { emAberto: a.count ?? 0, atrasados: b.count ?? 0 }
     },
   })
 }
@@ -32,15 +79,29 @@ export function usePedido(id: string | undefined) {
     queryKey: ["pedido", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pedidos")
-        .select("*, pedido_itens(*), pedido_eventos(*)")
-        .eq("id", id!)
-        .order("ordem", { referencedTable: "pedido_itens" })
-        .order("created_at", { referencedTable: "pedido_eventos", ascending: false })
-        .single()
-      if (error) throw error
-      return data as PedidoDetalhe
+      const [p, i, e] = await Promise.all([
+        supabase.from("v_pedidos").select("*").eq("id", id!).single(),
+        supabase.from("pedido_itens").select("*").eq("pedido_id", id!).order("ordem"),
+        supabase.from("pedido_eventos").select("*").eq("pedido_id", id!).order("created_at", { ascending: false }),
+      ])
+      if (p.error) throw p.error
+      if (i.error) throw i.error
+      if (e.error) throw e.error
+      return { ...(p.data as Pedido), pedido_itens: i.data as Item[], pedido_eventos: e.data as Evento[] } as PedidoDetalhe
+    },
+  })
+}
+
+export function useRomaneio(token: string | undefined) {
+  return useQuery({
+    queryKey: ["romaneio", token],
+    enabled: !!token,
+    refetchInterval: 30_000,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("romaneio_publico", { p_token: token })
+      if (error) return null
+      return (data as Romaneio | null) ?? null
     },
   })
 }
@@ -102,42 +163,146 @@ const TODAS = [["pedidos"], ["pedido"], ["repetidas"]]
 
 export function useMudarStatus() {
   return useAcao(
-    async ({ pedidoId, para }: { pedidoId: string; para: StatusPedido }) => {
+    async ({ pedidoId, para }: { pedidoId: string; para: StatusPedido; silencioso?: boolean }) => {
       const { error } = await supabase.from("pedidos").update({ status: para }).eq("id", pedidoId)
       if (error) throw error
     },
     TODAS,
-    (_, a) => toast.success(`Pedido movido para ${NOME_ETAPA[a.para]}`),
+    (_, a) => {
+      if (!a.silencioso) toast.success(`Pedido movido para ${NOME_ETAPA[a.para]}`)
+    },
   )
 }
 
-// Regras: primeira peça marcada tira o pedido de "novo"; falta/defeito leva a "aguardando cliente".
-export function useMudarStatusItem(pedido: PedidoDetalhe | undefined) {
+// Atualiza campos do pedido (sem toast): usado pelo salvamento automático e pelas ações das telas.
+export type CamposPedido = Partial<
+  Pick<
+    Pedido,
+    | "cliente_id" | "cliente_nome" | "cliente_telefone" | "cliente_email" | "cliente_cpf"
+    | "entrega_cep" | "entrega_logradouro" | "entrega_numero" | "entrega_complemento"
+    | "entrega_bairro" | "entrega_cidade" | "entrega_uf"
+    | "desconto_tipo" | "desconto_valor" | "cupom"
+    | "frete_tipo" | "frete_pago_por" | "frete_cobrado" | "frete_custo"
+    | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra"
+    | "status" | "rastreio" | "observacoes" | "carrinho_url"
+  >
+>
+
+export async function atualizarPedido(pedidoId: string, campos: CamposPedido) {
+  const { error } = await supabase.from("pedidos").update(campos).eq("id", pedidoId)
+  if (error) throw error
+}
+
+export function useAtualizarPedido(invalidar: unknown[][] = TODAS) {
+  return useAcao(({ pedidoId, campos }: { pedidoId: string; campos: CamposPedido }) => atualizarPedido(pedidoId, campos), invalidar)
+}
+
+const ITENS_ABRIDORES: StatusPedido[] = ["novo", "separacao", "aguardando_cliente"]
+
+// Regras da separação, aplicadas depois de cada mudança numa peça:
+//  - falta/defeito leva o pedido a "aguardando cliente";
+//  - resolvidos todos os problemas, o pedido volta a "separação";
+//  - primeira peça achada tira o pedido de "novo";
+//  - a última peça achada leva o pedido sozinho para Conferência (com Desfazer).
+export function useAcaoItem(pedido: PedidoDetalhe | undefined) {
+  const qc = useQueryClient()
+  const mudarStatus = useMudarStatus()
+
+  function avisarConferencia(anterior: StatusPedido) {
+    if (!pedido) return
+    toast.success("Pedido foi para Conferência", {
+      duration: 8000,
+      action: {
+        label: "Desfazer",
+        onClick: () => mudarStatus.mutate({ pedidoId: pedido.id, para: anterior === "novo" ? "separacao" : anterior, silencioso: true }),
+      },
+    })
+  }
+
+  return useAcao(
+    async ({ item, para, observacao }: { item: Item; para: StatusItem; observacao?: string | null }) => {
+      // A peça muda de lista na hora; o banco confirma logo depois.
+      if (pedido)
+        qc.setQueryData<PedidoDetalhe>(["pedido", pedido.id], (old) =>
+          old && { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? { ...i, status: para } : i)) },
+        )
+      const { error } = await supabase
+        .from("pedido_itens")
+        .update({
+          status: para,
+          ...(para !== "encontrado" ? { conferido_em: null } : {}),
+          ...(observacao !== undefined ? { observacao } : {}),
+        })
+        .eq("id", item.id)
+      if (error) {
+        qc.invalidateQueries({ queryKey: ["pedido"] })
+        throw error
+      }
+      if (!pedido) return
+      const vivos = pedido.pedido_itens.map((i) => (i.id === item.id ? { ...i, status: para } : i)).filter((i) => i.status !== "removido")
+      const problemas = vivos.filter((i) => i.status === "falta" || i.status === "defeito")
+      const todosAchados = vivos.length > 0 && vivos.every((i) => i.status === "encontrado")
+      const atual = pedido.status
+      const mover = (destino: StatusPedido) => atualizarPedido(pedido.id, { status: destino })
+      if (problemas.length > 0) {
+        if (atual === "novo" || atual === "separacao" || atual === "conferencia") {
+          await mover("aguardando_cliente")
+          toast.info("Pedido aguardando resposta da cliente")
+        }
+        return
+      }
+      if (atual === "aguardando_cliente") {
+        await mover(todosAchados ? "conferencia" : "separacao")
+        if (todosAchados) avisarConferencia(atual)
+        return
+      }
+      if (ITENS_ABRIDORES.includes(atual) && todosAchados) {
+        await mover("conferencia")
+        avisarConferencia(atual)
+        return
+      }
+      if (atual === "novo" && para === "encontrado") await mover("separacao")
+    },
+    TODAS,
+  )
+
+}
+
+// Conferência: marca a peça como conferida; a última conferida leva o pedido a Nota/Bling/frete.
+export function useConferirItem(pedido: PedidoDetalhe | undefined) {
   const mudarStatus = useMudarStatus()
   return useAcao(
-    async ({ item, para }: { item: Item; para: StatusItem }) => {
-      const { error } = await supabase.from("pedido_itens").update({ status: para }).eq("id", item.id)
+    async ({ item, conferido }: { item: Item; conferido: boolean }) => {
+      const { error } = await supabase
+        .from("pedido_itens")
+        .update({ conferido_em: conferido ? new Date().toISOString() : null })
+        .eq("id", item.id)
       if (error) throw error
-      if (!pedido) return null
-      const itens = pedido.pedido_itens.map((i) => (i.id === item.id ? { ...i, status: para } : i))
-      if ((para === "falta" || para === "defeito") && (pedido.status === "novo" || pedido.status === "separacao")) {
-        await supabase.from("pedidos").update({ status: "aguardando_cliente" }).eq("id", pedido.id)
-        toast.info("Pedido aguardando resposta da cliente")
-        return null
-      }
-      if (para === "encontrado" && pedido.status === "novo") {
-        await supabase.from("pedidos").update({ status: "separacao" }).eq("id", pedido.id)
-      }
-      const vivos = itens.filter((i) => i.status !== "removido")
-      if (para === "encontrado" && vivos.length > 0 && vivos.every((i) => i.status === "encontrado")) {
-        toast.success("Todas as peças encontradas", {
+      if (!pedido || !conferido || pedido.status !== "conferencia") return
+      const alvo = pedido.pedido_itens
+        .map((i) => (i.id === item.id ? { ...i, conferido_em: "agora" } : i))
+        .filter((i) => i.status === "encontrado")
+      const outras = pedido.pedido_itens.filter((i) => i.status !== "removido" && i.status !== "encontrado")
+      if (alvo.length > 0 && outras.length === 0 && alvo.every((i) => i.conferido_em)) {
+        await atualizarPedido(pedido.id, { status: "faturamento" })
+        toast.success("Pedido foi para Nota, Bling e frete", {
+          duration: 8000,
           action: {
-            label: "Avançar para Conferência",
-            onClick: () => mudarStatus.mutate({ pedidoId: pedido.id, para: "conferencia" }),
+            label: "Desfazer",
+            onClick: () => mudarStatus.mutate({ pedidoId: pedido.id, para: "conferencia", silencioso: true }),
           },
         })
       }
-      return null
+    },
+    TODAS,
+  )
+}
+
+export function useAtualizarItem() {
+  return useAcao(
+    async ({ itemId, campos }: { itemId: string; campos: { qtd?: number; preco?: number | null; status?: StatusItem } }) => {
+      const { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
+      if (error) throw error
     },
     TODAS,
   )
@@ -173,29 +338,6 @@ export function useAdicionarItens() {
   )
 }
 
-export function useSalvarCampo() {
-  return useAcao(
-    async ({ pedidoId, campo }: { pedidoId: string; campo: { rastreio: string | null } | { observacoes: string | null } }) => {
-      const { error } = await supabase.from("pedidos").update(campo).eq("id", pedidoId)
-      if (error) throw error
-    },
-    [["pedido"]],
-  )
-}
-
-export function useObservacaoItem() {
-  return useAcao(
-    async ({ itemId, status, observacao }: { itemId: string; status: StatusItem; observacao?: string | null }) => {
-      const { error } = await supabase
-        .from("pedido_itens")
-        .update({ status, ...(observacao !== undefined ? { observacao } : {}) })
-        .eq("id", itemId)
-      if (error) throw error
-    },
-    TODAS,
-  )
-}
-
 export function useAdicionarNota() {
   return useAcao(
     async ({ pedidoId, texto }: { pedidoId: string; texto: string }) => {
@@ -209,23 +351,96 @@ export function useAdicionarNota() {
   )
 }
 
-export type DadosWhatsApp = {
-  cliente_nome: string
-  cliente_telefone: string
-  carrinho_url: string | null
-  observacoes: string | null
-  itens: NovoItem[]
-}
-
-export function useCriarPedidoWhatsApp() {
+export function useCriarVenda() {
   return useAcao(
-    async (d: DadosWhatsApp) => {
-      const { data, error } = await supabase.rpc("criar_pedido_whatsapp", { p: d })
+    async () => {
+      const { data, error } = await supabase.rpc("criar_venda", { p: {} })
       if (error) throw error
       return (data as { id: string; numero: string }[])[0]
     },
     TODAS,
   )
+}
+
+export type DadosCliente = {
+  nome: string
+  cpf: string | null
+  email: string | null
+  telefone: string | null
+  shopify_customer_id?: number | null
+} & Partial<Endereco>
+
+const soDigitos = (t: string | null | undefined) => (t ?? "").replace(/\D/g, "")
+
+// Cria ou atualiza a cliente em "clientes" (telefone, CPF e CEP só com dígitos) e devolve o id.
+export async function salvarCliente(id: string | null, d: DadosCliente): Promise<string> {
+  const linha = {
+    nome: d.nome.trim(),
+    cpf: soDigitos(d.cpf) || null,
+    email: d.email?.trim().toLowerCase() || null,
+    telefone: soDigitos(d.telefone) || null,
+    cep: soDigitos(d.cep) || null,
+    logradouro: d.logradouro?.trim() || null,
+    numero: d.numero?.trim() || null,
+    complemento: d.complemento?.trim() || null,
+    bairro: d.bairro?.trim() || null,
+    cidade: d.cidade?.trim() || null,
+    uf: d.uf?.trim().toUpperCase() || null,
+    ...(d.shopify_customer_id ? { shopify_customer_id: d.shopify_customer_id } : {}),
+  }
+  let alvo = id
+  if (!alvo) {
+    // Evita duplicar: procura quem já tem o mesmo CPF, e-mail ou telefone.
+    const filtros = [
+      linha.cpf ? `cpf.eq.${linha.cpf}` : null,
+      linha.email ? `email.eq.${linha.email}` : null,
+      linha.telefone ? `telefone.eq.${linha.telefone}` : null,
+    ].filter(Boolean)
+    if (filtros.length) {
+      const { data } = await supabase.from("clientes").select("id").or(filtros.join(",")).limit(1)
+      alvo = data?.[0]?.id ?? null
+    }
+  }
+  if (alvo) {
+    const { error } = await supabase.from("clientes").update(linha).eq("id", alvo)
+    if (error) throw error
+    return alvo
+  }
+  const { data, error } = await supabase.from("clientes").insert(linha).select("id").single()
+  if (error) throw error
+  return data.id as string
+}
+
+// Busca única: telefone, e-mail, nome ou CPF. Primeiro em "clientes"; a Shopify é complemento
+// (sem a função publicada, a busca segue só com o cadastro daqui, sem erro na tela).
+export function useBuscaClientes(termo: string) {
+  const t = termo.trim().replace(/[%,()]/g, " ")
+  const d = soDigitos(t)
+  const local = useQuery({
+    queryKey: ["clientes", t],
+    enabled: t.length >= 2,
+    queryFn: async () => {
+      const filtros = [`nome.ilike.%${t}%`, `email.ilike.%${t}%`]
+      if (d.length >= 3) filtros.push(`telefone.ilike.%${d}%`, `cpf.ilike.%${d}%`)
+      const { data, error } = await supabase.from("clientes").select("*").or(filtros.join(",")).order("nome").limit(8)
+      if (error) throw error
+      return data as Cliente[]
+    },
+  })
+  const shopify = useQuery({
+    queryKey: ["clientes-shopify", t],
+    enabled: t.length >= 3,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: async () => {
+      try {
+        return (await chamarFuncao<{ clientes: ClienteShopify[] }>("shopify-clientes", { q: t })).clientes
+      } catch {
+        return [] as ClienteShopify[]
+      }
+    },
+  })
+  return { local: local.data ?? [], shopify: shopify.data ?? [], carregando: local.isFetching || shopify.isFetching }
 }
 
 export function useSincronizarShopify() {
