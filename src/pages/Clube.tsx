@@ -74,7 +74,7 @@ export default function Clube() {
         </div>
       )}
 
-      <RespDialog aberto={novo} aoMudar={setNovo} titulo="Nova peça do Clube">
+      <RespDialog aberto={novo} aoMudar={setNovo} titulo="Nova peça do Clube" largo>
         <PecaClubeForm aoSalvar={() => setNovo(false)} />
       </RespDialog>
     </div>

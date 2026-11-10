@@ -156,7 +156,7 @@ function AbaClube({ aoAdicionar }: { aoAdicionar: (itens: NovoItem[]) => void })
 
 export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar }: Props) {
   return (
-    <RespDialog aberto={aberto} aoMudar={aoMudar} titulo="Adicionar peça" descricao="Busque no site ou no catálogo do Clube">
+    <RespDialog aberto={aberto} aoMudar={aoMudar} titulo="Adicionar peça" descricao="Busque no site ou no catálogo do Clube" largo>
       <Tabs defaultValue="site">
         <TabsList variant="line">
           <TabsTrigger value="site">Site</TabsTrigger>

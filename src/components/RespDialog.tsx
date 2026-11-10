@@ -8,11 +8,12 @@ type Props = {
   aoMudar: (aberto: boolean) => void
   titulo: string
   descricao?: string
+  largo?: boolean
   children: ReactNode
 }
 
 // Dialog no PC, Drawer (gaveta de baixo) no celular.
-export default function RespDialog({ aberto, aoMudar, titulo, descricao, children }: Props) {
+export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, children }: Props) {
   const celular = useIsMobile()
   if (celular)
     return (
@@ -28,7 +29,7 @@ export default function RespDialog({ aberto, aoMudar, titulo, descricao, childre
     )
   return (
     <Dialog open={aberto} onOpenChange={aoMudar}>
-      <DialogContent className="max-h-[85svh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className={`max-h-[85svh] overflow-y-auto ${largo ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription className={descricao ? undefined : "sr-only"}>{descricao ?? titulo}</DialogDescription>

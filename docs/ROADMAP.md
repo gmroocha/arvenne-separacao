@@ -59,6 +59,39 @@ cupom, frete e total.
   e-mail ou endereço completo.
 - Enviar pelo botão de WhatsApp (link `wa.me`), do mesmo jeito do rastreio.
 
+## 4. Catálogo do Clube, ligado ao app de precificação
+
+Hoje o Clube vive em outro app (feito no Lovable): o Gustavo sobe de 15 a 50 fotos do fornecedor, a IA
+lê a etiqueta (código e custo), calcula o preço de venda, desenha a tag na foto e exporta (ZIP, link de
+24 h ou pasta no Google Drive "Clube Arvenne"). Cadastrar peça nova à mão aqui leva tempo e há peças
+novas todos os dias.
+
+**Ideia:** cada lote precificado já vira peça no catálogo, sem digitar nada, e o catálogo guarda tudo:
+- Código, custo, preço de venda, tipo (joia comum, corrente ou pulseira), lote, data de entrada.
+- Categoria (anel, brinco, pingente, corrente...). O prefixo do código do fornecedor (BRP, ANF...) já
+  indica o tipo, então dá para sugerir a categoria sozinho.
+- Cliente nova que entra no grupo consegue ver as peças antigas, que hoje ela "perde".
+- Pedido do WhatsApp escolhe a peça no catálogo pela foto, em vez de cadastrar.
+
+**Onde guardar as fotos** (a decidir; números são estimativas):
+- Volume: 15 a 50 fotos por dia. Uma cópia de 1200 px em webp pesa cerca de 150 KB, então 50 por dia dão
+  cerca de 2,7 GB por ano. O 1 GB de fotos do Supabase grátis acaba em ~5 meses.
+- **Google Drive** serve bem como arquivo das fotos originais em alta resolução (o app atual já envia para
+  lá). Não serve para mostrar o catálogo: link do Drive como imagem de site é instável, tem limite de
+  acesso e carrega devagar com muitas miniaturas.
+- **Cloudflare R2** (mesma conta do Cloudflare Pages): armazenamento compatível com S3, 10 GB grátis e sem
+  cobrança de tráfego, pelo que sei. Conferir os valores atuais antes de decidir. É a opção mais provável
+  para as cópias leves do catálogo.
+- **Proposta:** Drive guarda os originais; R2 guarda a cópia leve que o catálogo mostra; o Supabase
+  guarda só os dados (texto), que ocupam quase nada.
+
+**Para fazer isso precisamos saber:** qual IA o app do Lovable usa para ler as etiquetas e quem paga cada
+leitura (a regra é custo zero), e como trazer essa lógica de leitura e preço para este projeto. O catálogo
+e o app de precificação podem acabar no mesmo projeto.
+
+**Segurança:** se o catálogo for aberto às clientes, a página pública mostra só foto, nome e preço de
+venda. Custo e código do fornecedor nunca saem da equipe.
+
 ## Cuidados técnicos (para quem for implementar)
 
 - Migration nova em arquivo novo. Tabela `clientes` (CPF, endereço) e colunas novas em `pedidos`
