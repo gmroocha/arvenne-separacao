@@ -153,7 +153,7 @@ const paraVariante = (r: LinhaCatalogo): VarianteSite => ({
   preco: r.preco,
 })
 
-// Aba "Site": busca no catálogo copiado (catalogo_site), sem chamar a loja.
+// Aba "Site": busca no catálogo copiado da Shopify (catalogo_site), só produtos ativos.
 export function useBuscaSite(termo: string) {
   return useQuery({
     queryKey: ["busca-site", termo],
@@ -164,6 +164,7 @@ export function useBuscaSite(termo: string) {
         .from("catalogo_site")
         .select("variant_id, sku, produto, variante, preco, foto_url")
         .or(`produto.ilike.%${t}%,sku.ilike.%${t}%`)
+        .or("status.is.null,status.eq.ACTIVE")
         .order("produto")
         .limit(30)
       if (error) throw error
@@ -172,8 +173,15 @@ export function useBuscaSite(termo: string) {
   })
 }
 
-// Resolve as variantes do carrinho só no catálogo local. IDs que faltam voltam em "faltando".
+// Resolve as variantes do carrinho. Antes de ler, pede à Shopify (via catalogo-sync) as variantes
+// do carrinho, para preço e foto virem atuais. Se a Shopify não responder (credencial ausente,
+// fora do ar), usa a cópia do banco. IDs que faltam voltam em "faltando".
 export async function buscarVariantes(variantIds: string[]) {
+  try {
+    await chamarFuncao("catalogo-sync", { variantIds })
+  } catch {
+    // segue com a cópia local
+  }
   const { data, error } = await supabase
     .from("catalogo_site")
     .select("variant_id, sku, produto, variante, preco, foto_url")

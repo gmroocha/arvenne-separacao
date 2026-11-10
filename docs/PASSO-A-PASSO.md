@@ -121,3 +121,15 @@ duplica nada.
   Cloudflare, nem para o `.env.local`.
 - Supabase grátis pausa o projeto depois de 7 dias sem uso. Com uso diário isso não acontece.
 - O plano grátis não faz backup diário. Veja "Cópia de segurança" em `docs/ROADMAP.md`.
+
+## Catálogo da loja (peças do site)
+
+O catálogo vem **direto da Shopify**, pela Admin API, e o Supabase guarda uma cópia para a busca ser
+instantânea. O app precisa do escopo `read_products` (já está na Parte 5).
+
+- **Carrinho colado:** ao colar, o app pede à Shopify as variantes daquele carrinho, então preço e foto
+  vêm atuais. Peça de produto arquivado ou em rascunho também é lida.
+- **Aba "Site" da busca:** mostra só produtos ativos, a partir da cópia.
+- **Atualização:** botão "Atualizar catálogo" (completo, também remove o que saiu da loja) e,
+  depois, agendamento (`catalogo-sync` com `{ "desde": "..." }` a cada poucos minutos e uma completa por dia).
+- Publicar: `npx supabase functions deploy catalogo-sync --use-api`, depois dos segredos da Shopify.
