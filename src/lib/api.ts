@@ -192,8 +192,23 @@ export async function buscarVariantes(variantIds: string[]) {
   return { variantes: achadas, faltando: variantIds.filter((id) => !ids.has(String(id))) }
 }
 
+// Quantas variantes o catálogo copiado tem (0 = ainda não foi carregado da Shopify).
+export function useCatalogoTotal() {
+  return useQuery({
+    queryKey: ["catalogo-total"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("catalogo_site").select("variant_id", { count: "exact", head: true })
+      if (error) throw error
+      return count ?? 0
+    },
+  })
+}
+
 export function useAtualizarCatalogo() {
-  return useAcao(() => chamarFuncao<{ variantes: number }>("catalogo-sync", {}), [["busca-site"]])
+  return useAcao(
+    () => chamarFuncao<{ variantes: number; removidas?: number }>("catalogo-sync", {}),
+    [["busca-site"], ["catalogo-total"]],
+  )
 }
 
 function useAcao<A, R = unknown>(fn: (a: A) => Promise<R>, invalidar: unknown[][], aoConcluir?: (r: R, a: A) => void) {

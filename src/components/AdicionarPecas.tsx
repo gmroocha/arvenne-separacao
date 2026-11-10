@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Plus, Search, SearchX } from "lucide-react"
+import { Plus, RefreshCw, Search, SearchX } from "lucide-react"
 import RespDialog from "@/components/RespDialog"
 import Foto from "@/components/Foto"
 import PecaClubeForm from "@/components/PecaClubeForm"
@@ -10,7 +10,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useBuscaSite, usePecasClube } from "@/lib/api"
+import { useAtualizarCatalogo, useBuscaSite, useCatalogoTotal, usePecasClube } from "@/lib/api"
 import { reais } from "@/lib/formato"
 import { itemDoClube, itemDoSite } from "@/lib/itens"
 import type { NovoItem } from "@/lib/tipos"
@@ -58,6 +58,38 @@ function AbaSite({ aoAdicionar }: { aoAdicionar: (itens: NovoItem[]) => void }) 
   const [termo, setTermo] = useState("")
   const busca = useDebounce(termo.trim(), 300)
   const { data, isFetching } = useBuscaSite(busca)
+  const total = useCatalogoTotal()
+  const atualizar = useAtualizarCatalogo()
+  const iniciou = useRef(false)
+
+  // Catálogo vazio (primeiro uso): busca tudo da Shopify sozinho, uma vez.
+  useEffect(() => {
+    if (total.data === 0 && !iniciou.current) {
+      iniciou.current = true
+      atualizar.mutate(undefined)
+    }
+  }, [total.data, atualizar])
+
+  if (total.data === 0 || atualizar.isPending)
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">{atualizar.isError ? <SearchX /> : <Spinner />}</EmptyMedia>
+          <EmptyTitle>
+            {atualizar.isError ? "Não foi possível carregar o catálogo" : "Carregando o catálogo da loja…"}
+          </EmptyTitle>
+        </EmptyHeader>
+        <p className="text-sm text-muted-foreground">
+          {atualizar.isError ? "Veja o aviso na tela e tente de novo." : "Só na primeira vez. Leva até um minuto."}
+        </p>
+        {atualizar.isError && (
+          <Button variant="outline" size="sm" onClick={() => atualizar.mutate(undefined)}>
+            <RefreshCw /> Tentar de novo
+          </Button>
+        )}
+      </Empty>
+    )
+
   return (
     <div className="flex flex-col gap-3">
       <Busca valor={termo} aoMudar={setTermo} />
@@ -95,6 +127,9 @@ function AbaSite({ aoAdicionar }: { aoAdicionar: (itens: NovoItem[]) => void }) 
           </Item>
         ))}
       </ItemGroup>
+      <Button variant="ghost" size="sm" className="w-fit text-muted-foreground" onClick={() => atualizar.mutate(undefined)}>
+        <RefreshCw /> Atualizar catálogo da loja
+      </Button>
     </div>
   )
 }
