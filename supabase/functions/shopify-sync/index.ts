@@ -13,6 +13,7 @@ query Pedidos($cursor: String, $q: String!) {
       legacyResourceId
       name
       createdAt
+      processedAt
       cancelledAt
       displayFinancialStatus
       displayFulfillmentStatus
@@ -40,6 +41,7 @@ type Pedido = {
   legacyResourceId: string;
   name: string;
   createdAt: string;
+  processedAt: string | null;
   cancelledAt: string | null;
   displayFinancialStatus: string | null;
   displayFulfillmentStatus: string;
@@ -97,6 +99,7 @@ Deno.serve(async (req) => {
             numero: o.name,
             cancelado,
             pedido_em: o.createdAt,
+            pago_em: o.processedAt ?? o.createdAt,
             cliente_nome: o.customer?.displayName ?? o.shippingAddress?.name ?? null,
             cliente_telefone: o.shippingAddress?.phone ?? o.customer?.phone ?? o.phone ?? null,
             cliente_email: o.email,
