@@ -158,3 +158,14 @@ venda. Custo e código do fornecedor nunca saem da equipe.
 - **Automação Olist, Bling e Frenet**, só onde o plano de cada um liberar API.
 - **Cópia de segurança:** o Supabase grátis não guarda backup diário. Pedidos do WhatsApp e fotos do
   Clube não voltam da Shopify. Fazer exportação semanal.
+
+## 5. Envio e entrega pela Shopify e pela Frenet (ideia do Gustavo, 10/11/2026)
+
+- **Enviado automático:** pedido da Shopify que a Frenet marca como processado vira "Enviado" no app, com
+  o código de rastreio preenchido (campos de envio do pedido, mesmo app e permissões de `read_orders`).
+- **Status de entrega**, separado do fluxo de trabalho (o fluxo termina em Enviado): em trânsito, saiu
+  para entrega, entregue, problema ou devolvido. Fonte: a própria Shopify, quando o transportador ou o
+  app reporta, e/ou a API de rastreio da Frenet. A Frenet também cobre os pedidos do WhatsApp.
+- **Pedido pendente** (Pix ou boleto ainda não pago) pode aparecer em Vendas como aguardando pagamento.
+- Perguntas abertas: um pedido já enviado na Shopify mostra rastreio e "entregue"? O plano da Frenet
+  tem API ou token?
