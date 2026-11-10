@@ -485,7 +485,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         </div>
       ) : (
         <div className="flex min-w-0 flex-col gap-4">
-          <div className="grid h-[min(62svh,600px)] grid-cols-[minmax(0,1fr)_minmax(0,19rem)] gap-6">
+          <div className="grid h-[calc(min(90svh,780px)-14rem)] grid-cols-[minmax(0,1fr)_minmax(0,19rem)] gap-6">
             <div className="min-h-0 min-w-0 overflow-y-auto pr-1">{conteudo}</div>
             <div className="flex min-h-0 min-w-0 flex-col gap-3 border-l pl-6">
               <h3 className="flex items-center gap-2 text-sm font-semibold">

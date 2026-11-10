@@ -67,7 +67,7 @@ export function useAcoesPedido(pedido: Pick<Pedido, "id" | "status" | "fase" | "
             <DialogTitle>{reiniciando ? "Reiniciar o pedido do zero?" : `Reiniciar ${NOME_ETAPA[pedido.status]}?`}</DialogTitle>
             <DialogDescription>
               {reiniciando
-                ? "Zera separação, conferência, etiquetagem, bipagem, nota e frete, embalagem e postagem, e volta o pedido para Novo. Peças removidas continuam removidas."
+                ? "Zera separação, conferência, etiquetagem, bipagem, nota e frete, embalagem e postagem, e volta o pedido para Novo. Peças removidas voltam ao pedido e a troca em andamento é cancelada."
                 : "Zera só o que foi feito nesta etapa, para refazer. O pedido continua nela."}
             </DialogDescription>
           </DialogHeader>

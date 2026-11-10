@@ -424,8 +424,9 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
   }
 }
 
-// Reiniciar: zera o trabalho de uma etapa (ou de todas) para refazer. Nada é apagado: peças removidas
-// continuam removidas, histórico de bipagens e números digitados (nota, LR) ficam guardados.
+// Reiniciar: zera o trabalho de uma etapa (ou de todas) para refazer. Nada é apagado: histórico de
+// bipagens e números digitados (nota, LR) ficam guardados. "Do zero" devolve o pedido ao estado original:
+// peças removidas voltam, peças que entraram por troca saem e a troca em andamento é cancelada.
 const ZERO_POR_ETAPA: Partial<Record<StatusPedido, { itens?: ItemPatch; pedido?: CamposPedido }>> = {
   novo: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
   separacao: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
@@ -447,6 +448,21 @@ export function useReiniciar(pedidoId: string) {
       const etapas = tudo ? Object.keys(ZERO_POR_ETAPA) as StatusPedido[] : [etapa]
       const itens: ItemPatch = Object.assign({}, ...etapas.map((e) => ZERO_POR_ETAPA[e]?.itens ?? {}))
       const pedido: CamposPedido = Object.assign({}, ...etapas.map((e) => ZERO_POR_ETAPA[e]?.pedido ?? {}))
+      if (tudo) {
+        // Peças que entraram por troca saem (ficam guardadas como removidas); as originais voltam.
+        const { error: e1 } = await supabase
+          .from("pedido_itens").update({ status: "removido" })
+          .eq("pedido_id", pedidoId).neq("status", "removido").like("observacao", "troca de%")
+        if (e1) throw e1
+        const { error: e2 } = await supabase
+          .from("pedido_itens").update({ status: "pendente", observacao: null, ...ZERAR_ETAPAS })
+          .eq("pedido_id", pedidoId).eq("status", "removido").or("observacao.is.null,observacao.not.like.troca de%")
+        if (e2) throw e2
+        const { error: e3 } = await supabase
+          .from("trocas").update({ status: "cancelada" })
+          .eq("pedido_id", pedidoId).in("status", ["rascunho", "enviada", "respondida"])
+        if (e3) throw e3
+      }
       if (Object.keys(itens).length) {
         const { error } = await supabase.from("pedido_itens").update(itens).eq("pedido_id", pedidoId).neq("status", "removido")
         if (error) throw error
@@ -460,7 +476,7 @@ export function useReiniciar(pedidoId: string) {
     },
     onSuccess: (_, a) => toast.success(a.tudo ? "Pedido reiniciado" : "Etapa reiniciada"),
     onError: (e) => toast.error(msg(e)),
-    onSettled: () => TODAS.forEach((queryKey) => qc.invalidateQueries({ queryKey })),
+    onSettled: () => [...TODAS, ["troca"]].forEach((queryKey) => qc.invalidateQueries({ queryKey })),
   })
 }
 
@@ -997,6 +1013,7 @@ export function useConcluirTroca() {
           qtd: item.qtd,
           preco: opcao.preco,
           ordem: (ult?.[0]?.ordem ?? 0) + 1,
+          observacao: `troca de ${item.sku ?? item.nome}`,
         })
         if (error) throw error
         observacao = `trocada por ${[opcao.sku, opcao.variante].filter(Boolean).join(" · ")}`

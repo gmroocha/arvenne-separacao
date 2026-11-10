@@ -69,7 +69,7 @@ export function MenuPeca({ itens, rotulo = "Mais opções" }: { itens: ItemAcao[
       titulo={rotulo}
       grupos={[{ itens }]}
       gatilho={
-        <Button variant="ghost" size="icon" aria-label={rotulo} className="size-10 shrink-0">
+        <Button variant="secondary" size="icon" aria-label={rotulo} className="size-10 shrink-0">
           <MoreHorizontal />
         </Button>
       }

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
 import { Archive, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
 import { useTheme } from "next-themes"
-import Logo from "@/components/Logo"
 import { supabase } from "@/lib/supabase"
 import { useContagens, useFeedbacks, useRepetidas } from "@/lib/api"
 import {
@@ -52,9 +51,7 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link to="/" onClick={() => setOpenMobile(false)} aria-label="Arvenne" className="flex px-2 py-2 group-data-[collapsible=icon]:hidden">
-          <Logo className="h-7" />
-        </Link>
+        <div className="font-heading px-2 py-1.5 text-sm font-semibold group-data-[collapsible=icon]:hidden">Separação Arvenne</div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
