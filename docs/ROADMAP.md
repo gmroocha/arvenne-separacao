@@ -167,5 +167,9 @@ venda. Custo e código do fornecedor nunca saem da equipe.
   para entrega, entregue, problema ou devolvido. Fonte: a própria Shopify, quando o transportador ou o
   app reporta, e/ou a API de rastreio da Frenet. A Frenet também cobre os pedidos do WhatsApp.
 - **Pedido pendente** (Pix ou boleto ainda não pago) pode aparecer em Vendas como aguardando pagamento.
-- Perguntas abertas: um pedido já enviado na Shopify mostra rastreio e "entregue"? O plano da Frenet
-  tem API ou token?
+- Conferido num pedido real (ARV-1242, 10/11/2026): a Shopify mostra o código de rastreio dos Correios e
+  a data do envio, mas **não tem status de entrega** (só o botão manual "Marcar como entregue"). Quem sabe
+  a entrega é a Frenet. Então: Enviado automático + rastreio vêm da Shopify; entrega precisa da Frenet.
+- Pergunta aberta: a Frenet expõe consulta de status de rastreio por API ou webhook? A Frenet emite
+  token de API (existe), mas a documentação de rastreio não foi confirmada. Alternativas: API dos
+  Correios (precisa contrato) ou botão manual "Entregue" no app.
