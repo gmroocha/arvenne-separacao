@@ -10,7 +10,7 @@ type Props = {
   aoFechar: () => void
 }
 
-const nomeConcluida = (e: StatusPedido) => (e === "novo" || e === "aguardando_cliente" ? "Separação" : NOME_ETAPA[e])
+const nomeConcluida = (e: StatusPedido) => (e === "novo" || e === "avisar_cliente" || e === "aguardando_cliente" ? "Separação" : NOME_ETAPA[e])
 
 // Abre ao concluir uma etapa. O pedido só muda de etapa se a pessoa confirmar.
 export default function DialogEtapa({ etapa, aoConfirmar, aoFechar }: Props) {

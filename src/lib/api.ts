@@ -411,9 +411,9 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
       const problemas = vivos.some((i) => i.status === "falta" || i.status === "defeito")
       let destino: StatusPedido | null = null
       if (problemas && ESTADOS_DE_PECAS.includes(estado)) {
-        destino = "aguardando_cliente"
-        toast.info("Pedido aguardando resposta da cliente")
-      } else if (!problemas && estado === "aguardando_cliente") destino = "separacao"
+        destino = "avisar_cliente"
+        toast.info("Avise a cliente sobre a peça em falta")
+      } else if (!problemas && (estado === "avisar_cliente" || estado === "aguardando_cliente")) destino = "separacao"
       else if (estado === "novo" && campos.status === "encontrado") destino = "separacao"
       if (destino) {
         estado = destino
@@ -429,6 +429,7 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
 const ZERO_POR_ETAPA: Partial<Record<StatusPedido, { itens?: ItemPatch; pedido?: CamposPedido }>> = {
   novo: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
   separacao: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
+  avisar_cliente: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
   aguardando_cliente: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
   conferencia: { itens: { conferido_em: null } },
   etiquetagem: { itens: { etiquetado_em: null, etiqueta_previa: false } },

@@ -31,6 +31,7 @@ type Coluna = {
 const COLUNAS: Coluna[] = [
   { id: "fila", nome: "Fila", icone: "fila", statuses: ["novo"] },
   { id: "separacao", nome: "Separação", icone: "separacao", statuses: ["separacao"] },
+  { id: "avisar_cliente", nome: "Avisar cliente", icone: "avisar_cliente", statuses: ["avisar_cliente"], alerta: true },
   { id: "aguardando_cliente", nome: "Aguardando cliente", icone: "aguardando_cliente", statuses: ["aguardando_cliente"], alerta: true },
   { id: "conferencia", nome: "Conferência", icone: "conferencia", statuses: ["conferencia"] },
   { id: "etiquetagem", nome: "Etiquetagem", icone: "etiquetagem", statuses: ["etiquetagem"] },
@@ -46,6 +47,8 @@ function progressoDe(p: Pedido): string | null {
   switch (p.status) {
     case "novo":
     case "separacao":
+    case "avisar_cliente":
+    case "aguardando_cliente":
       return `${p.qtd_encontradas}/${p.qtd_linhas}`
     case "conferencia":
       return `${p.qtd_conferidas}/${p.qtd_encontradas}`

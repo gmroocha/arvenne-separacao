@@ -5,8 +5,8 @@ import type { Origem } from "@/lib/tipos"
 
 export function StatusBadge({ status }: { status: StatusPedido }) {
   const variante =
-    status === "aguardando_cliente"
-      ? "destructive"
+    status === "avisar_cliente" || status === "aguardando_cliente"
+      ? "outline"
       : status === "enviado" || status === "cancelado" || status === "perdida"
         ? "outline"
         : "secondary"

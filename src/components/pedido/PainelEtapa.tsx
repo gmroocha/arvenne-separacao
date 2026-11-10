@@ -23,6 +23,7 @@ export default function PainelEtapa({ pedido, acao, patch, aoConcluir, aoTrocar,
   switch (pedido.status) {
     case "novo":
     case "separacao":
+    case "avisar_cliente":
     case "aguardando_cliente":
       return <Separacao pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoAdicionar={aoAdicionar} aoConcluir={aoConcluir} />
     case "conferencia":

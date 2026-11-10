@@ -1,14 +1,14 @@
 import { toast } from "sonner"
-import { ArrowLeftRight, Check, Copy, MessageCircle, PackageX, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react"
+import { ArrowLeftRight, BellRing, Check, Copy, MessageCircle, PackageX, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
+import { useMudarStatus, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { textoParaAgente } from "@/lib/agente"
 import { etapaCompleta } from "@/lib/etapa"
 import { linkWhatsApp } from "@/lib/formato"
-import { NOME_ITEM } from "@/lib/status"
+import { tempoDesde } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 import LinhaPeca from "./LinhaPeca"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
@@ -29,6 +29,9 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const removidas = itens.filter((i) => i.status === "removido")
   const vivas = itens.length - removidas.length
   const wa = linkWhatsApp(pedido.cliente_telefone, "")
+  const mudarStatus = useMudarStatus()
+  const avisar = pedido.status === "avisar_cliente"
+  const aguardando = pedido.status === "aguardando_cliente"
 
   const marcar = (item: Item, status: Item["status"], observacao?: string | null) =>
     acao(item, observacao === undefined ? { status } : { status, observacao })
@@ -41,13 +44,22 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         <Card size="sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" /> Problemas ({problemas.length})
+              {avisar ? <BellRing className="size-4 text-amber-600 dark:text-amber-400" /> : <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" />}
+              {avisar
+                ? "Avise a cliente"
+                : aguardando
+                  ? `Aguardando resposta da cliente · avisada há ${tempoDesde(pedido.status_desde)}`
+                  : "Problemas"}{" "}
+              ({problemas.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {problemas.map((i) => (
               <LinhaPeca key={i.id} item={i} compacta>
-                <Badge variant="outline">{NOME_ITEM[i.status]}</Badge>
+                <Badge variant="outline" className="border-amber-500/40 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                  {i.status === "falta" ? <PackageX /> : <TriangleAlert />}
+                  {i.status === "falta" ? "Em falta" : "Defeito"}
+                </Badge>
                 <MenuPeca
                   rotulo="Resolver"
                   itens={[
@@ -59,6 +71,17 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
               </LinhaPeca>
             ))}
             <div className="flex flex-wrap gap-2">
+              {avisar && (
+                <Button
+                  className="h-11 sm:h-8"
+                  onClick={() => {
+                    mudarStatus.mutate({ pedidoId: pedido.id, para: "aguardando_cliente", silencioso: true })
+                    toast.success("Aguardando resposta da cliente")
+                  }}
+                >
+                  <Check /> Cliente avisada
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="h-11 sm:h-8"
@@ -68,7 +91,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     .then(() => toast.success("Mensagem copiada"), () => toast.error("Não foi possível copiar"))
                 }
               >
-                <Copy /> Copiar mensagem para a cliente
+                <Copy /> Copiar mensagem
               </Button>
               {wa && (
                 <Button variant="outline" className="h-11 sm:h-8" asChild>

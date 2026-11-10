@@ -25,4 +25,4 @@ export function etapaCompleta(status: StatusPedido, itens: Item[]): boolean {
 }
 
 // Etapas de foco (só as peças do pedido, sem valores nem dados de contato).
-export const ETAPAS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem"]
+export const ETAPAS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem"]

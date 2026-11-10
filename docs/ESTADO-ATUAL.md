@@ -25,7 +25,7 @@
   entraram (ARV-1272 a ARV-1277).
 - **Expedição:** esteira em colunas no PC (arrastar muda de etapa, com Desfazer) e faixa de etapas no
   celular. Etapas: Fila → Separação (ícone de olho) → Conferência → Etiquetagem → Bipagem → Nota e frete →
-  Embalagem → Postagem → Enviado. Desvio: Aguardando cliente (peça em falta ou com defeito).
+  Embalagem → Postagem → Enviado. Desvio: peça em falta ou com defeito leva o pedido para **Avisar cliente**; depois do botão "Cliente avisada" vai para **Aguardando cliente**; resolvidos os problemas, volta para Separação.
 - **Bipagem** com leitor USB (funciona como teclado): "A bipar" e "Bipadas" em verde, "Última leitura",
   som, tabela `bipagens`. Peça com 2 ou mais unidades: bipa uma vez por unidade.
 - **Nota e frete:** 3 passos (Nota fiscal, Frete, Pedido LR) com copiar por campo, comparação do frete
@@ -67,5 +67,6 @@ Também no celular (390 px). Sem rolagem horizontal da página.
 
 `20261110120000_inicio`, `20261110180000_permissoes`, `20261111090000_vendas`,
 `20261111120000_catalogo_site`, `20261111150000_catalogo_status`, `20261111180000_esteira`,
-`20261111210000_bairro_complemento`, `20261112090000_feedbacks`, `20261112091000_eventos_analise`.
+`20261111210000_bairro_complemento`, `20261112090000_feedbacks`, `20261112091000_eventos_analise`,
+`20261112120000_avisar_cliente`.
 Nenhuma pendente.

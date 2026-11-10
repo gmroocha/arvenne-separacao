@@ -1,5 +1,5 @@
 import {
-  Check, Eye, FileText, Inbox, ListChecks, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck,
+  Check, Eye, FileText, Inbox, ListChecks, BellRing, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck,
   type LucideIcon,
 } from "lucide-react"
 
@@ -8,6 +8,7 @@ export const ETAPAS = [
   { id: "aguardando_pagamento", nome: "Aguardando pagamento" },
   { id: "novo", nome: "Novo" },
   { id: "separacao", nome: "Separação" },
+  { id: "avisar_cliente", nome: "Avisar cliente" },
   { id: "aguardando_cliente", nome: "Aguardando cliente" },
   { id: "conferencia", nome: "Conferência" },
   { id: "etiquetagem", nome: "Etiquetagem" },
@@ -32,6 +33,7 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
   aguardando_pagamento: "venda",
   novo: "expedicao",
   separacao: "expedicao",
+  avisar_cliente: "expedicao",
   aguardando_cliente: "expedicao",
   conferencia: "expedicao",
   etiquetagem: "expedicao",
@@ -46,13 +48,13 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
 
 // Etapas de expedição, na ordem em que aparecem em "Mover para…".
 export const ETAPAS_EXPEDICAO: StatusPedido[] = [
-  "novo", "separacao", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
+  "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
   "embalagem", "pronto_envio", "enviado",
 ]
 
-// Linha de etapas da tela do pedido. "Aguardando cliente" não é um passo: é um desvio da Separação.
+// Linha de etapas da tela do pedido. "Avisar/Aguardando cliente" não são passos: é um desvio da Separação.
 export const PASSOS = [
-  { id: "separacao", nome: "Separação", statuses: ["novo", "separacao", "aguardando_cliente"] },
+  { id: "separacao", nome: "Separação", statuses: ["novo", "separacao", "avisar_cliente", "aguardando_cliente"] },
   { id: "conferencia", nome: "Conferência", statuses: ["conferencia"] },
   { id: "etiquetagem", nome: "Etiquetagem", statuses: ["etiquetagem"] },
   { id: "bipagem", nome: "Bipagem", statuses: ["bipagem"] },
@@ -68,13 +70,13 @@ export function passoDe(s: StatusPedido): number {
   return PASSOS.findIndex((p) => (p.statuses as readonly StatusPedido[]).includes(s))
 }
 
-// Caminho normal da expedição. Etapas de venda, "aguardando_cliente" e "cancelado" ficam fora.
+// Caminho normal da expedição. Etapas de venda, "avisar_cliente", "aguardando_cliente" e "cancelado" ficam fora.
 const FLUXO: StatusPedido[] = [
   "novo", "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviado",
 ]
 
 export function proximaEtapa(s: StatusPedido): StatusPedido | null {
-  if (s === "aguardando_cliente") return "separacao"
+  if (s === "avisar_cliente" || s === "aguardando_cliente") return "separacao"
   const i = FLUXO.indexOf(s)
   return i >= 0 && i < FLUXO.length - 1 ? FLUXO[i + 1] : null
 }
@@ -84,6 +86,7 @@ export const ICONE_ETAPA: Record<string, LucideIcon> = {
   fila: Inbox,
   novo: Inbox,
   separacao: Eye,
+  avisar_cliente: BellRing,
   aguardando_cliente: MessageCircleWarning,
   conferencia: ListChecks,
   etiquetagem: Tag,
@@ -128,7 +131,7 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
 
 // Para onde o pedido vai ao concluir a etapa (a pessoa confirma no Dialog).
 export function destinoAoConcluir(s: StatusPedido): StatusPedido | null {
-  if (s === "novo" || s === "aguardando_cliente") return "conferencia"
+  if (s === "novo" || s === "avisar_cliente" || s === "aguardando_cliente") return "conferencia"
   return proximaEtapa(s)
 }
 
