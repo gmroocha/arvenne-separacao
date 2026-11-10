@@ -152,9 +152,9 @@ venda. Custo e código do fornecedor nunca saem da equipe.
 
 ## Já combinado antes
 
-- **Etiqueta Zebra** com 1 clique: falta modelo da impressora, tamanho da etiqueta e se o código de
-  barras é SKU ou EAN.
-- **Checagem com leitor de código** na tela do pedido.
+- ~~**Checagem com leitor de código** na tela do pedido.~~ Feito (11/11/2026): etapa Bipagem, o código
+  da etiqueta lê o SKU; cada leitura fica em `bipagens`.
+- **Etiqueta Zebra** com 1 clique: ver "Próximo passo: impressão Zebra" abaixo.
 - **Automação Olist, Bling e Frenet**, só onde o plano de cada um liberar API.
 - **Cópia de segurança:** o Supabase grátis não guarda backup diário. Pedidos do WhatsApp e fotos do
   Clube não voltam da Shopify. Fazer exportação semanal.
@@ -182,3 +182,29 @@ venda. Custo e código do fornecedor nunca saem da equipe.
   (`FRENET_TOKEN`), nunca no chat. A "partner register" da documentação é para plataformas que cadastram
   clientes, não é necessária.
 - Para testar: o token (painel da Frenet) e um rastreio real, como o do pedido ARV-1242.
+
+## 6. Esteira de expedição — feito (11/11/2026)
+
+- **Esteira:** lista em colunas no PC, faixa de etapas com contadores no celular. Fluxo: Fila, Separação,
+  Conferência, Etiquetagem, Bipagem, Nota e frete, Embalagem, Postagem, Enviado (Aguardando cliente é
+  desvio). Cartão com a cliente em destaque.
+- **Etiquetagem** peça por peça, com "Já tinha etiqueta".
+- **Bipagem** com leitor USB (padrão do Pack & Ship): peça de fora do pedido e excedente dão aviso e som.
+- **Nota e frete** com todos os dados para a nota e a Frenet, comparação do frete cobrado, e o pedido de
+  venda LR. **Postagem** e **Enviado** com link de rastreio; pedido do WhatsApp aparece em "Enviar
+  rastreio" até marcar "Mensagem enviada".
+- **Dados completos guardados:** CPF/CNPJ, endereço, desconto, cupom, frete e o pedido da Shopify inteiro
+  (`pedidos.shopify_bruto`), para cruzar depois (peças mais vendidas, descontos, frete, prazo médio). A
+  sincronização também acompanha pedidos já importados (despacho e rastreio).
+- Ainda falta conferir com um pedido real, depois de "Sincronizar": CPF, o endereço separado em rua e
+  número (a Shopify junta os dois em `address1`) e onde o bairro vem.
+
+## Próximo passo: impressão Zebra
+
+Botão "Imprimir etiquetas pendentes (n)" na Etiquetagem, mandando ZPL pelo Zebra Browser Print (grátis,
+instalado no PC da impressora). O ponto de extensão já está comentado em `Etiquetagem.tsx`. Faltam:
+
+- modelo da impressora;
+- tamanho da etiqueta;
+- foto de uma etiqueta atual;
+- Zebra Browser Print instalado no PC.

@@ -22,5 +22,7 @@ export function textoParaAgente(pedido: Pedido, itens: Item[]): string {
 }
 
 export function textoRastreio(pedido: Pedido): string {
-  return `Olá${pedido.cliente_nome ? `, ${pedido.cliente_nome.split(" ")[0]}` : ""}! Seu pedido ${pedido.numero} da Arvenne foi enviado. Código de rastreio: ${pedido.rastreio}`
+  const nome = pedido.cliente_nome ? `, ${pedido.cliente_nome.split(" ")[0]}` : ""
+  const rastreio = pedido.rastreio_url ?? pedido.rastreio
+  return `Olá${nome}! Seu pedido ${pedido.numero} da Arvenne foi enviado. Acompanhe a entrega: ${rastreio}`
 }

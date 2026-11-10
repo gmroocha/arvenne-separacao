@@ -1,13 +1,20 @@
+import {
+  Check, FileText, Inbox, ListChecks, MessageCircleWarning, Package, ScanBarcode, Search, Send, Tag, Truck,
+  type LucideIcon,
+} from "lucide-react"
+
 export const ETAPAS = [
   { id: "em_aberto", nome: "Em aberto" },
   { id: "aguardando_pagamento", nome: "Aguardando pagamento" },
   { id: "novo", nome: "Novo" },
   { id: "separacao", nome: "Separação" },
   { id: "aguardando_cliente", nome: "Aguardando cliente" },
-  { id: "conferencia", nome: "Conferência e etiquetas" },
-  { id: "faturamento", nome: "Nota, Bling e frete" },
+  { id: "conferencia", nome: "Conferência" },
+  { id: "etiquetagem", nome: "Etiquetagem" },
+  { id: "bipagem", nome: "Bipagem" },
+  { id: "faturamento", nome: "Nota e frete" },
   { id: "embalagem", nome: "Embalagem" },
-  { id: "pronto_envio", nome: "Correios" },
+  { id: "pronto_envio", nome: "Postagem" },
   { id: "enviado", nome: "Enviado" },
   { id: "cancelado", nome: "Cancelado" },
   { id: "perdida", nome: "Perdida" },
@@ -27,6 +34,8 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
   separacao: "expedicao",
   aguardando_cliente: "expedicao",
   conferencia: "expedicao",
+  etiquetagem: "expedicao",
+  bipagem: "expedicao",
   faturamento: "expedicao",
   embalagem: "expedicao",
   pronto_envio: "expedicao",
@@ -37,16 +46,19 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
 
 // Etapas de expedição, na ordem em que aparecem em "Mover para…".
 export const ETAPAS_EXPEDICAO: StatusPedido[] = [
-  "novo", "separacao", "aguardando_cliente", "conferencia", "faturamento", "embalagem", "pronto_envio", "enviado",
+  "novo", "separacao", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
+  "embalagem", "pronto_envio", "enviado",
 ]
 
 // Linha de etapas da tela do pedido. "Aguardando cliente" não é um passo: é um desvio da Separação.
 export const PASSOS = [
   { id: "separacao", nome: "Separação", statuses: ["novo", "separacao", "aguardando_cliente"] },
   { id: "conferencia", nome: "Conferência", statuses: ["conferencia"] },
-  { id: "faturamento", nome: "Nota/Bling/frete", statuses: ["faturamento"] },
+  { id: "etiquetagem", nome: "Etiquetagem", statuses: ["etiquetagem"] },
+  { id: "bipagem", nome: "Bipagem", statuses: ["bipagem"] },
+  { id: "faturamento", nome: "Nota e frete", statuses: ["faturamento"] },
   { id: "embalagem", nome: "Embalagem", statuses: ["embalagem"] },
-  { id: "pronto_envio", nome: "Correios", statuses: ["pronto_envio"] },
+  { id: "pronto_envio", nome: "Postagem", statuses: ["pronto_envio"] },
   { id: "enviado", nome: "Enviado", statuses: ["enviado"] },
 ] as const satisfies readonly { id: string; nome: string; statuses: readonly StatusPedido[] }[]
 
@@ -58,13 +70,65 @@ export function passoDe(s: StatusPedido): number {
 
 // Caminho normal da expedição. Etapas de venda, "aguardando_cliente" e "cancelado" ficam fora.
 const FLUXO: StatusPedido[] = [
-  "novo", "separacao", "conferencia", "faturamento", "embalagem", "pronto_envio", "enviado",
+  "novo", "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviado",
 ]
 
 export function proximaEtapa(s: StatusPedido): StatusPedido | null {
   if (s === "aguardando_cliente") return "separacao"
   const i = FLUXO.indexOf(s)
   return i >= 0 && i < FLUXO.length - 1 ? FLUXO[i + 1] : null
+}
+
+// Ícone de cada etapa (esteira da lista e linha de etapas do pedido).
+export const ICONE_ETAPA: Record<string, LucideIcon> = {
+  fila: Inbox,
+  novo: Inbox,
+  separacao: Search,
+  aguardando_cliente: MessageCircleWarning,
+  conferencia: ListChecks,
+  etiquetagem: Tag,
+  bipagem: ScanBarcode,
+  faturamento: FileText,
+  embalagem: Package,
+  pronto_envio: Truck,
+  enviado: Check,
+  rastreio: Send,
+}
+
+// O que fazer em cada etapa: aparece no Dialog que abre ao concluir a etapa anterior.
+export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
+  separacao: ["Ache cada peça no estoque.", "Marque \"Achei\" ou avise se faltar ou tiver defeito."],
+  conferencia: [
+    "Pegue o saco do modelo e separe a quantidade certa.",
+    "Confira se a peça está sem defeito.",
+  ],
+  etiquetagem: [
+    "Coloque a etiqueta em cada peça.",
+    "Se a peça já veio etiquetada, marque \"Já tinha etiqueta\".",
+  ],
+  bipagem: [
+    "Leia o código de cada peça com o leitor.",
+    "O app avisa se alguma peça não for deste pedido.",
+  ],
+  faturamento: [
+    "Emita a nota fiscal com os dados do pedido.",
+    "Gere o frete na Frenet e o pedido de venda no fornecedor.",
+  ],
+  embalagem: [
+    "Coloque as peças na caixa com a nota impressa.",
+    "Cole a etiqueta de envio.",
+  ],
+  pronto_envio: [
+    "Leve o pacote aos Correios.",
+    "Confira o link de rastreio antes de concluir.",
+  ],
+  enviado: ["O pedido sai da expedição e vai para o Arquivo."],
+}
+
+// Para onde o pedido vai ao concluir a etapa (a pessoa confirma no Dialog).
+export function destinoAoConcluir(s: StatusPedido): StatusPedido | null {
+  if (s === "novo" || s === "aguardando_cliente") return "conferencia"
+  return proximaEtapa(s)
 }
 
 export type StatusItem = "pendente" | "encontrado" | "falta" | "defeito" | "removido"

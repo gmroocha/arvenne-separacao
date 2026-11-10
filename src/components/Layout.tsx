@@ -28,7 +28,7 @@ export default function Layout() {
           <Separator orientation="vertical" className="h-4" />
           <h1 className="text-sm font-medium">{titulo(pathname)}</h1>
         </header>
-        <div className="mx-auto w-full max-w-5xl flex-1 p-3 sm:p-4">
+        <div className={`mx-auto w-full flex-1 p-3 sm:p-4 ${pathname === "/" ? "" : "max-w-5xl"}`}>
           <Outlet />
         </div>
       </SidebarInset>

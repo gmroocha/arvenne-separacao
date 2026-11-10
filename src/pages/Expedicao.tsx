@@ -1,37 +1,68 @@
-import { useMemo, useState } from "react"
+import { Fragment, useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
-import { PackageOpen, RefreshCw, Search } from "lucide-react"
-import LinhaPedido from "@/components/LinhaPedido"
+import { ChevronRight, PackageOpen, RefreshCw, Search } from "lucide-react"
+import CardPedido from "@/components/CardPedido"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
-import { ItemGroup } from "@/components/ui/item"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { usePedidosFase, useSincronizarShopify } from "@/lib/api"
+import { usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
 import { digitos } from "@/lib/formato"
+import { ICONE_ETAPA, type StatusPedido } from "@/lib/status"
+import type { Pedido } from "@/lib/tipos"
+import { cn } from "@/lib/utils"
 import { useAgora } from "@/lib/useAgora"
-import { NOME_ETAPA, type StatusPedido } from "@/lib/status"
 
-const ABAS: { id: string; nome: string; statuses: StatusPedido[] | null }[] = [
-  { id: "todos", nome: "Todos", statuses: null },
-  { id: "separacao", nome: "Separação", statuses: ["novo", "separacao"] },
-  { id: "aguardando_cliente", nome: NOME_ETAPA.aguardando_cliente, statuses: ["aguardando_cliente"] },
-  { id: "conferencia", nome: "Conferência", statuses: ["conferencia"] },
-  { id: "faturamento", nome: "Nota/Bling/frete", statuses: ["faturamento"] },
-  { id: "embalagem", nome: NOME_ETAPA.embalagem, statuses: ["embalagem"] },
-  { id: "pronto_envio", nome: NOME_ETAPA.pronto_envio, statuses: ["pronto_envio"] },
+type Coluna = {
+  id: string
+  nome: string
+  icone: string
+  statuses: StatusPedido[]
+  alerta?: boolean
+  rastreio?: boolean // pedidos enviados à espera do rastreio (vêm de outra consulta)
+}
+
+// Uma coluna por etapa, na ordem da esteira.
+const COLUNAS: Coluna[] = [
+  { id: "fila", nome: "Fila", icone: "fila", statuses: ["novo"] },
+  { id: "separacao", nome: "Separação", icone: "separacao", statuses: ["separacao"] },
+  { id: "aguardando_cliente", nome: "Aguardando cliente", icone: "aguardando_cliente", statuses: ["aguardando_cliente"], alerta: true },
+  { id: "conferencia", nome: "Conferência", icone: "conferencia", statuses: ["conferencia"] },
+  { id: "etiquetagem", nome: "Etiquetagem", icone: "etiquetagem", statuses: ["etiquetagem"] },
+  { id: "bipagem", nome: "Bipagem", icone: "bipagem", statuses: ["bipagem"] },
+  { id: "faturamento", nome: "Nota e frete", icone: "faturamento", statuses: ["faturamento"] },
+  { id: "embalagem", nome: "Embalagem", icone: "embalagem", statuses: ["embalagem"] },
+  { id: "pronto_envio", nome: "Postagem", icone: "pronto_envio", statuses: ["pronto_envio"] },
+  { id: "rastreio", nome: "Enviar rastreio", icone: "rastreio", statuses: ["enviado"], rastreio: true },
 ]
+
+// Progresso da etapa no cartão ("3/5"), vindo das contagens da view.
+function progressoDe(p: Pedido): string | null {
+  switch (p.status) {
+    case "novo":
+    case "separacao":
+      return `${p.qtd_encontradas}/${p.qtd_linhas}`
+    case "conferencia":
+      return `${p.qtd_conferidas}/${p.qtd_encontradas}`
+    case "etiquetagem":
+      return `${p.qtd_etiquetadas}/${p.qtd_encontradas}`
+    case "bipagem":
+      return `${p.qtd_bipadas}/${p.qtd_pecas}`
+    default:
+      return null
+  }
+}
 
 export default function Expedicao() {
   const [params, setParams] = useSearchParams()
-  const aba = params.get("etapa") ?? "todos"
+  const etapa = params.get("etapa")
   const soAtrasados = params.get("atrasados") === "1"
   const [busca, setBusca] = useState("")
   const { data, isLoading } = usePedidosFase("expedicao")
+  const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
   const agora = useAgora()
 
@@ -49,75 +80,151 @@ export default function Expedicao() {
   const filtrados = useMemo(() => {
     const t = busca.trim().toLowerCase()
     const d = digitos(busca)
-    return (data ?? []).filter(
+    return [...(data ?? []), ...(rastreio.data ?? [])].filter(
       (p) =>
         !t ||
         p.numero.toLowerCase().includes(t) ||
         (p.cliente_nome ?? "").toLowerCase().includes(t) ||
         (d.length >= 3 && digitos(p.cliente_telefone).includes(d)),
     )
-  }, [data, busca])
+  }, [data, rastreio.data, busca])
 
-  const dentro = (id: string) => {
-    const a = ABAS.find((x) => x.id === id)!
-    return filtrados.filter((p) => (a.statuses ? a.statuses.includes(p.status) : true))
-  }
-  const lista = dentro(aba).filter((p) => !soAtrasados || atrasado(p.prazo))
-  const totalAtrasados = filtrados.filter((p) => atrasado(p.prazo)).length
+  const dentro = (c: Coluna) =>
+    filtrados
+      .filter((p) => (c.rastreio ? p.pendente_rastreio : !p.pendente_rastreio && c.statuses.includes(p.status)))
+      .filter((p) => !soAtrasados || atrasado(p.prazo))
+  const porColuna = COLUNAS.map((c) => ({ ...c, pedidos: dentro(c) }))
+  const totalAtrasados = filtrados.filter((p) => !p.pendente_rastreio && atrasado(p.prazo)).length
+
+  // Celular: o padrão é a primeira etapa que tem pedidos. Com busca, mostra todas as colunas juntas.
+  const primeiraComPedidos = porColuna.find((c) => c.pedidos.length > 0)?.id ?? COLUNAS[0].id
+  const selecionada = COLUNAS.some((c) => c.id === etapa) ? etapa! : primeiraComPedidos
+  const listaCelular = busca.trim()
+    ? porColuna.flatMap((c) => c.pedidos)
+    : (porColuna.find((c) => c.id === selecionada)?.pedidos ?? [])
+
+  const vazio = (
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <PackageOpen />
+        </EmptyMedia>
+        <EmptyTitle>Nenhum pedido nesta etapa</EmptyTitle>
+      </EmptyHeader>
+    </Empty>
+  )
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <InputGroup className="min-w-48 flex-1">
+        <InputGroup className="h-11 min-w-48 flex-1 lg:h-8">
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
-          <InputGroupInput placeholder="Número, cliente ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <InputGroupInput placeholder="Cliente, número ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </InputGroup>
-        <Button variant={soAtrasados ? "destructive" : "outline"} onClick={() => atualizar({ atrasados: soAtrasados ? null : "1" })}>
+        <Button
+          variant={soAtrasados ? "destructive" : "outline"}
+          className="h-11 lg:h-8"
+          onClick={() => atualizar({ atrasados: soAtrasados ? null : "1" })}
+        >
           Atrasados <Badge variant={totalAtrasados ? "destructive" : "secondary"}>{totalAtrasados}</Badge>
         </Button>
-        <Button variant="outline" onClick={() => sincronizar.mutate(undefined)} disabled={sincronizar.isPending}>
+        <Button variant="outline" className="h-11 lg:h-8" onClick={() => sincronizar.mutate(undefined)} disabled={sincronizar.isPending}>
           {sincronizar.isPending ? <Spinner /> : <RefreshCw />} Sincronizar
         </Button>
       </div>
 
-      <Tabs value={aba} onValueChange={(v) => atualizar({ etapa: v === "todos" ? null : v })}>
+      {/* Celular: faixa da esteira, uma etapa por ícone ligada por linha. Toque filtra a lista. */}
+      <div className="lg:hidden">
         <ScrollArea className="w-full">
-          <TabsList variant="line" className="w-max">
-            {ABAS.map((a) => (
-              <TabsTrigger key={a.id} value={a.id}>
-                {a.nome}
-                <Badge variant="secondary">{dentro(a.id).length}</Badge>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <ol className="flex w-max items-start pb-3" aria-label="Esteira">
+            {porColuna.map((c, i) => {
+              const Icone = ICONE_ETAPA[c.icone]
+              const ativa = !busca.trim() && c.id === selecionada
+              return (
+                <li key={c.id} className="flex items-start">
+                  <button
+                    type="button"
+                    aria-pressed={ativa}
+                    onClick={() => atualizar({ etapa: c.id })}
+                    className="flex w-[72px] flex-col items-center gap-1 rounded-lg py-1 text-center"
+                  >
+                    <span
+                      className={cn(
+                        "relative flex size-11 items-center justify-center rounded-full border transition-colors",
+                        ativa ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+                        c.alerta && c.pedidos.length > 0 && !ativa && "border-destructive/40 bg-destructive/10 text-destructive",
+                      )}
+                    >
+                      <Icone className="size-5" />
+                      <Badge
+                        variant={c.pedidos.length ? (c.alerta ? "destructive" : "default") : "secondary"}
+                        className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums"
+                      >
+                        {c.pedidos.length}
+                      </Badge>
+                    </span>
+                    <span className={cn("text-[11px] leading-tight", ativa ? "font-semibold" : "text-muted-foreground")}>{c.nome}</span>
+                  </button>
+                  {i < porColuna.length - 1 && <span className="mt-[22px] h-px w-3 shrink-0 bg-border" />}
+                </li>
+              )
+            })}
+          </ol>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-      </Tabs>
 
-      {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-[70px] w-full" />
-          ))}
+        {isLoading ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+        ) : listaCelular.length === 0 ? (
+          vazio
+        ) : (
+          <div className="flex flex-col gap-2">
+            {listaCelular.map((p) => (
+              <CardPedido key={p.id} p={p} progresso={progressoDe(p)} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* PC: quadro com uma coluna por etapa, na ordem da esteira. */}
+      <ScrollArea className="hidden w-full lg:block">
+        <div className="flex w-max items-start gap-1 pb-4">
+          {porColuna.map((c, i) => {
+            const Icone = ICONE_ETAPA[c.icone]
+            return (
+              <Fragment key={c.id}>
+                <section
+                  aria-label={c.nome}
+                  className={cn("flex w-64 shrink-0 flex-col gap-2 rounded-xl p-2", c.alerta ? "bg-destructive/10" : "bg-muted/40")}
+                >
+                  <header className="flex items-center gap-2 px-1 py-1 text-sm font-medium">
+                    <Icone className={cn("size-4", c.alerta ? "text-destructive" : "text-muted-foreground")} />
+                    <span className="truncate">{c.nome}</span>
+                    <Badge variant={c.alerta && c.pedidos.length ? "destructive" : "secondary"} className="ml-auto tabular-nums">
+                      {c.pedidos.length}
+                    </Badge>
+                  </header>
+                  {isLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                  ) : c.pedidos.length === 0 ? (
+                    <p className="px-1 py-6 text-center text-xs text-muted-foreground">Nenhum pedido</p>
+                  ) : (
+                    c.pedidos.map((p) => <CardPedido key={p.id} p={p} progresso={progressoDe(p)} />)
+                  )}
+                </section>
+                {i < porColuna.length - 1 && <ChevronRight className="mt-4 size-4 shrink-0 text-muted-foreground/60" aria-hidden />}
+              </Fragment>
+            )
+          })}
         </div>
-      ) : lista.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <PackageOpen />
-            </EmptyMedia>
-            <EmptyTitle>Nenhum pedido nesta etapa</EmptyTitle>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <ItemGroup className="gap-2">
-          {lista.map((p) => (
-            <LinhaPedido key={p.id} p={p} />
-          ))}
-        </ItemGroup>
-      )}
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   )
 }

@@ -27,6 +27,17 @@ export function mascaraCpf(t: string): string {
     .replace(/\.(\d{3})(\d)/, ".$1-$2")
 }
 
+// CPF (11 dígitos) ou CNPJ (14).
+export function mascaraDocumento(t: string | null | undefined): string {
+  const d = digitos(t).slice(0, 14)
+  if (d.length <= 11) return mascaraCpf(d)
+  return d
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2")
+}
+
 export function mascaraTelefone(t: string): string {
   const d = digitos(t).slice(0, 11)
   if (d.length <= 2) return d

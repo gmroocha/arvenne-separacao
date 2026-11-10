@@ -32,8 +32,8 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
 }
 
 // Cliente e valores: lateral no PC, recolhível no celular.
-export default function DadosCliente({ pedido }: { pedido: PedidoDetalhe }) {
-  const celular = useIsMobile()
+export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDetalhe; semRecolher?: boolean }) {
+  const celular = useIsMobile() && !semRecolher
   const [aberto, setAberto] = useState(false)
   const salvar = useAtualizarPedido([["pedido"]])
   const nota = useAdicionarNota()

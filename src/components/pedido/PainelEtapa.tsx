@@ -1,37 +1,44 @@
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { PedidoDetalhe } from "@/lib/api"
+import type { AcaoItem, CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { NOME_ETAPA } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
-import Checklist, { CampoRastreio } from "./Checklist"
+import Bipagem from "./Bipagem"
 import Conferencia from "./Conferencia"
+import Etiquetagem from "./Etiquetagem"
+import { Embalagem, Enviado, Postagem } from "./Fechamento"
+import NotaFrete from "./NotaFrete"
 import Separacao from "./Separacao"
 
 type Props = {
   pedido: PedidoDetalhe
+  acao: AcaoItem
+  patch: (campos: CamposPedido) => void
+  aoConcluir: () => void
   aoTrocar: (item: Item) => void
   aoAdicionar: () => void
 }
 
 // O painel muda conforme a etapa atual do pedido.
-export default function PainelEtapa({ pedido, aoTrocar, aoAdicionar }: Props) {
+export default function PainelEtapa({ pedido, acao, patch, aoConcluir, aoTrocar, aoAdicionar }: Props) {
   switch (pedido.status) {
     case "novo":
     case "separacao":
     case "aguardando_cliente":
-      return <Separacao pedido={pedido} aoTrocar={aoTrocar} aoAdicionar={aoAdicionar} />
+      return <Separacao pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoAdicionar={aoAdicionar} aoConcluir={aoConcluir} />
     case "conferencia":
-      return <Conferencia pedido={pedido} />
+      return <Conferencia pedido={pedido} acao={acao} aoConcluir={aoConcluir} />
+    case "etiquetagem":
+      return <Etiquetagem pedido={pedido} acao={acao} aoConcluir={aoConcluir} />
+    case "bipagem":
+      return <Bipagem pedido={pedido} acao={acao} aoConcluir={aoConcluir} />
     case "faturamento":
+      return <NotaFrete pedido={pedido} patch={patch} aoConcluir={aoConcluir} />
     case "embalagem":
+      return <Embalagem pedido={pedido} patch={patch} aoConcluir={aoConcluir} />
     case "pronto_envio":
-      return <Checklist pedido={pedido} />
+      return <Postagem pedido={pedido} patch={patch} aoConcluir={aoConcluir} />
     case "enviado":
-      return (
-        <div className="flex flex-col gap-3">
-          <h3 className="text-sm font-semibold">Enviado</h3>
-          <CampoRastreio pedido={pedido} />
-        </div>
-      )
+      return <Enviado pedido={pedido} patch={patch} />
     default:
       return (
         <Alert>

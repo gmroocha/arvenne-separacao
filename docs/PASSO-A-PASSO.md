@@ -122,6 +122,11 @@ duplica nada.
 - Supabase grátis pausa o projeto depois de 7 dias sem uso. Com uso diário isso não acontece.
 - O plano grátis não faz backup diário. Veja "Cópia de segurança" em `docs/ROADMAP.md`.
 
+## Leitor de código de barras (Bipagem)
+
+O leitor USB funciona como um teclado: ele "digita" o código da etiqueta (o SKU) e aperta Enter. Não
+precisa instalar nada: plugue no computador, abra a etapa Bipagem do pedido e leia as peças.
+
 ## Catálogo da loja (peças do site)
 
 O catálogo vem **direto da Shopify**, pela Admin API, e o Supabase guarda uma cópia para a busca ser

@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
+import { etapaCompleta } from "@/lib/etapa"
 import { NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { Cliente, ClienteShopify, Endereco, Evento, Item, NovoItem, PecaClube, PecaRepetida, Pedido, Romaneio } from "@/lib/tipos"
+import type { Cliente, ClienteShopify, Endereco, Evento, Item, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio } from "@/lib/tipos"
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 
@@ -21,6 +22,24 @@ export function usePedidosFase(fase: "venda" | "expedicao") {
         ? q.order("prazo", { ascending: true, nullsFirst: false })
         : q.order("pedido_em", { ascending: false })
       const { data, error } = await q
+      if (error) throw error
+      return data as Pedido[]
+    },
+  })
+}
+
+// Pedidos do WhatsApp já enviados cuja cliente ainda não recebeu o rastreio (coluna "Enviar rastreio").
+export function usePendentesRastreio() {
+  return useQuery({
+    queryKey: ["pedidos", "rastreio"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_pedidos")
+        .select("*")
+        .eq("pendente_rastreio", true)
+        .order("status_desde", { ascending: true })
+        .limit(100)
       if (error) throw error
       return data as Pedido[]
     },
@@ -225,17 +244,43 @@ function useAcao<A, R = unknown>(fn: (a: A) => Promise<R>, invalidar: unknown[][
 
 const TODAS = [["pedidos"], ["pedido"], ["repetidas"]]
 
+export type ItemPatch = Partial<
+  Pick<Item, "status" | "observacao" | "conferido_em" | "etiquetado_em" | "etiqueta_previa" | "qtd_bipada" | "bipado_em" | "qtd" | "preco">
+>
+
+const chavePedido = (id: string) => ["pedido", id]
+
+// Troca o pedido em cache na hora e devolve o estado anterior, para desfazer se o banco recusar.
+function aplicarNoCache(qc: QueryClient, id: string, mudar: (p: PedidoDetalhe) => PedidoDetalhe) {
+  const anterior = qc.getQueryData<PedidoDetalhe>(chavePedido(id))
+  if (anterior) qc.setQueryData<PedidoDetalhe>(chavePedido(id), mudar(anterior))
+  return anterior
+}
+
+// Muda a etapa do pedido. A tela atualiza antes do banco responder; se falhar, volta ao que era.
 export function useMudarStatus() {
-  return useAcao(
-    async ({ pedidoId, para }: { pedidoId: string; para: StatusPedido; silencioso?: boolean }) => {
-      const { error } = await supabase.from("pedidos").update({ status: para }).eq("id", pedidoId)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ pedidoId, para, campos }: { pedidoId: string; para: StatusPedido; campos?: CamposPedido; silencioso?: boolean }) => {
+      const { error } = await supabase.from("pedidos").update({ status: para, ...campos }).eq("id", pedidoId)
       if (error) throw error
     },
-    TODAS,
-    (_, a) => {
+    onMutate: async ({ pedidoId, para, campos }) => {
+      await qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
+      return { anterior: aplicarNoCache(qc, pedidoId, (p) => ({ ...p, ...campos, status: para, status_desde: new Date().toISOString() })) }
+    },
+    onError: (e, a, ctx) => {
+      if (ctx?.anterior) qc.setQueryData(chavePedido(a.pedidoId), ctx.anterior)
+      toast.error(msg(e))
+    },
+    onSuccess: (_, a) => {
       if (!a.silencioso) toast.success(`Pedido movido para ${NOME_ETAPA[a.para]}`)
     },
-  )
+    onSettled: (_, __, a) => {
+      qc.invalidateQueries({ queryKey: chavePedido(a.pedidoId) })
+      qc.invalidateQueries({ queryKey: ["pedidos"] })
+    },
+  })
 }
 
 // Atualiza campos do pedido (sem toast): usado pelo salvamento automático e pelas ações das telas.
@@ -249,6 +294,8 @@ export type CamposPedido = Partial<
     | "frete_tipo" | "frete_pago_por" | "frete_cobrado" | "frete_custo"
     | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra"
     | "status" | "rastreio" | "observacoes"
+    | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_servico" | "rastreio_url"
+    | "pedido_fornecedor_numero" | "pedido_fornecedor_em" | "embalado_em" | "postado_em" | "rastreio_enviado_em"
   >
 >
 
@@ -261,105 +308,97 @@ export function useAtualizarPedido(invalidar: unknown[][] = TODAS) {
   return useAcao(({ pedidoId, campos }: { pedidoId: string; campos: CamposPedido }) => atualizarPedido(pedidoId, campos), invalidar)
 }
 
-const ITENS_ABRIDORES: StatusPedido[] = ["novo", "separacao", "aguardando_cliente"]
-
-// Regras da separação, aplicadas depois de cada mudança numa peça:
-//  - falta/defeito leva o pedido a "aguardando cliente";
-//  - resolvidos todos os problemas, o pedido volta a "separação";
-//  - primeira peça achada tira o pedido de "novo";
-//  - a última peça achada leva o pedido sozinho para Conferência (com Desfazer).
-export function useAcaoItem(pedido: PedidoDetalhe | undefined) {
+// Versão da tela do pedido: grava campos do pedido com atualização imediata e volta atrás se falhar.
+export function usePatchPedido(pedidoId: string) {
   const qc = useQueryClient()
-  const mudarStatus = useMudarStatus()
-
-  function avisarConferencia(anterior: StatusPedido) {
-    if (!pedido) return
-    toast.success("Pedido foi para Conferência", {
-      duration: 8000,
-      action: {
-        label: "Desfazer",
-        onClick: () => mudarStatus.mutate({ pedidoId: pedido.id, para: anterior === "novo" ? "separacao" : anterior, silencioso: true }),
-      },
-    })
-  }
-
-  return useAcao(
-    async ({ item, para, observacao }: { item: Item; para: StatusItem; observacao?: string | null }) => {
-      // A peça muda de lista na hora; o banco confirma logo depois.
-      if (pedido)
-        qc.setQueryData<PedidoDetalhe>(["pedido", pedido.id], (old) =>
-          old && { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? { ...i, status: para } : i)) },
-        )
-      const { error } = await supabase
-        .from("pedido_itens")
-        .update({
-          status: para,
-          ...(para !== "encontrado" ? { conferido_em: null } : {}),
-          ...(observacao !== undefined ? { observacao } : {}),
-        })
-        .eq("id", item.id)
-      if (error) {
-        qc.invalidateQueries({ queryKey: ["pedido"] })
-        throw error
-      }
-      if (!pedido) return
-      const vivos = pedido.pedido_itens.map((i) => (i.id === item.id ? { ...i, status: para } : i)).filter((i) => i.status !== "removido")
-      const problemas = vivos.filter((i) => i.status === "falta" || i.status === "defeito")
-      const todosAchados = vivos.length > 0 && vivos.every((i) => i.status === "encontrado")
-      const atual = pedido.status
-      const mover = (destino: StatusPedido) => atualizarPedido(pedido.id, { status: destino })
-      if (problemas.length > 0) {
-        if (atual === "novo" || atual === "separacao" || atual === "conferencia") {
-          await mover("aguardando_cliente")
-          toast.info("Pedido aguardando resposta da cliente")
-        }
-        return
-      }
-      if (atual === "aguardando_cliente") {
-        await mover(todosAchados ? "conferencia" : "separacao")
-        if (todosAchados) avisarConferencia(atual)
-        return
-      }
-      if (ITENS_ABRIDORES.includes(atual) && todosAchados) {
-        await mover("conferencia")
-        avisarConferencia(atual)
-        return
-      }
-      if (atual === "novo" && para === "encontrado") await mover("separacao")
+  return useMutation({
+    mutationKey: ["patch-pedido", pedidoId],
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: (campos: CamposPedido) => atualizarPedido(pedidoId, campos),
+    onMutate: async (campos) => {
+      await qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
+      return { anterior: aplicarNoCache(qc, pedidoId, (p) => ({ ...p, ...campos })) }
     },
-    TODAS,
-  )
-
+    onError: (e, _, ctx) => {
+      if (ctx?.anterior) qc.setQueryData(chavePedido(pedidoId), ctx.anterior)
+      toast.error(msg(e))
+    },
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: ["patch-pedido", pedidoId] }) <= 1) {
+        qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+        qc.invalidateQueries({ queryKey: ["pedidos"] })
+      }
+    },
+  })
 }
 
-// Conferência: marca a peça como conferida; a última conferida leva o pedido a Nota/Bling/frete.
-export function useConferirItem(pedido: PedidoDetalhe | undefined) {
+const ESTADOS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "conferencia", "etiquetagem", "bipagem"]
+const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa: false, qtd_bipada: 0, bipado_em: null } as const
+
+// Todas as ações numa peça (achei, conferida, etiquetada, bipada, desfazer, falta, defeito...).
+// A peça muda na tela na hora; o banco confirma em seguida, uma gravação por vez por pedido.
+// Efeitos no pedido (nada disso trava o clique):
+//  - falta/defeito leva o pedido a "aguardando cliente";
+//  - resolvidos os problemas, ele volta a "separação";
+//  - primeira peça achada tira o pedido de "novo";
+//  - ao completar a etapa, chama aoCompletar (a tela abre o Dialog; quem muda de etapa é a pessoa).
+export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedido) => void) {
+  const qc = useQueryClient()
   const mudarStatus = useMudarStatus()
-  return useAcao(
-    async ({ item, conferido }: { item: Item; conferido: boolean }) => {
-      const { error } = await supabase
-        .from("pedido_itens")
-        .update({ conferido_em: conferido ? new Date().toISOString() : null })
-        .eq("id", item.id)
+  const chave = ["item", pedidoId]
+
+  const gravar = useMutation({
+    mutationKey: chave,
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async ({ itemId, campos }: { itemId: string; campos: ItemPatch }) => {
+      const { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
       if (error) throw error
-      if (!pedido || !conferido || pedido.status !== "conferencia") return
-      const alvo = pedido.pedido_itens
-        .map((i) => (i.id === item.id ? { ...i, conferido_em: "agora" } : i))
-        .filter((i) => i.status === "encontrado")
-      const outras = pedido.pedido_itens.filter((i) => i.status !== "removido" && i.status !== "encontrado")
-      if (alvo.length > 0 && outras.length === 0 && alvo.every((i) => i.conferido_em)) {
-        await atualizarPedido(pedido.id, { status: "faturamento" })
-        toast.success("Pedido foi para Nota, Bling e frete", {
-          duration: 8000,
-          action: {
-            label: "Desfazer",
-            onClick: () => mudarStatus.mutate({ pedidoId: pedido.id, para: "conferencia", silencioso: true }),
-          },
-        })
+    },
+    onError: (e) => {
+      toast.error(msg(e))
+      qc.invalidateQueries({ queryKey: chavePedido(pedidoId) }) // volta ao que o banco tem
+    },
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: chave }) <= 1) {
+        qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+        qc.invalidateQueries({ queryKey: ["pedidos"] })
+        qc.invalidateQueries({ queryKey: ["repetidas"] })
       }
     },
-    TODAS,
-  )
+  })
+
+  return (item: Item, campos: ItemPatch) => {
+    const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
+    if (!atual) return
+    const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
+    const antes = atual.pedido_itens
+    const depois = antes.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
+    qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), { ...atual, pedido_itens: depois })
+    gravar.mutate({ itemId: item.id, campos: patch })
+
+    let estado = atual.status
+    if (campos.status) {
+      const vivos = depois.filter((i) => i.status !== "removido")
+      const problemas = vivos.some((i) => i.status === "falta" || i.status === "defeito")
+      let destino: StatusPedido | null = null
+      if (problemas && ESTADOS_DE_PECAS.includes(estado)) {
+        destino = "aguardando_cliente"
+        toast.info("Pedido aguardando resposta da cliente")
+      } else if (!problemas && estado === "aguardando_cliente") destino = "separacao"
+      else if (estado === "novo" && campos.status === "encontrado") destino = "separacao"
+      if (destino) {
+        estado = destino
+        mudarStatus.mutate({ pedidoId, para: destino, silencioso: true })
+      }
+    }
+    if (etapaCompleta(estado, depois) && !etapaCompleta(estado, antes)) aoCompletar?.(estado)
+  }
+}
+
+// Registra a leitura do leitor de código (histórico em "bipagens"). Não trava a tela.
+export async function registrarBipagem(pedidoId: string, itemId: string | null, codigo: string, resultado: ResultadoBipagem) {
+  const { error } = await supabase.from("bipagens").insert({ pedido_id: pedidoId, item_id: itemId, codigo, resultado })
+  if (error) toast.error(msg(error))
 }
 
 export function useAtualizarItem() {
@@ -537,3 +576,5 @@ export function useAtivarPecaClube() {
     [["clube"]],
   )
 }
+
+export type AcaoItem = (item: Item, campos: ItemPatch) => void

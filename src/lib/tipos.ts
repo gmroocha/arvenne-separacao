@@ -43,6 +43,17 @@ export type Pedido = {
   shopify_url: string | null
   rastreio: string | null
   observacoes: string | null
+  desconto_codigos: string[] | null
+  nf_numero: string | null
+  nf_emitida_em: string | null
+  frete_gerado_em: string | null
+  frete_servico: string | null
+  rastreio_url: string | null
+  pedido_fornecedor_numero: string | null
+  pedido_fornecedor_em: string | null
+  embalado_em: string | null
+  postado_em: string | null
+  rastreio_enviado_em: string | null
   pedido_em: string
   created_at: string
   // Calculados pela view v_pedidos
@@ -55,6 +66,11 @@ export type Pedido = {
   qtd_encontradas: number
   qtd_problemas: number
   qtd_conferidas: number
+  qtd_etiquetadas: number
+  qtd_bipadas: number
+  valor_pecas_com_desconto: number
+  frete_diferenca: number | null
+  pendente_rastreio: boolean
   fotos: string[]
   fase: Fase
   prazo: string | null
@@ -77,7 +93,13 @@ export type Item = {
   observacao: string | null
   ordem: number
   conferido_em: string | null
+  etiquetado_em: string | null
+  etiqueta_previa: boolean
+  qtd_bipada: number
+  bipado_em: string | null
 }
+
+export type ResultadoBipagem = "ok" | "fora_do_pedido" | "excedente"
 
 export type Evento = {
   id: number
