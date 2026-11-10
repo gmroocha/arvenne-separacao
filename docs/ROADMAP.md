@@ -105,6 +105,15 @@ novas todos os dias.
 **Ainda falta decidir:** como trazer a lógica de leitura e de preço (acréscimo do lote, tabela de
 correntaria por grama) para este projeto. O catálogo e o app de precificação podem acabar no mesmo projeto.
 
+**Melhoria automática da foto** (hoje o Gustavo manda a foto para o GPT, com um prompt, para melhorar
+qualidade, nitidez e contraste):
+- **Tratamento clássico**, no navegador, sem custo e sem IA: nível de brilho e contraste automáticos,
+  balanço de branco e nitidez leve. Instantâneo, e a cor da joia não muda. Pode rodar sozinho no upload.
+- **Melhoria por IA generativa** (edição de imagem do GPT ou similar): custa por imagem e pode alterar a
+  peça (pedra, brilho, formato). Foto de produto que não bate com a peça vira reclamação. Só como botão
+  opcional, com antes e depois lado a lado, e a foto original sempre guardada.
+- Falta o prompt atual e um par de fotos antes e depois, para ver o que o GPT muda de fato.
+
 **Segurança:** se o catálogo for aberto às clientes, a página pública mostra só foto, nome e preço de
 venda. Custo e código do fornecedor nunca saem da equipe.
 
