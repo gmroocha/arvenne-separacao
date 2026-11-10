@@ -43,10 +43,12 @@ Conferir: em **Table Editor** aparecem as tabelas `pedidos`, `pedido_itens`, `pe
 
 ## Parte 3 — Testar no seu computador (sem Shopify ainda)
 
-1. Na pasta do projeto, crie o arquivo `.env.local` com duas linhas:
+1. Na pasta do projeto, crie o arquivo `.env.local` com as duas primeiras linhas (as outras duas são opcionais):
    ```
    VITE_SUPABASE_URL=a Project URL que você copiou
    VITE_SUPABASE_ANON_KEY=a chave anon que você copiou
+   VITE_URL_OLIST=o endereço do seu Olist (opcional: mostra o botão "Abrir Olist" no pedido)
+   VITE_URL_BLING=o endereço do seu Bling (opcional: mostra o botão "Abrir Bling" no pedido)
    ```
 2. No terminal: `npm run dev`. Abra o endereço que aparecer (em geral http://localhost:5173).
 3. Entre com um usuário criado na Parte 2.
@@ -78,7 +80,8 @@ Conferir: abrir o endereço no celular, entrar e ver a lista de pedidos.
 Pode ficar para outro dia: o app já funciona sem isso, só os pedidos da loja não entram.
 
 1. No Dev Dashboard da Shopify (https://dev.shopify.com), crie um app chamado **Arvenne Separação**.
-2. Permissões: `read_orders` e `read_products`. Peça também o acesso a **dados protegidos de cliente**
+2. Permissões: `read_orders`, `read_products` e `read_customers` (esta última é a busca de cliente na
+   hora de montar a venda). Peça também o acesso a **dados protegidos de cliente**
    (nome, telefone, e-mail), senão os pedidos chegam sem o nome da cliente.
 3. Instale o app na loja e copie o **Client ID** e o **Client secret**.
 4. No Supabase: **Project Settings** → **Edge Functions** → **Secrets**. Crie estes cinco:

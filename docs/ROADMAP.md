@@ -1,10 +1,24 @@
 # Arvenne Separação — próximos passos
 
 Anotações do Gustavo, 10/11/2026. A primeira versão (pedidos, separação com foto, peça em falta,
-peças repetidas, catálogo do Clube) já está pronta. Nada abaixo foi construído ainda.
+peças repetidas, catálogo do Clube) já está pronta.
 
-Ordem sugerida: **1 → 2 → 3**. O pedido manual completo vem primeiro porque alimenta a nota fiscal, o
-prazo e a visualização da cliente.
+**Feito em 11/11/2026** (migration `20261111090000_vendas.sql`):
+- Pedido manual completo (itens 1 e 3 abaixo): aba **Vendas** com o romaneio, cliente cadastrada, CEP
+  pelo ViaCEP, desconto, cupom, frete e total calculado no banco.
+- Prazo de envio de 48 h úteis (item 2): conta do **pagamento**, sem sábado, domingo e feriados
+  nacionais, com os dias corridos ao lado.
+- Visualização para a cliente (item 3): link `/r/<código>` público, sem CPF, e-mail, telefone,
+  endereço nem SKU.
+- Separação redesenhada: etapas visíveis, "A encontrar" e "Encontradas", problemas à parte,
+  avanço automático para a Conferência com Desfazer.
+
+**Fase 2:** botão "Baixar imagem" do romaneio, na própria página do link. As fotos da Shopify vêm de
+outro domínio e o navegador bloqueia desenhá-las numa imagem sem um intermediário; romaneio grande
+vira imagem enorme.
+
+Os itens 1, 2 e 3 abaixo ficam como registro do que foi pedido. Seguem abertos: a busca de cliente na
+Shopify (precisa do app e do escopo `read_customers`) e as perguntas ao fim.
 
 ## 0. Pedidos antigos (guardar todos e poder consultar)
 
@@ -19,7 +33,7 @@ Decisão do Gustavo: **nenhum pedido é apagado**, mesmo depois de enviado.
 - Espaço: cada pedido ocupa algo em torno de 10 KB (estimativa, não medida). Medir com o uso real e
   acompanhar em Supabase → Reports → Database. Plano grátis tem 500 MB de banco e 1 GB de fotos.
 
-## 1. Pedido manual completo (WhatsApp)
+## 1. Pedido manual completo (WhatsApp) — feito
 
 Objetivo: lançar um pedido fora da Shopify com tudo que a nota fiscal e o controle precisam, sem digitar
 o que já se sabe.
@@ -43,13 +57,13 @@ o que já se sabe.
 **Data da compra**
 - Data e hora da compra, editável (padrão: agora). Pedido da Shopify usa a data do próprio pedido.
 
-## 2. Prazo de envio (48 h úteis)
+## 2. Prazo de envio (48 h úteis) — feito
 
 - Prazo = data da compra + 48 h úteis, sem contar sábado, domingo e feriados nacionais.
 - A lista de pedidos mostra "vence em X h" ou "atrasado" e pode ser ordenada por prazo.
 - Pedido atrasado ganha destaque (`destructive`), sem cor nova.
 
-## 3. Visualização para a cliente
+## 3. Visualização para a cliente — feito (link; imagem fica para a fase 2)
 
 Uma tela do pedido para mandar à cliente, com fotos, nomes, variantes, quantidades, valores, desconto,
 cupom, frete e total.
@@ -130,10 +144,11 @@ venda. Custo e código do fornecedor nunca saem da equipe.
 
 1. **CPF na Shopify:** em qual campo ele fica hoje (campo do checkout, metacampo, nota)? Define como a
    busca de cliente o encontra.
-2. **48 h úteis:** conta a partir da compra ou da confirmação do pagamento? Sábado conta?
+2. ~~**48 h úteis:** conta a partir da compra ou da confirmação do pagamento? Sábado conta?~~
+   Respondida: conta do pagamento; sábado, domingo e feriados não contam.
 3. **Link de pagamento do WhatsApp:** gerado onde (Shopify, Mercado Pago, InfinitePay)? Se o app
    puder gerar, a visualização da cliente já leva o botão de pagar.
-4. **Visualização da cliente:** link, imagem ou PDF? Link é o mais simples.
+4. ~~**Visualização da cliente:** link, imagem ou PDF?~~ Respondida: link agora, imagem na fase 2.
 
 ## Já combinado antes
 
