@@ -32,7 +32,7 @@ export default function Layout() {
         <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
-          <h1 className="text-sm font-medium">{titulo(pathname)}</h1>
+          <h1 className="font-heading text-sm font-semibold">{titulo(pathname)}</h1>
           <Button variant="ghost" size="sm" className="ml-auto max-sm:size-9 max-sm:p-0" aria-label="Feedback" onClick={() => setFeedback(true)}>
             <MessageSquarePlus /> <span className="max-sm:sr-only">Feedback</span>
           </Button>

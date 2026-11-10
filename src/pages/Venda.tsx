@@ -83,6 +83,8 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
     const id = await salvarCliente(form.cliente_id, {
       nome: form.cliente_nome,
       cpf: form.cliente_cpf,
+      razao_social: form.cliente_razao_social,
+      ie: form.cliente_ie,
       email: form.cliente_email,
       telefone: form.cliente_telefone,
       cep: form.entrega_cep,
@@ -190,7 +192,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
               <ArrowLeft /> Vendas
             </Link>
           </Button>
-          <h2 className="text-xl font-semibold">#{pedido.numero.replace(/^#/, "")}</h2>
+          <h2 className="font-heading text-xl font-semibold">#{pedido.numero.replace(/^#/, "")}</h2>
           <StatusBadge status={pedido.status} />
         </div>
         <span className="text-xs text-muted-foreground" aria-live="polite">

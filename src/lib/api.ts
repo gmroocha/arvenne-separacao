@@ -1,10 +1,10 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import { etapaCompleta } from "@/lib/etapa"
 import { NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { Cliente, Feedback, ClienteShopify, Endereco, Evento, Item, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPublica, TrocaValor } from "@/lib/tipos"
+import type { CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor } from "@/lib/tipos"
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 
@@ -316,7 +316,7 @@ export function useMudarStatus() {
 export type CamposPedido = Partial<
   Pick<
     Pedido,
-    | "cliente_id" | "cliente_nome" | "cliente_telefone" | "cliente_email" | "cliente_cpf"
+    | "cliente_id" | "cliente_nome" | "cliente_telefone" | "cliente_email" | "cliente_cpf" | "cliente_razao_social" | "cliente_ie"
     | "entrega_cep" | "entrega_logradouro" | "entrega_numero" | "entrega_complemento"
     | "entrega_bairro" | "entrega_cidade" | "entrega_uf"
     | "desconto_tipo" | "desconto_valor" | "cupom"
@@ -595,6 +595,8 @@ export function useCriarVenda() {
 export type DadosCliente = {
   nome: string
   cpf: string | null
+  razao_social?: string | null
+  ie?: string | null
   email: string | null
   telefone: string | null
   shopify_customer_id?: number | null
@@ -607,6 +609,8 @@ export async function salvarCliente(id: string | null, d: DadosCliente): Promise
   const linha = {
     nome: d.nome.trim(),
     cpf: soDigitos(d.cpf) || null,
+    razao_social: d.razao_social?.trim() || null,
+    ie: d.ie?.trim() || null,
     email: d.email?.trim().toLowerCase() || null,
     telefone: soDigitos(d.telefone) || null,
     cep: soDigitos(d.cep) || null,
@@ -744,66 +748,124 @@ export function useResolverFeedback() {
 }
 
 // ---------------------------------------------------------------------------
-// Trocas de peça em falta
+// Trocas de peça em falta: UMA troca por pedido, com várias peças e um link só.
 // ---------------------------------------------------------------------------
-const TROCAS_TUDO = [["trocas"], ["pedido"], ["pedidos"], ["repetidas"]]
+const TROCAS_TUDO = [["troca"], ["pedido"], ["pedidos"], ["repetidas"]]
 
-export function useTrocas(pedidoId: string | undefined) {
+// Troca ativa do pedido (rascunho, enviada ou respondida) com peças, opções, valores e resumo.
+// Todo dinheiro (pago, diferença, crédito) vem de v_troca_valores / v_troca_resumo.
+export function useTroca(pedidoId: string | undefined) {
   return useQuery({
-    queryKey: ["trocas", pedidoId],
+    queryKey: ["troca", pedidoId],
     enabled: !!pedidoId,
-    queryFn: async () => {
-      const [t, v] = await Promise.all([
-        supabase.from("trocas").select("*, troca_opcoes(*)").eq("pedido_id", pedidoId!).order("created_at"),
-        supabase.from("v_troca_valores").select("*").eq("pedido_id", pedidoId!),
+    queryFn: async (): Promise<Troca | null> => {
+      const { data: t, error } = await supabase
+        .from("trocas")
+        .select("*, troca_pecas(*, troca_opcoes(*))")
+        .eq("pedido_id", pedidoId!)
+        .in("status", ["rascunho", "enviada", "respondida"])
+        .maybeSingle()
+      if (error) throw error
+      if (!t) return null
+      const [v, r] = await Promise.all([
+        supabase.from("v_troca_valores").select("*").eq("troca_id", t.id),
+        supabase.from("v_troca_resumo").select("*").eq("troca_id", t.id).maybeSingle(),
       ])
-      if (t.error) throw t.error
       if (v.error) throw v.error
+      if (r.error) throw r.error
       const valores = v.data as TrocaValor[]
-      return (t.data as (Omit<Troca, "opcoes" | "valores"> & { troca_opcoes: TrocaOpcao[] })[]).map(({ troca_opcoes, ...troca }) => ({
-        ...troca,
-        opcoes: [...troca_opcoes].sort((a, b) => a.ordem - b.ordem),
-        valores: valores.filter((x) => x.troca_id === troca.id),
-      })) as Troca[]
+      const { troca_pecas, ...troca } = t as { troca_pecas: (Omit<TrocaPeca, "opcoes" | "valores"> & { troca_opcoes: TrocaOpcao[] })[] } & Omit<Troca, "pecas" | "resumo">
+      const pecas: TrocaPeca[] = troca_pecas
+        .map(({ troca_opcoes, ...p }) => ({
+          ...p,
+          opcoes: [...troca_opcoes].sort((a, b) => a.ordem - b.ordem),
+          valores: valores.filter((x) => x.troca_peca_id === p.id),
+        }))
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      return { ...troca, pecas, resumo: (r.data as TrocaResumo | null) ?? null } as Troca
     },
   })
 }
 
-export function useSugestoes(itemId: string | undefined) {
+export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}) {
   return useQuery({
-    queryKey: ["sugestoes", itemId],
+    queryKey: ["sugestoes", itemId, modo, filtros.categoria ?? null, filtros.min ?? null, filtros.max ?? null, filtros.busca ?? null],
     enabled: !!itemId,
     staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("sugerir_troca", { p_item: itemId })
+      const { data, error } = await supabase.rpc("sugerir_troca", {
+        p_item: itemId,
+        p_modo: modo,
+        p_categoria: filtros.categoria ?? null,
+        p_min: filtros.min ?? null,
+        p_max: filtros.max ?? null,
+        p_busca: filtros.busca ?? null,
+      })
       if (error) throw error
       return (data ?? []) as Sugestao[]
     },
   })
 }
 
+export function useCategorias(ativo = true) {
+  return useQuery({
+    queryKey: ["categorias-catalogo"],
+    enabled: ativo,
+    staleTime: 30 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("categorias_catalogo")
+      if (error) throw error
+      return (data ?? []) as CategoriaCatalogo[]
+    },
+  })
+}
+
+// Garante a troca do pedido e uma peça para cada item em falta (cria o rascunho, ou acrescenta peças
+// à troca que já existe). Devolve o id da troca.
 export function useCriarTroca() {
   return useAcao(
-    async ({ pedidoId, itemId }: { pedidoId: string; itemId: string }) => {
-      const { data, error } = await supabase.from("trocas").insert({ pedido_id: pedidoId, item_id: itemId }).select("id").single()
-      if (error) throw error
-      return data.id as string
+    async ({ pedidoId, itemIds }: { pedidoId: string; itemIds: string[] }) => {
+      const { data: existente, error: e0 } = await supabase
+        .from("trocas")
+        .select("id, status, troca_pecas(item_id)")
+        .eq("pedido_id", pedidoId)
+        .in("status", ["rascunho", "enviada", "respondida"])
+        .maybeSingle()
+      if (e0) throw e0
+      let trocaId = existente?.id as string | undefined
+      if (!trocaId) {
+        const { data, error } = await supabase.from("trocas").insert({ pedido_id: pedidoId }).select("id").single()
+        if (error) throw error
+        trocaId = data.id as string
+      }
+      const tem = new Set(((existente?.troca_pecas ?? []) as { item_id: string }[]).map((p) => p.item_id))
+      const faltam = itemIds.filter((id) => !tem.has(id))
+      if (faltam.length > 0) {
+        const { error } = await supabase.from("troca_pecas").insert(faltam.map((item_id) => ({ troca_id: trocaId, item_id })))
+        if (error) throw error
+        // Peça nova numa troca já respondida: volta a aguardar a cliente.
+        if (existente?.status === "respondida") await supabase.from("trocas").update({ status: "enviada" }).eq("id", trocaId)
+      }
+      return trocaId
     },
-    [["trocas"]],
+    [["troca"]],
   )
 }
 
-// Adicionar e remover opções da troca, com cache otimista (a marcação responde na hora).
+// Adicionar e remover opções de uma peça da troca, com cache otimista (a marcação responde na hora).
 export function useOpcaoTroca(pedidoId: string) {
   const qc = useQueryClient()
-  const chave = ["trocas", pedidoId]
+  const chave = ["troca", pedidoId]
   const aoErro = (e: unknown) => toast.error(msg(e))
   const aoFinal = () => qc.invalidateQueries({ queryKey: chave })
+  const mapearPecas = (old: Troca | null | undefined, f: (p: TrocaPeca) => TrocaPeca) =>
+    old ? { ...old, pecas: old.pecas.map(f) } : old
 
   const adicionar = useMutation({
-    mutationFn: async ({ trocaId, opcao, motivo, ordem }: { trocaId: string; opcao: NovoItem; motivo: TrocaOpcao["motivo"]; ordem?: number }) => {
+    mutationFn: async ({ trocaPecaId, opcao, motivo, ordem }: { trocaPecaId: string; opcao: NovoItem; motivo: TrocaOpcao["motivo"]; ordem?: number }) => {
       const { error } = await supabase.from("troca_opcoes").insert({
-        troca_id: trocaId,
+        troca_peca_id: trocaPecaId,
         origem: opcao.origem === "clube" ? "clube" : "site",
         shopify_variant_id: opcao.shopify_variant_id,
         peca_clube_id: opcao.peca_clube_id,
@@ -817,19 +879,19 @@ export function useOpcaoTroca(pedidoId: string) {
       })
       if (error) throw error
     },
-    onMutate: async ({ trocaId, opcao, motivo, ordem }) => {
+    onMutate: async ({ trocaPecaId, opcao, motivo, ordem }) => {
       await qc.cancelQueries({ queryKey: chave })
-      const antes = qc.getQueryData<Troca[]>(chave)
-      qc.setQueryData<Troca[]>(chave, (old) =>
-        old?.map((t) =>
-          t.id === trocaId
+      const antes = qc.getQueryData<Troca | null>(chave)
+      qc.setQueryData<Troca | null>(chave, (old) =>
+        mapearPecas(old, (p) =>
+          p.id === trocaPecaId
             ? {
-                ...t,
+                ...p,
                 opcoes: [
-                  ...t.opcoes,
+                  ...p.opcoes,
                   {
                     id: `tmp-${opcao.chave}`,
-                    troca_id: trocaId,
+                    troca_peca_id: trocaPecaId,
                     origem: opcao.origem === "clube" ? "clube" : "site",
                     shopify_variant_id: opcao.shopify_variant_id,
                     peca_clube_id: opcao.peca_clube_id,
@@ -843,13 +905,13 @@ export function useOpcaoTroca(pedidoId: string) {
                   },
                 ],
               }
-            : t,
+            : p,
         ),
       )
       return { antes }
     },
     onError: (e, _a, ctx) => {
-      if (ctx?.antes) qc.setQueryData(chave, ctx.antes)
+      if (ctx) qc.setQueryData(chave, ctx.antes)
       aoErro(e)
     },
     onSettled: aoFinal,
@@ -862,12 +924,12 @@ export function useOpcaoTroca(pedidoId: string) {
     },
     onMutate: async ({ opcaoId }) => {
       await qc.cancelQueries({ queryKey: chave })
-      const antes = qc.getQueryData<Troca[]>(chave)
-      qc.setQueryData<Troca[]>(chave, (old) => old?.map((t) => ({ ...t, opcoes: t.opcoes.filter((o) => o.id !== opcaoId) })))
+      const antes = qc.getQueryData<Troca | null>(chave)
+      qc.setQueryData<Troca | null>(chave, (old) => mapearPecas(old, (p) => ({ ...p, opcoes: p.opcoes.filter((o) => o.id !== opcaoId) })))
       return { antes }
     },
     onError: (e, _a, ctx) => {
-      if (ctx?.antes) qc.setQueryData(chave, ctx.antes)
+      if (ctx) qc.setQueryData(chave, ctx.antes)
       aoErro(e)
     },
     onSettled: aoFinal,
@@ -877,15 +939,17 @@ export function useOpcaoTroca(pedidoId: string) {
 }
 
 // Marca a troca como enviada e leva o pedido para "Aguardando cliente".
-// O evento "troca_enviada" é gravado pelo banco (gatilho).
+// O evento "troca_enviada" é gravado pelo banco (gatilho). Reenviar não muda nada.
 export function useEnviarTroca() {
   return useAcao(
     async ({ troca }: { troca: Troca }) => {
-      const { error } = await supabase
-        .from("trocas")
-        .update({ status: "enviada", enviada_em: new Date().toISOString() })
-        .eq("id", troca.id)
-      if (error) throw error
+      if (troca.status === "rascunho") {
+        const { error } = await supabase
+          .from("trocas")
+          .update({ status: "enviada", enviada_em: new Date().toISOString() })
+          .eq("id", troca.id)
+        if (error) throw error
+      }
       const { data: ped } = await supabase.from("pedidos").select("status").eq("id", troca.pedido_id).single()
       if (ped?.status === "avisar_cliente") await atualizarPedido(troca.pedido_id, { status: "aguardando_cliente" })
     },
@@ -893,20 +957,21 @@ export function useEnviarTroca() {
   )
 }
 
-// Fecha a troca: a peça nova entra no pedido (opção) ou fica só o crédito; a antiga sai como removida.
-// Resolvidos os problemas, o pedido volta para "Separação" (igual a useAcoesItem).
+// Fecha UMA peça da troca: a peça nova entra no pedido (opção) ou fica só o crédito; a antiga sai como
+// removida. Com todas as peças fechadas, a troca fica concluída. Resolvidos os problemas, o pedido volta
+// para "Separação" (igual a useAcoesItem).
 export function useConcluirTroca() {
   return useAcao(
-    async ({ troca, tipo }: { troca: Troca; tipo: "opcao" | "credito" }) => {
+    async ({ troca, peca, tipo }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito" }) => {
       const pedidoId = troca.pedido_id
-      const { data: velho, error: e0 } = await supabase.from("pedido_itens").select("*").eq("id", troca.item_id).single()
+      const { data: velho, error: e0 } = await supabase.from("pedido_itens").select("*").eq("id", peca.item_id).single()
       if (e0) throw e0
       const item = velho as Item
-      const valor = troca.valores.find((v) => (tipo === "opcao" ? v.opcao_id === troca.escolha_opcao_id : v.tipo === "credito"))
+      const valor = peca.valores.find((v) => (tipo === "opcao" ? v.opcao_id === peca.escolha_opcao_id : v.tipo === "credito"))
       let observacao: string
       if (tipo === "opcao") {
-        const opcao = troca.opcoes.find((o) => o.id === troca.escolha_opcao_id)
-        if (!opcao) throw new Error("Escolha uma opção antes de fazer a troca")
+        const opcao = peca.opcoes.find((o) => o.id === peca.escolha_opcao_id)
+        if (!opcao) throw new Error("A cliente ainda não escolheu uma opção para esta peça")
         const { data: ult } = await supabase
           .from("pedido_itens")
           .select("ordem")
@@ -931,18 +996,23 @@ export function useConcluirTroca() {
       } else {
         observacao = `crédito R$ ${(valor?.valor_pago_item ?? 0).toFixed(2).replace(".", ",")}`
       }
-      const { error: e1 } = await supabase.from("pedido_itens").update({ status: "removido", observacao }).eq("id", troca.item_id)
+      const { error: e1 } = await supabase.from("pedido_itens").update({ status: "removido", observacao }).eq("id", peca.item_id)
       if (e1) throw e1
+      const agora = new Date().toISOString()
       const { error: e2 } = await supabase
-        .from("trocas")
+        .from("troca_pecas")
         .update({
-          status: "concluida",
           escolha_tipo: tipo,
-          concluida_em: new Date().toISOString(),
+          escolha_opcao_id: tipo === "opcao" ? peca.escolha_opcao_id : null,
+          concluida_em: agora,
           resultado_diferenca: valor?.diferenca ?? null,
         })
-        .eq("id", troca.id)
+        .eq("id", peca.id)
       if (e2) throw e2
+      if (troca.pecas.every((p) => p.id === peca.id || p.concluida_em)) {
+        const { error } = await supabase.from("trocas").update({ status: "concluida", concluida_em: agora }).eq("id", troca.id)
+        if (error) throw error
+      }
 
       const [{ data: vivos }, { data: ped }] = await Promise.all([
         supabase.from("pedido_itens").select("status").eq("pedido_id", pedidoId).neq("status", "removido"),
@@ -966,20 +1036,21 @@ export function useTrocaPublica(token: string | undefined) {
     retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("troca_publica", { p_token: token })
-      if (error) return null
+      if (error) throw error
       return (data as TrocaPublica | null) ?? null
     },
   })
 }
 
+// A cliente escolhe por peça; cada toque já grava (o banco marca "respondida" quando todas têm escolha).
 export function useEscolherTroca(token: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ tipo, opcaoId }: { tipo: "opcao" | "credito" | "whatsapp"; opcaoId?: string | null }) => {
-      const { error } = await supabase.rpc("troca_escolher", { p_token: token, p_tipo: tipo, p_opcao: opcaoId ?? null })
+    mutationFn: async ({ itemId, tipo, opcaoId }: { itemId: string; tipo: EscolhaTroca; opcaoId?: string | null }) => {
+      const { error } = await supabase.rpc("troca_escolher", { p_token: token, p_item: itemId, p_tipo: tipo, p_opcao: opcaoId ?? null })
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["troca-publica", token] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["troca-publica", token] }),
     onError: (e) => toast.error(msg(e)),
   })
 }

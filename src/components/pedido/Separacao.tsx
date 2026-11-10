@@ -7,14 +7,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { useConcluirTroca, useMudarStatus, useTrocas, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { useConcluirTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { etapaCompleta } from "@/lib/etapa"
 import { fotoTamanho } from "@/lib/foto"
 import { linkWhatsApp, reais } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
-import { textoSituacao, trocaAtiva, valorDaOpcao, valorPagoItem } from "@/lib/trocaTexto"
-import type { Item, Troca } from "@/lib/tipos"
+import { textoSituacao, valorDaOpcao, valorPagoPeca } from "@/lib/trocaTexto"
+import type { Item, Troca, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import LinhaPeca from "./LinhaPeca"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
@@ -22,24 +22,24 @@ import TrocaDialog from "./TrocaDialog"
 
 const COR_TITULO = { avisar_cliente: "text-destructive", aguardando_cliente: "text-amber-700 dark:text-amber-300" } as const
 
-// Estado da troca de uma peça em falta: montar, aguardar a cliente ou fechar a escolha dela.
-function EstadoTroca({ troca, aoAbrir, wa }: { troca: Troca | undefined; aoAbrir: () => void; wa: string | null }) {
+// Estado da troca de UMA peça em falta: aguardar a cliente ou fechar a escolha dela.
+function EstadoTroca({ troca, peca, aoAbrir, wa }: { troca: Troca | undefined; peca: TrocaPeca | undefined; aoAbrir: () => void; wa: string | null }) {
   const concluir = useConcluirTroca()
   // Sem troca ou em rascunho: o botão "Montar troca" fica na linha de ações do cartão.
-  if (!troca || troca.status === "rascunho") return null
-  if (troca.status === "enviada")
+  if (!troca || !peca || troca.status === "rascunho") return null
+  if (!peca.escolha_tipo)
     return (
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span>Troca enviada há {tempoDesde(troca.enviada_em ?? troca.created_at)} · aguardando escolha</span>
+        <span>Troca enviada há {tempoDesde(troca.enviada_em ?? troca.created_at)} · aguardando escolha desta peça</span>
         <Button variant="ghost" size="sm" className="h-8" onClick={aoAbrir}>
           <Send /> Reenviar
         </Button>
       </div>
     )
 
-  const opcao = troca.escolha_tipo === "opcao" ? troca.opcoes.find((o) => o.id === troca.escolha_opcao_id) : undefined
-  const pago = valorPagoItem(troca)
-  const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, tipo })
+  const opcao = peca.escolha_tipo === "opcao" ? peca.opcoes.find((o) => o.id === peca.escolha_opcao_id) : undefined
+  const pago = valorPagoPeca(peca)
+  const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, peca, tipo })
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-emerald-500/10 p-2">
       {opcao ? (
@@ -49,31 +49,31 @@ function EstadoTroca({ troca, aoAbrir, wa }: { troca: Troca | undefined; aoAbrir
             <div className="font-medium text-emerald-700 dark:text-emerald-400">Cliente escolheu</div>
             <div className="truncate font-mono font-semibold">{opcao.sku ?? "sem código"}</div>
             <div className="truncate text-muted-foreground">
-              {opcao.variante ?? opcao.nome} · {textoSituacao(valorDaOpcao(troca, opcao))}
+              {opcao.variante ?? opcao.nome} · {textoSituacao(valorDaOpcao(peca, opcao))}
             </div>
           </div>
         </div>
-      ) : troca.escolha_tipo === "credito" ? (
+      ) : peca.escolha_tipo === "credito" ? (
         <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Prefere crédito de {reais(pago)}</div>
       ) : (
         <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Quer falar no WhatsApp</div>
       )}
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-        {troca.escolha_tipo === "opcao" && (
-          <Button className="h-11 sm:h-8" disabled={concluir.isPending} onClick={() => fazer("opcao")}>
+        {peca.escolha_tipo === "opcao" && (
+          <Button className="h-10 text-sm" disabled={concluir.isPending} onClick={() => fazer("opcao")}>
             <Check /> Fazer a troca
           </Button>
         )}
-        <Button variant={troca.escolha_tipo === "credito" ? "default" : "outline"} className="h-11 sm:h-8" disabled={concluir.isPending} onClick={() => fazer("credito")}>
+        <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} className="h-10 text-sm" disabled={concluir.isPending} onClick={() => fazer("credito")}>
           <HandCoins /> Dar crédito
         </Button>
-        {troca.escolha_tipo === "whatsapp" && (
+        {peca.escolha_tipo === "whatsapp" && (
           <>
-            <Button variant="outline" className="h-11 sm:h-8" onClick={aoAbrir}>
+            <Button variant="secondary" className="h-10 text-sm" onClick={aoAbrir}>
               <ArrowLeftRight /> Editar opções
             </Button>
             {wa && (
-              <Button variant="outline" className="h-11 sm:h-8" asChild>
+              <Button variant="secondary" className="h-10 text-sm" asChild>
                 <a href={wa} target="_blank" rel="noreferrer">
                   <MessageCircle /> WhatsApp da cliente
                 </a>
@@ -105,22 +105,19 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const mudarStatus = useMudarStatus()
   const avisar = pedido.status === "avisar_cliente"
   const aguardando = pedido.status === "aguardando_cliente"
-  const trocas = useTrocas(pedido.id)
-  const [trocando, setTrocando] = useState<Item | null>(null)
-  const trocaDe = (i: Item) => trocas.data?.find((t) => t.item_id === i.id && trocaAtiva(t))
-  // Troca a montar: a primeira peça em falta que ainda não foi enviada nem respondida.
-  const paraMontar = problemas.find((i) => {
-    if (i.status !== "falta") return false
-    const t = trocaDe(i)
-    return !t || t.status === "rascunho"
-  })
-  const comTroca = problemas.map((i) => ({ i, t: trocaDe(i) })).find((x) => x.t)
+  const trocaQ = useTroca(pedido.id)
+  const troca = trocaQ.data ?? undefined
+  const [trocando, setTrocando] = useState<string | null>(null)
+  const pecaDe = (i: Item) => troca?.pecas.find((p) => p.item_id === i.id && !p.concluida_em)
+  // "Montar troca" leva TODAS as peças em falta do pedido (uma troca, um link).
+  const faltas = problemas.filter((i) => i.status === "falta")
+  const emRascunho = !troca || troca.status === "rascunho"
 
   // Mensagem para a cliente: com troca montada leva o link; sem troca, aviso simples.
   const textoCliente = () => {
-    if (!comTroca?.t) return mensagemFaltaSimples(pedido, itens)
-    const pago = valorPagoItem(comTroca.t)
-    return mensagemTroca(pedido, comTroca.i, `${window.location.origin}/t/${comTroca.t.token}`, pago != null ? reais(pago) : null)
+    const naTroca = faltas.filter((i) => pecaDe(i))
+    if (!troca || troca.status === "rascunho" || naTroca.length === 0) return mensagemFaltaSimples(pedido, itens)
+    return mensagemTroca(pedido, naTroca, `${window.location.origin}/t/${troca.token}`, troca.resumo ? reais(troca.resumo.total_pago) : null)
   }
 
   const marcar = (item: Item, status: Item["status"], observacao?: string | null) =>
@@ -172,23 +169,19 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     ]}
                   />
                 </LinhaPeca>
-                {i.status === "falta" && <EstadoTroca troca={trocaDe(i)} aoAbrir={() => setTrocando(i)} wa={wa} />}
+                {i.status === "falta" && <EstadoTroca troca={troca} peca={pecaDe(i)} aoAbrir={() => setTrocando(i.id)} wa={wa} />}
               </div>
             ))}
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              {paraMontar && (
-                <Button
-                  variant={trocas.data?.some((t) => t.item_id === paraMontar.id && trocaAtiva(t)) ? "outline" : "default"}
-                  className="h-11 sm:h-8"
-                  onClick={() => setTrocando(paraMontar)}
-                >
-                  <ArrowLeftRight /> {trocas.data?.some((t) => t.item_id === paraMontar.id && trocaAtiva(t)) ? "Continuar troca" : "Montar troca"}
+              {faltas.length > 0 && (
+                <Button variant={emRascunho ? "default" : "secondary"} className="h-10 text-sm" onClick={() => setTrocando(faltas[0].id)}>
+                  <ArrowLeftRight /> {emRascunho ? (troca ? "Continuar troca" : "Montar troca") : "Editar troca"}
                 </Button>
               )}
               {avisar && (
                 <Button
-                  variant={paraMontar ? "outline" : "default"}
-                  className="h-11 sm:h-8"
+                  variant={faltas.length > 0 ? "secondary" : "default"}
+                  className="h-10 text-sm"
                   onClick={() => {
                     mudarStatus.mutate({ pedidoId: pedido.id, para: "aguardando_cliente", silencioso: true })
                     toast.success("Aguardando resposta da cliente")
@@ -198,8 +191,8 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                 </Button>
               )}
               <Button
-                variant="outline"
-                className="h-11 sm:h-8"
+                variant="secondary"
+                className="h-10 text-sm"
                 onClick={() =>
                   navigator.clipboard
                     .writeText(textoCliente())
@@ -209,7 +202,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                 <Copy /> Copiar mensagem
               </Button>
               {wa && (
-                <Button variant="outline" className="h-11 sm:h-8" asChild>
+                <Button variant="secondary" className="h-10 text-sm" asChild>
                   <a href={wa} target="_blank" rel="noreferrer">
                     <MessageCircle /> WhatsApp
                   </a>
@@ -228,7 +221,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           <GradePecas>
             {pendentes.map((i) => (
               <TilePeca key={i.id} item={i}>
-                <Button className="h-11 flex-1 text-base" onClick={() => acao(i, { status: "encontrado" })}>
+                <Button variant="secondary" className="h-10 flex-1 text-sm" onClick={() => acao(i, { status: "encontrado" })}>
                   <Check /> Achei
                 </Button>
                 <MenuPeca
@@ -268,15 +261,15 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         </Collapsible>
       )}
 
-      {trocando && (
+      {trocando && faltas.length > 0 && (
         <TrocaDialog
-          key={trocando.id}
           aberto
           aoMudar={(a) => {
             if (!a) setTrocando(null)
           }}
           pedido={pedido}
-          item={trocando}
+          itens={faltas}
+          inicial={trocando}
         />
       )}
 

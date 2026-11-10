@@ -1,5 +1,5 @@
 import { reais } from "@/lib/formato"
-import type { Troca, TrocaOpcao, TrocaValor } from "@/lib/tipos"
+import type { TrocaOpcao, TrocaPeca, TrocaValor } from "@/lib/tipos"
 
 // Situação financeira de uma opção. Os valores vêm prontos da view v_troca_valores.
 export function textoSituacao(v: TrocaValor | undefined): string {
@@ -9,8 +9,7 @@ export function textoSituacao(v: TrocaValor | undefined): string {
   return "sem diferença"
 }
 
-export const valorDaOpcao = (troca: Troca, opcao: TrocaOpcao) => troca.valores.find((v) => v.opcao_id === opcao.id)
+export const valorDaOpcao = (peca: TrocaPeca, opcao: TrocaOpcao) => peca.valores.find((v) => v.opcao_id === opcao.id)
 
-export const valorPagoItem = (troca: Troca) => troca.valores.find((v) => v.tipo === "credito")?.valor_pago_item
-
-export const trocaAtiva = (t: Troca) => t.status === "rascunho" || t.status === "enviada" || t.status === "respondida"
+// Quanto a cliente pagou naquela peça (linha "credito" da view).
+export const valorPagoPeca = (peca: TrocaPeca) => peca.valores.find((v) => v.tipo === "credito")?.valor_pago_item

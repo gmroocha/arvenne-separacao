@@ -25,7 +25,7 @@ export default function Romaneio() {
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 px-4 pb-12 pt-3">
-      <header className="pt-2 text-center text-lg font-semibold tracking-wide">Arvenne</header>
+      <header className="pt-2 text-center font-heading text-lg font-semibold tracking-wide">Arvenne</header>
       {isLoading ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-8 w-40" />

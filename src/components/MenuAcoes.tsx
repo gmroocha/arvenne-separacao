@@ -17,7 +17,7 @@ export type ItemAcao = {
   desabilitado?: boolean
   atual?: boolean // etapa em que o pedido já está: marcada com check e sem ação
 }
-export type GrupoAcoes = { titulo?: string; itens: ItemAcao[] }
+export type GrupoAcoes = { titulo?: string; itens: ItemAcao[]; estilo?: "ghost" | "outline" }
 
 type Props = {
   grupos: GrupoAcoes[]
@@ -51,7 +51,7 @@ export default function MenuAcoes({ grupos, gatilho, titulo = "Ações" }: Props
                     return (
                       <Button
                         key={it.rotulo}
-                        variant="ghost"
+                        variant={g.estilo ?? "outline"}
                         disabled={it.desabilitado || it.atual}
                         aria-current={it.atual ? "step" : undefined}
                         className={cn("h-11 w-full justify-start gap-3 text-base", it.destrutivo && "text-destructive hover:text-destructive")}

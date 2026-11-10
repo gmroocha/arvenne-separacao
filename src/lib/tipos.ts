@@ -19,6 +19,8 @@ export type Pedido = {
   cliente_telefone: string | null
   cliente_email: string | null
   cliente_cpf: string | null
+  cliente_razao_social: string | null
+  cliente_ie: string | null
   entrega_cep: string | null
   entrega_logradouro: string | null
   entrega_numero: string | null
@@ -159,6 +161,8 @@ export type Cliente = {
   id: string
   nome: string
   cpf: string | null
+  razao_social: string | null
+  ie: string | null
   email: string | null
   telefone: string | null
   cep: string | null
@@ -175,6 +179,7 @@ export type Cliente = {
 export type ClienteShopify = {
   shopify_customer_id: number
   nome: string | null
+  cpf: string | null // vem do último pedido da cliente (TAX_CREDENTIAL_BR)
   email: string | null
   telefone: string | null
   cep: string | null
@@ -217,7 +222,7 @@ export type SituacaoTroca = "paga_diferenca" | "credito" | "sem_diferenca"
 
 export type TrocaOpcao = {
   id: string
-  troca_id: string
+  troca_peca_id: string
   origem: "site" | "clube"
   shopify_variant_id: number | null
   peca_clube_id: string | null
@@ -230,8 +235,9 @@ export type TrocaOpcao = {
   ordem: number
 }
 
-// Uma linha de v_troca_valores: por opção (tipo "opcao") ou o crédito da troca (tipo "credito").
+// Uma linha de v_troca_valores: por opção (tipo "opcao") ou o crédito da peça (tipo "credito").
 export type TrocaValor = {
+  troca_peca_id: string
   troca_id: string
   pedido_id: string
   item_id: string
@@ -244,15 +250,13 @@ export type TrocaValor = {
   situacao: SituacaoTroca
 }
 
-export type Troca = {
+// Uma peça em falta dentro da troca, com as opções montadas e os valores prontos do banco.
+export type TrocaPeca = {
   id: string
-  pedido_id: string
+  troca_id: string
   item_id: string
-  token: string
-  status: StatusTroca
   escolha_tipo: EscolhaTroca | null
   escolha_opcao_id: string | null
-  enviada_em: string | null
   respondida_em: string | null
   concluida_em: string | null
   resultado_diferenca: number | null
@@ -260,6 +264,40 @@ export type Troca = {
   opcoes: TrocaOpcao[]
   valores: TrocaValor[]
 }
+
+// Linha de v_troca_resumo: diferenca_total positivo = a cliente paga, negativo = crédito.
+export type TrocaResumo = {
+  troca_id: string
+  pedido_id: string
+  pecas_total: number
+  pecas_respondidas: number
+  total_pago: number
+  diferenca_total: number
+}
+
+export type Troca = {
+  id: string
+  pedido_id: string
+  token: string
+  status: StatusTroca
+  enviada_em: string | null
+  respondida_em: string | null
+  concluida_em: string | null
+  created_at: string
+  pecas: TrocaPeca[]
+  resumo: TrocaResumo | null
+}
+
+export type ModoSugestao = "variantes" | "preco"
+
+export type FiltrosSugestao = {
+  categoria?: string | null
+  min?: number | null
+  max?: number | null
+  busca?: string | null
+}
+
+export type CategoriaCatalogo = { categoria: string; total: number }
 
 // Linha de sugerir_troca.
 export type Sugestao = {
@@ -274,14 +312,17 @@ export type Sugestao = {
 }
 
 // Resposta de troca_publica (página da cliente).
-export type TrocaPublica = {
-  numero: string
-  cliente: string | null
-  status: StatusTroca
+export type TrocaPublicaPeca = {
+  item_id: string
+  foto_url: string | null
+  nome: string
+  variante: string | null
+  sku: string | null
+  qtd: number
+  valor_pago: number
   escolha_tipo: EscolhaTroca | null
   escolha_opcao_id: string | null
-  valor_credito: number
-  item: { foto_url: string | null; nome: string; variante: string | null; sku: string | null; qtd: number; valor_pago: number }
+  concluida: boolean
   opcoes: {
     id: string
     foto_url: string | null
@@ -292,4 +333,12 @@ export type TrocaPublica = {
     diferenca: number
     situacao: SituacaoTroca
   }[]
+}
+
+export type TrocaPublica = {
+  numero: string
+  cliente: string | null
+  status: StatusTroca
+  resumo: { total_pago: number; diferenca: number; pecas_total: number; pecas_respondidas: number }
+  pecas: TrocaPublicaPeca[]
 }

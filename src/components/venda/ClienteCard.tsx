@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { Check, Search, UserPlus } from "lucide-react"
+import { Check, Search, TriangleAlert, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
 import { useBuscaClientes } from "@/lib/api"
-import { mascaraCep, mascaraCpf, mascaraTelefone } from "@/lib/formato"
+import { digitos, mascaraCep, mascaraDocumento, mascaraTelefone } from "@/lib/formato"
 import type { Cliente, ClienteShopify } from "@/lib/tipos"
 import { useDebounce } from "@/lib/useDebounce"
+import { buscarCnpj } from "@/lib/cnpj"
 import { buscarCep } from "@/lib/viacep"
 import type { FormVenda } from "./form"
 
@@ -27,7 +28,9 @@ function parcialDe(c: Achada): Partial<FormVenda> {
   return {
     cliente_id: local?.id ?? null,
     cliente_nome: c.nome ?? "",
-    cliente_cpf: local?.cpf ? mascaraCpf(local.cpf) : "",
+    cliente_cpf: c.cpf ? mascaraDocumento(c.cpf) : "",
+    cliente_razao_social: local?.razao_social ?? "",
+    cliente_ie: local?.ie ?? "",
     cliente_email: c.email ?? "",
     cliente_telefone: c.telefone ? mascaraTelefone(c.telefone) : "",
     entrega_cep: mascaraCep(c.cep ?? ""),
@@ -60,6 +63,8 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
   const [mostrar, setMostrar] = useState(Boolean(form.cliente_nome || form.cliente_telefone))
   const [salvando, setSalvando] = useState(false)
   const [buscandoCep, setBuscandoCep] = useState(false)
+  const [buscandoCnpj, setBuscandoCnpj] = useState(false)
+  const [situacao, setSituacao] = useState<string | null>(null)
   const termo = useDebounce(busca.trim(), 300)
   const { local, shopify, carregando } = useBuscaClientes(termo)
   const escolher = (c: Achada) => {
@@ -88,6 +93,37 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
       toast.error("Não foi possível consultar o CEP")
     } finally {
       setBuscandoCep(false)
+    }
+  }
+
+  // 14 dígitos = CNPJ: busca razão social, endereço e inscrição estadual (só o número sai do app).
+  async function mudarDocumento(valor: string) {
+    const doc = mascaraDocumento(valor)
+    aoMudar({ cliente_cpf: doc })
+    setSituacao(null)
+    if (digitos(doc).length !== 14) return
+    setBuscandoCnpj(true)
+    try {
+      const r = await buscarCnpj(doc)
+      if (!r) return void toast.error("CNPJ não encontrado")
+      setSituacao(r.situacao)
+      const e = r.endereco
+      aoMudar({
+        cliente_razao_social: r.razao_social,
+        ...(form.cliente_nome.trim() ? {} : { cliente_nome: r.razao_social }),
+        ...(r.ie ? { cliente_ie: r.ie } : {}),
+        entrega_cep: mascaraCep(e.cep),
+        entrega_logradouro: e.logradouro ?? "",
+        entrega_numero: e.numero ?? "",
+        entrega_complemento: e.complemento ?? "",
+        entrega_bairro: e.bairro ?? "",
+        entrega_cidade: e.cidade ?? "",
+        entrega_uf: e.uf ?? "",
+      })
+    } catch {
+      toast.error("Não foi possível consultar o CNPJ")
+    } finally {
+      setBuscandoCnpj(false)
     }
   }
 
@@ -164,15 +200,34 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="c-cpf">CPF</FieldLabel>
-                <Input
-                  id="c-cpf"
-                  inputMode="numeric"
-                  value={form.cliente_cpf}
-                  onChange={(e) => aoMudar({ cliente_cpf: mascaraCpf(e.target.value) })}
-                />
+                <FieldLabel htmlFor="c-cpf">CPF ou CNPJ</FieldLabel>
+                <InputGroup>
+                  <InputGroupInput id="c-cpf" inputMode="numeric" value={form.cliente_cpf} onChange={(e) => mudarDocumento(e.target.value)} />
+                  {buscandoCnpj && (
+                    <InputGroupAddon align="inline-end">
+                      <Spinner />
+                    </InputGroupAddon>
+                  )}
+                </InputGroup>
               </Field>
             </div>
+            {situacao && situacao !== "ATIVA" && (
+              <p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                <TriangleAlert className="size-4 shrink-0" /> Situação cadastral do CNPJ: {situacao.toLowerCase()}
+              </p>
+            )}
+            {(digitos(form.cliente_cpf).length === 14 || form.cliente_razao_social || form.cliente_ie) && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="c-razao">Razão social</FieldLabel>
+                  <Input id="c-razao" value={form.cliente_razao_social} onChange={(e) => aoMudar({ cliente_razao_social: e.target.value })} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="c-ie">Inscrição estadual (opcional)</FieldLabel>
+                  <Input id="c-ie" value={form.cliente_ie} onChange={(e) => aoMudar({ cliente_ie: e.target.value })} />
+                </Field>
+              </div>
+            )}
             <Field>
               <FieldLabel htmlFor="c-email">E-mail</FieldLabel>
               <Input id="c-email" type="email" value={form.cliente_email} onChange={(e) => aoMudar({ cliente_email: e.target.value })} />

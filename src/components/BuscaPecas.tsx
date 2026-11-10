@@ -61,7 +61,7 @@ function SemResultado() {
 // Resultado da busca: foto quadrada, código (SKU) e variante em destaque, nome pequeno.
 function Resultado({ item, noCarrinho, selecionada, aoTocar }: { item: NovoItem; noCarrinho: number; selecionada: boolean; aoTocar: () => void }) {
   return (
-    <Item variant="outline" size="sm" asChild className={cn(selecionada && "border-emerald-500 bg-emerald-500/5")}>
+    <Item variant="outline" size="sm" asChild className={cn((selecionada || noCarrinho > 0) && "border-transparent bg-primary/5 ring-1 ring-primary/30")}>
       <button type="button" className="min-w-0 text-left" aria-pressed={selecionada} onClick={aoTocar}>
         <Foto url={fotoTamanho(item.foto_url, 200)} alt={item.nome} className="size-16 shrink-0" />
         <ItemContent className="min-w-0 gap-0.5">
@@ -71,11 +71,11 @@ function Resultado({ item, noCarrinho, selecionada, aoTocar }: { item: NovoItem;
         </ItemContent>
         <ItemActions className="flex-col items-end gap-1 text-sm">
           {selecionada && (
-            <span className="flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+            <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Check className="size-3.5" />
             </span>
           )}
-          {noCarrinho > 0 && <Badge>×{noCarrinho}</Badge>}
+          {noCarrinho > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">×{noCarrinho}</Badge>}
           {item.preco != null && <span className="tabular-nums">{reais(item.preco)}</span>}
         </ItemActions>
       </button>

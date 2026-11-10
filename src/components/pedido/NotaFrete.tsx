@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import { toast } from "sonner"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert, Truck } from "lucide-react"
 import Foto from "@/components/Foto"
 import { Badge } from "@/components/ui/badge"
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { CamposPedido, PedidoDetalhe } from "@/lib/api"
+import { buscarCnpj } from "@/lib/cnpj"
 import { copiar } from "@/lib/copiar"
 import { digitos, lerNumero, mascaraCep, mascaraDocumento, numeroParaTexto, quando, reais } from "@/lib/formato"
 import { vivas } from "@/lib/etapa"
@@ -124,8 +126,36 @@ function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
     { chave: "entrega_cidade", rotulo: "Cidade" },
     { chave: "entrega_uf", rotulo: "UF" },
   ]
+  const [situacao, setSituacao] = useState<string | null>(null)
   const faltam = campos.filter((c) => !pedido[c.chave as keyof PedidoDetalhe])
-  if (faltam.length === 0) return null
+  // 14 dígitos no CPF/CNPJ = CNPJ: grava o documento, a razão social, a IE e o endereço que faltam.
+  async function salvarDocumento(v: string | null) {
+    const d = digitos(v)
+    if (!d) return
+    patch({ cliente_cpf: d })
+    if (d.length !== 14) return
+    try {
+      const r = await buscarCnpj(d)
+      if (!r) return void toast.error("CNPJ não encontrado")
+      setSituacao(r.situacao)
+      const e = r.endereco
+      const novo: CamposPedido = { cliente_razao_social: r.razao_social }
+      if (r.ie && !pedido.cliente_ie) novo.cliente_ie = r.ie
+      if (!pedido.cliente_nome) novo.cliente_nome = r.razao_social
+      if (!pedido.entrega_cep && e.cep) novo.entrega_cep = e.cep
+      if (!pedido.entrega_logradouro && e.logradouro) novo.entrega_logradouro = e.logradouro
+      if (!pedido.entrega_numero && e.numero) novo.entrega_numero = e.numero
+      if (!pedido.entrega_complemento && e.complemento) novo.entrega_complemento = e.complemento
+      if (!pedido.entrega_bairro && e.bairro) novo.entrega_bairro = e.bairro
+      if (!pedido.entrega_cidade && e.cidade) novo.entrega_cidade = e.cidade
+      if (!pedido.entrega_uf && e.uf) novo.entrega_uf = e.uf
+      patch(novo)
+    } catch {
+      toast.error("Não foi possível consultar o CNPJ")
+    }
+  }
+  const semIe = digitos(pedido.cliente_cpf).length === 14 && !pedido.cliente_ie
+  if (faltam.length === 0 && !semIe) return null
   return (
     <Card size="sm">
       <CardHeader>
@@ -141,9 +171,21 @@ function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
             rotulo={c.rotulo}
             valor={null}
             mascara={c.mascara}
-            aoSalvar={(v) => v && patch({ [c.chave]: c.chave === "entrega_uf" ? v.toUpperCase() : (c.limpar ? c.limpar(v) : v) } as CamposPedido)}
+            aoSalvar={(v) =>
+              c.chave === "cliente_cpf"
+                ? void salvarDocumento(v)
+                : v && patch({ [c.chave]: c.chave === "entrega_uf" ? v.toUpperCase() : (c.limpar ? c.limpar(v) : v) } as CamposPedido)
+            }
           />
         ))}
+        {semIe && (
+          <CampoSalvo id="falta-ie" rotulo="Inscrição estadual (opcional)" valor={null} aoSalvar={(v) => v && patch({ cliente_ie: v })} />
+        )}
+        {situacao && situacao !== "ATIVA" && (
+          <p className="flex items-center gap-2 text-sm text-amber-700 sm:col-span-2 dark:text-amber-400">
+            <TriangleAlert className="size-4 shrink-0" /> Situação cadastral do CNPJ: {situacao.toLowerCase()}
+          </p>
+        )}
       </CardContent>
     </Card>
   )
@@ -164,8 +206,9 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
   const agora = () => new Date().toISOString()
 
   const dadosNota: Dado[] = [
-    { rotulo: "Nome ou razão social", valor: pedido.cliente_nome },
+    { rotulo: "Nome ou razão social", valor: pedido.cliente_razao_social ?? pedido.cliente_nome },
     { rotulo: "CPF/CNPJ", valor: cpf },
+    ...(pedido.cliente_ie ? [{ rotulo: "Inscrição estadual", valor: pedido.cliente_ie }] : []),
     { rotulo: "Endereço", valor: endereco || null },
     { rotulo: "CEP", valor: cep },
     { rotulo: "Valor das peças", valor: reais(pedido.subtotal) },
@@ -179,7 +222,8 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
     { rotulo: "Valor das peças (com desconto)", valor: reais(pedido.valor_pecas_com_desconto) },
     { rotulo: "Tipo de envio", valor: pedido.frete_tipo },
     { rotulo: "CPF/CNPJ", valor: cpf },
-    { rotulo: "Nome ou razão social", valor: pedido.cliente_nome },
+    ...(pedido.cliente_ie ? [{ rotulo: "Inscrição estadual", valor: pedido.cliente_ie }] : []),
+    { rotulo: "Nome ou razão social", valor: pedido.cliente_razao_social ?? pedido.cliente_nome },
     { rotulo: "Rua", valor: pedido.entrega_logradouro },
     { rotulo: "Número", valor: pedido.entrega_numero },
     { rotulo: "Complemento", valor: pedido.entrega_complemento },

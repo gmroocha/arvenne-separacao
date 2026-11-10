@@ -89,7 +89,7 @@ export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar }: Props) 
     else fechar()
   }
 
-  const abas = aberto && <BuscaPecas aoEscolher={tocar} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} />
+  const abas = aberto && <BuscaPecas aoEscolher={tocar} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} selecionada={(item) => carrinho.some((x) => igual(x, item))} />
   const lista = <ListaCarrinho carrinho={carrinho} aoMudarQtd={mudarQtd} aoRemover={remover} />
 
   return (
@@ -114,14 +114,14 @@ export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar }: Props) 
             </Collapsible>
           </div>
         ) : (
-          <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-6">
-            <div>{abas}</div>
-            <div className="flex flex-col gap-3 border-l pl-6">
+          <div className="grid h-[min(72svh,680px)] grid-cols-[minmax(0,1fr)_320px] gap-4">
+            <div className="min-h-0 overflow-y-auto pr-1">{abas}</div>
+            <div className="flex min-h-0 flex-col gap-3 rounded-xl bg-muted/50 p-3">
               <h3 className="text-sm font-semibold">
                 Carrinho {pecas > 0 && <span className="font-normal text-muted-foreground">({rotuloPecas})</span>}
               </h3>
-              <div className="max-h-[50svh] overflow-y-auto">{lista}</div>
-              <Button disabled={!carrinho.length} onClick={salvar}>
+              <div className="min-h-0 flex-1 overflow-y-auto">{lista}</div>
+              <Button className="h-10" disabled={!carrinho.length} onClick={salvar}>
                 Salvar {rotuloPecas}
               </Button>
             </div>

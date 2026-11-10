@@ -1,4 +1,4 @@
-import { lerNumero, mascaraCep, mascaraCpf, mascaraTelefone, numeroParaTexto } from "@/lib/formato"
+import { lerNumero, mascaraCep, mascaraDocumento, mascaraTelefone, numeroParaTexto } from "@/lib/formato"
 import type { CamposPedido } from "@/lib/api"
 import type { DescontoTipo, FreteTipo, FretePagoPor, Pedido } from "@/lib/tipos"
 
@@ -7,6 +7,8 @@ export type FormVenda = {
   cliente_id: string | null
   cliente_nome: string
   cliente_cpf: string
+  cliente_razao_social: string
+  cliente_ie: string
   cliente_email: string
   cliente_telefone: string
   entrega_cep: string
@@ -29,7 +31,9 @@ export function formDe(p: Pedido): FormVenda {
   return {
     cliente_id: p.cliente_id,
     cliente_nome: p.cliente_nome ?? "",
-    cliente_cpf: mascaraCpf(p.cliente_cpf ?? ""),
+    cliente_cpf: mascaraDocumento(p.cliente_cpf ?? ""),
+    cliente_razao_social: p.cliente_razao_social ?? "",
+    cliente_ie: p.cliente_ie ?? "",
     cliente_email: p.cliente_email ?? "",
     cliente_telefone: p.cliente_telefone ?? "",
     entrega_cep: mascaraCep(p.entrega_cep ?? ""),
@@ -57,6 +61,8 @@ export function camposDe(f: FormVenda): CamposPedido {
     cliente_id: f.cliente_id,
     cliente_nome: t(f.cliente_nome),
     cliente_cpf: t(f.cliente_cpf),
+    cliente_razao_social: t(f.cliente_razao_social),
+    cliente_ie: t(f.cliente_ie),
     cliente_email: t(f.cliente_email),
     cliente_telefone: t(mascaraTelefone(f.cliente_telefone)),
     entrega_cep: t(f.entrega_cep),

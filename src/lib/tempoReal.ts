@@ -19,7 +19,7 @@ export function useTempoReal() {
         qc.invalidateQueries({ queryKey: ["pedidos"] })
         qc.invalidateQueries({ queryKey: ["pedido"] })
         qc.invalidateQueries({ queryKey: ["repetidas"] })
-        qc.invalidateQueries({ queryKey: ["trocas"] })
+        qc.invalidateQueries({ queryKey: ["troca"] })
       }, 800)
     }
     const canal = supabase
@@ -27,6 +27,8 @@ export function useTempoReal() {
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, atualizar)
       .on("postgres_changes", { event: "*", schema: "public", table: "pedido_itens" }, atualizar)
       .on("postgres_changes", { event: "*", schema: "public", table: "trocas" }, atualizar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "troca_pecas" }, atualizar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "troca_opcoes" }, atualizar)
       .subscribe()
     return () => {
       clearTimeout(espera)

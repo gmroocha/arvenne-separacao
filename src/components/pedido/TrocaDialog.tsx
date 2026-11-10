@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Check, ChevronUp, Copy, MessageCircle, RefreshCw, Search, TriangleAlert, X } from "lucide-react"
+import { Check, ChevronUp, Copy, MessageCircle, PackageSearch, RefreshCw, TriangleAlert, X } from "lucide-react"
 import { BuscaPecas } from "@/components/BuscaPecas"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
@@ -8,21 +8,28 @@ import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTrocas, type PedidoDetalhe } from "@/lib/api"
+import { useCategorias, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, type PedidoDetalhe } from "@/lib/api"
 import { mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp, reais } from "@/lib/formato"
 import { fotoTamanho } from "@/lib/foto"
-import { textoSituacao, trocaAtiva, valorDaOpcao, valorPagoItem } from "@/lib/trocaTexto"
-import type { Item, NovoItem, Sugestao, Troca, TrocaOpcao } from "@/lib/tipos"
+import { textoSituacao, valorDaOpcao, valorPagoPeca } from "@/lib/trocaTexto"
+import type { Item, ModoSugestao, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
 type Props = {
   aberto: boolean
   aoMudar: (aberto: boolean) => void
   pedido: PedidoDetalhe
-  item: Item
+  // Todas as peças em falta do pedido (uma troca, um link).
+  itens: Item[]
+  // Peça que abre selecionada.
+  inicial?: string
 }
+
+type Aba = "variantes" | "preco" | "buscar"
+type Faixa = "20" | "40" | "qualquer"
 
 const opcaoIgual = (o: TrocaOpcao, n: NovoItem) =>
   o.shopify_variant_id != null ? o.shopify_variant_id === n.shopify_variant_id : o.peca_clube_id != null && o.peca_clube_id === n.peca_clube_id
@@ -40,136 +47,177 @@ const doSugestao = (s: Sugestao): NovoItem => ({
   preco: s.preco,
 })
 
+// Primeira palavra do nome (Anel, Brinco, Colar...), igual ao filtro do banco.
+const categoriaDe = (nome: string) => nome.trim().split(/\s+/)[0]?.toUpperCase() ?? ""
+
 function GradeSugestoes({
-  titulo,
   sugestoes,
   selecionada,
   aoTocar,
 }: {
-  titulo: string
   sugestoes: Sugestao[]
   selecionada: (n: NovoItem) => boolean
   aoTocar: (n: NovoItem) => void
 }) {
-  if (sugestoes.length === 0) return null
   return (
-    <section className="flex flex-col gap-2" aria-label={titulo}>
-      <h3 className="text-sm font-semibold">{titulo}</h3>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {sugestoes.map((s) => {
-          const novo = doSugestao(s)
-          const marcada = selecionada(novo)
-          return (
-            <button
-              key={s.variant_id}
-              type="button"
-              aria-pressed={marcada}
-              onClick={() => aoTocar(novo)}
-              className={cn(
-                "flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-2 text-left transition-colors",
-                marcada && "border-emerald-500 bg-emerald-500/5",
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {sugestoes.map((s) => {
+        const novo = doSugestao(s)
+        const marcada = selecionada(novo)
+        return (
+          <button
+            key={s.variant_id}
+            type="button"
+            aria-pressed={marcada}
+            onClick={() => aoTocar(novo)}
+            className={cn(
+              "flex min-w-0 flex-col gap-1.5 rounded-xl p-1.5 text-left ring-1 ring-border transition-colors hover:bg-muted/50",
+              marcada && "bg-primary/5 ring-2 ring-primary",
+            )}
+          >
+            <div className="relative">
+              <Foto url={fotoTamanho(s.foto_url, 300)} alt={s.produto} className="w-full" />
+              {marcada && (
+                <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="size-4" />
+                </span>
               )}
-            >
-              <div className="relative">
-                <Foto url={fotoTamanho(s.foto_url, 300)} alt={s.produto} className="w-full" />
-                {marcada && (
-                  <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-emerald-600 text-white">
-                    <Check className="size-4" />
-                  </span>
-                )}
-              </div>
-              <div className="flex min-w-0 flex-col gap-0.5 px-0.5">
-                <span className="font-mono text-base leading-tight font-semibold break-all">{s.sku ?? "sem código"}</span>
-                <span className="text-sm leading-tight font-medium">{s.variante ?? "sem variante"}</span>
-                {s.preco != null && <span className="text-sm text-muted-foreground tabular-nums">{reais(s.preco)}</span>}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </section>
-  )
-}
-
-function ListaOpcoes({ troca, aoRemover }: { troca: Troca | undefined; aoRemover: (o: TrocaOpcao) => void }) {
-  const opcoes = troca?.opcoes ?? []
-  if (!troca || opcoes.length === 0)
-    return <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Toque numa peça para oferecer à cliente.</p>
-  return (
-    <div className="flex flex-col gap-2">
-      {opcoes.map((o) => (
-        <div key={o.id} className="flex min-w-0 items-center gap-2 rounded-lg border bg-card p-2">
-          <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} className="size-12 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate font-mono text-sm font-semibold">{o.sku ?? "sem código"}</div>
-            <div className="truncate text-xs text-muted-foreground">{o.variante ?? o.nome}</div>
-            <div className="text-xs font-medium">{textoSituacao(valorDaOpcao(troca, o))}</div>
-          </div>
-          <Button variant="ghost" size="icon" aria-label="Tirar opção" onClick={() => aoRemover(o)}>
-            <X />
-          </Button>
-        </div>
-      ))}
+            </div>
+            <div className="flex min-w-0 flex-col gap-0.5 px-0.5 pb-0.5">
+              <span className="font-mono text-sm leading-tight font-semibold break-all">{s.sku ?? "sem código"}</span>
+              <span className="text-sm leading-tight">{s.variante ?? "sem variante"}</span>
+              {s.preco != null && <span className="text-sm text-muted-foreground tabular-nums">{reais(s.preco)}</span>}
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }
 
-// Troca de peça em falta: a equipe escolhe as opções e manda o link para a cliente.
-export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
+// Opções já escolhidas, agrupadas por peça em falta.
+function PainelOpcoes({ itens, troca, aoRemover }: { itens: Item[]; troca: Troca | undefined; aoRemover: (o: TrocaOpcao) => void }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      {itens.map((item) => {
+        const peca = troca?.pecas.find((p) => p.item_id === item.id)
+        const opcoes = peca?.opcoes ?? []
+        return (
+          <section key={item.id} className="flex min-w-0 flex-col gap-2" aria-label={item.sku ?? item.nome}>
+            <div className="flex min-w-0 items-baseline gap-2">
+              <h4 className="truncate font-mono text-sm font-semibold">{item.sku ?? "sem código"}</h4>
+              <span className="truncate text-xs text-muted-foreground">{item.variante ?? item.nome}</span>
+            </div>
+            {opcoes.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">Nenhuma opção ainda.</p>
+            ) : (
+              opcoes.map((o) => (
+                <div key={o.id} className="flex min-w-0 items-center gap-2 rounded-lg p-1.5 ring-1 ring-border">
+                  <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} className="size-12 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-mono text-sm font-semibold">{o.sku ?? "sem código"}</div>
+                    <div className="truncate text-xs text-muted-foreground">{o.variante ?? o.nome}</div>
+                    <div className="truncate text-xs font-medium">{peca ? textoSituacao(valorDaOpcao(peca, o)) : ""}</div>
+                  </div>
+                  <Button variant="ghost" size="icon" aria-label="Tirar opção" onClick={() => aoRemover(o)}>
+                    <X />
+                  </Button>
+                </div>
+              ))
+            )}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+// Troca de peças em falta: a equipe monta as opções de cada peça e manda UM link para a cliente.
+export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }: Props) {
   const celular = useIsMobile()
-  const trocas = useTrocas(pedido.id)
-  const troca = trocas.data?.find((t) => t.item_id === item.id && trocaAtiva(t))
-  const sugestoes = useSugestoes(aberto ? item.id : undefined)
+  const trocaQ = useTroca(pedido.id)
+  const troca = trocaQ.data ?? undefined
   const criar = useCriarTroca()
   const { adicionar, remover } = useOpcaoTroca(pedido.id)
   const enviar = useEnviarTroca()
-  const criou = useRef<string | null>(null)
+  const categorias = useCategorias(aberto)
+
+  const [itemId, setItemId] = useState(inicial ?? itens[0]?.id ?? "")
+  const [aba, setAba] = useState<Aba>("variantes")
+  const [catEscolhida, setCatEscolhida] = useState<Record<string, string>>({}) // "" = todas
+  const [faixa, setFaixa] = useState<Faixa>("20")
   const [verOpcoes, setVerOpcoes] = useState(false)
-  const [buscando, setBuscando] = useState(false)
   const [enviando, setEnviando] = useState(false)
 
-  // Item sem troca: cria o rascunho uma única vez ao abrir.
+  // Peças em falta que fazem parte da troca (as já fechadas saem).
+  const ativos = itens.filter((i) => {
+    const p = troca?.pecas.find((x) => x.item_id === i.id)
+    return !p || !p.concluida_em
+  })
+  const item = ativos.find((i) => i.id === itemId) ?? ativos[0]
+  const peca: TrocaPeca | undefined = item ? troca?.pecas.find((p) => p.item_id === item.id) : undefined
+
+  // Garante a troca e uma peça para cada item em falta, uma vez por conjunto de itens.
+  const chaveItens = itens.map((i) => i.id).sort().join(",")
+  const criou = useRef<string | null>(null)
   const { mutate: criarTroca, isPending: criando } = criar
+  const faltaPeca = !!troca && itens.some((i) => !troca.pecas.some((p) => p.item_id === i.id))
   useEffect(() => {
     if (!aberto) {
       criou.current = null
       return
     }
-    if (!trocas.isSuccess || troca || criando || criou.current === item.id) return
-    criou.current = item.id
-    criarTroca({ pedidoId: pedido.id, itemId: item.id })
-  }, [aberto, trocas.isSuccess, troca, criando, criarTroca, item.id, pedido.id])
+    if (!trocaQ.isSuccess || criando || criou.current === chaveItens) return
+    if (troca && !faltaPeca) return
+    criou.current = chaveItens
+    criarTroca({ pedidoId: pedido.id, itemIds: itens.map((i) => i.id) })
+  }, [aberto, trocaQ.isSuccess, troca, faltaPeca, criando, criarTroca, chaveItens, pedido.id, itens])
 
-  // Estados da troca: carregando, erro e pronta (nunca um carregando eterno).
-  const erroTroca = trocas.isError || criar.isError
-  const carregandoTroca = !troca && !erroTroca
+  const erroTroca = trocaQ.isError || criar.isError
+  const pronta = !!troca && !faltaPeca
   function tentarDeNovo() {
-    if (trocas.isError) {
-      trocas.refetch()
+    if (trocaQ.isError) {
+      trocaQ.refetch()
       return
     }
-    criou.current = item.id
-    criarTroca({ pedidoId: pedido.id, itemId: item.id })
+    criou.current = chaveItens
+    criarTroca({ pedidoId: pedido.id, itemIds: itens.map((i) => i.id) })
   }
 
-  const opcoes = troca?.opcoes ?? []
+  // Filtros da aba "Preço parecido": categoria (padrão = a da peça) e faixa em torno do preço da peça.
+  const categoriaPadrao = item ? categoriaDe(item.nome) : ""
+  const listaCats = categorias.data ?? []
+  const categoria = item ? (catEscolhida[item.id] ?? (listaCats.some((c) => c.categoria === categoriaPadrao) ? categoriaPadrao : "")) : ""
+  const pct = faixa === "20" ? 0.2 : faixa === "40" ? 0.4 : null
+  const preco = item?.preco ?? null
+  const min = faixa === "qualquer" ? 0 : preco != null ? Math.max(0, preco * (1 - (pct ?? 0))) : null
+  const max = faixa === "qualquer" ? 99_999_999 : preco != null ? preco * (1 + (pct ?? 0)) : null
+  const sug = useSugestoes(
+    aberto && pronta && aba !== "buscar" ? item?.id : undefined,
+    aba === "preco" ? "preco" : ("variantes" as ModoSugestao),
+    aba === "preco" ? { categoria: categoria || null, min, max } : {},
+  )
+
+  const opcoes = peca?.opcoes ?? []
   const selecionada = (n: NovoItem) => opcoes.some((o) => opcaoIgual(o, n))
-  const pago = troca ? valorPagoItem(troca) : undefined
 
   function alternar(n: NovoItem, motivo: TrocaOpcao["motivo"]) {
-    if (!troca) return
+    if (!peca) return
     const existente = opcoes.find((o) => opcaoIgual(o, n))
     if (existente) {
       if (!existente.id.startsWith("tmp-")) remover.mutate({ opcaoId: existente.id })
-    } else adicionar.mutate({ trocaId: troca.id, opcao: n, motivo })
+    } else adicionar.mutate({ trocaPecaId: peca.id, opcao: n, motivo })
   }
 
+  const pecasAtivas = ativos.map((i) => troca?.pecas.find((p) => p.item_id === i.id))
+  const todasComOpcao = pronta && pecasAtivas.length > 0 && pecasAtivas.every((p) => p && p.opcoes.length > 0 && !p.opcoes.some((o) => o.id.startsWith("tmp-")))
+  const faltamOpcao = ativos.filter((i) => (troca?.pecas.find((p) => p.item_id === i.id)?.opcoes.length ?? 0) === 0)
+  const bloqueado = !todasComOpcao || enviando
+
   const link = troca ? `${window.location.origin}/t/${troca.token}` : ""
-  const credito = pago != null ? reais(pago) : null
-  const texto = troca ? mensagemTroca(pedido, item, link, credito) : ""
+  const credito = troca?.resumo ? reais(troca.resumo.total_pago) : null
+  const texto = troca ? mensagemTroca(pedido, ativos, link, credito) : ""
   const wa = linkWhatsApp(pedido.cliente_telefone, texto)
-  const semOpcao = opcoes.length === 0 || opcoes.some((o) => o.id.startsWith("tmp-"))
-  const bloqueado = !troca || semOpcao || enviando
 
   async function copiar() {
     if (!troca) return
@@ -206,6 +254,18 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
     }
   }
 
+  const resumo = (
+    <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-sm">
+      <div className="font-medium">
+        {ativos.length} {ativos.length === 1 ? "peça em falta" : "peças em falta"}
+      </div>
+      {troca?.resumo && <div className="text-muted-foreground tabular-nums">Cliente pagou {reais(troca.resumo.total_pago)} nelas</div>}
+      {pronta && faltamOpcao.length > 0 && (
+        <div className="text-xs text-muted-foreground">Falta escolher opções de: {faltamOpcao.map((i) => i.sku ?? i.nome).join(", ")}</div>
+      )}
+    </div>
+  )
+
   const botoes = (empilhados: boolean) => (
     <div className={cn("flex gap-2", empilhados && "flex-col")}>
       <Button variant="outline" className="h-11 min-w-0 flex-1 sm:h-9" disabled={bloqueado} onClick={copiar}>
@@ -217,89 +277,189 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
     </div>
   )
 
-  const topo = (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl border bg-card p-2">
-      <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} ampliar className="size-20 shrink-0" />
+  const chips = ativos.length > 0 && (
+    <div className="flex min-w-0 gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Peças em falta">
+      {ativos.map((i) => {
+        const p = troca?.pecas.find((x) => x.item_id === i.id)
+        const atual = i.id === item?.id
+        const tem = (p?.opcoes.length ?? 0) > 0
+        return (
+          <button
+            key={i.id}
+            type="button"
+            role="tab"
+            aria-selected={atual}
+            onClick={() => setItemId(i.id)}
+            className={cn(
+              "flex shrink-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 text-left text-xs ring-1 ring-border transition-colors",
+              atual && "bg-primary/5 ring-2 ring-primary",
+            )}
+          >
+            <span className="relative">
+              <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-8" />
+              {tem && (
+                <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-emerald-600 text-white">
+                  <Check className="size-3" />
+                </span>
+              )}
+            </span>
+            <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  const cabecalho = item && (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl p-2 ring-1 ring-border">
+      <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} ampliar className="size-16 shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-mono text-lg leading-tight font-semibold break-all">{item.sku ?? "sem código"}</span>
-        {item.variante && <span className="text-sm leading-tight font-medium">{item.variante}</span>}
+        <span className="font-mono text-base leading-tight font-semibold break-all">{item.sku ?? "sem código"}</span>
+        {item.variante && <span className="text-sm leading-tight">{item.variante}</span>}
         <span className="line-clamp-1 text-xs text-muted-foreground">{item.nome}</span>
-        {pago != null && <span className="mt-0.5 text-sm tabular-nums">Cliente pagou {reais(pago)}</span>}
+        {peca && valorPagoPeca(peca) != null && <span className="text-sm tabular-nums">Cliente pagou {reais(valorPagoPeca(peca))}</span>}
       </div>
     </div>
   )
 
-  const todas = sugestoes.data ?? []
-  const modelo = todas.filter((s) => s.motivo === "mesmo_modelo")
-  const valor = todas.filter((s) => s.motivo === "mesmo_valor")
+  const tentarSug = (
+    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      Não foi possível carregar as sugestões.
+      <Button variant="outline" className="h-10" onClick={() => sug.refetch()}>
+        <RefreshCw /> Tentar de novo
+      </Button>
+    </div>
+  )
+
+  const grade = (
+    <>
+      {sug.isError && !sug.data && tentarSug}
+      {sug.isPending && !sug.isError && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Carregando sugestões">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-xl" />
+          ))}
+        </div>
+      )}
+      {sug.data && sug.data.length === 0 && (
+        <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+          {aba === "variantes"
+            ? "Este produto não tem outras variantes. Veja \"Preço parecido\" ou \"Buscar\"."
+            : "Nenhuma peça nesta faixa. Mude a categoria ou a faixa de preço."}
+        </p>
+      )}
+      {sug.data && sug.data.length > 0 && (
+        <div className={cn("transition-opacity", sug.isPlaceholderData && "pointer-events-none opacity-50")}>
+          <GradeSugestoes sugestoes={sug.data} selecionada={selecionada} aoTocar={(n) => alternar(n, aba === "preco" ? "mesmo_valor" : "mesmo_modelo")} />
+        </div>
+      )}
+      {sug.isError && sug.data && tentarSug}
+    </>
+  )
+
+  const filtrosPreco = aba === "preco" && item && (
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-1" aria-label="Categoria">
+        <Button
+          size="sm"
+          variant={categoria === "" ? "secondary" : "outline"}
+          className="h-8 shrink-0"
+          onClick={() => setCatEscolhida((c) => ({ ...c, [item.id]: "" }))}
+        >
+          Todas
+        </Button>
+        {listaCats.map((c) => (
+          <Button
+            key={c.categoria}
+            size="sm"
+            variant={categoria === c.categoria ? "secondary" : "outline"}
+            className="h-8 shrink-0 capitalize"
+            onClick={() => setCatEscolhida((x) => ({ ...x, [item.id]: c.categoria }))}
+          >
+            {c.categoria.toLowerCase()}
+          </Button>
+        ))}
+        {categorias.isLoading && <Skeleton className="h-8 w-20 shrink-0" />}
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Faixa de preço">
+        {(["20", "40", "qualquer"] as Faixa[]).map((f) => (
+          <Button key={f} size="sm" variant={faixa === f ? "secondary" : "outline"} className="h-8" onClick={() => setFaixa(f)}>
+            {f === "qualquer" ? "Qualquer preço" : `±${f}%`}
+          </Button>
+        ))}
+        {preco == null && faixa !== "qualquer" && <span className="text-xs text-muted-foreground">Peça sem preço: usando 80% a 120%.</span>}
+      </div>
+    </div>
+  )
 
   const conteudo = (
-    <div className="flex flex-col gap-4">
-      {topo}
+    <div className="flex min-w-0 flex-col gap-4">
       {erroTroca && (
         <div role="alert" className="flex flex-col gap-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
           <div className="flex items-center gap-2 font-medium">
             <TriangleAlert className="size-4 shrink-0" /> Não foi possível montar a troca. Tente de novo.
           </div>
-          <Button variant="outline" className="h-11 w-fit bg-background text-foreground sm:h-9" disabled={criando || trocas.isFetching} onClick={tentarDeNovo}>
-            {criando || trocas.isFetching ? <Spinner /> : <RefreshCw />} Tentar de novo
+          <Button variant="outline" className="h-10 w-fit bg-background text-foreground" disabled={criando || trocaQ.isFetching} onClick={tentarDeNovo}>
+            {criando || trocaQ.isFetching ? <Spinner /> : <RefreshCw />} Tentar de novo
           </Button>
         </div>
       )}
-      {carregandoTroca && <Skeleton className="h-4 w-40" aria-label="Montando a troca" />}
-      {sugestoes.isLoading && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Carregando sugestões">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-square w-full rounded-xl" />
-          ))}
+      {!erroTroca && !pronta && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+          <Spinner /> Montando a troca…
         </div>
       )}
-      {sugestoes.isError && (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          Não foi possível carregar as sugestões.
-          <Button variant="outline" className="h-11 sm:h-9" onClick={() => sugestoes.refetch()}>
-            <RefreshCw /> Tentar de novo
-          </Button>
-        </div>
+      {ativos.length === 0 && pronta && (
+        <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Todas as peças desta troca já foram resolvidas.</p>
       )}
-      <GradeSugestoes titulo="Mesmo modelo" sugestoes={modelo} selecionada={selecionada} aoTocar={(n) => alternar(n, "mesmo_modelo")} />
-      <GradeSugestoes titulo="Mesmo valor" sugestoes={valor} selecionada={selecionada} aoTocar={(n) => alternar(n, "mesmo_valor")} />
-      {sugestoes.isSuccess && todas.length === 0 && (
-        <p className="text-sm text-muted-foreground">Sem sugestões para esta peça. Use a busca para escolher as opções.</p>
+      {pronta && item && (
+        <>
+          {chips}
+          {cabecalho}
+          <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
+            <TabsList className="w-full">
+              <TabsTrigger value="variantes">Variantes</TabsTrigger>
+              <TabsTrigger value="preco">Preço parecido</TabsTrigger>
+              <TabsTrigger value="buscar">Buscar</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {filtrosPreco}
+          {aba === "buscar" ? (
+            aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} />
+          ) : (
+            <div className="flex min-w-0 flex-col gap-3">{grade}</div>
+          )}
+        </>
       )}
-      <Collapsible open={buscando} onOpenChange={setBuscando} className="flex flex-col gap-2">
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" className="h-11 w-fit sm:h-9">
-            <Search /> Buscar outra
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          {aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} />}
-        </CollapsibleContent>
-      </Collapsible>
     </div>
   )
 
-  const lista = <ListaOpcoes troca={troca} aoRemover={(o) => !o.id.startsWith("tmp-") && remover.mutate({ opcaoId: o.id })} />
-  const rotuloOpcoes = `${opcoes.length} ${opcoes.length === 1 ? "opção" : "opções"}`
+  const painel = <PainelOpcoes itens={ativos} troca={troca} aoRemover={(o) => !o.id.startsWith("tmp-") && remover.mutate({ opcaoId: o.id })} />
+  const totalOpcoes = pecasAtivas.reduce((n, p) => n + (p?.opcoes.length ?? 0), 0)
+  const rotuloOpcoes = `${totalOpcoes} ${totalOpcoes === 1 ? "opção escolhida" : "opções escolhidas"}`
 
   return (
     <RespDialog
       aberto={aberto}
       aoMudar={aoMudar}
-      titulo="Troca de peça em falta"
-      descricao="Escolha as opções que a cliente poderá ver e envie o link"
+      titulo="Troca de peças em falta"
+      descricao="Escolha as opções de cada peça e envie um link só para a cliente"
       largo
     >
       {celular ? (
         <div className="flex min-w-0 flex-col gap-3">
           {conteudo}
           <Collapsible open={verOpcoes} onOpenChange={setVerOpcoes} className="sticky bottom-0 -mx-4 border-t bg-background px-4 pt-3">
-            <CollapsibleContent className="max-h-[40svh] overflow-y-auto pb-3">{lista}</CollapsibleContent>
+            <CollapsibleContent className="max-h-[40svh] overflow-y-auto pb-3">
+              <div className="flex flex-col gap-3">
+                {painel}
+                {resumo}
+              </div>
+            </CollapsibleContent>
             <div className="flex flex-col gap-2 pb-1">
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="h-9 justify-between" disabled={opcoes.length === 0}>
-                  {rotuloOpcoes} escolhidas
+                <Button variant="ghost" className="h-10 justify-between" disabled={!pronta}>
+                  {rotuloOpcoes}
                   <ChevronUp className={verOpcoes ? "rotate-180" : ""} />
                 </Button>
               </CollapsibleTrigger>
@@ -308,13 +468,14 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
           </Collapsible>
         </div>
       ) : (
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,18rem)] gap-6">
-          <div className="min-w-0">{conteudo}</div>
-          <div className="flex min-w-0 flex-col gap-3 self-start border-l pl-6">
-            <h3 className="text-sm font-semibold">
-              Opções escolhidas {opcoes.length > 0 && <span className="font-normal text-muted-foreground">({rotuloOpcoes})</span>}
+        <div className="grid h-[min(72svh,680px)] grid-cols-[minmax(0,1fr)_minmax(0,19rem)] gap-6">
+          <div className="min-h-0 min-w-0 overflow-y-auto pr-1">{conteudo}</div>
+          <div className="flex min-h-0 min-w-0 flex-col gap-3 border-l pl-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <PackageSearch className="size-4" /> Opções <span className="font-normal text-muted-foreground">({rotuloOpcoes})</span>
             </h3>
-            <div className="max-h-[50svh] overflow-y-auto">{lista}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">{painel}</div>
+            {resumo}
             {botoes(true)}
           </div>
         </div>

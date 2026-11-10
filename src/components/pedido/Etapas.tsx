@@ -38,11 +38,6 @@ export default function Etapas({ status, eventos }: Props) {
         </div>
       )}
 
-      {atual >= 0 && ehDesvio(status) && (
-        <div className="hidden lg:block">
-          <SeloStatus status={status} />
-        </div>
-      )}
       <FaixaRolavel chave={status} className="hidden lg:block">
       <ol className="flex w-max items-center pb-1" aria-label="Etapas do pedido">
         {PASSOS.map((p, i) => {

@@ -36,7 +36,7 @@ export default function Conferencia({ pedido, acao, aoConcluir }: Props) {
                   </div>
                 }
               >
-                <Button className="h-11 flex-1 text-base" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
+                <Button variant="secondary" className="h-10 flex-1 text-sm" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
                   <Check /> Conferida
                 </Button>
                 <MenuPeca

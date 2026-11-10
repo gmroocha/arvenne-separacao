@@ -34,13 +34,16 @@ const primeiroNome = (p: Pedido) => {
 
 const descricaoPeca = (i: Item) => [i.nome, i.variante].filter(Boolean).join(", ")
 
-// Mensagem para a cliente com o link da troca. `credito` já vem formatado (ex.: "R$ 52,00"), do banco.
-export function mensagemTroca(pedido: Pedido, item: Item, link: string, credito?: string | null): string {
+// Mensagem para a cliente com o link da troca (um link só, para todas as peças em falta).
+// `credito` já vem formatado (ex.: "R$ 52,00"), do banco.
+export function mensagemTroca(pedido: Pedido, itens: Item[], link: string, credito?: string | null): string {
   const nome = primeiroNome(pedido)
-  const peca = descricaoPeca(item)
+  const pecas = itens.map((i) => `*${descricaoPeca(i)}*`)
+  const plural = pecas.length > 1
+  const lista = plural ? `${pecas.slice(0, -1).join(", ")} e ${pecas[pecas.length - 1]}` : (pecas[0] ?? "")
   return [
-    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne. A peça *${peca}* do seu pedido ${pedido.numero} ficou sem estoque 😕`,
-    `Separamos opções parecidas para você escolher: ${link}.`,
+    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne. ${plural ? "As peças" : "A peça"} ${lista} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕`,
+    `Separamos opções parecidas para você escolher${plural ? " (uma para cada peça)" : ""}: ${link}`,
     credito ? `Se preferir, fica um crédito de ${credito} para usar quando quiser.` : null,
     "Qualquer dúvida, é só responder aqui.",
   ]

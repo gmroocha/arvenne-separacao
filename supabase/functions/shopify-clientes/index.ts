@@ -25,6 +25,41 @@ query Clientes($q: String!) {
   }
 }`;
 
+// O CPF/CNPJ não fica no cadastro da cliente: vem no campo localizado TAX_CREDENTIAL_BR dos pedidos.
+// Consulta separada e tolerante: se falhar (escopo, campo ausente), o cpf volta null e a busca segue.
+const QUERY_CPF = `
+query CpfClientes($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on Customer {
+      legacyResourceId
+      orders(first: 1, sortKey: CREATED_AT, reverse: true) {
+        nodes { localizedFields(first: 10) { nodes { key value } } }
+      }
+    }
+  }
+}`;
+
+type CpfNode = {
+  legacyResourceId?: string;
+  orders?: { nodes: { localizedFields?: { nodes: { key: string; value: string | null }[] } }[] };
+} | null;
+
+async function cpfPorCliente(ids: string[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  if (ids.length === 0) return mapa;
+  try {
+    const data = await shopify<{ nodes: CpfNode[] }>(QUERY_CPF, { ids: ids.map((i) => `gid://shopify/Customer/${i}`) });
+    for (const n of data.nodes) {
+      const campo = n?.orders?.nodes[0]?.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR");
+      const d = (campo?.value ?? "").replace(/\D/g, "");
+      if (n?.legacyResourceId && (d.length === 11 || d.length === 14)) mapa.set(n.legacyResourceId, d);
+    }
+  } catch (_) {
+    // segue sem CPF
+  }
+  return mapa;
+}
+
 type Cliente = {
   legacyResourceId: string;
   displayName: string | null;
@@ -72,12 +107,14 @@ Deno.serve(async (req) => {
       : termo;
 
     const data = await shopify<{ customers: { nodes: Cliente[] } }>(QUERY, { q: consulta });
+    const cpfs = await cpfPorCliente(data.customers.nodes.map((c) => c.legacyResourceId));
     const clientes = data.customers.nodes.map((c) => {
       const a = c.defaultAddress;
       const { logradouro, numero } = separarRua(a?.address1 ?? null);
       return {
         shopify_customer_id: Number(c.legacyResourceId),
         nome: nomeReal(c),
+        cpf: cpfs.get(c.legacyResourceId) ?? null,
         email: c.email,
         telefone: c.phone ?? a?.phone ?? null,
         cep: a?.zip ?? null,

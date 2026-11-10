@@ -1,5 +1,5 @@
 import { Link } from "react-router"
-import Foto from "@/components/Foto"
+import Miniaturas from "@/components/Miniaturas"
 import Prazo from "@/components/pedido/Prazo"
 import { OrigemBadge, StatusBadge } from "@/components/StatusBadge"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item"
@@ -9,18 +9,11 @@ import type { Pedido } from "@/lib/tipos"
 
 export default function LinhaPedido({ p }: { p: Pedido }) {
   const pecas = `${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`
-  const extras = Math.max(0, p.qtd_linhas - p.fotos.length)
   return (
     <Item variant="outline" asChild>
       <Link to={p.fase === "venda" ? `/vendas/${p.id}` : `/pedidos/${p.id}`}>
         <ItemMedia>
-          <div className="flex items-center -space-x-2">
-            {p.fotos.map((f, n) => (
-              <Foto key={n} url={f} className="size-10 rounded-md ring-2 ring-background" />
-            ))}
-            {p.fotos.length === 0 && <Foto url={null} className="size-10 rounded-md" />}
-            {extras > 0 && <span className="pl-3 text-xs text-muted-foreground">+{extras}</span>}
-          </div>
+          <Miniaturas fotos={p.fotos} total={p.qtd_linhas} />
         </ItemMedia>
         <ItemContent>
           <ItemTitle>
