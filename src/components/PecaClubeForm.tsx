@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { toast } from "sonner"
-import { ImagePlus, RefreshCw, X } from "lucide-react"
+import { ExternalLink, ImagePlus, RefreshCw, Sparkles, X } from "lucide-react"
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -9,6 +10,9 @@ import { Spinner } from "@/components/ui/spinner"
 import { useCriarPecaClube } from "@/lib/api"
 import { enviarFoto } from "@/lib/foto"
 import type { PecaClube } from "@/lib/tipos"
+
+// Endereço do agente do GPT que melhora as fotos. Fica em .env.local / Cloudflare, para trocar sem código.
+const LINK_AGENTE_FOTO = import.meta.env.VITE_LINK_AGENTE_FOTO as string | undefined
 
 // O Supabase devolve erros que nem sempre são `Error`; sem isto a tela só mostrava o texto genérico.
 function mensagem(err: unknown, padrao: string): string {
@@ -69,6 +73,22 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
 
   return (
     <form onSubmit={enviar} className="grid gap-6 sm:grid-cols-[13rem_1fr]">
+      <Alert className="sm:col-span-2">
+        <Sparkles />
+        <AlertTitle>Melhore a foto antes de enviar</AlertTitle>
+        <AlertDescription>
+          Passe a foto pelo agente do GPT (qualidade, nitidez e contraste) e suba aqui a versão melhorada.
+        </AlertDescription>
+        {LINK_AGENTE_FOTO && (
+          <AlertAction>
+            <Button asChild variant="outline" size="sm">
+              <a href={LINK_AGENTE_FOTO} target="_blank" rel="noreferrer">
+                Abrir agente <ExternalLink />
+              </a>
+            </Button>
+          </AlertAction>
+        )}
+      </Alert>
       <div className="mx-auto flex w-full max-w-48 flex-col gap-2 sm:mx-0 sm:max-w-none">
         <AspectRatio ratio={4 / 5}>
           <label className="relative flex size-full cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed bg-muted/40 text-sm text-muted-foreground transition-colors hover:bg-muted has-focus-visible:border-ring has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50">
