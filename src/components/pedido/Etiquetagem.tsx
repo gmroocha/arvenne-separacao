@@ -29,6 +29,7 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
           <GradePecas>
             {aEtiquetar.map((i) => (
               <TilePeca key={i.id} item={i}>
+                <div className="flex w-full flex-col gap-1.5">
                 <Button
                   className="h-11 w-full text-base"
                   onClick={() => acao(i, { etiquetado_em: new Date().toISOString(), etiqueta_previa: false })}
@@ -42,6 +43,7 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
                 >
                   Já tinha etiqueta
                 </Button>
+                </div>
               </TilePeca>
             ))}
           </GradePecas>

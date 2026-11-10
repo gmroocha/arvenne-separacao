@@ -40,6 +40,7 @@ chave certa via `core.sshCommand` já configurado neste repositório.
 ## Como o Gustavo gosta de trabalhar
 
 - Opus planeja (modo plano, com `ExitPlanMode`) e **Sonnet executa**, normalmente por um agente.
+- Fonte **Inter Tight** no app inteiro; peso máximo **semibold** (nada de `font-bold`).
 - UX/UI em primeiro lugar, **celular primeiro**, visual minimalista, só componentes de
   `src/components/ui/` (shadcn atual) e tokens do tema. Exceções pedidas por ele: aviso amarelo na
   conferência e verde nas peças já feitas. Não usar a logo dos Correios.

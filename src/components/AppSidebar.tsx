@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
-import { Archive, Gem, LogOut, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
+import { Archive, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
 import { useTheme } from "next-themes"
 import { supabase } from "@/lib/supabase"
-import { useContagens, useRepetidas } from "@/lib/api"
+import { useContagens, useFeedbacks, useRepetidas } from "@/lib/api"
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +24,8 @@ export default function AppSidebar() {
   const { resolvedTheme, setTheme } = useTheme()
   const { data: repetidas } = useRepetidas()
   const { data: contagens } = useContagens()
+  const { data: feedbacks } = useFeedbacks()
+  const abertos = feedbacks?.filter((f) => !f.resolvido_em).length
   const [email, setEmail] = useState("")
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export default function AppSidebar() {
     { to: "/repetidas", nome: "Peças repetidas", icone: Repeat, ativo: pathname === "/repetidas", badge: repetidas?.length },
     { to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
     { to: "/arquivo", nome: "Arquivo", icone: Archive, ativo: pathname === "/arquivo" },
+    { to: "/feedbacks", nome: "Feedbacks", icone: MessageSquare, ativo: pathname === "/feedbacks", badge: abertos },
   ]
 
   return (

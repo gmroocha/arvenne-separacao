@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
+import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import { etapaCompleta } from "@/lib/etapa"
 import { NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { Cliente, ClienteShopify, Endereco, Evento, Item, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio } from "@/lib/tipos"
+import type { Cliente, Feedback, ClienteShopify, Endereco, Evento, Item, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio } from "@/lib/tipos"
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 
@@ -250,6 +251,23 @@ export type ItemPatch = Partial<
 
 const chavePedido = (id: string) => ["pedido", id]
 
+// Troca de cache com transição suave (os blocos deslizam para o lugar em vez de pular).
+// Sem suporte do navegador, ou com "reduzir movimento", troca direto como sempre.
+function comTransicao(trocar: () => void) {
+  const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown }
+  const reduzir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  if (typeof doc.startViewTransition !== "function" || reduzir) return trocar()
+  try {
+    doc.startViewTransition(async () => {
+      flushSync(trocar)
+      // O TanStack avisa a tela num setTimeout(0): dá um respiro para o React desenhar o novo estado.
+      await new Promise((r) => setTimeout(r, 30))
+    })
+  } catch {
+    trocar()
+  }
+}
+
 // Troca o pedido em cache na hora e devolve o estado anterior, para desfazer se o banco recusar.
 function aplicarNoCache(qc: QueryClient, id: string, mudar: (p: PedidoDetalhe) => PedidoDetalhe) {
   const anterior = qc.getQueryData<PedidoDetalhe>(chavePedido(id))
@@ -284,7 +302,11 @@ export function useMudarStatus() {
       if (!a.silencioso) toast.success(`Pedido movido para ${NOME_ETAPA[a.para]}`)
     },
     onSettled: (_, __, a) => {
-      qc.invalidateQueries({ queryKey: chavePedido(a.pedidoId) })
+      // Com gravações de peça ainda na fila, recarregar agora traria a peça "antiga" de volta por um
+      // instante. A própria fila recarrega o pedido quando esvazia.
+      if (qc.isMutating({ mutationKey: ["item", a.pedidoId] }) === 0) {
+        qc.invalidateQueries({ queryKey: chavePedido(a.pedidoId) })
+      }
       qc.invalidateQueries({ queryKey: ["pedidos"] })
     },
   })
@@ -380,7 +402,7 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
     const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
     const antes = atual.pedido_itens
     const depois = antes.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
-    qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), { ...atual, pedido_itens: depois })
+    comTransicao(() => qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), { ...atual, pedido_itens: depois }))
     gravar.mutate({ itemId: item.id, campos: patch })
 
     let estado = atual.status
@@ -430,6 +452,10 @@ export function useReiniciar(pedidoId: string) {
       }
       const campos: CamposPedido = { ...pedido, ...(tudo ? { status: "novo" } : {}) }
       if (Object.keys(campos).length) await atualizarPedido(pedidoId, campos)
+      // Registro para análise: a política equipe_nota agora também aceita tipo 'reiniciado'.
+      await supabase.from("pedido_eventos").insert({
+        pedido_id: pedidoId, tipo: "reiniciado", de: etapa, texto: tudo ? "pedido inteiro" : `etapa ${etapa}`,
+      })
     },
     onSuccess: (_, a) => toast.success(a.tudo ? "Pedido reiniciado" : "Etapa reiniciada"),
     onError: (e) => toast.error(msg(e)),
@@ -678,3 +704,40 @@ export function useAtivarPecaClube() {
 }
 
 export type AcaoItem = (item: Item, campos: ItemPatch) => void
+
+// Feedbacks da equipe (página /feedbacks): guardados e visíveis a todos.
+export function useFeedbacks() {
+  return useQuery({
+    queryKey: ["feedbacks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("feedbacks")
+        .select("*, pedidos(numero, cliente_nome, origem)")
+        .order("created_at", { ascending: false })
+        .limit(500)
+      if (error) throw error
+      return data as Feedback[]
+    },
+  })
+}
+
+export function useEnviarFeedback() {
+  return useAcao(
+    async (d: { texto: string; pagina: string; pedido_id: string | null }) => {
+      const { error } = await supabase.from("feedbacks").insert(d)
+      if (error) throw error
+    },
+    [["feedbacks"]],
+    () => toast.success("Feedback guardado. Obrigado!"),
+  )
+}
+
+export function useResolverFeedback() {
+  return useAcao(
+    async ({ id, resolvido }: { id: string; resolvido: boolean }) => {
+      const { error } = await supabase.from("feedbacks").update({ resolvido_em: resolvido ? new Date().toISOString() : null }).eq("id", id)
+      if (error) throw error
+    },
+    [["feedbacks"]],
+  )
+}

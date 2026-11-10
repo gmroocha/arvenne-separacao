@@ -14,6 +14,7 @@ import Romaneio from "@/pages/Romaneio"
 import Pedido from "@/pages/Pedido"
 import Repetidas from "@/pages/Repetidas"
 import Clube from "@/pages/Clube"
+import Feedbacks from "@/pages/Feedbacks"
 
 function Configure() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="arquivo" element={<Arquivo />} />
           <Route path="repetidas" element={<Repetidas />} />
           <Route path="clube" element={<Clube />} />
+          <Route path="feedbacks" element={<Feedbacks />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

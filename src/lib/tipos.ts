@@ -103,7 +103,7 @@ export type ResultadoBipagem = "ok" | "fora_do_pedido" | "excedente"
 
 export type Evento = {
   id: number
-  tipo: "criado" | "status" | "item" | "nota"
+  tipo: string // criado, status, item, nota, conferida, etiquetada, bipada, reiniciado...
   de: string | null
   para: string | null
   texto: string | null
@@ -198,4 +198,15 @@ export type Romaneio = {
   frete_tipo: FreteTipo | null
   frete_cobrado: number
   total: number
+}
+
+export type Feedback = {
+  id: string
+  texto: string
+  pagina: string | null
+  pedido_id: string | null
+  usuario_email: string | null
+  created_at: string
+  resolvido_em: string | null
+  pedidos: { numero: string; cliente_nome: string | null; origem: string } | null
 }

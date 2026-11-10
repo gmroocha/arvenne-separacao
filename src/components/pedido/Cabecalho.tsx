@@ -7,7 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { PedidoDetalhe } from "@/lib/api"
-import { ETAPAS_EXPEDICAO, NOME_ETAPA, tempoDesde, type StatusPedido } from "@/lib/status"
+import { ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, tempoDesde, type StatusPedido } from "@/lib/status"
 
 type Props = {
   pedido: PedidoDetalhe
@@ -42,7 +42,7 @@ export default function Cabecalho({ pedido, aoMover, aoCancelar, aoReiniciar, ao
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="min-w-60">
             {aoVerDados && (
               <>
                 <DropdownMenuItem onClick={aoVerDados}>
@@ -52,19 +52,22 @@ export default function Cabecalho({ pedido, aoMover, aoCancelar, aoReiniciar, ao
               </>
             )}
             <DropdownMenuLabel>Mover para outra etapa</DropdownMenuLabel>
-            {ETAPAS_EXPEDICAO.filter((e) => e !== pedido.status).map((e) => (
-              <DropdownMenuItem key={e} onClick={() => aoMover(e)}>
-                {NOME_ETAPA[e]}
-              </DropdownMenuItem>
-            ))}
+            {ETAPAS_EXPEDICAO.filter((e) => e !== pedido.status).map((e) => {
+              const Icone = ICONE_ETAPA[e]
+              return (
+                <DropdownMenuItem key={e} onClick={() => aoMover(e)}>
+                  {Icone && <Icone />} {NOME_ETAPA[e]}
+                </DropdownMenuItem>
+              )
+            })}
             {pedido.fase === "expedicao" && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => aoReiniciar(false)}>
-                  <RotateCcw /> Reiniciar esta etapa
+                  <RotateCcw /> Reiniciar etapa
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => aoReiniciar(true)}>
-                  <RotateCcw /> Reiniciar o pedido do zero
+                  <RotateCcw /> Reiniciar pedido
                 </DropdownMenuItem>
               </>
             )}

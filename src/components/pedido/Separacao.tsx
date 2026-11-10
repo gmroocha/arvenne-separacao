@@ -84,7 +84,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           <GradePecas>
             {pendentes.map((i) => (
               <TilePeca key={i.id} item={i}>
-                <Button className="h-11 w-full text-base" onClick={() => acao(i, { status: "encontrado" })}>
+                <Button className="h-11 flex-1 text-base" onClick={() => acao(i, { status: "encontrado" })}>
                   <Check /> Achei
                 </Button>
                 <MenuPeca>

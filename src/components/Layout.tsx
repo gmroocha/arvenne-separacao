@@ -1,4 +1,8 @@
+import { useState } from "react"
 import { Outlet, useLocation } from "react-router"
+import { MessageSquarePlus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import FeedbackDialog from "@/components/FeedbackDialog"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import AppSidebar from "@/components/AppSidebar"
@@ -13,12 +17,14 @@ function titulo(caminho: string) {
   if (caminho.startsWith("/arquivo")) return "Arquivo"
   if (caminho.startsWith("/repetidas")) return "Peças repetidas"
   if (caminho.startsWith("/clube")) return "Clube"
+  if (caminho.startsWith("/feedbacks")) return "Feedbacks"
   return "Separação"
 }
 
 export default function Layout() {
   useTempoReal()
   const { pathname } = useLocation()
+  const [feedback, setFeedback] = useState(false)
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -27,10 +33,14 @@ export default function Layout() {
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
           <h1 className="text-sm font-medium">{titulo(pathname)}</h1>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setFeedback(true)}>
+            <MessageSquarePlus /> Feedback
+          </Button>
         </header>
         <div className={`mx-auto w-full flex-1 p-3 sm:p-4 ${pathname === "/" ? "" : "max-w-5xl"}`}>
           <Outlet />
         </div>
+        <FeedbackDialog aberto={feedback} aoMudar={setFeedback} pagina={pathname} />
       </SidebarInset>
     </SidebarProvider>
   )

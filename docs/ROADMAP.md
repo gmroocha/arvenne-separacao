@@ -208,3 +208,9 @@ instalado no PC da impressora). O ponto de extensão já está comentado em `Eti
 - tamanho da etiqueta;
 - foto de uma etiqueta atual;
 - Zebra Browser Print instalado no PC.
+
+## Tela de análise de gargalos
+
+Tela (Histórico/Gargalos) lendo `v_tempo_etapas` (tempo de cada pedido em cada etapa, em horas corridas e
+úteis) e `v_tempo_sku` (tempo para achar cada peça, média por SKU, quem achou, dia e hora). Os dados já
+são gravados pelas migrations `20261112090000` e `20261112091000`; falta só a tela.

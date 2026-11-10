@@ -70,4 +70,6 @@ Também no celular (390 px). Sem rolagem horizontal da página.
 
 `20261110120000_inicio`, `20261110180000_permissoes`, `20261111090000_vendas`,
 `20261111120000_catalogo_site`, `20261111150000_catalogo_status`, `20261111180000_esteira`.
-Pendente de aplicar: `20261111210000_bairro_complemento`.
+Pendentes de aplicar (aguardam o "sim" do Gustavo): `20261111210000_bairro_complemento`,
+`20261112090000_feedbacks` (tabela de feedbacks) e `20261112091000_eventos_analise` (novos eventos em
+`pedido_eventos` e views `v_tempo_etapas` e `v_tempo_sku`).

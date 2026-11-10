@@ -14,7 +14,17 @@ import { textoEndereco } from "@/lib/endereco"
 import type { Evento } from "@/lib/tipos"
 import { useIsMobile } from "@/hooks/use-mobile"
 
+const ROTULO_EVENTO: Record<string, string> = {
+  conferida: "Peça conferida", desconferida: "Conferência desfeita", etiquetada: "Peça etiquetada",
+  desetiquetada: "Etiqueta desfeita", bipada: "Peça bipada", qtd: "Quantidade alterada", preco: "Preço alterado",
+  nota_emitida: "Nota emitida", nota_desfeita: "Nota desfeita", frete_gerado: "Frete gerado", frete_desfeito: "Frete desfeito",
+  pedido_lr: "Pedido ao fornecedor (LR)", pedido_lr_desfeito: "Pedido ao fornecedor desfeito",
+  embalado: "Embalado", desembalado: "Embalagem desfeita", postado: "Postado", desfeito_postagem: "Postagem desfeita",
+  pago: "Pagamento registrado", rastreio_enviado: "Rastreio enviado à cliente", reiniciado: "Reiniciado",
+}
+
 function descreverEvento(e: Evento) {
+  if (ROTULO_EVENTO[e.tipo]) return [ROTULO_EVENTO[e.tipo], e.texto].filter(Boolean).join(" · ")
   if (e.tipo === "nota") return e.texto ?? ""
   if (e.tipo === "criado") return "Pedido criado"
   if (e.tipo === "status")

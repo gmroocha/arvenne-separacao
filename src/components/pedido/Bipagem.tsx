@@ -163,7 +163,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Última leitura</div>
             <div className="font-mono text-lg font-semibold break-all">{ultima.sku ?? "sem código"}</div>
-            {ultima.variante && <div className="text-sm font-bold">{ultima.variante}</div>}
+            {ultima.variante && <div className="text-sm font-semibold">{ultima.variante}</div>}
           </div>
           <Badge className="h-9 bg-emerald-600 px-3 text-xl text-white tabular-nums">
             <Check /> {Math.min(ultima.qtd_bipada, ultima.qtd)}/{ultima.qtd}

@@ -42,7 +42,7 @@ export default function Repetidas() {
                     {r.variante && <span className="text-base leading-tight font-semibold">{r.variante}</span>}
                     <span className="line-clamp-2 text-xs text-muted-foreground">{r.nome}</span>
                     <div className="mt-auto flex items-baseline gap-1.5 pt-1">
-                      <span className="text-3xl leading-none font-bold tabular-nums">{r.qtd_total}</span>
+                      <span className="text-3xl leading-none font-semibold tabular-nums">{r.qtd_total}</span>
                       <span className="text-sm text-muted-foreground">un. · {r.qtd_pedidos} pedidos</span>
                     </div>
                   </div>

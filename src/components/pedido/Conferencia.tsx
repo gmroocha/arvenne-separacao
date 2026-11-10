@@ -32,12 +32,12 @@ export default function Conferencia({ pedido, acao, aoConcluir }: Props) {
                 key={i.id}
                 item={i}
                 instrucao={
-                  <div className="rounded-lg bg-primary/10 px-2 py-1.5 text-center text-lg font-bold text-primary tabular-nums">
+                  <div className="rounded-lg bg-primary/10 px-2 py-1.5 text-center text-lg font-semibold text-primary tabular-nums">
                     Separe {i.qtd}
                   </div>
                 }
               >
-                <Button className="h-11 w-full text-base" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
+                <Button className="h-11 flex-1 text-base" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
                   <Check /> Conferida
                 </Button>
                 <MenuPeca>

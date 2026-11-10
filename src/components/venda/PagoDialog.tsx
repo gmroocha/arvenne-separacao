@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Banknote, CircleEllipsis, CreditCard, Link2, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -8,7 +9,14 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import RespDialog from "@/components/RespDialog"
 import { lerNumero, numeroParaTexto } from "@/lib/formato"
 
-const FORMAS = ["Pix", "Cartão", "Link de pagamento", "Dinheiro", "Outro"]
+// O texto em "nome" é o valor gravado no banco: não mudar.
+const FORMAS = [
+  { nome: "Pix", icone: QrCode },
+  { nome: "Cartão", icone: CreditCard },
+  { nome: "Link de pagamento", icone: Link2 },
+  { nome: "Dinheiro", icone: Banknote },
+  { nome: "Outro", icone: CircleEllipsis },
+]
 
 export type DadosPagamento = { forma: string; valor: number | null; pagoEm: string }
 
@@ -32,8 +40,8 @@ function Formulario({ total, aoConfirmar }: Pick<Props, "total" | "aoConfirmar">
         <FieldLabel>Forma de pagamento</FieldLabel>
         <ToggleGroup type="single" variant="outline" spacing={1} className="flex-wrap" value={forma} onValueChange={(v) => v && setForma(v)}>
           {FORMAS.map((f) => (
-            <ToggleGroupItem key={f} value={f}>
-              {f}
+            <ToggleGroupItem key={f.nome} value={f.nome}>
+              <f.icone /> {f.nome}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
