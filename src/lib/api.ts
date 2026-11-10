@@ -6,7 +6,7 @@ import { etapaCompleta } from "@/lib/etapa"
 import { NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
 import type { CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor } from "@/lib/tipos"
 
-const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
+export const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 
 export type PedidoLista = Pedido
 export type PedidoDetalhe = Pedido & { pedido_itens: Item[]; pedido_eventos: Evento[] }
@@ -761,7 +761,8 @@ export function useTroca(pedidoId: string | undefined) {
     queryFn: async (): Promise<Troca | null> => {
       const { data: t, error } = await supabase
         .from("trocas")
-        .select("*, troca_pecas(*, troca_opcoes(*))")
+        // Duas chaves ligam troca_pecas e troca_opcoes (a opção e a escolha): nomeia a certa.
+        .select("*, troca_pecas(*, troca_opcoes!troca_opcoes_troca_peca_id_fkey(*))")
         .eq("pedido_id", pedidoId!)
         .in("status", ["rascunho", "enviada", "respondida"])
         .maybeSingle()
@@ -858,11 +859,16 @@ export function useOpcaoTroca(pedidoId: string) {
   const qc = useQueryClient()
   const chave = ["troca", pedidoId]
   const aoErro = (e: unknown) => toast.error(msg(e))
-  const aoFinal = () => qc.invalidateQueries({ queryKey: chave })
+  // Só recarrega quando é a última gravação em andamento: um recarregamento no meio apagaria a marcação
+  // otimista das outras e a opção piscava (ou parecia sumir).
+  const aoFinal = () => {
+    if (qc.isMutating({ mutationKey: ["troca-opcao", pedidoId] }) <= 1) qc.invalidateQueries({ queryKey: chave })
+  }
   const mapearPecas = (old: Troca | null | undefined, f: (p: TrocaPeca) => TrocaPeca) =>
     old ? { ...old, pecas: old.pecas.map(f) } : old
 
   const adicionar = useMutation({
+    mutationKey: ["troca-opcao", pedidoId],
     mutationFn: async ({ trocaPecaId, opcao, motivo, ordem }: { trocaPecaId: string; opcao: NovoItem; motivo: TrocaOpcao["motivo"]; ordem?: number }) => {
       const { error } = await supabase.from("troca_opcoes").insert({
         troca_peca_id: trocaPecaId,
@@ -918,6 +924,7 @@ export function useOpcaoTroca(pedidoId: string) {
   })
 
   const remover = useMutation({
+    mutationKey: ["troca-opcao", pedidoId],
     mutationFn: async ({ opcaoId }: { opcaoId: string }) => {
       const { error } = await supabase.from("troca_opcoes").delete().eq("id", opcaoId)
       if (error) throw error

@@ -103,14 +103,16 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const vivas = itens.length - removidas.length
   const wa = linkWhatsApp(pedido.cliente_telefone, "")
   const mudarStatus = useMudarStatus()
-  const avisar = pedido.status === "avisar_cliente"
   const aguardando = pedido.status === "aguardando_cliente"
+  // Com peça em problema e a cliente ainda não avisada, o cartão já nasce vermelho: não espera o status
+  // do pedido mudar (a troca de status vem depois da marcação na tela e fazia o cartão piscar).
+  const avisar = problemas.length > 0 && !aguardando
   const trocaQ = useTroca(pedido.id)
   const troca = trocaQ.data ?? undefined
   const [trocando, setTrocando] = useState<string | null>(null)
   const pecaDe = (i: Item) => troca?.pecas.find((p) => p.item_id === i.id && !p.concluida_em)
-  // "Montar troca" leva TODAS as peças em falta do pedido (uma troca, um link).
-  const faltas = problemas.filter((i) => i.status === "falta")
+  // "Montar troca" leva TODAS as peças em falta do pedido (uma troca, um link). Defeito conta como falta.
+  const faltas = problemas
   const emRascunho = !troca || troca.status === "rascunho"
 
   // Mensagem para a cliente: com troca montada leva o link; sem troca, aviso simples.
@@ -157,8 +159,8 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                       avisar ? COR_SELO.avisar_cliente : aguardando ? COR_SELO.aguardando_cliente : "",
                     )}
                   >
-                    {i.status === "falta" ? <PackageX /> : <TriangleAlert />}
-                    {i.status === "falta" ? "Em falta" : "Defeito"}
+                    <PackageX />
+                    Em falta
                   </Badge>
                   <MenuPeca
                     rotulo="Resolver"
@@ -169,7 +171,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     ]}
                   />
                 </LinhaPeca>
-                {i.status === "falta" && <EstadoTroca troca={troca} peca={pecaDe(i)} aoAbrir={() => setTrocando(i.id)} wa={wa} />}
+                <EstadoTroca troca={troca} peca={pecaDe(i)} aoAbrir={() => setTrocando(i.id)} wa={wa} />
               </div>
             ))}
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -221,7 +223,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           <GradePecas>
             {pendentes.map((i) => (
               <TilePeca key={i.id} item={i}>
-                <Button variant="secondary" className="h-10 flex-1 text-sm" onClick={() => acao(i, { status: "encontrado" })}>
+                <Button className="h-10 flex-1 text-sm" onClick={() => acao(i, { status: "encontrado" })}>
                   <Check /> Achei
                 </Button>
                 <MenuPeca
@@ -261,17 +263,16 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         </Collapsible>
       )}
 
-      {trocando && faltas.length > 0 && (
-        <TrocaDialog
-          aberto
-          aoMudar={(a) => {
-            if (!a) setTrocando(null)
-          }}
-          pedido={pedido}
-          itens={faltas}
-          inicial={trocando}
-        />
-      )}
+      {/* Sempre montado: desmontar uma gaveta aberta (vaul) pode deixar a rolagem da página travada. */}
+      <TrocaDialog
+        aberto={!!trocando && faltas.length > 0}
+        aoMudar={(a) => {
+          if (!a) setTrocando(null)
+        }}
+        pedido={pedido}
+        itens={faltas}
+        inicial={trocando ?? undefined}
+      />
 
       <Button className="h-11 w-full text-base" disabled={!etapaCompleta(pedido.status, itens)} onClick={aoConcluir}>
         Concluir separação

@@ -163,3 +163,11 @@
 ::-webkit-scrollbar-button {
   display: none;
 }
+
+/* Faixa que rola sem mostrar a barra (vem depois do "*" acima, que é fora de camada e ganharia dos utilitários). */
+.sem-barra {
+  scrollbar-width: none;
+}
+.sem-barra::-webkit-scrollbar {
+  display: none;
+}

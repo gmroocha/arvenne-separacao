@@ -17,7 +17,7 @@ export default function AvisoConferencia({ className }: { className?: string }) 
         <span className="font-semibold">Confira cada peça com muita atenção</span>
         <span>
           Examine de todos os lados: solda, pedra solta, riscos, fecho e acabamento. Nenhuma peça com defeito pode
-          seguir para a cliente. Na dúvida, marque "Defeito".
+          seguir para a cliente. Na dúvida, marque "Falta".
         </span>
       </div>
     </div>

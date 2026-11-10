@@ -165,6 +165,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
       pedido={pedido}
       form={form}
       aoMudar={mudar}
+      aoForma={(forma) => void gravar({ forma_pagamento: forma }).catch(() => {})}
       aoEnviar={() => {
         setResumoAberto(false)
         void enviar()
@@ -237,7 +238,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         </DrawerContent>
       </Drawer>
 
-      <PagoDialog aberto={pagando} aoMudar={setPagando} total={pedido.total} aoConfirmar={confirmarPagamento} />
+      <PagoDialog aberto={pagando} aoMudar={setPagando} total={pedido.total} formaInicial={pedido.forma_pagamento} aoConfirmar={confirmarPagamento} />
 
       <Dialog open={perdendo} onOpenChange={setPerdendo}>
         <DialogContent>

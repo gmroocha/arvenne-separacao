@@ -31,7 +31,6 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
               <TilePeca key={i.id} item={i}>
                 <div className="flex w-full flex-col gap-1.5">
                 <Button
-                  variant="secondary"
                   className="h-10 w-full text-sm"
                   onClick={() => acao(i, { etiquetado_em: new Date().toISOString(), etiqueta_previa: false })}
                 >

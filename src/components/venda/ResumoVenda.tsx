@@ -7,12 +7,13 @@ import { Spinner } from "@/components/ui/spinner"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { reais } from "@/lib/formato"
 import type { DescontoTipo, FreteTipo, FretePagoPor, Pedido } from "@/lib/tipos"
-import type { FormVenda } from "./form"
+import { FORMAS_PAGAMENTO, type FormVenda } from "./form"
 
 type Props = {
   pedido: Pedido
   form: FormVenda
   aoMudar: (parcial: Partial<FormVenda>) => void
+  aoForma: (forma: string | null) => void
   aoEnviar: () => void
   aoCopiar: () => void
   aoPago: () => void
@@ -43,13 +44,32 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 }
 
 // Conteúdo do resumo: card fixo no PC, gaveta no celular. Os números vêm calculados do banco.
-export default function ResumoVenda({ pedido, form, aoMudar, aoEnviar, aoCopiar, aoPago, aoPerdida, enviando, prefixo }: Props) {
+export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, aoCopiar, aoPago, aoPerdida, enviando, prefixo }: Props) {
   const p = (s: string) => `${prefixo}-${s}`
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">Forma de pagamento</span>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          spacing={1}
+          className="flex-wrap"
+          value={pedido.forma_pagamento ?? ""}
+          onValueChange={(v) => aoForma(v || null)}
+        >
+          {FORMAS_PAGAMENTO.map((f) => (
+            <ToggleGroupItem key={f.nome} value={f.nome}>
+              <f.icone /> {f.nome}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <Linha rotulo="Subtotal">{reais(pedido.subtotal)}</Linha>
         {pedido.desconto > 0 && <Linha rotulo="Desconto">− {reais(pedido.desconto)}</Linha>}
+        {pedido.desconto_pix > 0 && <Linha rotulo="Desconto Pix (10%)">− {reais(pedido.desconto_pix)}</Linha>}
         {pedido.frete_tipo && <Linha rotulo={`Frete ${pedido.frete_tipo}`}>{reais(pedido.frete_na_conta)}</Linha>}
       </div>
 

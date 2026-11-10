@@ -27,7 +27,7 @@ export default function PainelEtapa({ pedido, acao, patch, aoConcluir, aoTrocar,
     case "aguardando_cliente":
       return <Separacao pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoAdicionar={aoAdicionar} aoConcluir={aoConcluir} />
     case "conferencia":
-      return <Conferencia pedido={pedido} acao={acao} aoConcluir={aoConcluir} />
+      return <Conferencia pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoConcluir={aoConcluir} />
     case "etiquetagem":
       return <Etiquetagem pedido={pedido} acao={acao} aoConcluir={aoConcluir} />
     case "bipagem":

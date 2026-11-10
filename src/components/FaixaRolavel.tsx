@@ -42,7 +42,7 @@ export default function FaixaRolavel({ children, className, chave }: Props) {
     <div
       ref={ref}
       style={{ maskImage: mascara, WebkitMaskImage: mascara }}
-      className={cn("overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
+      className={cn("sem-barra overflow-x-auto", className)}
     >
       {children}
     </div>

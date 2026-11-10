@@ -141,7 +141,7 @@ export const NOME_ITEM: Record<StatusItem, string> = {
   pendente: "Pendente",
   encontrado: "Encontrado",
   falta: "Em falta",
-  defeito: "Defeito",
+  defeito: "Em falta", // o defeito some da tela: vale como falta (o tipo fica por causa dos dados antigos)
   removido: "Removido",
 }
 

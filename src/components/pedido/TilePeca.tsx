@@ -62,14 +62,14 @@ export function GradePecas({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
 }
 
-// Menu "…" do bloco: quadrado de 40 px, da mesma altura do botão principal.
+// Menu "…" do bloco: quadrado de 40 px sem borda, da mesma altura do botão principal (que é o destaque).
 export function MenuPeca({ itens, rotulo = "Mais opções" }: { itens: ItemAcao[]; rotulo?: string }) {
   return (
     <MenuAcoes
       titulo={rotulo}
       grupos={[{ itens }]}
       gatilho={
-        <Button variant="outline" size="icon" aria-label={rotulo} className="size-10 shrink-0">
+        <Button variant="ghost" size="icon" aria-label={rotulo} className="size-10 shrink-0">
           <MoreHorizontal />
         </Button>
       }

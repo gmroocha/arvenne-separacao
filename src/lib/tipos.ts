@@ -61,6 +61,7 @@ export type Pedido = {
   // Calculados pela view v_pedidos
   subtotal: number
   desconto: number
+  desconto_pix: number
   frete_na_conta: number
   total: number
   qtd_pecas: number
@@ -199,6 +200,7 @@ export type Romaneio = {
   itens: { nome: string; variante: string | null; sku: string | null; foto_url: string | null; qtd: number; preco: number | null }[]
   subtotal: number
   desconto: number
+  desconto_pix?: number
   cupom: string | null
   frete_tipo: FreteTipo | null
   frete_cobrado: number

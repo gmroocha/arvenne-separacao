@@ -1,5 +1,6 @@
 import { useParams } from "react-router"
 import { SearchX } from "lucide-react"
+import Logo from "@/components/Logo"
 import Foto from "@/components/Foto"
 import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -25,7 +26,9 @@ export default function Romaneio() {
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 px-4 pb-12 pt-3">
-      <header className="pt-2 text-center font-heading text-lg font-semibold tracking-wide">Arvenne</header>
+      <header className="flex justify-center pt-3">
+        <Logo className="h-8" />
+      </header>
       {isLoading ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-8 w-40" />
@@ -74,6 +77,7 @@ export default function Romaneio() {
             {data.desconto > 0 && (
               <Linha rotulo={data.cupom ? `Desconto (cupom ${data.cupom})` : "Desconto"}>− {reais(data.desconto)}</Linha>
             )}
+            {(data.desconto_pix ?? 0) > 0 && <Linha rotulo="Desconto Pix (10%)">− {reais(data.desconto_pix ?? 0)}</Linha>}
             {data.frete_tipo && (
               <Linha rotulo={`Frete ${data.frete_tipo === "retirada" ? "(retirada)" : data.frete_tipo}`}>
                 {data.frete_cobrado > 0 ? reais(data.frete_cobrado) : "Grátis"}

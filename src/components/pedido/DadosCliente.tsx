@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ChevronDown, Copy } from "lucide-react"
+import { ChevronDown, Copy, IdCard, Mail, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -8,7 +8,8 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAdicionarNota, useAtualizarPedido, type PedidoDetalhe } from "@/lib/api"
-import { linkWhatsApp, mascaraCpf, quando, reais } from "@/lib/formato"
+import { copiar } from "@/lib/copiar"
+import { digitos, linkWhatsApp, mascaraCpf, mascaraTelefone, quando, reais } from "@/lib/formato"
 import { NOME_ETAPA, NOME_ITEM, type StatusItem } from "@/lib/status"
 import { textoEndereco } from "@/lib/endereco"
 import type { Evento } from "@/lib/tipos"
@@ -41,6 +42,27 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   )
 }
 
+// Linha de contato: ícone, valor e (opcional) botão que copia só o texto indicado.
+function LinhaContato({ icone: Icone, children, copiarTexto, aviso, rotuloCopiar }: {
+  icone: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
+  copiarTexto?: string
+  aviso?: string
+  rotuloCopiar?: string
+}) {
+  return (
+    <div className="flex min-h-7 items-center gap-2">
+      <Icone className="size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">{children}</div>
+      {copiarTexto && (
+        <Button variant="ghost" size="icon-sm" aria-label={rotuloCopiar} onClick={() => copiar(copiarTexto, aviso)}>
+          <Copy />
+        </Button>
+      )}
+    </div>
+  )
+}
+
 // Cliente e valores: lateral no PC, recolhível no celular.
 export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDetalhe; semRecolher?: boolean }) {
   const celular = useIsMobile() && !semRecolher
@@ -69,18 +91,29 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-0.5 text-sm">
+            <div className="flex flex-col gap-1 text-sm">
               <div className="font-medium">{pedido.cliente_nome ?? "Sem nome"}</div>
-              {pedido.cliente_telefone &&
-                (wa ? (
-                  <a className="underline underline-offset-4" href={wa} target="_blank" rel="noreferrer">
-                    {pedido.cliente_telefone}
-                  </a>
-                ) : (
-                  <span>{pedido.cliente_telefone}</span>
-                ))}
-              {pedido.cliente_email && <span className="text-muted-foreground">{pedido.cliente_email}</span>}
-              {pedido.cliente_cpf && <span className="text-muted-foreground tabular-nums">CPF {mascaraCpf(pedido.cliente_cpf)}</span>}
+              {pedido.cliente_telefone && (
+                <LinhaContato icone={Phone} copiarTexto={digitos(pedido.cliente_telefone)} aviso="Telefone copiado" rotuloCopiar="Copiar telefone">
+                  {wa ? (
+                    <a className="underline underline-offset-4" href={wa} target="_blank" rel="noreferrer">
+                      {mascaraTelefone(pedido.cliente_telefone)}
+                    </a>
+                  ) : (
+                    <span>{pedido.cliente_telefone}</span>
+                  )}
+                </LinhaContato>
+              )}
+              {pedido.cliente_email && (
+                <LinhaContato icone={Mail} copiarTexto={pedido.cliente_email} aviso="E-mail copiado" rotuloCopiar="Copiar e-mail">
+                  <span className="break-all text-muted-foreground">{pedido.cliente_email}</span>
+                </LinhaContato>
+              )}
+              {pedido.cliente_cpf && (
+                <LinhaContato icone={IdCard}>
+                  <span className="text-muted-foreground tabular-nums">{mascaraCpf(pedido.cliente_cpf)}</span>
+                </LinhaContato>
+              )}
             </div>
 
             {temEndereco && (
@@ -104,6 +137,7 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
             <div className="flex flex-col gap-1.5 border-t pt-3">
               <Linha rotulo="Subtotal">{reais(pedido.subtotal)}</Linha>
               {pedido.desconto > 0 && <Linha rotulo={pedido.cupom ? `Desconto (${pedido.cupom})` : "Desconto"}>− {reais(pedido.desconto)}</Linha>}
+              {pedido.desconto_pix > 0 && <Linha rotulo="Desconto Pix (10%)">− {reais(pedido.desconto_pix)}</Linha>}
               {pedido.frete_tipo && (
                 <Linha rotulo={`Frete ${pedido.frete_tipo}${pedido.frete_pago_por === "arvenne" ? " (Arvenne paga)" : ""}`}>
                   {reais(pedido.frete_na_conta)}

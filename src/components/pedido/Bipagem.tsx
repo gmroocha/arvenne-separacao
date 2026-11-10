@@ -37,12 +37,13 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
   const tempoPisca = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Refoca a cada 1,2 s, menos quando há Dialog ou menu aberto ou a pessoa está digitando noutro campo.
+  // preventScroll: sem isso, cada foco puxava a página de volta para o campo e ela não rolava.
   useEffect(() => {
     const id = setInterval(() => {
       const ativo = document.activeElement
       const digitando = ativo instanceof HTMLInputElement || ativo instanceof HTMLTextAreaElement
       if (digitando || document.querySelector('[role="dialog"], [role="menu"]')) return
-      campo.current?.focus()
+      campo.current?.focus({ preventScroll: true })
     }, 1200)
     return () => {
       clearInterval(id)
@@ -155,16 +156,16 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
       {ultima && (
         <div
           key={`${ultima.id}-${ultima.qtd_bipada}`}
-          className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-2 animate-in fade-in zoom-in-95 duration-200"
+          className="flex items-center gap-3 rounded-xl bg-emerald-500/10 p-2 animate-in fade-in zoom-in-95 duration-200"
           aria-live="polite"
         >
           <Foto url={ultima.foto_url} alt={ultima.nome} className="size-16 shrink-0" />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Última leitura</div>
-            <div className="font-mono text-lg font-semibold break-all">{ultima.sku ?? "sem código"}</div>
-            {ultima.variante && <div className="text-sm font-semibold">{ultima.variante}</div>}
+            <div className="font-mono text-base font-semibold break-all">{ultima.sku ?? "sem código"}</div>
+            {ultima.variante && <div className="text-sm">{ultima.variante}</div>}
           </div>
-          <Badge className="h-9 bg-emerald-600 px-3 text-xl text-white tabular-nums">
+          <Badge className="h-7 bg-emerald-600 px-2.5 text-base text-white tabular-nums">
             <Check /> {Math.min(ultima.qtd_bipada, ultima.qtd)}/{ultima.qtd}
           </Badge>
         </div>

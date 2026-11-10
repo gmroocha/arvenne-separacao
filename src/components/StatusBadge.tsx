@@ -13,9 +13,9 @@ export function StatusBadge({ status }: { status: StatusPedido }) {
 
 export function OrigemBadge({ origem }: { origem: Origem }) {
   return (
-    <Badge variant="outline">
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground [&>svg]:size-3">
       {origem === "shopify" ? <ShoppingBag /> : <MessageCircle />}
       {origem === "shopify" ? "Site" : "WhatsApp"}
-    </Badge>
+    </span>
   )
 }

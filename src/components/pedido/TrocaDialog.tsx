@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { useCategorias, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, type PedidoDetalhe } from "@/lib/api"
+import { msg, useCategorias, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, type PedidoDetalhe } from "@/lib/api"
 import { mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp, reais } from "@/lib/formato"
 import { fotoTamanho } from "@/lib/foto"
@@ -22,7 +22,7 @@ type Props = {
   aberto: boolean
   aoMudar: (aberto: boolean) => void
   pedido: PedidoDetalhe
-  // Todas as peças em falta do pedido (uma troca, um link).
+  // Todas as peças em falta (ou com defeito, que na tela vale como falta) do pedido: uma troca, um link.
   itens: Item[]
   // Peça que abre selecionada.
   inicial?: string
@@ -149,6 +149,18 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const [verOpcoes, setVerOpcoes] = useState(false)
   const [enviando, setEnviando] = useState(false)
 
+  // Cada abertura começa limpa: na peça clicada, na aba de variantes e com o resumo fechado.
+  // (Ajuste durante a renderização, sem efeito: evita um quadro com o estado velho.)
+  const [estavaAberto, setEstavaAberto] = useState(aberto)
+  if (aberto !== estavaAberto) {
+    setEstavaAberto(aberto)
+    if (aberto) {
+      setItemId(inicial ?? "")
+      setAba("variantes")
+      setVerOpcoes(false)
+    }
+  }
+
   // Peças em falta que fazem parte da troca (as já fechadas saem).
   const ativos = itens.filter((i) => {
     const p = troca?.pecas.find((x) => x.item_id === i.id)
@@ -192,8 +204,10 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const preco = item?.preco ?? null
   const min = faixa === "qualquer" ? 0 : preco != null ? Math.max(0, preco * (1 - (pct ?? 0))) : null
   const max = faixa === "qualquer" ? 99_999_999 : preco != null ? preco * (1 + (pct ?? 0)) : null
+  // No modo "Preço parecido" espera as categorias chegarem, para não buscar "todas" e depois buscar de novo.
+  const filtrosProntos = aba !== "preco" || !categorias.isPending
   const sug = useSugestoes(
-    aberto && pronta && aba !== "buscar" ? item?.id : undefined,
+    aberto && pronta && aba !== "buscar" && filtrosProntos ? item?.id : undefined,
     aba === "preco" ? "preco" : ("variantes" as ModoSugestao),
     aba === "preco" ? { categoria: categoria || null, min, max } : {},
   )
@@ -223,14 +237,14 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
     if (!troca) return
     setEnviando(true)
     // O copiar começa antes do await, ainda no toque (o navegador exige).
-    const copia = navigator.clipboard.writeText(texto)
+    const copia = navigator.clipboard.writeText(texto).then(() => true, () => false)
     try {
       await enviar.mutateAsync({ troca })
-      await copia
-      toast.success("Mensagem copiada. Cole no WhatsApp da cliente.")
+      if (await copia) toast.success("Mensagem copiada. Cole no WhatsApp da cliente.")
+      else toast.error("A troca foi salva, mas não foi possível copiar a mensagem")
       aoMudar(false)
     } catch {
-      toast.error("Não foi possível copiar")
+      // o erro do envio já aparece no aviso do próprio hook
     } finally {
       setEnviando(false)
     }
@@ -266,19 +280,20 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
     </div>
   )
 
-  const botoes = (empilhados: boolean) => (
-    <div className={cn("flex gap-2", empilhados && "flex-col")}>
-      <Button variant="outline" className="h-11 min-w-0 flex-1 sm:h-9" disabled={bloqueado} onClick={copiar}>
+  // Celular: empilhados e de largura cheia. PC: em linha, à direita, do tamanho do texto.
+  const botoes = (
+    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" className="h-10 w-full text-sm sm:w-auto" disabled={bloqueado} onClick={copiar}>
         {enviando ? <Spinner /> : <Copy />} Copiar mensagem
       </Button>
-      <Button className="h-11 min-w-0 flex-1 sm:h-9" disabled={bloqueado || !wa} onClick={enviarWhatsApp}>
+      <Button className="h-10 w-full text-sm sm:w-auto" disabled={bloqueado || !wa} onClick={enviarWhatsApp}>
         <MessageCircle /> Enviar no WhatsApp
       </Button>
     </div>
   )
 
   const chips = ativos.length > 0 && (
-    <div className="flex min-w-0 gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Peças em falta">
+    <div className="sem-barra flex min-w-0 gap-2 overflow-x-auto py-1" role="tablist" aria-label="Peças em falta">
       {ativos.map((i) => {
         const p = troca?.pecas.find((x) => x.item_id === i.id)
         const atual = i.id === item?.id
@@ -291,12 +306,12 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
             aria-selected={atual}
             onClick={() => setItemId(i.id)}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 text-left text-xs ring-1 ring-border transition-colors",
+              "flex h-11 shrink-0 items-center gap-2 rounded-full pr-3 pl-1 text-left text-xs ring-1 ring-border transition-colors",
               atual && "bg-primary/5 ring-2 ring-primary",
             )}
           >
             <span className="relative">
-              <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-8" />
+              <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-9" />
               {tem && (
                 <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-emerald-600 text-white">
                   <Check className="size-3" />
@@ -311,7 +326,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   )
 
   const cabecalho = item && (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl p-2 ring-1 ring-border">
+    <div className="flex min-w-0 items-center gap-3 rounded-xl p-2.5 ring-1 ring-border">
       <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} ampliar className="size-16 shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="font-mono text-base leading-tight font-semibold break-all">{item.sku ?? "sem código"}</span>
@@ -359,11 +374,11 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
 
   const filtrosPreco = aba === "preco" && item && (
     <div className="flex min-w-0 flex-col gap-2">
-      <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-1" aria-label="Categoria">
+      <div className="sem-barra flex min-w-0 gap-1.5 overflow-x-auto" aria-label="Categoria">
         <Button
           size="sm"
           variant={categoria === "" ? "secondary" : "outline"}
-          className="h-8 shrink-0"
+          className="h-9 shrink-0"
           onClick={() => setCatEscolhida((c) => ({ ...c, [item.id]: "" }))}
         >
           Todas
@@ -373,17 +388,17 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
             key={c.categoria}
             size="sm"
             variant={categoria === c.categoria ? "secondary" : "outline"}
-            className="h-8 shrink-0 capitalize"
+            className="h-9 shrink-0 capitalize"
             onClick={() => setCatEscolhida((x) => ({ ...x, [item.id]: c.categoria }))}
           >
             {c.categoria.toLowerCase()}
           </Button>
         ))}
-        {categorias.isLoading && <Skeleton className="h-8 w-20 shrink-0" />}
+        {categorias.isLoading && <Skeleton className="h-9 w-20 shrink-0" />}
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Faixa de preço">
         {(["20", "40", "qualquer"] as Faixa[]).map((f) => (
-          <Button key={f} size="sm" variant={faixa === f ? "secondary" : "outline"} className="h-8" onClick={() => setFaixa(f)}>
+          <Button key={f} size="sm" variant={faixa === f ? "secondary" : "outline"} className="h-9" onClick={() => setFaixa(f)}>
             {f === "qualquer" ? "Qualquer preço" : `±${f}%`}
           </Button>
         ))}
@@ -399,6 +414,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
           <div className="flex items-center gap-2 font-medium">
             <TriangleAlert className="size-4 shrink-0" /> Não foi possível montar a troca. Tente de novo.
           </div>
+          <p className="text-xs break-words opacity-80">{msg(trocaQ.error ?? criar.error)}</p>
           <Button variant="outline" className="h-10 w-fit bg-background text-foreground" disabled={criando || trocaQ.isFetching} onClick={tentarDeNovo}>
             {criando || trocaQ.isFetching ? <Spinner /> : <RefreshCw />} Tentar de novo
           </Button>
@@ -463,21 +479,23 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
                   <ChevronUp className={verOpcoes ? "rotate-180" : ""} />
                 </Button>
               </CollapsibleTrigger>
-              {botoes(false)}
+              {botoes}
             </div>
           </Collapsible>
         </div>
       ) : (
-        <div className="grid h-[min(72svh,680px)] grid-cols-[minmax(0,1fr)_minmax(0,19rem)] gap-6">
-          <div className="min-h-0 min-w-0 overflow-y-auto pr-1">{conteudo}</div>
-          <div className="flex min-h-0 min-w-0 flex-col gap-3 border-l pl-6">
-            <h3 className="flex items-center gap-2 text-sm font-semibold">
-              <PackageSearch className="size-4" /> Opções <span className="font-normal text-muted-foreground">({rotuloOpcoes})</span>
-            </h3>
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">{painel}</div>
-            {resumo}
-            {botoes(true)}
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="grid h-[min(62svh,600px)] grid-cols-[minmax(0,1fr)_minmax(0,19rem)] gap-6">
+            <div className="min-h-0 min-w-0 overflow-y-auto pr-1">{conteudo}</div>
+            <div className="flex min-h-0 min-w-0 flex-col gap-3 border-l pl-6">
+              <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <PackageSearch className="size-4" /> Opções <span className="font-normal text-muted-foreground">({rotuloOpcoes})</span>
+              </h3>
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">{painel}</div>
+              {resumo}
+            </div>
           </div>
+          <div className="border-t pt-4">{botoes}</div>
         </div>
       )}
     </RespDialog>

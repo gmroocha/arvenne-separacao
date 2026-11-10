@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useParams } from "react-router"
 import { Check, CircleCheck, HandCoins, MessageCircle, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
+import Logo from "@/components/Logo"
 import Foto from "@/components/Foto"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -56,7 +57,9 @@ export default function Troca() {
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-4 overflow-x-hidden px-4 pt-3 pb-12">
-      <header className="pt-2 text-center font-heading text-lg font-semibold tracking-wide">Arvenne</header>
+      <header className="flex justify-center pt-3">
+        <Logo className="h-8" />
+      </header>
       {isLoading ? (
         <div className="flex flex-col gap-4" role="status" aria-label="Carregando">
           <Skeleton className="h-8 w-48" />
