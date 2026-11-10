@@ -110,8 +110,9 @@ type Resposta = {
 type CampoLocal = { key: string; value: string };
 
 // A Shopify junta rua e número em address1 ("Rua X, 123"). Separa pela última vírgula quando o
-// que vem depois parece número; o original fica em shopify_bruto. address2 vai para o complemento
-// (o bairro, quando a loja o coloca ali, a equipe corrige na tela Nota e frete).
+// que vem depois parece número; o original fica em shopify_bruto. O checkout da loja manda address2
+// como "complemento, bairro" (ex.: "AP 101, Parque Caravelas") ou só o bairro ("Centro"): o que vem
+// depois da última vírgula é o bairro e o resto é o complemento.
 function enderecoBR(a: Pedido["shippingAddress"]) {
   if (!a) return {};
   const partes = (a.address1 ?? "").split(",").map((x) => x.trim()).filter(Boolean);
@@ -137,12 +138,16 @@ function enderecoBR(a: Pedido["shippingAddress"]) {
       numero = m[2];
     }
   }
-  const complemento = [extra, a.address2?.trim() || null].filter(Boolean).join(" - ") || null;
+  const partes2 = (a.address2 ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  const bairro = partes2.length ? partes2[partes2.length - 1] : null;
+  const compl2 = partes2.length > 1 ? partes2.slice(0, -1).join(", ") : null;
+  const complemento = [extra, compl2].filter(Boolean).join(" - ") || null;
   return {
     entrega_cep: a.zip,
     entrega_logradouro: logradouro,
     entrega_numero: numero,
     entrega_complemento: complemento,
+    entrega_bairro: bairro,
     entrega_cidade: a.city,
     entrega_uf: a.provinceCode ?? a.province,
   };

@@ -19,7 +19,7 @@ function Imagem({ url, alt, className }: { url: string | null; alt: string; clas
 export default function Foto({ url, alt = "", ampliar, className }: Props) {
   const [aberta, setAberta] = useState(false)
   const quadro = (
-    <AspectRatio ratio={1}>
+    <AspectRatio ratio={1} className="overflow-hidden rounded-md bg-muted ring-1 ring-foreground/15 ring-inset">
       <Imagem url={url} alt={alt} />
     </AspectRatio>
   )
