@@ -8,7 +8,7 @@ export const configurado = Boolean(url && chave)
 export const supabase = createClient(url ?? "http://localhost", chave ?? "sem-chave")
 
 export async function chamarFuncao<T>(nome: string, corpo: unknown): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(nome, { body: corpo })
+  const { data, error } = await supabase.functions.invoke(nome, { body: corpo as Record<string, unknown> })
   if (error) {
     const detalhe = await (error as { context?: Response }).context?.json?.().catch(() => null)
     throw new Error(detalhe?.erro ?? error.message)
