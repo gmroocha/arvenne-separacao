@@ -74,8 +74,11 @@ novas todos os dias.
 - Pedido do WhatsApp escolhe a peça no catálogo pela foto, em vez de cadastrar.
 
 **Onde guardar as fotos** (a decidir; números são estimativas):
-- Volume: 15 a 50 fotos por dia. Uma cópia de 1200 px em webp pesa cerca de 150 KB, então 50 por dia dão
-  cerca de 2,7 GB por ano. O 1 GB de fotos do Supabase grátis acaba em ~5 meses.
+- Volume real do Clube: cerca de **15 fotos por dia** (o app aceita até 50 por lote). Uma cópia de 1200 px
+  em webp pesa cerca de 150 KB (estimativa), então 15 por dia dão cerca de 0,8 GB por ano. O 1 GB de
+  fotos do Supabase grátis dura cerca de 1 ano; os 10 GB do R2, mais de 10 anos.
+- Custo da IA (decisão do Gustavo, 10/11/2026): não é problema. Mesmo assim, assinatura do ChatGPT ou do
+  Claude **não** inclui uso de API; a API é cobrada à parte, por leitura.
 - **Google Drive** serve bem como arquivo das fotos originais em alta resolução (o app atual já envia para
   lá). Não serve para mostrar o catálogo: link do Drive como imagem de site é instável, tem limite de
   acesso e carrega devagar com muitas miniaturas.
