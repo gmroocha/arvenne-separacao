@@ -1,9 +1,9 @@
 import { toast } from "sonner"
-import { Check, MessageCircle, Plus, TriangleAlert } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ArrowLeftRight, Check, Copy, MessageCircle, PackageX, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { textoParaAgente } from "@/lib/agente"
 import { etapaCompleta } from "@/lib/etapa"
@@ -38,18 +38,24 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
       <ProgressoEtapa titulo="Separação" feitas={achadas.length} total={vivas} unidade="peças" />
 
       {problemas.length > 0 && (
-        <Alert variant="destructive">
-          <TriangleAlert />
-          <AlertTitle>Problemas ({problemas.length})</AlertTitle>
-          <AlertDescription className="mt-2 flex flex-col gap-2">
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" /> Problemas ({problemas.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
             {problemas.map((i) => (
               <LinhaPeca key={i.id} item={i} compacta>
-                <span className="text-xs text-destructive">{NOME_ITEM[i.status]}</span>
-                <MenuPeca rotulo="Resolver">
-                  <DropdownMenuItem onClick={() => aoTrocar(i)}>Trocar por outra peça</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => marcar(i, "removido", "cliente desistiu")}>Remover (cliente desistiu)</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => marcar(i, "pendente", null)}>Voltar a pendente</DropdownMenuItem>
-                </MenuPeca>
+                <Badge variant="outline">{NOME_ITEM[i.status]}</Badge>
+                <MenuPeca
+                  rotulo="Resolver"
+                  itens={[
+                    { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                    { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
+                    { rotulo: "Voltar a pendente", icone: Undo2, aoClicar: () => marcar(i, "pendente", null) },
+                  ]}
+                />
               </LinhaPeca>
             ))}
             <div className="flex flex-wrap gap-2">
@@ -62,7 +68,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     .then(() => toast.success("Mensagem copiada"), () => toast.error("Não foi possível copiar"))
                 }
               >
-                Copiar mensagem para a cliente
+                <Copy /> Copiar mensagem para a cliente
               </Button>
               {wa && (
                 <Button variant="outline" className="h-11 sm:h-8" asChild>
@@ -72,8 +78,8 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                 </Button>
               )}
             </div>
-          </AlertDescription>
-        </Alert>
+          </CardContent>
+        </Card>
       )}
 
       <section className="flex flex-col gap-2" aria-label="A encontrar">
@@ -87,14 +93,13 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                 <Button className="h-11 flex-1 text-base" onClick={() => acao(i, { status: "encontrado" })}>
                   <Check /> Achei
                 </Button>
-                <MenuPeca>
-                  <DropdownMenuItem onClick={() => marcar(i, "falta")}>Falta</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => marcar(i, "defeito")}>Defeito</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => aoTrocar(i)}>Trocar por outra peça</DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onClick={() => marcar(i, "removido", "cliente desistiu")}>
-                    Remover (cliente desistiu)
-                  </DropdownMenuItem>
-                </MenuPeca>
+                <MenuPeca
+                  itens={[
+                    { rotulo: "Falta", icone: PackageX, aoClicar: () => marcar(i, "falta") },
+                    { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                    { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
+                  ]}
+                />
               </TilePeca>
             ))}
           </GradePecas>
@@ -116,7 +121,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           <CollapsibleContent className="flex flex-col gap-1.5 pt-1">
             {removidas.map((i) => (
               <LinhaPeca key={i.id} item={i} compacta esmaecida>
-                <Button variant="ghost" className="h-11 sm:h-8" onClick={() => marcar(i, "pendente", null)}>
+                <Button variant="ghost" className="h-11" onClick={() => marcar(i, "pendente", null)}>
                   Restaurar
                 </Button>
               </LinhaPeca>

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert, Truck } from "lucide-react"
 import Foto from "@/components/Foto"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -128,10 +127,13 @@ function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
   const faltam = campos.filter((c) => !pedido[c.chave as keyof PedidoDetalhe])
   if (faltam.length === 0) return null
   return (
-    <Alert variant="destructive">
-      <TriangleAlert />
-      <AlertTitle>Faltam dados do pedido</AlertTitle>
-      <AlertDescription className="mt-2 grid gap-2 sm:grid-cols-2">
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" /> Faltam dados do pedido
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
         {faltam.map((c) => (
           <CampoSalvo
             key={c.chave}
@@ -142,8 +144,8 @@ function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
             aoSalvar={(v) => v && patch({ [c.chave]: c.chave === "entrega_uf" ? v.toUpperCase() : (c.limpar ? c.limpar(v) : v) } as CamposPedido)}
           />
         ))}
-      </AlertDescription>
-    </Alert>
+      </CardContent>
+    </Card>
   )
 }
 

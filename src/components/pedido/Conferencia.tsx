@@ -1,6 +1,5 @@
-import { Check } from "lucide-react"
+import { Check, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
 import AvisoConferencia from "./AvisoConferencia"
@@ -40,11 +39,9 @@ export default function Conferencia({ pedido, acao, aoConcluir }: Props) {
                 <Button className="h-11 flex-1 text-base" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
                   <Check /> Conferida
                 </Button>
-                <MenuPeca>
-                  <DropdownMenuItem variant="destructive" onClick={() => acao(i, { status: "defeito" })}>
-                    Defeito (voltar para Problemas)
-                  </DropdownMenuItem>
-                </MenuPeca>
+                <MenuPeca
+                  itens={[{ rotulo: "Defeito", icone: TriangleAlert, destrutivo: true, aoClicar: () => acao(i, { status: "defeito" }) }]}
+                />
               </TilePeca>
             ))}
           </GradePecas>

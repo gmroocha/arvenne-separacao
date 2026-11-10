@@ -1,11 +1,19 @@
 import { useState } from "react"
-import { Check, TriangleAlert } from "lucide-react"
+import { Check, MessageCircleWarning } from "lucide-react"
 import FaixaRolavel from "@/components/FaixaRolavel"
 import { Badge } from "@/components/ui/badge"
 import { quando } from "@/lib/formato"
 import { ICONE_ETAPA, PASSOS, passoDe, type StatusPedido } from "@/lib/status"
 import type { Evento } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
+
+function Aguardando() {
+  return (
+    <Badge variant="outline" className="text-amber-600 dark:text-amber-400">
+      <MessageCircleWarning /> Aguardando cliente
+    </Badge>
+  )
+}
 
 type Props = { status: StatusPedido; eventos: Evento[] }
 
@@ -28,9 +36,7 @@ export default function Etapas({ status, eventos }: Props) {
           <div className="flex items-center gap-2 text-sm font-medium">
             Etapa {atual + 1} de {PASSOS.length} · {PASSOS[atual].nome}
             {status === "aguardando_cliente" && (
-              <Badge variant="destructive">
-                <TriangleAlert /> Aguardando cliente
-              </Badge>
+              <Aguardando />
             )}
           </div>
           <div className="flex gap-1" aria-hidden>
@@ -41,6 +47,11 @@ export default function Etapas({ status, eventos }: Props) {
         </div>
       )}
 
+      {atual >= 0 && status === "aguardando_cliente" && (
+        <div className="hidden lg:block">
+          <Aguardando />
+        </div>
+      )}
       <FaixaRolavel chave={status} className="hidden lg:block">
       <ol className="flex w-max items-center pb-1" aria-label="Etapas do pedido">
         {PASSOS.map((p, i) => {
@@ -65,11 +76,6 @@ export default function Etapas({ status, eventos }: Props) {
                 {p.nome}
               </button>
               {i < PASSOS.length - 1 && <span className={cn("h-px w-4", i < atual ? "bg-primary" : "bg-border")} />}
-              {i === 0 && status === "aguardando_cliente" && (
-                <Badge variant="destructive" className="ml-1">
-                  <TriangleAlert /> Aguardando cliente
-                </Badge>
-              )}
             </li>
           )
         })}

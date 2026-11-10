@@ -33,8 +33,8 @@ export default function Layout() {
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-4" />
           <h1 className="text-sm font-medium">{titulo(pathname)}</h1>
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setFeedback(true)}>
-            <MessageSquarePlus /> Feedback
+          <Button variant="ghost" size="sm" className="ml-auto max-sm:size-9 max-sm:p-0" aria-label="Feedback" onClick={() => setFeedback(true)}>
+            <MessageSquarePlus /> <span className="max-sm:sr-only">Feedback</span>
           </Button>
         </header>
         <div className={`mx-auto w-full flex-1 p-3 sm:p-4 ${pathname === "/" ? "" : "max-w-5xl"}`}>

@@ -34,10 +34,7 @@
 
 ## Aberto agora
 
-1. **Aguardando o "sim" do Gustavo** para: aplicar a migration `20261111210000_bairro_complemento.sql`
-   (separa bairro e complemento dos pedidos da Shopify já importados) e **republicar `shopify-sync`**
-   (`npx supabase functions deploy shopify-sync --use-api --yes`) para os próximos pedidos. Depois do
-   deploy, o Gustavo clica em Sincronizar e confere-se no banco.
+1. **Feito em 10/11/2026:** migrations de bairro, feedbacks e eventos aplicadas; `shopify-sync` e `shopify-clientes` republicadas. Falta o Gustavo clicar em Sincronizar para conferir o bairro nos próximos pedidos.
 2. **Ninguém testou as telas novas ponta a ponta.** Roteiro em `docs/PASSO-A-PASSO.md` e abaixo.
 3. **ARV-1275:** a rua veio sem número claro (`rua fn 27 qd 22 lote 17, casa 1`); a tela Nota e frete pede
    para completar.
@@ -69,7 +66,6 @@ Também no celular (390 px). Sem rolagem horizontal da página.
 ## Banco: migrations aplicadas
 
 `20261110120000_inicio`, `20261110180000_permissoes`, `20261111090000_vendas`,
-`20261111120000_catalogo_site`, `20261111150000_catalogo_status`, `20261111180000_esteira`.
-Pendentes de aplicar (aguardam o "sim" do Gustavo): `20261111210000_bairro_complemento`,
-`20261112090000_feedbacks` (tabela de feedbacks) e `20261112091000_eventos_analise` (novos eventos em
-`pedido_eventos` e views `v_tempo_etapas` e `v_tempo_sku`).
+`20261111120000_catalogo_site`, `20261111150000_catalogo_status`, `20261111180000_esteira`,
+`20261111210000_bairro_complemento`, `20261112090000_feedbacks`, `20261112091000_eventos_analise`.
+Nenhuma pendente.

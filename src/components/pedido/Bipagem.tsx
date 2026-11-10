@@ -4,7 +4,6 @@ import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { registrarBipagem, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
@@ -195,14 +194,13 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
                       </Badge>
                     }
                   >
-                    <MenuPeca rotulo="Ajustar contagem">
-                      <DropdownMenuItem onClick={() => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() })}>
-                        <Plus /> Contar 1 à mão
-                      </DropdownMenuItem>
-                      <DropdownMenuItem disabled={i.qtd_bipada <= 0} onClick={() => acao(i, { qtd_bipada: i.qtd_bipada - 1 })}>
-                        <Minus /> Tirar 1
-                      </DropdownMenuItem>
-                    </MenuPeca>
+                    <MenuPeca
+                      rotulo="Ajustar contagem"
+                      itens={[
+                        { rotulo: "Contar 1", icone: Plus, aoClicar: () => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() }) },
+                        { rotulo: "Tirar 1", icone: Minus, desabilitado: i.qtd_bipada <= 0, aoClicar: () => acao(i, { qtd_bipada: i.qtd_bipada - 1 }) },
+                      ]}
+                    />
                   </TilePeca>
                 ))}
               </GradePecas>

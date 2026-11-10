@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from "react"
 import { Check, ChevronDown, MoreHorizontal } from "lucide-react"
 import Foto from "@/components/Foto"
+import MenuAcoes, { type ItemAcao } from "@/components/MenuAcoes"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
 import type { Item } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
@@ -42,7 +42,7 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
       <div className="flex min-w-0 flex-col gap-0.5 px-0.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 font-mono text-lg leading-tight font-semibold break-all">{item.sku ?? "sem código"}</div>
-          {item.qtd > 1 && <Badge className="h-7 shrink-0 px-2.5 text-base tabular-nums">{item.qtd}×</Badge>}
+          {item.qtd > 1 && <Badge variant="secondary" className="h-6 shrink-0 px-2 text-sm font-medium tabular-nums">{item.qtd}×</Badge>}
         </div>
         {item.variante && <div className="text-sm leading-tight font-medium">{item.variante}</div>}
         <div className="line-clamp-1 text-xs text-muted-foreground">{item.nome}</div>
@@ -62,17 +62,18 @@ export function GradePecas({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
 }
 
-// Menu "…" do bloco: botão só do tamanho do ícone, com alvo de toque de 44 px no celular.
-export function MenuPeca({ children, rotulo = "Mais opções" }: { children: ReactNode; rotulo?: string }) {
+// Menu "…" do bloco: quadrado de 44 px, da mesma altura do botão principal.
+export function MenuPeca({ itens, rotulo = "Mais opções" }: { itens: ItemAcao[]; rotulo?: string }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" aria-label={rotulo} className="size-11 shrink-0 sm:size-9">
+    <MenuAcoes
+      titulo={rotulo}
+      grupos={[{ itens }]}
+      gatilho={
+        <Button variant="outline" size="icon" aria-label={rotulo} className="size-11 shrink-0">
           <MoreHorizontal />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
-    </DropdownMenu>
+      }
+    />
   )
 }
 
@@ -123,15 +124,21 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
             <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
             <Foto url={i.foto_url} alt={i.nome} ampliar className="size-10 shrink-0" />
             <div className="min-w-0 flex-1 text-sm leading-tight">
-              <div className="truncate font-mono font-semibold">
-                {i.qtd > 1 ? `${i.qtd}× ` : ""}
+              <div className="flex items-center gap-1.5 font-mono font-semibold">
+                <span className="truncate">
                 {i.sku ?? "sem código"}
+                </span>
+                {i.qtd > 1 && (
+                  <Badge variant="secondary" className="h-5 shrink-0 px-1.5 font-sans text-xs font-medium tabular-nums">
+                    {i.qtd}×
+                  </Badge>
+                )}
               </div>
               <div className="truncate text-xs text-muted-foreground">
                 {[i.variante, nota?.(i)].filter(Boolean).join(" · ")}
               </div>
             </div>
-            <Button variant="ghost" className="h-11 shrink-0 px-3 sm:h-8" onClick={() => aoDesfazer(i)}>
+            <Button variant="ghost" className="h-11 shrink-0 px-3" onClick={() => aoDesfazer(i)}>
               {rotuloDesfazer}
             </Button>
           </div>

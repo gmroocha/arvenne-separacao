@@ -41,12 +41,12 @@ export default function LinhaPeca({ item, compacta, saindo, entrando, esmaecida,
         {item.observacao && <div className="text-xs text-muted-foreground">{item.observacao}</div>}
         {(item.qtd > 1 || item.origem === "clube") && (
           <div className="mt-1 flex gap-1">
-            {item.qtd > 1 && <Badge className={compacta ? undefined : "text-sm"}>{item.qtd}×</Badge>}
+            {item.qtd > 1 && <Badge variant="secondary" className="h-5 px-1.5 text-xs font-medium tabular-nums">{item.qtd}×</Badge>}
             {item.origem === "clube" && <Badge variant="outline">Clube</Badge>}
           </div>
         )}
       </div>
-      {children && <div className="flex shrink-0 items-center gap-1">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-2 self-center">{children}</div>}
     </div>
   )
 }
