@@ -135,3 +135,10 @@
     font-weight: 600;
     }
 }
+/* Rolagem com suavização no topo e na base (no lugar do corte seco). */
+@layer utilities {
+  .fade-rolagem {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent);
+  }
+}

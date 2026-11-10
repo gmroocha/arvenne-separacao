@@ -119,7 +119,7 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
         {itens.map((i) => (
           <div
             key={i.id}
-            className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 animate-in fade-in zoom-in-95 duration-300"
+            className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-1.5 animate-in fade-in zoom-in-95 duration-300"
           >
             <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
             <Foto url={i.foto_url} alt={i.nome} ampliar className="size-10 shrink-0" />

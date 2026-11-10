@@ -23,7 +23,7 @@ type Coluna = {
   nome: string
   icone: string
   statuses: StatusPedido[]
-  alerta?: boolean
+  alerta?: "vermelho" | "amarelo"
   rastreio?: boolean // pedidos enviados à espera do rastreio (vêm de outra consulta)
 }
 
@@ -31,8 +31,8 @@ type Coluna = {
 const COLUNAS: Coluna[] = [
   { id: "fila", nome: "Fila", icone: "fila", statuses: ["novo"] },
   { id: "separacao", nome: "Separação", icone: "separacao", statuses: ["separacao"] },
-  { id: "avisar_cliente", nome: "Avisar cliente", icone: "avisar_cliente", statuses: ["avisar_cliente"], alerta: true },
-  { id: "aguardando_cliente", nome: "Aguardando cliente", icone: "aguardando_cliente", statuses: ["aguardando_cliente"], alerta: true },
+  { id: "avisar_cliente", nome: "Avisar cliente", icone: "avisar_cliente", statuses: ["avisar_cliente"], alerta: "vermelho" },
+  { id: "aguardando_cliente", nome: "Aguardando cliente", icone: "aguardando_cliente", statuses: ["aguardando_cliente"], alerta: "amarelo" },
   { id: "conferencia", nome: "Conferência", icone: "conferencia", statuses: ["conferencia"] },
   { id: "etiquetagem", nome: "Etiquetagem", icone: "etiquetagem", statuses: ["etiquetagem"] },
   { id: "bipagem", nome: "Bipagem", icone: "bipagem", statuses: ["bipagem"] },
@@ -41,6 +41,22 @@ const COLUNAS: Coluna[] = [
   { id: "pronto_envio", nome: "Postagem", icone: "pronto_envio", statuses: ["pronto_envio"] },
   { id: "rastreio", nome: "Enviar rastreio", icone: "rastreio", statuses: ["enviado"], rastreio: true },
 ]
+
+// Cores suaves dos desvios: vermelho (avisar) e amarelo (aguardando).
+const COR_ALERTA = {
+  vermelho: {
+    coluna: "bg-destructive/10",
+    icone: "text-destructive",
+    anel: "border-destructive/40 bg-destructive/10 text-destructive",
+    contador: "bg-destructive text-white",
+  },
+  amarelo: {
+    coluna: "bg-amber-500/10",
+    icone: "text-amber-700 dark:text-amber-300",
+    anel: "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    contador: "bg-amber-500 text-white",
+  },
+} as const
 
 // Progresso da etapa no cartão ("3/5"), vindo das contagens da view.
 function progressoDe(p: Pedido): string | null {
@@ -181,13 +197,16 @@ export default function Expedicao() {
                       className={cn(
                         "relative flex size-11 items-center justify-center rounded-full border transition-colors",
                         ativa ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
-                        c.alerta && c.pedidos.length > 0 && !ativa && "border-destructive/40 bg-destructive/10 text-destructive",
+                        c.alerta && c.pedidos.length > 0 && !ativa && COR_ALERTA[c.alerta].anel,
                       )}
                     >
                       <Icone className="size-5" />
                       <Badge
-                        variant={c.pedidos.length ? (c.alerta ? "destructive" : "default") : "secondary"}
-                        className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums"
+                        variant={c.pedidos.length ? "default" : "secondary"}
+                        className={cn(
+                          "absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums",
+                          c.alerta && c.pedidos.length > 0 && COR_ALERTA[c.alerta].contador,
+                        )}
                       >
                         {c.pedidos.length}
                       </Badge>
@@ -242,14 +261,17 @@ export default function Expedicao() {
                   }}
                   className={cn(
                     "flex min-h-40 w-64 shrink-0 flex-col gap-2 rounded-xl p-2 transition-colors",
-                    c.alerta ? "bg-destructive/10" : "bg-muted/40",
+                    c.alerta ? COR_ALERTA[c.alerta].coluna : "bg-muted/40",
                     alvo === c.id && "bg-primary/10 ring-2 ring-primary/50 ring-inset",
                   )}
                 >
                   <header className="flex items-center gap-2 px-1 py-1 text-sm font-medium">
-                    <Icone className={cn("size-4", c.alerta ? "text-destructive" : "text-muted-foreground")} />
+                    <Icone className={cn("size-4", c.alerta ? COR_ALERTA[c.alerta].icone : "text-muted-foreground")} />
                     <span className="truncate">{c.nome}</span>
-                    <Badge variant={c.alerta && c.pedidos.length ? "destructive" : "secondary"} className="ml-auto tabular-nums">
+                    <Badge
+                      variant="secondary"
+                      className={cn("ml-auto tabular-nums", c.alerta && c.pedidos.length > 0 && COR_ALERTA[c.alerta].contador)}
+                    >
                       {c.pedidos.length}
                     </Badge>
                   </header>

@@ -62,9 +62,9 @@ function SemResultado() {
 function Resultado({ item, noCarrinho, selecionada, aoTocar }: { item: NovoItem; noCarrinho: number; selecionada: boolean; aoTocar: () => void }) {
   return (
     <Item variant="outline" size="sm" asChild className={cn(selecionada && "border-emerald-500 bg-emerald-500/5")}>
-      <button type="button" className="text-left" aria-pressed={selecionada} onClick={aoTocar}>
+      <button type="button" className="min-w-0 text-left" aria-pressed={selecionada} onClick={aoTocar}>
         <Foto url={fotoTamanho(item.foto_url, 200)} alt={item.nome} className="size-16 shrink-0" />
-        <ItemContent className="gap-0.5">
+        <ItemContent className="min-w-0 gap-0.5">
           <span className="truncate font-mono text-base font-semibold">{item.sku ?? "sem código"}</span>
           <span className="truncate text-sm font-medium">{item.variante ?? "sem variante"}</span>
           <span className="truncate text-xs text-muted-foreground">{item.nome}</span>

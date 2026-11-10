@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Check, ChevronUp, Copy, MessageCircle, Search, X } from "lucide-react"
+import { Check, ChevronUp, Copy, MessageCircle, RefreshCw, Search, TriangleAlert, X } from "lucide-react"
 import { BuscaPecas } from "@/components/BuscaPecas"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
@@ -66,7 +66,7 @@ function GradeSugestoes({
               aria-pressed={marcada}
               onClick={() => aoTocar(novo)}
               className={cn(
-                "flex flex-col gap-1.5 rounded-xl border bg-card p-2 text-left transition-colors",
+                "flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-2 text-left transition-colors",
                 marcada && "border-emerald-500 bg-emerald-500/5",
               )}
             >
@@ -98,7 +98,7 @@ function ListaOpcoes({ troca, aoRemover }: { troca: Troca | undefined; aoRemover
   return (
     <div className="flex flex-col gap-2">
       {opcoes.map((o) => (
-        <div key={o.id} className="flex items-center gap-2 rounded-lg border bg-card p-2">
+        <div key={o.id} className="flex min-w-0 items-center gap-2 rounded-lg border bg-card p-2">
           <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} className="size-12 shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="truncate font-mono text-sm font-semibold">{o.sku ?? "sem código"}</div>
@@ -139,6 +139,18 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
     criou.current = item.id
     criarTroca({ pedidoId: pedido.id, itemId: item.id })
   }, [aberto, trocas.isSuccess, troca, criando, criarTroca, item.id, pedido.id])
+
+  // Estados da troca: carregando, erro e pronta (nunca um carregando eterno).
+  const erroTroca = trocas.isError || criar.isError
+  const carregandoTroca = !troca && !erroTroca
+  function tentarDeNovo() {
+    if (trocas.isError) {
+      trocas.refetch()
+      return
+    }
+    criou.current = item.id
+    criarTroca({ pedidoId: pedido.id, itemId: item.id })
+  }
 
   const opcoes = troca?.opcoes ?? []
   const selecionada = (n: NovoItem) => opcoes.some((o) => opcaoIgual(o, n))
@@ -194,29 +206,25 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
     }
   }
 
-  const botoes = (
-    <div className="flex gap-2">
-      <Button variant="outline" className="h-11 flex-1 sm:h-9" disabled={bloqueado} onClick={copiar}>
+  const botoes = (empilhados: boolean) => (
+    <div className={cn("flex gap-2", empilhados && "flex-col")}>
+      <Button variant="outline" className="h-11 min-w-0 flex-1 sm:h-9" disabled={bloqueado} onClick={copiar}>
         {enviando ? <Spinner /> : <Copy />} Copiar mensagem
       </Button>
-      <Button className="h-11 flex-1 sm:h-9" disabled={bloqueado || !wa} onClick={enviarWhatsApp}>
+      <Button className="h-11 min-w-0 flex-1 sm:h-9" disabled={bloqueado || !wa} onClick={enviarWhatsApp}>
         <MessageCircle /> Enviar no WhatsApp
       </Button>
     </div>
   )
 
   const topo = (
-    <div className="flex items-center gap-3 rounded-xl border bg-card p-2">
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border bg-card p-2">
       <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} ampliar className="size-20 shrink-0" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="font-mono text-lg leading-tight font-semibold break-all">{item.sku ?? "sem código"}</span>
         {item.variante && <span className="text-sm leading-tight font-medium">{item.variante}</span>}
         <span className="line-clamp-1 text-xs text-muted-foreground">{item.nome}</span>
-        {pago != null ? (
-          <span className="mt-0.5 text-sm tabular-nums">Cliente pagou {reais(pago)}</span>
-        ) : (
-          <Skeleton className="mt-0.5 h-4 w-32" />
-        )}
+        {pago != null && <span className="mt-0.5 text-sm tabular-nums">Cliente pagou {reais(pago)}</span>}
       </div>
     </div>
   )
@@ -228,14 +236,35 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
   const conteudo = (
     <div className="flex flex-col gap-4">
       {topo}
+      {erroTroca && (
+        <div role="alert" className="flex flex-col gap-2 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="flex items-center gap-2 font-medium">
+            <TriangleAlert className="size-4 shrink-0" /> Não foi possível montar a troca. Tente de novo.
+          </div>
+          <Button variant="outline" className="h-11 w-fit bg-background text-foreground sm:h-9" disabled={criando || trocas.isFetching} onClick={tentarDeNovo}>
+            {criando || trocas.isFetching ? <Spinner /> : <RefreshCw />} Tentar de novo
+          </Button>
+        </div>
+      )}
+      {carregandoTroca && <Skeleton className="h-4 w-40" aria-label="Montando a troca" />}
       {sugestoes.isLoading && (
-        <div className="flex justify-center py-6">
-          <Spinner />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Carregando sugestões">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-xl" />
+          ))}
+        </div>
+      )}
+      {sugestoes.isError && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          Não foi possível carregar as sugestões.
+          <Button variant="outline" className="h-11 sm:h-9" onClick={() => sugestoes.refetch()}>
+            <RefreshCw /> Tentar de novo
+          </Button>
         </div>
       )}
       <GradeSugestoes titulo="Mesmo modelo" sugestoes={modelo} selecionada={selecionada} aoTocar={(n) => alternar(n, "mesmo_modelo")} />
       <GradeSugestoes titulo="Mesmo valor" sugestoes={valor} selecionada={selecionada} aoTocar={(n) => alternar(n, "mesmo_valor")} />
-      {!sugestoes.isLoading && todas.length === 0 && (
+      {sugestoes.isSuccess && todas.length === 0 && (
         <p className="text-sm text-muted-foreground">Sem sugestões para esta peça. Use a busca para escolher as opções.</p>
       )}
       <Collapsible open={buscando} onOpenChange={setBuscando} className="flex flex-col gap-2">
@@ -263,7 +292,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
       largo
     >
       {celular ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           {conteudo}
           <Collapsible open={verOpcoes} onOpenChange={setVerOpcoes} className="sticky bottom-0 -mx-4 border-t bg-background px-4 pt-3">
             <CollapsibleContent className="max-h-[40svh] overflow-y-auto pb-3">{lista}</CollapsibleContent>
@@ -274,19 +303,19 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, item }: Props) {
                   <ChevronUp className={verOpcoes ? "rotate-180" : ""} />
                 </Button>
               </CollapsibleTrigger>
-              {botoes}
+              {botoes(false)}
             </div>
           </Collapsible>
         </div>
       ) : (
-        <div className="grid grid-cols-[minmax(0,1fr)_300px] gap-6">
-          <div>{conteudo}</div>
-          <div className="flex flex-col gap-3 self-start border-l pl-6">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,18rem)] gap-6">
+          <div className="min-w-0">{conteudo}</div>
+          <div className="flex min-w-0 flex-col gap-3 self-start border-l pl-6">
             <h3 className="text-sm font-semibold">
               Opções escolhidas {opcoes.length > 0 && <span className="font-normal text-muted-foreground">({rotuloOpcoes})</span>}
             </h3>
             <div className="max-h-[50svh] overflow-y-auto">{lista}</div>
-            {botoes}
+            {botoes(true)}
           </div>
         </div>
       )}

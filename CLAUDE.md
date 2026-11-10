@@ -50,10 +50,14 @@ chave certa via `core.sshCommand` já configurado neste repositório.
 
 ## Comandos
 
+Todo ajuste visual é conferido com `npm run capturas` (olhar os PNGs em celular e PC) antes de entregar.
+
+
 ```
 cd ~/arvenne-separacao
 npm run dev      # servidor local (usa .env.local, ignorado pelo git)
 npm run build    # tsc + vite
+npm run capturas -- / /pedidos/<id>   # prints em 390 e 1280 px na pasta capturas/ (precisa do npm run dev e de E2E_EMAIL/E2E_SENHA no .env.local)
 npm run lint     # oxlint (restam avisos antigos em src/components/ui e use-mobile)
 git push         # a chave SSH já está no repositório
 ```

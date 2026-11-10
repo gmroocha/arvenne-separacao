@@ -1,15 +1,13 @@
 import { MessageCircle, ShoppingBag } from "lucide-react"
+import SeloStatus from "@/components/SeloStatus"
+import { ehDesvio } from "@/lib/selo"
 import { Badge } from "@/components/ui/badge"
 import { NOME_ETAPA, type StatusPedido } from "@/lib/status"
 import type { Origem } from "@/lib/tipos"
 
 export function StatusBadge({ status }: { status: StatusPedido }) {
-  const variante =
-    status === "avisar_cliente" || status === "aguardando_cliente"
-      ? "outline"
-      : status === "enviado" || status === "cancelado" || status === "perdida"
-        ? "outline"
-        : "secondary"
+  if (ehDesvio(status)) return <SeloStatus status={status} />
+  const variante = status === "enviado" || status === "cancelado" || status === "perdida" ? "outline" : "secondary"
   return <Badge variant={variante}>{NOME_ETAPA[status]}</Badge>
 }
 

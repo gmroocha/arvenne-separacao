@@ -2,6 +2,8 @@ import { Link } from "react-router"
 import { ArrowLeft, ExternalLink, MoreHorizontal, RotateCcw, UserRound, XCircle } from "lucide-react"
 import MenuAcoes, { type GrupoAcoes } from "@/components/MenuAcoes"
 import Prazo from "@/components/pedido/Prazo"
+import SeloStatus from "@/components/SeloStatus"
+import { ehDesvio } from "@/lib/selo"
 import { OrigemBadge } from "@/components/StatusBadge"
 import { Button } from "@/components/ui/button"
 import type { PedidoDetalhe } from "@/lib/api"
@@ -20,9 +22,10 @@ export default function Cabecalho({ pedido, aoMover, aoCancelar, aoReiniciar, ao
     { itens: aoVerDados ? [{ rotulo: "Ver dados do pedido", icone: UserRound, aoClicar: aoVerDados }] : [] },
     {
       titulo: "Mover para outra etapa",
-      itens: ETAPAS_EXPEDICAO.filter((e) => e !== pedido.status).map((e) => ({
+      itens: ETAPAS_EXPEDICAO.map((e) => ({
         rotulo: NOME_ETAPA[e],
         icone: ICONE_ETAPA[e],
+        atual: e === pedido.status,
         aoClicar: () => aoMover(e),
       })),
     },
@@ -60,8 +63,9 @@ export default function Cabecalho({ pedido, aoMover, aoCancelar, aoReiniciar, ao
             <OrigemBadge origem={pedido.origem} />
             {pedido.fase === "expedicao" && <Prazo prazo={pedido.prazo} horasUteis={pedido.prazo_horas_uteis} />}
           </div>
-          <div className="text-xs text-muted-foreground">nesta etapa há {tempoDesde(pedido.status_desde)}</div>
+          {ehDesvio(pedido.status) && <SeloStatus status={pedido.status} className="mt-1 w-fit" />}
         </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
         <MenuAcoes
           titulo="Ações do pedido"
           grupos={grupos}
@@ -71,6 +75,8 @@ export default function Cabecalho({ pedido, aoMover, aoCancelar, aoReiniciar, ao
             </Button>
           }
         />
+          <div className="text-right text-xs text-muted-foreground">nesta etapa há {tempoDesde(pedido.status_desde)}</div>
+        </div>
       </div>
     </div>
   )

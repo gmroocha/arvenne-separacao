@@ -20,11 +20,11 @@ export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: st
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <div className="flex items-center -space-x-2">
+        <div className="flex flex-wrap items-center gap-1">
           {p.fotos.map((f, n) => (
-            <Foto key={n} url={f} className="size-9 rounded-md ring-2 ring-card" />
+            <Foto key={n} url={f} className="size-9 rounded-md bg-muted ring-1 ring-border" />
           ))}
-          {p.fotos.length === 0 && <Foto url={null} className="size-9 rounded-md" />}
+          {p.fotos.length === 0 && <Foto url={null} className="size-9 rounded-md bg-muted ring-1 ring-border" />}
         </div>
         {extras > 0 && <span className="text-xs text-muted-foreground tabular-nums">+{extras}</span>}
         {progresso && <span className="ml-auto text-sm font-medium tabular-nums">{progresso}</span>}

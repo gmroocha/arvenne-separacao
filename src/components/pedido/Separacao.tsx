@@ -2,6 +2,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, MessageCircle, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
 import Foto from "@/components/Foto"
+import { COR_SELO } from "@/lib/selo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,26 +15,23 @@ import { linkWhatsApp, reais } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
 import { textoSituacao, trocaAtiva, valorDaOpcao, valorPagoItem } from "@/lib/trocaTexto"
 import type { Item, Troca } from "@/lib/tipos"
+import { cn } from "@/lib/utils"
 import LinhaPeca from "./LinhaPeca"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 import TrocaDialog from "./TrocaDialog"
 
+const COR_TITULO = { avisar_cliente: "text-destructive", aguardando_cliente: "text-amber-700 dark:text-amber-300" } as const
+
 // Estado da troca de uma peça em falta: montar, aguardar a cliente ou fechar a escolha dela.
 function EstadoTroca({ troca, aoAbrir, wa }: { troca: Troca | undefined; aoAbrir: () => void; wa: string | null }) {
   const concluir = useConcluirTroca()
-  if (!troca || troca.status === "rascunho")
-    return (
-      <Button variant="outline" className="h-11 w-fit sm:h-8" onClick={aoAbrir}>
-        <ArrowLeftRight /> {troca ? "Continuar troca" : "Montar troca"}
-      </Button>
-    )
+  // Sem troca ou em rascunho: o botão "Montar troca" fica na linha de ações do cartão.
+  if (!troca || troca.status === "rascunho") return null
   if (troca.status === "enviada")
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">
-          Enviada há {tempoDesde(troca.enviada_em ?? troca.created_at)} · aguardando escolha
-        </span>
-        <Button variant="outline" className="h-11 sm:h-8" onClick={aoAbrir}>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>Troca enviada há {tempoDesde(troca.enviada_em ?? troca.created_at)} · aguardando escolha</span>
+        <Button variant="ghost" size="sm" className="h-8" onClick={aoAbrir}>
           <Send /> Reenviar
         </Button>
       </div>
@@ -43,7 +41,7 @@ function EstadoTroca({ troca, aoAbrir, wa }: { troca: Troca | undefined; aoAbrir
   const pago = valorPagoItem(troca)
   const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, tipo })
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-2">
+    <div className="flex flex-col gap-2 rounded-lg bg-emerald-500/10 p-2">
       {opcao ? (
         <div className="flex items-center gap-2">
           <Foto url={fotoTamanho(opcao.foto_url, 200)} alt={opcao.nome} ampliar className="size-12 shrink-0" />
@@ -60,7 +58,7 @@ function EstadoTroca({ troca, aoAbrir, wa }: { troca: Troca | undefined; aoAbrir
       ) : (
         <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Quer falar no WhatsApp</div>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {troca.escolha_tipo === "opcao" && (
           <Button className="h-11 sm:h-8" disabled={concluir.isPending} onClick={() => fazer("opcao")}>
             <Check /> Fazer a troca
@@ -110,6 +108,12 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const trocas = useTrocas(pedido.id)
   const [trocando, setTrocando] = useState<Item | null>(null)
   const trocaDe = (i: Item) => trocas.data?.find((t) => t.item_id === i.id && trocaAtiva(t))
+  // Troca a montar: a primeira peça em falta que ainda não foi enviada nem respondida.
+  const paraMontar = problemas.find((i) => {
+    if (i.status !== "falta") return false
+    const t = trocaDe(i)
+    return !t || t.status === "rascunho"
+  })
   const comTroca = problemas.map((i) => ({ i, t: trocaDe(i) })).find((x) => x.t)
 
   // Mensagem para a cliente: com troca montada leva o link; sem troca, aviso simples.
@@ -127,10 +131,16 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
       <ProgressoEtapa titulo="Separação" feitas={achadas.length} total={vivas} unidade="peças" />
 
       {problemas.length > 0 && (
-        <Card size="sm">
+        <Card
+          size="sm"
+          className={cn(
+            avisar && "bg-destructive/5 ring-destructive/20",
+            aguardando && "bg-amber-500/5 ring-amber-500/20",
+          )}
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              {avisar ? <BellRing className="size-4 text-amber-600 dark:text-amber-400" /> : <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" />}
+              {avisar ? <BellRing className={cn("size-4", COR_TITULO.avisar_cliente)} /> : <TriangleAlert className={cn("size-4", aguardando ? COR_TITULO.aguardando_cliente : "text-muted-foreground")} />}
               {avisar
                 ? "Avise a cliente"
                 : aguardando
@@ -143,7 +153,13 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             {problemas.map((i) => (
               <div key={i.id} className="flex flex-col gap-2">
                 <LinhaPeca item={i} compacta>
-                  <Badge variant="outline" className="border-amber-500/40 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "h-6 border-transparent px-2 text-xs font-medium [&>svg]:size-3.5",
+                      avisar ? COR_SELO.avisar_cliente : aguardando ? COR_SELO.aguardando_cliente : "",
+                    )}
+                  >
                     {i.status === "falta" ? <PackageX /> : <TriangleAlert />}
                     {i.status === "falta" ? "Em falta" : "Defeito"}
                   </Badge>
@@ -159,9 +175,19 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                 {i.status === "falta" && <EstadoTroca troca={trocaDe(i)} aoAbrir={() => setTrocando(i)} wa={wa} />}
               </div>
             ))}
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              {paraMontar && (
+                <Button
+                  variant={trocas.data?.some((t) => t.item_id === paraMontar.id && trocaAtiva(t)) ? "outline" : "default"}
+                  className="h-11 sm:h-8"
+                  onClick={() => setTrocando(paraMontar)}
+                >
+                  <ArrowLeftRight /> {trocas.data?.some((t) => t.item_id === paraMontar.id && trocaAtiva(t)) ? "Continuar troca" : "Montar troca"}
+                </Button>
+              )}
               {avisar && (
                 <Button
+                  variant={paraMontar ? "outline" : "default"}
                   className="h-11 sm:h-8"
                   onClick={() => {
                     mudarStatus.mutate({ pedidoId: pedido.id, para: "aguardando_cliente", silencioso: true })
@@ -185,7 +211,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
               {wa && (
                 <Button variant="outline" className="h-11 sm:h-8" asChild>
                   <a href={wa} target="_blank" rel="noreferrer">
-                    <MessageCircle /> WhatsApp da cliente
+                    <MessageCircle /> WhatsApp
                   </a>
                 </Button>
               )}

@@ -1,20 +1,12 @@
 import { useState } from "react"
-import { BellRing, Check, MessageCircleWarning } from "lucide-react"
+import { Check } from "lucide-react"
 import FaixaRolavel from "@/components/FaixaRolavel"
-import { Badge } from "@/components/ui/badge"
+import SeloStatus from "@/components/SeloStatus"
+import { ehDesvio } from "@/lib/selo"
 import { quando } from "@/lib/formato"
 import { ICONE_ETAPA, PASSOS, passoDe, type StatusPedido } from "@/lib/status"
 import type { Evento } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
-
-function Aguardando({ status }: { status: StatusPedido }) {
-  const avisar = status === "avisar_cliente"
-  return (
-    <Badge variant="outline" className="text-amber-600 dark:text-amber-400">
-      {avisar ? <BellRing /> : <MessageCircleWarning />} {avisar ? "Avisar cliente" : "Aguardando cliente"}
-    </Badge>
-  )
-}
 
 type Props = { status: StatusPedido; eventos: Evento[] }
 
@@ -22,8 +14,7 @@ type Props = { status: StatusPedido; eventos: Evento[] }
 // Postagem → Enviado. Concluída com ✓, atual em destaque; toque numa concluída mostra quem fez.
 export default function Etapas({ status, eventos }: Props) {
   const atual = passoDe(status)
-  const desvio = status === "avisar_cliente" || status === "aguardando_cliente"
-  const [aberta, setAberta] = useState<number | null>(null)
+    const [aberta, setAberta] = useState<number | null>(null)
 
   const quem = (i: number) => {
     const sts = PASSOS[i].statuses as readonly string[]
@@ -37,7 +28,7 @@ export default function Etapas({ status, eventos }: Props) {
         <div className="flex flex-col gap-1.5 lg:hidden">
           <div className="flex items-center gap-2 text-sm font-medium">
             Etapa {atual + 1} de {PASSOS.length} · {PASSOS[atual].nome}
-            {desvio && <Aguardando status={status} />}
+            {ehDesvio(status) && <SeloStatus status={status} />}
           </div>
           <div className="flex gap-1" aria-hidden>
             {PASSOS.map((p, i) => (
@@ -47,9 +38,9 @@ export default function Etapas({ status, eventos }: Props) {
         </div>
       )}
 
-      {atual >= 0 && desvio && (
+      {atual >= 0 && ehDesvio(status) && (
         <div className="hidden lg:block">
-          <Aguardando status={status} />
+          <SeloStatus status={status} />
         </div>
       )}
       <FaixaRolavel chave={status} className="hidden lg:block">
