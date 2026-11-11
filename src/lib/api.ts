@@ -3,7 +3,8 @@ import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import { etapaCompleta } from "@/lib/etapa"
-import { NOME_ETAPA, type StatusItem, type StatusPedido } from "@/lib/status"
+import { intervaloListas } from "@/lib/tempoReal"
+import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
 import type { CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 export const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
@@ -16,9 +17,9 @@ export type VarianteSite = Omit<NovoItem, "chave" | "origem" | "peca_clube_id" |
 export function usePedidosFase(fase: "venda" | "expedicao") {
   return useQuery({
     queryKey: ["pedidos", fase],
-    refetchInterval: 60_000,
+    refetchInterval: intervaloListas,
     queryFn: async () => {
-      let q = supabase.from("v_pedidos").select("*").eq("fase", fase).limit(300)
+      let q = supabase.from("v_pedidos").select("*").in("status", STATUS_DA_FASE[fase]).limit(300)
       q = fase === "expedicao"
         ? q.order("prazo", { ascending: true, nullsFirst: false })
         : q.order("pedido_em", { ascending: false })
@@ -33,7 +34,7 @@ export function usePedidosFase(fase: "venda" | "expedicao") {
 export function usePendentesRastreio() {
   return useQuery({
     queryKey: ["pedidos", "rastreio"],
-    refetchInterval: 60_000,
+    refetchInterval: intervaloListas,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_pedidos")
@@ -54,7 +55,7 @@ export function useArquivo(busca: string, limite: number) {
       let q = supabase
         .from("v_pedidos")
         .select("*")
-        .eq("fase", "arquivo")
+        .in("status", STATUS_DA_FASE.arquivo)
         .order("status_desde", { ascending: false })
         .limit(limite)
       const t = busca.trim().replace(/[%,()]/g, " ")
@@ -77,14 +78,14 @@ export function useArquivo(busca: string, limite: number) {
 export function useContagens() {
   return useQuery({
     queryKey: ["pedidos", "contagem"],
-    refetchInterval: 60_000,
+    refetchInterval: intervaloListas,
     queryFn: async () => {
       const [a, b] = await Promise.all([
         supabase.from("v_pedidos").select("id", { count: "exact", head: true }).eq("status", "em_aberto"),
         supabase
           .from("v_pedidos")
           .select("id", { count: "exact", head: true })
-          .eq("fase", "expedicao")
+          .in("status", STATUS_DA_FASE.expedicao)
           .lt("prazo", new Date().toISOString()),
       ])
       if (a.error) throw a.error

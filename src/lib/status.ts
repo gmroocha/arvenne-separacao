@@ -46,6 +46,16 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
   perdida: "arquivo",
 }
 
+// Status de cada fase (para filtrar `status in (...)` no banco, que usa o índice; igual à coluna `fase` de v_pedidos).
+export const STATUS_DA_FASE: Record<Fase, StatusPedido[]> = {
+  venda: ["em_aberto", "aguardando_pagamento"],
+  arquivo: ["enviado", "cancelado", "perdida"],
+  expedicao: [
+    "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
+    "embalagem", "pronto_envio",
+  ],
+}
+
 // Etapas de expedição, na ordem em que aparecem em "Mover para…".
 export const ETAPAS_EXPEDICAO: StatusPedido[] = [
   "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",

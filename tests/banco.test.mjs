@@ -13,7 +13,7 @@ async function preparar() {
   // constraints, gatilhos, permissões e RLS vêm das migrations reais, em ordem.
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create schema storage;
-    create table storage.buckets (id text primary key, name text, public boolean);
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
     create table storage.objects (id uuid primary key, bucket_id text);
     grant usage on schema public to anon;`)
   for (const file of readdirSync('supabase/migrations').filter(f => f.endsWith('.sql')).sort()) {

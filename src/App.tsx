@@ -1,21 +1,26 @@
+import { lazy, Suspense } from "react"
 import { Navigate, Route, Routes } from "react-router"
 import { TriangleAlert } from "lucide-react"
-import { configurado } from "@/lib/supabase"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import Layout from "@/components/Layout"
-import Protegido from "@/components/Protegido"
-import Login from "@/pages/Login"
-import Expedicao from "@/pages/Expedicao"
-import Arquivo from "@/pages/Arquivo"
-import Vendas from "@/pages/Vendas"
-import Venda from "@/pages/Venda"
-import NovaVenda from "@/pages/NovaVenda"
-import Romaneio from "@/pages/Romaneio"
-import Troca from "@/pages/Troca"
-import Pedido from "@/pages/Pedido"
-import Repetidas from "@/pages/Repetidas"
-import Clube from "@/pages/Clube"
-import Feedbacks from "@/pages/Feedbacks"
+import { Spinner } from "@/components/ui/spinner"
+import ErrorBoundary from "@/components/ErrorBoundary"
+const Layout = lazy(() => import("@/components/Layout"))
+const Protegido = lazy(() => import("@/components/Protegido"))
+
+// Igual a `configurado` de lib/supabase, sem puxar o pacote do Supabase para o início.
+const configurado = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
+const Login = lazy(() => import("@/pages/Login"))
+const Expedicao = lazy(() => import("@/pages/Expedicao"))
+const Arquivo = lazy(() => import("@/pages/Arquivo"))
+const Vendas = lazy(() => import("@/pages/Vendas"))
+const Venda = lazy(() => import("@/pages/Venda"))
+const NovaVenda = lazy(() => import("@/pages/NovaVenda"))
+const Romaneio = lazy(() => import("@/pages/Romaneio"))
+const Troca = lazy(() => import("@/pages/Troca"))
+const Pedido = lazy(() => import("@/pages/Pedido"))
+const Repetidas = lazy(() => import("@/pages/Repetidas"))
+const Clube = lazy(() => import("@/pages/Clube"))
+const Feedbacks = lazy(() => import("@/pages/Feedbacks"))
 
 function Configure() {
   return (
@@ -35,6 +40,8 @@ function Configure() {
 export default function App() {
   if (!configurado) return <Configure />
   return (
+    <ErrorBoundary>
+    <Suspense fallback={<div className="flex min-h-svh items-center justify-center"><Spinner className="size-6" /></div>}>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/r/:token" element={<Romaneio />} />
@@ -54,5 +61,7 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
+    </ErrorBoundary>
   )
 }
