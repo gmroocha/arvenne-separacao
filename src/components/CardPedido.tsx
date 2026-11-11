@@ -2,6 +2,7 @@ import { Link } from "react-router"
 import Miniaturas from "@/components/Miniaturas"
 import MenuContexto from "@/components/MenuContexto"
 import Prazo from "@/components/pedido/Prazo"
+import { SeloAcerto } from "@/components/SeloAcerto"
 import { OrigemBadge } from "@/components/StatusBadge"
 import type { Pedido } from "@/lib/tipos"
 
@@ -24,7 +25,10 @@ export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: st
           <Miniaturas fotos={p.fotos} total={p.qtd_linhas} />
           {progresso && <span className="ml-auto text-sm font-medium tabular-nums">{progresso}</span>}
         </div>
-        <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+          {p.acerto_pendente && <SeloAcerto />}
+        </div>
       </Link>
     </MenuContexto>
   )

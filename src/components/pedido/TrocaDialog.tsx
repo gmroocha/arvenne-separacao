@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Check, ChevronUp, Copy, MessageCircle, PackageSearch, RefreshCw, TriangleAlert, X } from "lucide-react"
+import { Check, ChevronUp, Copy, ExternalLink, HandCoins, Link2, MessageCircle, PackageSearch, RefreshCw, TriangleAlert, X } from "lucide-react"
 import { BuscaPecas } from "@/components/BuscaPecas"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
+import ConfirmarTroca from "@/components/pedido/ConfirmarTroca"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,11 +16,12 @@ import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { msg, useCategorias, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, useValorPago, type PedidoDetalhe } from "@/lib/api"
+import { msg, useAprovarTroca, useCategorias, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, useValorPago, type PedidoDetalhe } from "@/lib/api"
 import { mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp, reais } from "@/lib/formato"
 import { fotoTamanho } from "@/lib/foto"
-import { textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
+import { COR_TEXTO_AVISO } from "@/lib/selo"
+import { fraseCredito, fraseSituacao, fraseTroca, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
 import type { CategoriaCatalogo, Item, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca, ValorPago } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
@@ -54,6 +58,9 @@ const doSugestao = (s: Sugestao): NovoItem => ({
 // Primeira palavra do nome (Anel, Brinco, Colar...), igual ao filtro do banco.
 const categoriaDe = (nome: string) => nome.trim().split(/\s+/)[0]?.toUpperCase() ?? ""
 
+// "ANEL" -> "Anel" (o banco guarda em maiúsculas; o valor do filtro continua o original).
+const rotuloCategoria = (c: string) => (c ? c.charAt(0).toUpperCase() + c.slice(1).toLowerCase() : c)
+
 // Diferença já calculada no banco (só inverte o sinal para o texto).
 function Diferenca({ s }: { s: Sugestao }) {
   if (s.situacao === "paga_diferenca") return <span className="text-xs font-medium text-amber-700 tabular-nums dark:text-amber-400">+{reais(s.diferenca)} a pagar</span>
@@ -75,6 +82,11 @@ function CartaoSugestao({ s, marcada, aoTocar }: { s: Sugestao; marcada: boolean
     >
       <div className="relative">
         <Foto url={fotoTamanho(s.foto_url, 300)} alt={s.produto} className="w-full" />
+        {s.no_pedido && (
+          <Badge variant="secondary" className="absolute top-1.5 left-1.5 h-5 px-1.5 text-xs">
+            Já no pedido
+          </Badge>
+        )}
         {marcada && (
           <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Check className="size-4" />
@@ -112,7 +124,7 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
     <div className="sem-barra flex min-w-0 gap-2 overflow-x-auto p-1" role="tablist" aria-label="Peças em falta">
       {itens.map((i) => {
         const atual = i.id === atualId
-        const tem = (troca?.pecas.find((x) => x.item_id === i.id)?.opcoes.length ?? 0) > 0
+        const n = troca?.pecas.find((x) => x.item_id === i.id)?.opcoes.length ?? 0
         return (
           <button
             key={i.id}
@@ -122,15 +134,13 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
             onClick={() => aoEscolher(i.id)}
             className={cn("flex shrink-0 items-center gap-2 rounded-lg border bg-card p-1.5 pr-3 text-left text-xs transition-colors", atual && "border-primary bg-primary/5")}
           >
-            <span className="relative">
-              <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-10" />
-              {tem && (
-                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-emerald-600 text-white">
-                  <Check className="size-3" />
-                </span>
-              )}
+            <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-10" />
+            <span className="flex flex-col gap-0.5">
+              <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
+              <span className={cn("text-[11px] leading-none", n > 0 ? "text-muted-foreground" : COR_TEXTO_AVISO)}>
+                {n > 0 ? `${n} ${n === 1 ? "opção" : "opções"}` : "sem opção"}
+              </span>
             </span>
-            <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
           </button>
         )
       })}
@@ -187,8 +197,8 @@ function FiltroPreco({
           <SelectContent>
             <SelectItem value="todas">Todas</SelectItem>
             {categorias.map((c) => (
-              <SelectItem key={c.categoria} value={c.categoria} className="capitalize">
-                {c.categoria.toLowerCase()}
+              <SelectItem key={c.categoria} value={c.categoria}>
+                {rotuloCategoria(c.categoria)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -223,8 +233,24 @@ function FiltroPreco({
   )
 }
 
-// Opções já escolhidas, agrupadas por peça em falta.
-function PainelOpcoes({ itens, troca, aoRemover }: { itens: Item[]; troca: Troca | undefined; aoRemover: (o: TrocaOpcao) => void }) {
+// Opções já escolhidas, agrupadas por peça em falta. Cada opção tem o valor e o botão "Aprovar";
+// a peça tem "Dar crédito". As peças já resolvidas aparecem como "Aprovada"/"Trocada" com o resultado.
+function PainelOpcoes({
+  itens,
+  pedidoItens,
+  troca,
+  ocupado,
+  aoRemover,
+  aoAprovar,
+}: {
+  itens: Item[]
+  pedidoItens: Item[]
+  troca: Troca | undefined
+  ocupado: boolean
+  aoRemover: (o: TrocaOpcao) => void
+  aoAprovar: (item: Item, peca: TrocaPeca, opcao: TrocaOpcao | null) => void
+}) {
+  const concluidas = (troca?.pecas ?? []).filter((p) => p.concluida_em)
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {itens.map((item) => {
@@ -240,18 +266,54 @@ function PainelOpcoes({ itens, troca, aoRemover }: { itens: Item[]; troca: Troca
               <p className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">Nenhuma opção ainda.</p>
             ) : (
               opcoes.map((o) => (
-                <div key={o.id} className="flex min-w-0 items-center gap-2 rounded-lg border p-1.5">
-                  <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} className="size-12 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-mono text-sm font-semibold">{o.sku ?? "sem código"}</div>
-                    <div className="truncate text-xs text-muted-foreground">{o.variante ?? o.nome}</div>
-                    <div className="truncate text-xs font-medium">{peca ? textoSituacao(valorDaOpcao(peca, o)) : ""}</div>
+                <div key={o.id} className="flex min-w-0 flex-col gap-1.5 rounded-lg border p-1.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} className="size-12 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-mono text-sm font-semibold">{o.sku ?? "sem código"}</div>
+                      <div className="truncate text-xs text-muted-foreground">{o.variante ?? o.nome}</div>
+                      <div className="truncate text-xs font-medium">{peca ? textoSituacao(valorDaOpcao(peca, o)) : ""}</div>
+                    </div>
+                    <Button variant="ghost" size="icon" aria-label="Tirar opção" onClick={() => aoRemover(o)}>
+                      <X />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" aria-label="Tirar opção" onClick={() => aoRemover(o)}>
-                    <X />
+                  <Button
+                    variant="secondary"
+                    className="h-9 w-full text-sm"
+                    disabled={!peca || ocupado || o.id.startsWith("tmp-")}
+                    onClick={() => peca && aoAprovar(item, peca, o)}
+                  >
+                    <Check /> Aprovar
                   </Button>
                 </div>
               ))
+            )}
+            {peca && (
+              <Button variant="outline" className="h-9 w-full text-sm" disabled={ocupado} onClick={() => aoAprovar(item, peca, null)}>
+                <HandCoins /> Dar crédito
+              </Button>
+            )}
+          </section>
+        )
+      })}
+      {concluidas.map((p) => {
+        const item = pedidoItens.find((i) => i.id === p.item_id)
+        const nova = p.escolha_tipo === "opcao" ? p.opcoes.find((o) => o.id === p.escolha_opcao_id) : undefined
+        const dif = p.resultado_diferenca
+        return (
+          <section key={p.id} className="flex min-w-0 flex-col gap-1 rounded-lg bg-emerald-500/10 p-2 text-sm" aria-label="Peça resolvida">
+            <div className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400">
+              <Check className="size-4 shrink-0" /> {p.escolhida_por === "equipe" ? "Aprovada" : "Trocada"}
+            </div>
+            <div className="truncate font-mono font-semibold">
+              {item?.sku ?? "peça"}
+              {nova ? ` → ${nova.sku ?? nova.nome}` : " · crédito"}
+            </div>
+            {dif != null && (
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {dif > 0 ? `Cliente paga +${reais(dif)}` : dif < 0 ? `Crédito de ${reais(-dif)}` : "Sem diferença"}
+              </div>
             )}
           </section>
         )
@@ -268,6 +330,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const criar = useCriarTroca()
   const { adicionar, remover } = useOpcaoTroca(pedido.id)
   const enviar = useEnviarTroca()
+  const aprovar = useAprovarTroca()
   const categorias = useCategorias(aberto)
 
   const [itemId, setItemId] = useState(inicial ?? itens[0]?.id ?? "")
@@ -276,6 +339,8 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const [faixa, setFaixa] = useState<Faixa>("20")
   const [verOpcoes, setVerOpcoes] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [incluir, setIncluir] = useState(false)
+  const [conf, setConf] = useState<{ item: Item; peca: TrocaPeca; opcao: TrocaOpcao | null } | null>(null)
 
   // Cada abertura começa limpa: na peça clicada, na aba de variantes e com o resumo fechado.
   // (Ajuste durante a renderização, sem efeito: evita um quadro com o estado velho.)
@@ -286,6 +351,8 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       setItemId(inicial ?? "")
       setAba("variantes")
       setVerOpcoes(false)
+      setIncluir(false)
+      setConf(null)
     }
   }
 
@@ -307,7 +374,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       criou.current = null
       return
     }
-    if (!trocaQ.isSuccess || criando || criou.current === chaveItens) return
+    if (itens.length === 0 || !trocaQ.isSuccess || criando || criou.current === chaveItens) return
     if (troca && !faltaPeca) return
     criou.current = chaveItens
     criarTroca({ pedidoId: pedido.id, itemIds: itens.map((i) => i.id) })
@@ -332,10 +399,14 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const categoria = item ? (catEscolhida[item.id] ?? (listaCats.some((c) => c.categoria === categoriaPadrao) ? categoriaPadrao : "")) : ""
   // No modo "Preço parecido" espera as categorias chegarem, para não buscar "todas" e depois buscar de novo.
   const ativa = aberto && pronta && aba !== "buscar" && (aba !== "preco" || !categorias.isPending)
-  const sug = useSugestoes(item?.id, aba === "preco" ? "preco" : "variantes", { categoria: categoria || null, faixa: FAIXAS[faixa] }, ativa)
+  const sug = useSugestoes(item?.id, aba === "preco" ? "preco" : "variantes", { categoria: categoria || null, faixa: FAIXAS[faixa] }, ativa, incluir)
 
   const opcoes = peca?.opcoes ?? []
   const selecionada = (n: NovoItem) => opcoes.some((o) => opcaoIgual(o, n))
+  // Peças vivas do pedido (as removidas não contam), para o selo "Já no pedido" na busca.
+  const vivas = pedido.pedido_itens.filter((i) => i.status !== "removido")
+  const jaNoPedido = (n: NovoItem) =>
+    vivas.some((i) => (n.shopify_variant_id != null && i.shopify_variant_id === n.shopify_variant_id) || (n.peca_clube_id != null && i.peca_clube_id === n.peca_clube_id))
 
   function alternar(n: NovoItem, motivo: TrocaOpcao["motivo"]) {
     if (!peca) return
@@ -390,15 +461,85 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
     }
   }
 
+  const difTotal = troca?.resumo?.diferenca_total ?? 0
+  const respondidas = troca?.resumo?.pecas_respondidas ?? 0
   const resumo = (
-    <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-sm">
+    <div className="flex flex-col gap-1.5 rounded-lg bg-muted/50 p-3 text-sm">
       <div className="font-medium">
         {ativos.length} {ativos.length === 1 ? "peça em falta" : "peças em falta"}
       </div>
-      {troca?.resumo && <div className="text-muted-foreground tabular-nums">Cliente pagou {reais(troca.resumo.total_pago)} nelas</div>}
+      {troca?.resumo && <div className="text-muted-foreground tabular-nums">Cliente pagou {reais(troca.resumo.total_pago)} nas peças em falta</div>}
+      {(troca?.pecas ?? []).map((p) => {
+        const it = pedido.pedido_itens.find((i) => i.id === p.item_id)
+        const op = p.escolha_tipo === "opcao" ? p.opcoes.find((o) => o.id === p.escolha_opcao_id) : undefined
+        let texto: string | null = null
+        if (p.concluida_em) texto = `${p.escolhida_por === "equipe" ? "aprovada" : "trocada"}${op ? ` por ${op.sku ?? op.nome}` : " com crédito"}`
+        else if (op) texto = `cliente escolheu ${op.sku ?? op.nome} · ${fraseSituacao(valorDaOpcao(p, op))}`
+        else if (p.escolha_tipo === "credito") texto = "cliente prefere crédito"
+        else if (p.escolha_tipo === "whatsapp") texto = "cliente quer falar no WhatsApp"
+        if (!texto) return null
+        return (
+          <div key={p.id} className="text-xs break-words">
+            <span className="font-mono font-semibold">{it?.sku ?? "peça"}</span> <span className="text-muted-foreground">{texto}</span>
+          </div>
+        )
+      })}
+      {pronta && respondidas > 0 && (
+        <div className="border-t pt-1.5 font-semibold tabular-nums">
+          {difTotal > 0 ? `Cliente paga +${reais(difTotal)}` : difTotal < 0 ? `Crédito de ${reais(-difTotal)}` : "Sem diferença"}
+        </div>
+      )}
       {pronta && faltamOpcao.length > 0 && (
         <div className="text-xs text-muted-foreground">Falta escolher opções de: {faltamOpcao.map((i) => i.sku ?? i.nome).join(", ")}</div>
       )}
+    </div>
+  )
+
+  // Link da cliente: copiar ou abrir marca a troca como enviada, porque a página só abre troca enviada.
+  async function copiarLink() {
+    if (!troca) return
+    setEnviando(true)
+    const copia = navigator.clipboard.writeText(link).then(() => true, () => false)
+    try {
+      await enviar.mutateAsync({ troca })
+      if (await copia) toast.success("Link copiado")
+      else toast.error("A troca foi salva, mas não foi possível copiar o link")
+    } catch {
+      // o erro do envio já aparece no aviso do próprio hook
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  async function abrirPagina() {
+    if (!troca) return
+    setEnviando(true)
+    const nova = window.open("about:blank", "_blank")
+    try {
+      await enviar.mutateAsync({ troca })
+      if (nova) nova.location.href = link
+      else window.open(link, "_blank")
+    } catch {
+      nova?.close()
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const blocoLink = (
+    <div className="flex min-w-0 flex-col gap-2 rounded-lg border p-3">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <Link2 className="size-4" /> Link para a cliente
+      </div>
+      <p className="truncate font-mono text-xs text-muted-foreground">{link ? link.replace(/^https?:\/\//, "") : "—"}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" className="h-9 text-sm" disabled={bloqueado} onClick={copiarLink}>
+          <Copy /> Copiar link
+        </Button>
+        <Button variant="outline" className="h-9 text-sm" disabled={bloqueado} onClick={abrirPagina}>
+          <ExternalLink /> Abrir página
+        </Button>
+      </div>
     </div>
   )
 
@@ -495,20 +636,52 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
           </Tabs>
           {filtrosPreco}
           {aba === "buscar" ? (
-            aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} notaPreco="valor com desconto aparece ao escolher" />
+            aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} noPedido={jaNoPedido} notaPreco="valor com desconto aparece ao escolher" />
           ) : (
-            <div className="flex min-w-0 flex-col gap-3">{grade}</div>
+            <div className="flex min-w-0 flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox id="incluir-pedido" checked={incluir} onCheckedChange={(v) => setIncluir(v === true)} />
+                <Label htmlFor="incluir-pedido" className="text-sm font-normal">
+                  Incluir peças que já estão no pedido
+                </Label>
+              </div>
+              {grade}
+            </div>
           )}
         </>
       )}
     </div>
   )
 
-  const painel = <PainelOpcoes itens={ativos} troca={troca} aoRemover={(o) => !o.id.startsWith("tmp-") && remover.mutate({ opcaoId: o.id })} />
+  const painel = (
+    <PainelOpcoes
+      itens={ativos}
+      pedidoItens={pedido.pedido_itens}
+      troca={troca}
+      ocupado={aprovar.isPending}
+      aoRemover={(o) => !o.id.startsWith("tmp-") && remover.mutate({ opcaoId: o.id })}
+      aoAprovar={(item, peca, opcao) => setConf({ item, peca, opcao })}
+    />
+  )
+  const fraseConf = conf ? (conf.opcao ? fraseTroca(conf.item.sku ?? conf.item.nome, conf.peca, conf.opcao) : fraseCredito(conf.peca)) : ""
+  function confirmarAprovacao() {
+    if (!troca || !conf) return
+    const { peca: p, opcao } = conf
+    aprovar.mutate(
+      { troca, peca: p, tipo: opcao ? "opcao" : "credito", opcaoId: opcao?.id },
+      {
+        onSuccess: () => {
+          setConf(null)
+          toast.success(opcao ? "Troca feita" : "Crédito registrado")
+        },
+      },
+    )
+  }
   const totalOpcoes = pecasAtivas.reduce((n, p) => n + (p?.opcoes.length ?? 0), 0)
   const rotuloOpcoes = `${totalOpcoes} ${totalOpcoes === 1 ? "opção escolhida" : "opções escolhidas"}`
 
   return (
+    <>
     <RespDialog
       aberto={aberto}
       aoMudar={aoMudar}
@@ -524,6 +697,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
               <div className="flex flex-col gap-3">
                 {painel}
                 {resumo}
+                {blocoLink}
               </div>
             </CollapsibleContent>
             <div className="flex flex-col gap-2 pb-1">
@@ -547,11 +721,21 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
               </h3>
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">{painel}</div>
               {resumo}
+              {blocoLink}
             </div>
           </div>
           <div className="border-t pt-4">{botoes}</div>
         </div>
       )}
     </RespDialog>
+    <ConfirmarTroca
+      aberto={!!conf}
+      aoMudar={(a) => !a && setConf(null)}
+      titulo={conf?.opcao ? "Fazer a troca?" : "Dar crédito?"}
+      frase={fraseConf}
+      pendente={aprovar.isPending}
+      aoConfirmar={confirmarAprovacao}
+    />
+    </>
   )
 }

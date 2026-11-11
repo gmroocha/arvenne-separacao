@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
+import AcertoTroca from "@/components/pedido/AcertoTroca"
 import Cabecalho from "@/components/pedido/Cabecalho"
 import DadosCliente from "@/components/pedido/DadosCliente"
 import Etapas from "@/components/pedido/Etapas"
@@ -53,6 +54,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         </Alert>
       )}
       <Etapas status={pedido.status} eventos={pedido.pedido_eventos} />
+      <AcertoTroca pedidoId={pedido.id} />
       <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
         <PainelEtapa
           pedido={pedido}

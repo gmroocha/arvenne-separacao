@@ -1,21 +1,25 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, MessageCircle, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
+import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
 import Foto from "@/components/Foto"
+import { copiar as copiarTexto } from "@/lib/copiar"
 import { COR_SELO } from "@/lib/selo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Separator } from "@/components/ui/separator"
 import { useConcluirTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { etapaCompleta } from "@/lib/etapa"
 import { fotoTamanho } from "@/lib/foto"
 import { linkWhatsApp, reais } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
-import { textoSituacao, valorDaOpcao, valorPagoPeca } from "@/lib/trocaTexto"
+import { fraseCredito, fraseTroca, textoSituacao, valorDaOpcao, valorPagoPeca } from "@/lib/trocaTexto"
 import type { Item, Troca, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
+import ConfirmarTroca from "./ConfirmarTroca"
 import LinhaPeca from "./LinhaPeca"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 import TrocaDialog from "./TrocaDialog"
@@ -23,8 +27,9 @@ import TrocaDialog from "./TrocaDialog"
 const COR_TITULO = { avisar_cliente: "text-destructive", aguardando_cliente: "text-amber-700 dark:text-amber-300" } as const
 
 // Estado da troca de UMA peça em falta: aguardar a cliente ou fechar a escolha dela.
-function EstadoTroca({ troca, peca, aoAbrir, wa }: { troca: Troca | undefined; peca: TrocaPeca | undefined; aoAbrir: () => void; wa: string | null }) {
+function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefined; peca: TrocaPeca | undefined; item: Item; aoAbrir: () => void; wa: string | null }) {
   const concluir = useConcluirTroca()
+  const [confirmar, setConfirmar] = useState<"opcao" | "credito" | null>(null)
   // Sem troca ou em rascunho: o botão "Montar troca" fica na linha de ações do cartão.
   if (!troca || !peca || troca.status === "rascunho") return null
   if (!peca.escolha_tipo)
@@ -39,7 +44,8 @@ function EstadoTroca({ troca, peca, aoAbrir, wa }: { troca: Troca | undefined; p
 
   const opcao = peca.escolha_tipo === "opcao" ? peca.opcoes.find((o) => o.id === peca.escolha_opcao_id) : undefined
   const pago = valorPagoPeca(peca)
-  const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, peca, tipo })
+  const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, peca, tipo }, { onSuccess: () => setConfirmar(null) })
+  const frase = confirmar === "opcao" && opcao ? fraseTroca(item.sku ?? item.nome, peca, opcao) : fraseCredito(peca)
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-emerald-500/10 p-2">
       {opcao ? (
@@ -60,11 +66,11 @@ function EstadoTroca({ troca, peca, aoAbrir, wa }: { troca: Troca | undefined; p
       )}
       <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
         {peca.escolha_tipo === "opcao" && (
-          <Button className="h-10 text-sm" disabled={concluir.isPending} onClick={() => fazer("opcao")}>
+          <Button className="h-10 text-sm" disabled={concluir.isPending} onClick={() => setConfirmar("opcao")}>
             <Check /> Fazer a troca
           </Button>
         )}
-        <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} className="h-10 text-sm" disabled={concluir.isPending} onClick={() => fazer("credito")}>
+        <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} className="h-10 text-sm" disabled={concluir.isPending} onClick={() => setConfirmar("credito")}>
           <HandCoins /> Dar crédito
         </Button>
         {peca.escolha_tipo === "whatsapp" && (
@@ -82,6 +88,14 @@ function EstadoTroca({ troca, peca, aoAbrir, wa }: { troca: Troca | undefined; p
           </>
         )}
       </div>
+      <ConfirmarTroca
+        aberto={confirmar != null}
+        aoMudar={(a) => !a && setConfirmar(null)}
+        titulo={confirmar === "opcao" ? "Fazer a troca?" : "Dar crédito?"}
+        frase={frase}
+        pendente={concluir.isPending}
+        aoConfirmar={() => confirmar && fazer(confirmar)}
+      />
     </div>
   )
 }
@@ -175,7 +189,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     ]}
                   />
                 </LinhaPeca>
-                <EstadoTroca troca={troca} peca={pecaDe(i)} aoAbrir={() => setTrocando(i.id)} wa={wa} />
+                <EstadoTroca troca={troca} peca={pecaDe(i)} item={i} aoAbrir={() => setTrocando(i.id)} wa={wa} />
               </div>
             ))}
             <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
@@ -196,24 +210,27 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                   <Check /> Cliente avisada
                 </Button>
               )}
-              <Button
-                variant="secondary"
-                className="h-10 text-sm"
-                onClick={() =>
-                  navigator.clipboard
-                    .writeText(textoCliente())
-                    .then(() => toast.success("Mensagem copiada"), () => toast.error("Não foi possível copiar"))
-                }
-              >
-                <Copy /> Copiar mensagem
-              </Button>
-              {wa && (
-                <Button variant="secondary" className="h-10 text-sm" asChild>
-                  <a href={wa} target="_blank" rel="noreferrer">
-                    <MessageCircle /> WhatsApp
-                  </a>
+            </div>
+            <Separator />
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Falar com a cliente</span>
+              <ButtonGroup className="w-full sm:w-fit">
+                <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarTexto(textoCliente(), "Mensagem copiada")}>
+                  <Copy /> Copiar mensagem
                 </Button>
-              )}
+                {wa && (
+                  <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" asChild>
+                    <a href={wa} target="_blank" rel="noreferrer">
+                      <MessageCircle /> WhatsApp
+                    </a>
+                  </Button>
+                )}
+                {troca && !emRascunho && (
+                  <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarTexto(`${window.location.origin}/t/${troca.token}`, "Link copiado")}>
+                    <Link2 /> Copiar link
+                  </Button>
+                )}
+              </ButtonGroup>
             </div>
           </CardContent>
         </Card>

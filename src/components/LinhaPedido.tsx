@@ -1,6 +1,7 @@
 import { Link } from "react-router"
 import Miniaturas from "@/components/Miniaturas"
 import Prazo from "@/components/pedido/Prazo"
+import { SeloAcerto } from "@/components/SeloAcerto"
 import { OrigemBadge, StatusBadge } from "@/components/StatusBadge"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { quando, reais } from "@/lib/formato"
@@ -36,6 +37,7 @@ export default function LinhaPedido({ p }: { p: Pedido }) {
             <>
               <StatusBadge status={p.status} />
               <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+              {p.acerto_pendente && <SeloAcerto />}
             </>
           )}
           {p.fase === "venda" && <span className="text-xs text-muted-foreground">há {tempoDesde(p.status_desde)}</span>}
