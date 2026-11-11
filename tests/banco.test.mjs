@@ -373,6 +373,24 @@ test('funções de ação: anon não executa', async () => {
   await recusa(() => one('select bipar($1, null, $2)', ['00000000-0000-0000-0000-000000000000', 'x']), /permission denied/)
 })
 
+test('troca em pedido da Shopify usa o fator pago (sem frete grátis dentro do desconto)', async () => {
+  // Linha de 100, Shopify cobrou 75 pelas peças; o desconto total (40) inclui 15 de frete grátis.
+  const bruto = JSON.stringify({
+    subtotalPriceSet: { shopMoney: { amount: '75.00' } },
+    lineItems: { nodes: [{ currentQuantity: 1, originalUnitPriceSet: { shopMoney: { amount: '100.00' } } }] },
+  })
+  const pedido = await one(`insert into pedidos (origem, status, cliente_nome, valor_total, shopify_order_id,
+      desconto_tipo, desconto_valor, shopify_bruto)
+    values ('shopify', 'aguardando_cliente', 'Cliente Teste', 75, 9100, 'valor', 40, $1) returning id`, [bruto])
+  const item = await one(`insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, status, ordem)
+    values ($1, 'shopify', 'Anel', 'ANEL-1', 1, 100, 'falta', 1) returning id`, [pedido.id])
+  await db.exec('set local role authenticated')
+  const troca = await one('insert into trocas (pedido_id) values ($1) returning fator_desconto', [pedido.id])
+  assert.equal(Number(troca.fator_desconto).toFixed(4), '0.7500')
+  const pago = await one('select valor_pago from troca_valor_pago($1)', [item.id])
+  assert.equal(Number(pago.valor_pago), 75)
+})
+
 await preparar()
 let falhas = 0
 try {
