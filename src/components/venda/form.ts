@@ -1,4 +1,4 @@
-import { Banknote, CircleEllipsis, CreditCard, Link2, QrCode } from "lucide-react"
+import { Banknote, Barcode, CircleEllipsis, CreditCard, QrCode } from "lucide-react"
 import { digitos, lerNumero, mascaraCep, mascaraDocumento, mascaraTelefone, numeroParaTexto } from "@/lib/formato"
 import type { CamposPedido } from "@/lib/api"
 import type { DescontoTipo, FreteTipo, FretePagoPor, Pedido } from "@/lib/tipos"
@@ -105,7 +105,7 @@ export function camposDe(f: FormVenda): CamposPedido {
 export const FORMAS_PAGAMENTO = [
   { nome: "Pix", icone: QrCode },
   { nome: "Cartão", icone: CreditCard },
-  { nome: "Link de pagamento", icone: Link2 },
+  { nome: "Boleto", icone: Barcode },
   { nome: "Dinheiro", icone: Banknote },
   { nome: "Outro", icone: CircleEllipsis },
 ]

@@ -71,6 +71,8 @@ function Formulario({ total, formaInicial, aoMudarForma, aoConfirmar }: Pick<Pro
               <f.icone /> {f.nome}
             </ToggleGroupItem>
           ))}
+          {/* Pedido antigo com uma forma que não existe mais na lista (ex.: "Link de pagamento"): continua aparecendo. */}
+          {forma && !FORMAS_PAGAMENTO.some((f) => f.nome === forma) && <ToggleGroupItem value={forma}>{forma}</ToggleGroupItem>}
         </ToggleGroup>
       </Field>
       <Field>

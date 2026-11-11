@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from "react"
 import { Check, ChevronDown, MoreHorizontal, Printer } from "lucide-react"
 import Foto from "@/components/Foto"
-import MenuAcoes, { type ItemAcao } from "@/components/MenuAcoes"
+import MenuAcoes, { type GrupoAcoes, type ItemAcao } from "@/components/MenuAcoes"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Progress } from "@/components/ui/progress"
+import { numeroTamanho, separarTamanho, codigoModelo } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
@@ -58,16 +59,55 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
   )
 }
 
+// Vários tamanhos do mesmo modelo num bloco só: uma foto, o código do modelo e os tamanhos com a quantidade de cada.
+// Na loja o modelo fica numa sacola só: achou o modelo, achou todos os tamanhos.
+export function TileModelo({ itens, children }: { itens: Item[]; children?: ReactNode }) {
+  const ordenados = [...itens].sort((a, b) => numeroTamanho(separarTamanho(a.variante).tamanho) - numeroTamanho(separarTamanho(b.variante).tamanho))
+  const base = ordenados[0]
+  const total = ordenados.reduce((n, i) => n + i.qtd, 0)
+  const variacao = separarTamanho(base.variante).base
+  return (
+    <div style={{ viewTransitionName: `peca-${base.id}` }} className="flex flex-col gap-2 rounded-xl border bg-card p-2 transition-shadow duration-300">
+      <div className="relative">
+        <Foto url={base.foto_url} alt={base.nome} ampliar className="w-full" />
+        {base.origem === "clube" && (
+          <Badge variant="outline" className="absolute top-1.5 left-1.5 bg-background">
+            Clube
+          </Badge>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-1 px-0.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 font-mono text-lg leading-tight font-semibold break-all">{codigoModelo(ordenados.map((i) => i.sku)) ?? "sem código"}</div>
+          <Badge variant="secondary" className="h-6 shrink-0 px-2 text-sm font-medium tabular-nums">{total}×</Badge>
+        </div>
+        {variacao && <div className="text-sm leading-tight font-medium">{variacao}</div>}
+        <div className="flex flex-wrap gap-1">
+          {ordenados.map((i) => (
+            <Badge key={i.id} variant="outline" className="h-6 gap-1 px-2 text-sm font-medium tabular-nums">
+              {separarTamanho(i.variante).tamanho}
+              <span className="text-muted-foreground">×{i.qtd}</span>
+            </Badge>
+          ))}
+        </div>
+        <div className="line-clamp-1 text-xs text-muted-foreground">{base.nome}</div>
+      </div>
+      {children && <div className="mt-auto flex items-center gap-1.5">{children}</div>}
+    </div>
+  )
+}
+
 export function GradePecas({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
 }
 
 // Menu "…" do bloco: quadrado de 40 px sem borda, da mesma altura do botão principal (que é o destaque).
-export function MenuPeca({ itens, rotulo = "Mais opções" }: { itens: ItemAcao[]; rotulo?: string }) {
+// itens: uma lista simples; grupos: seções com título (ex.: uma por tamanho no cartão do modelo).
+export function MenuPeca({ itens = [], grupos, rotulo = "Mais opções" }: { itens?: ItemAcao[]; grupos?: GrupoAcoes[]; rotulo?: string }) {
   return (
     <MenuAcoes
       titulo={rotulo}
-      grupos={[{ itens }]}
+      grupos={grupos ?? [{ itens }]}
       gatilho={
         <Button variant="secondary" size="icon" aria-label={rotulo} className="size-10 shrink-0">
           <MoreHorizontal />

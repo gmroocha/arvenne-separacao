@@ -887,6 +887,20 @@ export function useCobrirTroca() {
 }
 
 // Sugestões de troca. Só consulta quando `ativo` (aba aberta); preços e diferença vêm prontos do banco.
+// Quantas variantes do catálogo já têm a marca "vender sem estoque" (null = catálogo nunca atualizado com ela).
+async function contarMarcados() {
+  const r = await supabase.from("catalogo_site").select("variant_id", { count: "exact", head: true }).not("vende_sem_estoque", "is", null)
+  return r.error ? -1 : (r.count ?? 0)
+}
+
+// Atualização completa do catálogo pedida pela própria tela (filtro "vender sem estoque"): uma só por sessão,
+// mesmo com várias telas pedindo ao mesmo tempo.
+let atualizandoCatalogo: Promise<unknown> | null = null
+function atualizarCatalogoUmaVez() {
+  atualizandoCatalogo ??= chamarFuncao("catalogo-sync", {})
+  return atualizandoCatalogo
+}
+
 export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}, ativo = true, incluirPedido = false, soSemEstoque = false) {
   const categoria = filtros.categoria ?? null
   const faixa = modo === "preco" ? (filtros.faixa === undefined ? 0.2 : filtros.faixa) : 0.2
@@ -904,15 +918,29 @@ export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, fil
         p_busca: null,
         p_incluir_pedido: incluirPedido,
       }
-      let r = await supabase.rpc("sugerir_troca", soSemEstoque ? { ...base, p_so_sem_estoque: true } : base)
-      let filtroIndisponivel = false
+      // Catálogo ainda sem a marca "vender sem estoque" (nunca rodou "Atualizar catálogo" depois da mudança):
+      // filtrar esconderia tudo, então busca sem o filtro e avisa.
+      // Aí o próprio app atualiza o catálogo da loja (uma vez por sessão, com a pessoa logada) e já filtra.
+      let usarFiltro = soSemEstoque
+      let catalogoSemMarca = false
+      if (soSemEstoque) {
+        if ((await contarMarcados()) === 0) {
+          await atualizarCatalogoUmaVez().catch(() => {})
+          if ((await contarMarcados()) === 0) {
+            usarFiltro = false
+            catalogoSemMarca = true
+          }
+        }
+      }
+      let r = await supabase.rpc("sugerir_troca", usarFiltro ? { ...base, p_so_sem_estoque: true } : base)
+      let filtroIndisponivel = catalogoSemMarca
       // Banco ainda sem a migration do filtro: tenta de novo sem o parâmetro e avisa na tela.
-      if (r.error && soSemEstoque && /could not find the function|does not exist|p_so_sem_estoque/i.test(`${r.error.message} ${r.error.details ?? ""}`)) {
+      if (r.error && usarFiltro && /could not find the function|does not exist|p_so_sem_estoque/i.test(`${r.error.message} ${r.error.details ?? ""}`)) {
         filtroIndisponivel = true
         r = await supabase.rpc("sugerir_troca", base)
       }
       if (r.error) throw r.error
-      return { linhas: (r.data ?? []) as Sugestao[], filtroIndisponivel }
+      return { linhas: (r.data ?? []) as Sugestao[], filtroIndisponivel, catalogoSemMarca }
     },
   })
 }

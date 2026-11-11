@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { Check, ChevronUp, Copy, ExternalLink, HandCoins, Link2, PackageSearch, RefreshCw, TriangleAlert, X } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { BuscaPecas } from "@/components/BuscaPecas"
+import CartaoCatalogo from "@/components/catalogo/CartaoCatalogo"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
 import ConfirmarTroca from "@/components/pedido/ConfirmarTroca"
@@ -21,7 +22,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { msg, useAprovarCarrinho, useAprovarTroca, useCategorias, useCobrirTroca, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, useValorPago, type PedidoDetalhe } from "@/lib/api"
 import { mensagemTroca } from "@/lib/agente"
 import { numeroParaTexto, reais } from "@/lib/formato"
-import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
+import { chaveModelo, codigoDoModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import { fotoTamanho } from "@/lib/foto"
 import { COR_TEXTO_AVISO } from "@/lib/selo"
 import { fraseCarrinho, fraseCredito, fraseTroca, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
@@ -72,41 +73,27 @@ function Diferenca({ s }: { s: Sugestao }) {
 }
 
 // Cartão de uma variante sem tamanho (cor, pedra, mm): uma foto por cartão.
+const SeloNoPedido = <Badge variant="secondary" className="h-5 px-1.5 text-xs">Já no pedido</Badge>
+
 function CartaoSugestao({ s, marcada, aoTocar }: { s: Sugestao; marcada: boolean; aoTocar: (s: Sugestao) => void }) {
   return (
-    <button
-      type="button"
-      aria-pressed={marcada}
-      onClick={() => aoTocar(s)}
-      className={cn(
-        "flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-1.5 text-left transition-colors hover:bg-muted/50",
-        marcada && "border-primary bg-primary/5",
-      )}
-    >
-      <div className="relative">
-        <Foto url={fotoTamanho(s.foto_url, 300)} alt={s.produto} className="w-full" />
-        {s.no_pedido && (
-          <Badge variant="secondary" className="absolute top-1.5 left-1.5 h-5 px-1.5 text-xs">
-            Já no pedido
-          </Badge>
-        )}
-        {marcada && <MarcaEscolhida />}
-      </div>
-      <div className="flex min-w-0 flex-col gap-0.5 px-0.5 pb-0.5">
-        <span className="font-mono text-sm leading-tight font-semibold break-all">{s.sku ?? "sem código"}</span>
-        <span className="text-sm leading-tight">{s.variante ?? "sem variante"}</span>
-        <LinhaPreco s={s} />
-        <Diferenca s={s} />
-      </div>
-    </button>
+    <CartaoCatalogo
+      foto={s.foto_url}
+      alt={s.produto}
+      codigo={s.sku ?? "sem código"}
+      variante={s.variante}
+      selecionado={marcada}
+      selo={s.no_pedido ? SeloNoPedido : undefined}
+      preco={
+        <>
+          <LinhaPreco s={s} />
+          <Diferenca s={s} />
+        </>
+      }
+      onCard={() => aoTocar(s)}
+    />
   )
 }
-
-const MarcaEscolhida = () => (
-  <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-    <Check className="size-4" />
-  </span>
-)
 
 function LinhaPreco({ s }: { s: Sugestao }) {
   const cheioDiferente = s.preco != null && s.preco !== s.preco_cliente
@@ -143,63 +130,30 @@ function agrupar(sugestoes: Sugestao[]): Grupo[] {
   return grupos
 }
 
-// Código do modelo sem o tamanho: tira o número do tamanho do fim do SKU; se não bater, usa o prefixo comum.
-function codigoModelo(tamanhos: Grupo["tamanhos"]): string {
-  const sem = tamanhos.map(({ s, tamanho }) => {
-    const sku = s.sku ?? ""
-    const n = String(numeroTamanho(tamanho))
-    return sku.endsWith(n) && sku.length > n.length ? sku.slice(0, -n.length) : sku
-  })
-  let p = sem[0] ?? ""
-  for (const x of sem) while (p && !x.startsWith(p)) p = p.slice(0, -1)
-  p = p.replace(/[-_ ./]+$/, "")
-  return p || (tamanhos[0]?.s.sku ?? "sem código")
-}
-
 function CartaoTamanhos({ g, selecionada, aoTocar }: { g: Grupo; selecionada: (s: Sugestao) => boolean; aoTocar: (s: Sugestao) => void }) {
   const primeira = g.tamanhos[0].s
   const { base } = separarTamanho(primeira.variante)
-  const alguma = g.tamanhos.some((t) => selecionada(t.s))
-  const noPedido = g.tamanhos.some((t) => t.s.no_pedido)
+  const porId = new Map(g.tamanhos.map((t) => [String(t.s.variant_id), t.s]))
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-1.5 text-left", alguma && "border-primary bg-primary/5")}>
-      <div className="relative">
-        <Foto url={fotoTamanho(primeira.foto_url, 300)} alt={primeira.produto} className="w-full" />
-        {noPedido && (
-          <Badge variant="secondary" className="absolute top-1.5 left-1.5 h-5 px-1.5 text-xs">
-            Já no pedido
-          </Badge>
-        )}
-        {alguma && <MarcaEscolhida />}
-      </div>
-      <div className="flex min-w-0 flex-col gap-0.5 px-0.5 pb-0.5">
-        <span className="font-mono text-sm leading-tight font-semibold break-all">{codigoModelo(g.tamanhos)}</span>
-        {base && <span className="text-sm leading-tight">{base}</span>}
-        <LinhaPreco s={primeira} />
-        <Diferenca s={primeira} />
-        <div className="mt-1 grid grid-cols-3 gap-1" role="group" aria-label="Tamanho">
-          {g.tamanhos.map(({ s, tamanho }) => {
-            const marcada = selecionada(s)
-            return (
-              <button
-                key={s.variant_id}
-                type="button"
-                aria-pressed={marcada}
-                title={s.sku ?? undefined}
-                onClick={() => aoTocar(s)}
-                className={cn(
-                  "h-9 min-w-0 rounded-md border px-1 text-xs font-medium tabular-nums transition-colors hover:bg-muted",
-                  s.no_pedido && "border-dashed",
-                  marcada && "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
-                )}
-              >
-                {tamanho}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </div>
+    <CartaoCatalogo
+      foto={primeira.foto_url}
+      alt={primeira.produto}
+      codigo={codigoDoModelo(g.tamanhos.map((t) => ({ sku: t.s.sku, tamanho: t.tamanho })))}
+      variante={base}
+      selecionado={g.tamanhos.some((t) => selecionada(t.s))}
+      selo={g.tamanhos.some((t) => t.s.no_pedido) ? SeloNoPedido : undefined}
+      preco={
+        <>
+          <LinhaPreco s={primeira} />
+          <Diferenca s={primeira} />
+        </>
+      }
+      chips={g.tamanhos.map(({ s, tamanho }) => ({ id: String(s.variant_id), rotulo: tamanho, selecionado: selecionada(s), tracejado: s.no_pedido, titulo: s.sku ?? undefined }))}
+      onChip={(id) => {
+        const s = porId.get(id)
+        if (s) aoTocar(s)
+      }}
+    />
   )
 }
 
@@ -754,6 +708,11 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const grade = (
     <>
       {sug.isError && !sug.data && tentarSug}
+      {sug.isFetching && soSemEstoque && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Spinner className="size-3.5" /> Conferindo na loja quais peças vendem sem estoque…
+        </p>
+      )}
       {sug.isPending && !sug.isError && (
         <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3" aria-label="Carregando sugestões">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -776,7 +735,11 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         </div>
       )}
       {sug.data?.filtroIndisponivel && soSemEstoque && (
-        <p className="text-xs text-muted-foreground">Filtro “vender sem estoque” disponível após atualizar o banco</p>
+        <p className="text-xs text-muted-foreground">
+          {sug.data.catalogoSemMarca
+            ? "Mostrando todas as peças: não foi possível ler da loja quais vendem sem estoque agora. Tente de novo mais tarde."
+            : "Filtro “vender sem estoque” disponível após atualizar o banco"}
+        </p>
       )}
       {sug.isError && sug.data && tentarSug}
     </>

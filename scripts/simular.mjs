@@ -5,6 +5,8 @@
 import { chromium } from "@playwright/test"
 const [rota, sobrescrever, nome, clicar, rolarAte] = process.argv.slice(2)
 const extra = JSON.parse(sobrescrever || "{}")
+// Opcional: SIM_ITENS='{"status":"pendente"}' troca campos das peças (pedido_itens) na resposta. Nada grava.
+const extraItens = JSON.parse(process.env.SIM_ITENS || "{}")
 const base = "http://localhost:5173"
 const nav = await chromium.launch()
 for (const t of [{ n: "celular", w: 390, h: 844 }, { n: "pc", w: 1280, h: 900 }]) {
@@ -24,6 +26,13 @@ for (const t of [{ n: "celular", w: 390, h: 844 }, { n: "pc", w: 1280, h: 900 }]
       body = Array.isArray(body) ? body.map(mudar) : mudar(body)
       return route.fulfill({ response: r, json: body })
     }
+    if (url.includes("/pedido_itens") && Object.keys(extraItens).length) {
+      const r = await route.fetch()
+      const texto = await r.text()
+      if (!texto) return route.fulfill({ response: r })
+      const body = JSON.parse(texto)
+      return route.fulfill({ response: r, json: Array.isArray(body) ? body.map((o) => ({ ...o, ...extraItens })) : { ...body, ...extraItens } })
+    }
     return route.continue()
   })
   await ctx.routeWebSocket(/realtime/, () => {})
@@ -37,6 +46,11 @@ for (const t of [{ n: "celular", w: 390, h: 844 }, { n: "pc", w: 1280, h: 900 }]
     const botao = pag.getByRole("button", { name: alvo }).or(pag.getByRole("tab", { name: alvo }))
     if (await botao.count()) await botao.last().click().catch(() => {}) // last: o diálogo fica por cima, no fim da página
     else await pag.getByText(alvo, { exact: true }).last().click().catch(() => {})
+    await pag.waitForTimeout(2500)
+  }
+  // Opcional: SIM_DIGITAR="anel" digita no primeiro campo de busca visível (só leitura; gravações seguem bloqueadas).
+  if (process.env.SIM_DIGITAR) {
+    await pag.locator('input[placeholder*="Buscar"]:visible').first().fill(process.env.SIM_DIGITAR).catch(() => {})
     await pag.waitForTimeout(2500)
   }
   if (rolarAte) await pag.getByText(rolarAte, { exact: false }).first().scrollIntoViewIfNeeded().catch(() => {})

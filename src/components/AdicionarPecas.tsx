@@ -115,9 +115,10 @@ export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar, comPreco 
             </Collapsible>
           </div>
         ) : (
-          <div className="grid h-[calc(min(90svh,780px)-10rem)] grid-cols-[minmax(0,1fr)_320px] gap-4">
-            <div className="min-h-0 overflow-y-auto pr-1">{abas}</div>
-            <div className="flex min-h-0 flex-col gap-3 rounded-xl bg-muted/50 p-3">
+          <div className="grid h-[calc(min(90svh,780px)-10rem)] grid-cols-[minmax(0,1fr)_320px]">
+            {/* Divisória no lado esquerdo: a barra de rolagem fica colada nela e os dois lados têm o mesmo respiro. */}
+            <div className="min-h-0 min-w-0 overflow-y-auto border-r pr-4">{abas}</div>
+            <div className="flex min-h-0 min-w-0 flex-col gap-3 pl-4">
               <h3 className="text-sm font-semibold">
                 Carrinho {pecas > 0 && <span className="font-normal text-muted-foreground">({rotuloPecas})</span>}
               </h3>

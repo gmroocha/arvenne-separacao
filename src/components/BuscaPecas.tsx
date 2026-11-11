@@ -1,20 +1,18 @@
 import { useEffect, useRef, useState } from "react"
-import { Check, Plus, RefreshCw, Search, SearchX } from "lucide-react"
-import Foto from "@/components/Foto"
+import { Plus, RefreshCw, Search, SearchX } from "lucide-react"
+import CartaoCatalogo from "@/components/catalogo/CartaoCatalogo"
 import PecaClubeForm from "@/components/PecaClubeForm"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
-import { Item, ItemActions, ItemContent, ItemGroup } from "@/components/ui/item"
 import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAtualizarCatalogo, useBuscaSite, useCatalogoTotal, usePecasClube } from "@/lib/api"
 import { reais } from "@/lib/formato"
-import { fotoTamanho } from "@/lib/foto"
 import { itemDoClube, itemDoSite } from "@/lib/itens"
 import type { NovoItem } from "@/lib/tipos"
-import { cn } from "@/lib/utils"
+import { agruparPorTamanho, codigoDoModelo, separarTamanho } from "@/lib/variante"
 
 export type Tocar = (item: NovoItem) => void
 
@@ -64,30 +62,81 @@ function SemResultado() {
   )
 }
 
-// Resultado da busca: foto quadrada, código (SKU) e variante em destaque, nome pequeno.
-function Resultado({ item, noCarrinho, selecionada, aoTocar, notaPreco, jaNoPedido, comPreco }: { item: NovoItem; noCarrinho: number; selecionada: boolean; aoTocar: () => void; notaPreco?: string; jaNoPedido?: boolean; comPreco?: boolean }) {
+// Preço do cartão (só na venda), com a nota pequena quando houver.
+function PrecoCartao({ item, notaPreco }: { item: NovoItem; notaPreco?: string }) {
+  if (item.preco == null) return null
   return (
-    <Item variant="outline" size="sm" asChild className={cn((selecionada || noCarrinho > 0) && "border-transparent bg-primary/5 ring-1 ring-primary/30")}>
-      <button type="button" className="min-w-0 text-left" aria-pressed={selecionada} onClick={aoTocar}>
-        <Foto url={fotoTamanho(item.foto_url, 200)} alt={item.nome} className="size-16 shrink-0" />
-        <ItemContent className="min-w-0 gap-0.5">
-          <span className="truncate font-mono text-base font-semibold">{item.sku ?? "sem código"}</span>
-          <span className="truncate text-sm font-medium">{item.variante ?? "sem variante"}</span>
-          <span className="truncate text-xs text-muted-foreground">{item.nome}</span>
-        </ItemContent>
-        <ItemActions className="flex-col items-end gap-1 text-sm">
-          {selecionada && (
-            <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Check className="size-3.5" />
-            </span>
-          )}
-          {jaNoPedido && <Badge variant="secondary" className="h-5 px-1.5 text-xs">Já no pedido</Badge>}
-          {noCarrinho > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">×{noCarrinho}</Badge>}
-          {comPreco && item.preco != null && <span className="tabular-nums">{reais(item.preco)}</span>}
-          {comPreco && notaPreco && <span className="max-w-28 text-right text-[11px] leading-tight text-muted-foreground">{notaPreco}</span>}
-        </ItemActions>
-      </button>
-    </Item>
+    <>
+      <span className="text-base leading-tight font-semibold tabular-nums">{reais(item.preco)}</span>
+      {notaPreco && <span className="text-[11px] leading-tight text-muted-foreground">{notaPreco}</span>}
+    </>
+  )
+}
+
+function Selos({ noCarrinho, jaNoPedido }: { noCarrinho: number; jaNoPedido: boolean }) {
+  if (!noCarrinho && !jaNoPedido) return null
+  return (
+    <>
+      {jaNoPedido && <Badge variant="secondary" className="h-5 px-1.5 text-xs">Já no pedido</Badge>}
+      {noCarrinho > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">×{noCarrinho}</Badge>}
+    </>
+  )
+}
+
+// Grade de cartões: tamanhos do mesmo modelo juntos (só Site); variante de outro tipo fica em cartão próprio.
+function GradeResultados({ itens, agrupar, aoTocar, quantidade, selecionada, noPedido, notaPreco, comPreco }: { itens: NovoItem[]; agrupar?: boolean } & Pick<Marcas, "quantidade" | "selecionada" | "noPedido" | "notaPreco" | "comPreco"> & { aoTocar: Tocar }) {
+  const qtd = (i: NovoItem) => quantidade?.(i) ?? 0
+  const marcada = (i: NovoItem) => selecionada?.(i) ?? false
+  const grupos = agruparPorTamanho(itens, (i) => ({ id: String(i.shopify_variant_id ?? i.peca_clube_id ?? i.chave), produto: i.nome, variante: agrupar ? i.variante : null, extra: String(i.preco ?? "") }))
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {grupos.map((g) => {
+        if (g.unica) {
+          const i = g.unica
+          return (
+            <CartaoCatalogo
+              key={g.chave}
+              foto={i.foto_url}
+              alt={i.nome}
+              codigo={i.sku ?? "sem código"}
+              variante={i.variante}
+              nome={i.nome}
+              selecionado={marcada(i) || qtd(i) > 0}
+              selo={<Selos noCarrinho={qtd(i)} jaNoPedido={noPedido?.(i) ?? false} />}
+              preco={comPreco ? <PrecoCartao item={i} notaPreco={notaPreco} /> : undefined}
+              onCard={() => aoTocar(i)}
+            />
+          )
+        }
+        const primeiro = g.tamanhos[0].item
+        const porId = new Map(g.tamanhos.map((t) => [String(t.item.shopify_variant_id ?? t.item.chave), t.item]))
+        return (
+          <CartaoCatalogo
+            key={g.chave}
+            foto={primeiro.foto_url}
+            alt={primeiro.nome}
+            codigo={codigoDoModelo(g.tamanhos.map((t) => ({ sku: t.item.sku, tamanho: t.tamanho })))}
+            variante={separarTamanho(primeiro.variante).base}
+            nome={primeiro.nome}
+            selecionado={g.tamanhos.some((t) => marcada(t.item) || qtd(t.item) > 0)}
+            selo={<Selos noCarrinho={0} jaNoPedido={g.tamanhos.some((t) => noPedido?.(t.item))} />}
+            preco={comPreco ? <PrecoCartao item={primeiro} notaPreco={notaPreco} /> : undefined}
+            chips={g.tamanhos.map((t) => ({
+              id: String(t.item.shopify_variant_id ?? t.item.chave),
+              rotulo: t.tamanho,
+              contagem: qtd(t.item),
+              selecionado: marcada(t.item) || qtd(t.item) > 0,
+              tracejado: noPedido?.(t.item) ?? false,
+              titulo: t.item.sku ?? undefined,
+            }))}
+            onChip={(id) => {
+              const i = porId.get(id)
+              if (i) aoTocar(i)
+            }}
+          />
+        )
+      })}
+    </div>
   )
 }
 
@@ -141,12 +190,7 @@ function AbaSite({ aoTocar, quantidade, selecionada, notaPreco, noPedido, comPre
         </p>
       )}
       {!isFetching && busca.length >= 2 && data?.length === 0 && <SemResultado />}
-      <ItemGroup className="gap-2">
-        {data?.map((v) => {
-          const item = itemDoSite(v)
-          return <Resultado key={v.shopify_variant_id} item={item} noCarrinho={quantidade?.(item) ?? 0} selecionada={selecionada?.(item) ?? false} aoTocar={() => aoTocar(item)} notaPreco={notaPreco} comPreco={comPreco} jaNoPedido={noPedido?.(item) ?? false} />
-        })}
-      </ItemGroup>
+      {data && <GradeResultados agrupar itens={data.map((v) => itemDoSite(v))} aoTocar={aoTocar} quantidade={quantidade} selecionada={selecionada} noPedido={noPedido} notaPreco={notaPreco} comPreco={comPreco} />}
       <Button variant="ghost" size="sm" className="w-fit text-muted-foreground" onClick={() => atualizar.mutate(undefined)}>
         <RefreshCw /> Atualizar catálogo da loja
       </Button>
@@ -182,12 +226,7 @@ function AbaClube({ aoTocar, quantidade, selecionada, notaPreco, noPedido, comPr
         </div>
       )}
       {!isFetching && data?.length === 0 && <SemResultado />}
-      <ItemGroup className="gap-2">
-        {data?.map((p) => {
-          const item = itemDoClube(p)
-          return <Resultado key={p.id} item={item} noCarrinho={quantidade?.(item) ?? 0} selecionada={selecionada?.(item) ?? false} aoTocar={() => aoTocar(item)} notaPreco={notaPreco} comPreco={comPreco} jaNoPedido={noPedido?.(item) ?? false} />
-        })}
-      </ItemGroup>
+      {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} aoTocar={aoTocar} quantidade={quantidade} selecionada={selecionada} noPedido={noPedido} notaPreco={notaPreco} comPreco={comPreco} />}
     </div>
   )
 }

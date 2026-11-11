@@ -18,11 +18,12 @@ import { fotoTamanho } from "@/lib/foto"
 import { linkWhatsApp } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
 import { fraseCarrinho, fraseCredito, fraseTroca } from "@/lib/trocaTexto"
+import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import type { Item, Troca, TrocaOpcao, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import ConfirmarTroca from "./ConfirmarTroca"
 import LinhaPeca from "./LinhaPeca"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TileModelo, TilePeca, Vazio } from "./TilePeca"
 import TrocaDialog from "./TrocaDialog"
 
 // Carrinho da cliente com a opção completa. Banco antigo: só a opção escolhida, na quantidade da peça.
@@ -135,6 +136,27 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const problemas = itens.filter((i) => i.status === "falta" || i.status === "defeito")
   const removidas = itens.filter((i) => i.status === "removido")
   const vivas = itens.length - removidas.length
+  // Tamanhos do mesmo modelo (mesmo produto e mesma pedra/cor) viram um bloco só; sem tamanho, um bloco por peça.
+  const blocos = (() => {
+    const grupos = new Map<string, Item[]>()
+    for (const i of pendentes) {
+      if (!separarTamanho(i.variante).tamanho) continue
+      const k = chaveModelo(i.nome, i.variante)
+      grupos.set(k, [...(grupos.get(k) ?? []), i])
+    }
+    const vistos = new Set<string>()
+    const saida: Item[][] = []
+    for (const i of pendentes) {
+      const k = chaveModelo(i.nome, i.variante)
+      const g = grupos.get(k)
+      if (!g || g.length < 2) saida.push([i])
+      else if (!vistos.has(k)) {
+        vistos.add(k)
+        saida.push([...g].sort((a, b) => numeroTamanho(separarTamanho(a.variante).tamanho) - numeroTamanho(separarTamanho(b.variante).tamanho)))
+      }
+    }
+    return saida
+  })()
   const wa = linkWhatsApp(pedido.cliente_telefone, "")
   const mudarStatus = useMudarStatus()
   const aguardando = pedido.status === "aguardando_cliente"
@@ -303,20 +325,41 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           <Vazio>{itens.length === 0 ? "Este pedido ainda não tem peças." : "Nenhuma peça pendente."}</Vazio>
         ) : (
           <GradePecas>
-            {pendentes.map((i) => (
-              <TilePeca key={i.id} item={i}>
-                <Button className="h-10 flex-1 text-sm" onClick={() => acao(i, { status: "encontrado" })}>
-                  <Check /> Achei
-                </Button>
-                <MenuPeca
-                  itens={[
-                    { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
-                    { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
-                    { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
-                  ]}
-                />
-              </TilePeca>
-            ))}
+            {blocos.map((g) =>
+              g.length === 1 ? (
+                <TilePeca key={g[0].id} item={g[0]}>
+                  <Button className="h-10 flex-1 text-sm" onClick={() => acao(g[0], { status: "encontrado" })}>
+                    <Check /> Achei
+                  </Button>
+                  <MenuPeca
+                    itens={[
+                      { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(g[0]) },
+                      { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(g[0]) },
+                      { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(g[0], "removido", "cliente desistiu") },
+                    ]}
+                  />
+                </TilePeca>
+              ) : (
+                <TileModelo key={g[0].id} itens={g}>
+                  {/* Uma chamada por tamanho (cada uma grava o seu evento); a etapa só completa na última. */}
+                  <Button className="h-10 flex-1 text-sm" onClick={() => g.forEach((i) => acao(i, { status: "encontrado" }))}>
+                    <Check /> Achei
+                  </Button>
+                  {/* Uma seção por tamanho: título "N°16 · 2 un." e as três ações embaixo. */}
+                  <MenuPeca
+                    rotulo="Ações por tamanho"
+                    grupos={g.map((i) => ({
+                      titulo: `${separarTamanho(i.variante).tamanho ?? i.variante ?? i.sku ?? i.nome}${i.qtd > 1 ? ` · ${i.qtd} un.` : ""}`,
+                      itens: [
+                        { rotulo: "Em falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
+                        { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                        { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
+                      ],
+                    }))}
+                  />
+                </TileModelo>
+              ),
+            )}
           </GradePecas>
         )}
         <Button variant="outline" className="h-11 w-fit sm:h-8" onClick={aoAdicionar}>
@@ -347,27 +390,30 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
 
       <RespDialog aberto={!!faltaItem} aoMudar={(a) => !a && setFaltaItem(null)} titulo="Quantas faltam?" descricao={faltaItem ? `${faltaItem.sku ?? faltaItem.nome} · o pedido tem ${faltaItem.qtd}` : undefined}>
         {faltaItem && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-center gap-4">
-              <Button variant="outline" size="icon" className="size-12" aria-label="Menos uma" disabled={faltam <= 1} onClick={() => setFaltam((n) => n - 1)}>
+          <div className="flex flex-col gap-5 pt-2">
+            <div className="flex items-center justify-center gap-6">
+              <Button variant="outline" size="icon" className="size-12 rounded-full" aria-label="Menos uma" disabled={faltam <= 1} onClick={() => setFaltam((n) => n - 1)}>
                 <Minus />
               </Button>
-              <span className="w-12 text-center text-3xl font-semibold tabular-nums" aria-live="polite">
-                {faltam}
-              </span>
-              <Button variant="outline" size="icon" className="size-12" aria-label="Mais uma" disabled={faltam >= faltaItem.qtd} onClick={() => setFaltam((n) => n + 1)}>
+              <div className="flex w-20 flex-col items-center">
+                <span className="text-4xl leading-none font-semibold tabular-nums" aria-live="polite">
+                  {faltam}
+                </span>
+                <span className="pt-1 text-xs text-muted-foreground">de {faltaItem.qtd}</span>
+              </div>
+              <Button variant="outline" size="icon" className="size-12 rounded-full" aria-label="Mais uma" disabled={faltam >= faltaItem.qtd} onClick={() => setFaltam((n) => n + 1)}>
                 <Plus />
               </Button>
             </div>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="rounded-lg bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground">
               {faltam >= faltaItem.qtd ? "Todas as unidades vão para a troca." : `${faltaItem.qtd - faltam} ${faltaItem.qtd - faltam === 1 ? "segue" : "seguem"} na separação e ${faltam} ${faltam === 1 ? "vai" : "vão"} para a troca.`}
             </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button variant="outline" className="h-10 w-full text-sm sm:w-auto" onClick={() => confirmarFalta(faltaItem.qtd)}>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" className="h-11 text-sm" onClick={() => confirmarFalta(faltaItem.qtd)}>
                 Todas ({faltaItem.qtd})
               </Button>
-              <Button className="h-10 w-full text-sm sm:w-auto" onClick={() => confirmarFalta(faltam)}>
-                <Check /> Confirmar
+              <Button className="h-11 text-sm" onClick={() => confirmarFalta(faltam)}>
+                <Check /> Confirmar {faltam}
               </Button>
             </div>
           </div>
