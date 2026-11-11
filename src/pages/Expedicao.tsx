@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { useMudarStatus, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
 import { digitos } from "@/lib/formato"
-import { ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
+import { ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import { useAgora } from "@/lib/useAgora"
@@ -41,6 +41,14 @@ const COLUNAS: Coluna[] = [
   { id: "pronto_envio", nome: "Postagem", icone: "pronto_envio", statuses: ["pronto_envio"] },
   { id: "rastreio", nome: "Enviar rastreio", icone: "rastreio", statuses: ["enviado"], rastreio: true },
 ]
+
+// Pela ordem da esteira (src/lib/status.ts): a próxima etapa ou qualquer anterior.
+function podeSoltar(p: Pedido, c: Coluna) {
+  const de = ETAPAS_EXPEDICAO.indexOf(p.status)
+  const para = ETAPAS_EXPEDICAO.indexOf(c.statuses[0])
+  if (de < 0 || para < 0) return false
+  return para < de || para === de + 1
+}
 
 // Cores suaves dos desvios: vermelho (avisar) e amarelo (aguardando).
 const COR_ALERTA = {
@@ -90,12 +98,16 @@ export default function Expedicao() {
   const [arrastando, setArrastando] = useState<Pedido | null>(null)
   const [alvo, setAlvo] = useState<string | null>(null)
 
-  // Arrastar um cartão para outra coluna move o pedido de etapa (com Desfazer).
+  // Arrastar um cartão move o pedido de etapa (com Desfazer): só para a próxima etapa ou para uma anterior.
   function soltar(c: Coluna) {
     const p = arrastando
     setArrastando(null)
     setAlvo(null)
     if (!p || c.rastreio || c.statuses.includes(p.status)) return
+    if (!podeSoltar(p, c)) {
+      toast.info("Arraste para a próxima etapa")
+      return
+    }
     const para = c.statuses[0]
     const de = p.status
     mudarStatus.mutate(
@@ -248,7 +260,8 @@ export default function Expedicao() {
                   aria-label={c.nome}
                   onDragOver={(e) => {
                     if (!arrastando || c.rastreio) return
-                    e.preventDefault()
+                    e.preventDefault() // aceita o soltar também nas inválidas, para avisar com o toast
+                    if (!podeSoltar(arrastando, c)) return // sem destaque
                     e.dataTransfer.dropEffect = "move"
                     if (alvo !== c.id) setAlvo(c.id)
                   }}

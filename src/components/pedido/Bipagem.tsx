@@ -76,8 +76,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
     const doCodigo = itens.filter((i) => normalizar(i.sku) === codigo)
     const alvo = doCodigo.find((i) => i.qtd_bipada < i.qtd)
     if (alvo) {
-      acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: agora() })
-      void registrarBipagem(pedido.id, alvo.id, codigo, "ok")
+      acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: agora() }, codigo)
       tocar("ok")
       setAviso(null)
       setUltimaId(alvo.id)
@@ -85,11 +84,11 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
       clearTimeout(tempoPisca.current)
       tempoPisca.current = setTimeout(() => setPiscando(null), 600)
     } else if (doCodigo.length > 0) {
-      void registrarBipagem(pedido.id, doCodigo[0].id, codigo, "excedente")
+      void registrarBipagem(pedido.id, doCodigo[0].id, codigo)
       tocar("aviso")
       mostrar({ tipo: "excedente", texto: `${codigo} já foi bipado por completo.` })
     } else {
-      void registrarBipagem(pedido.id, null, codigo, "fora_do_pedido")
+      void registrarBipagem(pedido.id, null, codigo)
       tocar("erro")
       mostrar({ tipo: "fora_do_pedido", texto: `SKU ${codigo} não é deste pedido.` })
     }

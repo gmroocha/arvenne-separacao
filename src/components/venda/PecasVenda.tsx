@@ -135,7 +135,7 @@ export default function PecasVenda({ pedido }: Props) {
             variant="ghost"
             size="icon"
             aria-label="Remover peça"
-            onClick={() => atualizar(i.id, { status: "removido" })}
+            onClick={() => atualizar(i.id, { status: "removido", observacao: "removida na venda" })}
           >
             <Trash2 />
           </Button>

@@ -278,6 +278,101 @@ test('importação: mudança de quantidade na Shopify gera um único evento shop
   assert.equal(await conta(), 1)
 })
 
+// ---- Fase 3: ações em transação ----
+async function pedidoWhats(status = 'novo') {
+  const p = await one("insert into pedidos (origem, status, cliente_nome) values ('whatsapp', 'em_aberto', 'Cliente') returning *")
+  await db.query("insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, ordem) values ($1, 'avulso', 'Anel', 'A1', 1, 50, 0)", [p.id])
+  await db.query("insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, ordem) values ($1, 'avulso', 'Colar', 'C1', 1, 30, 1)", [p.id])
+  if (status !== 'em_aberto') await db.query('update pedidos set status = $2 where id = $1', [p.id, status])
+  return p
+}
+
+test('reiniciar do zero não ressuscita peça removida na venda e restaura a removida depois', async () => {
+  const p = await pedidoWhats('em_aberto')
+  const na = await one("select id from pedido_itens where pedido_id = $1 and sku = 'A1'", [p.id])
+  const co = await one("select id from pedido_itens where pedido_id = $1 and sku = 'C1'", [p.id])
+  await db.query("update pedido_itens set status = 'removido', observacao = 'removida na venda' where id = $1", [na.id])
+  await db.query("update pedidos set status = 'novo' where id = $1", [p.id])
+  await db.query("update pedido_itens set status = 'removido' where id = $1", [co.id]) // removida na expedição
+  await db.query("update pedidos set status = 'bipagem', nf_emitida_em = now() where id = $1", [p.id])
+  await db.exec('set local role authenticated')
+  await one('select reiniciar_pedido($1, $2, true)', [p.id, 'bipagem'])
+  assert.equal((await one('select status from pedido_itens where id = $1', [na.id])).status, 'removido')
+  assert.equal((await one('select status from pedido_itens where id = $1', [co.id])).status, 'pendente')
+  const ped = await one('select status, nf_emitida_em from pedidos where id = $1', [p.id])
+  assert.equal(ped.status, 'novo')
+  assert.equal(ped.nf_emitida_em, null)
+  assert.equal((await one("select count(*)::int as n from pedido_eventos where pedido_id = $1 and tipo = 'reiniciado'", [p.id])).n, 1)
+})
+
+test('reiniciar só a bipagem zera as bipadas e mantém o resto', async () => {
+  const p = await pedidoWhats('bipagem')
+  await db.query("update pedido_itens set status = 'encontrado', conferido_em = now(), qtd_bipada = 1, bipado_em = now() where pedido_id = $1", [p.id])
+  await db.exec('set local role authenticated')
+  await one('select reiniciar_pedido($1, $2, false)', [p.id, 'bipagem'])
+  const i = await one('select * from pedido_itens where pedido_id = $1 limit 1', [p.id])
+  assert.equal(i.qtd_bipada, 0); assert.equal(i.bipado_em, null)
+  assert.equal(i.status, 'encontrado'); assert.notEqual(i.conferido_em, null)
+  assert.equal((await one('select status from pedidos where id = $1', [p.id])).status, 'bipagem')
+})
+
+test('bipar é atômico: duas chamadas somam 2 e nunca passam da quantidade', async () => {
+  const p = await pedidoWhats('bipagem')
+  const i = await one("select id from pedido_itens where pedido_id = $1 and sku = 'A1'", [p.id])
+  await db.query('update pedido_itens set qtd = 2 where id = $1', [i.id])
+  await db.exec('set local role authenticated')
+  const r = await Promise.all([1, 2, 3].map(() => one('select bipar($1, $2, $3) as r', [p.id, i.id, 'A1'])))
+  assert.deepEqual(r.map(x => x.r).sort(), ['excedente', 'ok', 'ok'])
+  assert.equal((await one('select qtd_bipada from pedido_itens where id = $1', [i.id])).qtd_bipada, 2)
+  assert.equal((await one('select bipar($1, null, $2) as r', [p.id, 'XX'])).r, 'fora_do_pedido')
+  const { rows } = await db.query('select resultado from bipagens where pedido_id = $1 order by id', [p.id])
+  assert.equal(rows.length, 4)
+  await recusa(() => one('select bipar($1, $2, $3)', [p.id, '00000000-0000-0000-0000-000000000000', 'A1']), /não pertence/)
+})
+
+test('adicionar_itens: ordem no banco e soma de quantidade na venda', async () => {
+  const p = await pedidoWhats('em_aberto')
+  await db.query("update pedido_itens set shopify_variant_id = 77, origem = 'shopify' where pedido_id = $1 and sku = 'A1'", [p.id])
+  await db.exec('set local role authenticated')
+  const novos = [
+    { origem: 'shopify', shopify_variant_id: 77, sku: 'A1', nome: 'Anel', qtd: 2, preco: 50 },
+    { origem: 'shopify', shopify_variant_id: 88, sku: 'B1', nome: 'Brinco', qtd: 1, preco: 20 },
+    { origem: 'shopify', shopify_variant_id: 88, sku: 'B1', nome: 'Brinco', qtd: 1, preco: 20 },
+  ]
+  await one('select adicionar_itens($1, $2::jsonb, true)', [p.id, JSON.stringify(novos)])
+  const { rows } = await db.query('select sku, qtd, ordem from pedido_itens where pedido_id = $1 order by ordem', [p.id])
+  assert.deepEqual(rows.map(r => [r.sku, r.qtd, r.ordem]), [['A1', 3, 0], ['C1', 1, 1], ['B1', 2, 2]])
+  await one('select adicionar_itens($1, $2::jsonb, false)', [p.id, JSON.stringify(novos.slice(0, 1))])
+  assert.equal((await one("select count(*)::int as n from pedido_itens where pedido_id = $1 and sku = 'A1'", [p.id])).n, 2)
+})
+
+test('garantir_troca e enviar_troca são idempotentes', async () => {
+  const p = await pedidoWhats('avisar_cliente')
+  const itens = (await db.query('select id from pedido_itens where pedido_id = $1 order by ordem', [p.id])).rows.map(r => r.id)
+  await db.exec('set local role authenticated')
+  const t1 = (await one('select garantir_troca($1, $2::uuid[]) as t', [p.id, [itens[0]]])).t
+  const t2 = (await one('select garantir_troca($1, $2::uuid[]) as t', [p.id, itens])).t
+  const t3 = (await one('select garantir_troca($1, $2::uuid[]) as t', [p.id, itens])).t
+  assert.equal(t1, t2); assert.equal(t2, t3)
+  assert.equal((await one('select count(*)::int as n from troca_pecas where troca_id = $1', [t1])).n, 2)
+  await one('select enviar_troca($1)', [t1])
+  const env = await one('select status, enviada_em from trocas where id = $1', [t1])
+  assert.equal(env.status, 'enviada')
+  await one('select enviar_troca($1)', [t1])
+  assert.equal((await one('select enviada_em from trocas where id = $1', [t1])).enviada_em.getTime(), env.enviada_em.getTime())
+  assert.equal((await one('select status from pedidos where id = $1', [p.id])).status, 'aguardando_cliente')
+  // Peça nova numa troca respondida volta para enviada.
+  await db.query("update trocas set status = 'respondida' where id = $1", [t1])
+  const extra = await one("insert into pedido_itens (pedido_id, origem, nome, qtd, preco, ordem) values ($1, 'avulso', 'Pulseira', 1, 10, 5) returning id", [p.id])
+  await one('select garantir_troca($1, $2::uuid[])', [p.id, [extra.id]])
+  assert.equal((await one('select status from trocas where id = $1', [t1])).status, 'enviada')
+})
+
+test('funções de ação: anon não executa', async () => {
+  await db.exec('set local role anon')
+  await recusa(() => one('select bipar($1, null, $2)', ['00000000-0000-0000-0000-000000000000', 'x']), /permission denied/)
+})
+
 await preparar()
 let falhas = 0
 try {

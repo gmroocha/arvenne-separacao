@@ -379,7 +379,13 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
   const gravar = useMutation({
     mutationKey: chave,
     scope: { id: `pedido-${pedidoId}` },
-    mutationFn: async ({ itemId, campos }: { itemId: string; campos: ItemPatch }) => {
+    mutationFn: async ({ itemId, campos, codigo }: { itemId: string; campos: ItemPatch; codigo?: string }) => {
+      // Com código (bipagem), o banco soma 1 e registra o histórico: duas leituras seguidas contam as duas.
+      if (codigo) {
+        const { error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId, p_codigo: codigo })
+        if (error) throw error
+        return
+      }
       const { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
       if (error) throw error
     },
@@ -396,14 +402,14 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
     },
   })
 
-  return (item: Item, campos: ItemPatch) => {
+  return (item: Item, campos: ItemPatch, codigo?: string) => {
     const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
     if (!atual) return
     const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
     const antes = atual.pedido_itens
     const depois = antes.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
     comTransicao(() => qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), { ...atual, pedido_itens: depois }))
-    gravar.mutate({ itemId: item.id, campos: patch })
+    gravar.mutate({ itemId: item.id, campos: patch, codigo })
 
     let estado = atual.status
     if (campos.status) {
@@ -424,55 +430,17 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
   }
 }
 
-// Reiniciar: zera o trabalho de uma etapa (ou de todas) para refazer. Nada é apagado: histórico de
-// bipagens e números digitados (nota, LR) ficam guardados. "Do zero" devolve o pedido ao estado original:
-// peças removidas voltam, peças que entraram por troca saem e a troca em andamento é cancelada.
-const ZERO_POR_ETAPA: Partial<Record<StatusPedido, { itens?: ItemPatch; pedido?: CamposPedido }>> = {
-  novo: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
-  separacao: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
-  avisar_cliente: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
-  aguardando_cliente: { itens: { status: "pendente", ...ZERAR_ETAPAS } },
-  conferencia: { itens: { conferido_em: null } },
-  etiquetagem: { itens: { etiquetado_em: null, etiqueta_previa: false } },
-  bipagem: { itens: { qtd_bipada: 0, bipado_em: null } },
-  faturamento: { pedido: { nf_emitida_em: null, frete_gerado_em: null, pedido_fornecedor_em: null } },
-  embalagem: { pedido: { embalado_em: null } },
-  pronto_envio: { pedido: { postado_em: null, rastreio_enviado_em: null } },
-}
-
+// Reiniciar: zera o trabalho de uma etapa (ou de todas) para refazer, numa transação no banco
+// (função reiniciar_pedido). Nada é apagado: histórico de bipagens e números digitados (nota, LR) ficam
+// guardados. "Do zero" devolve o pedido ao estado original: peças que entraram por troca saem, a troca
+// em andamento é cancelada e as peças removidas depois da venda voltam (as tiradas na venda não).
 export function useReiniciar(pedidoId: string) {
   const qc = useQueryClient()
   return useMutation({
     scope: { id: `pedido-${pedidoId}` },
     mutationFn: async ({ tudo, etapa }: { tudo: boolean; etapa: StatusPedido }) => {
-      const etapas = tudo ? Object.keys(ZERO_POR_ETAPA) as StatusPedido[] : [etapa]
-      const itens: ItemPatch = Object.assign({}, ...etapas.map((e) => ZERO_POR_ETAPA[e]?.itens ?? {}))
-      const pedido: CamposPedido = Object.assign({}, ...etapas.map((e) => ZERO_POR_ETAPA[e]?.pedido ?? {}))
-      if (tudo) {
-        // Peças que entraram por troca saem (ficam guardadas como removidas); as originais voltam.
-        const { error: e1 } = await supabase
-          .from("pedido_itens").update({ status: "removido" })
-          .eq("pedido_id", pedidoId).neq("status", "removido").like("observacao", "troca de%")
-        if (e1) throw e1
-        const { error: e2 } = await supabase
-          .from("pedido_itens").update({ status: "pendente", observacao: null, ...ZERAR_ETAPAS })
-          .eq("pedido_id", pedidoId).eq("status", "removido").or("observacao.is.null,observacao.not.like.troca de%")
-        if (e2) throw e2
-        const { error: e3 } = await supabase
-          .from("trocas").update({ status: "cancelada" })
-          .eq("pedido_id", pedidoId).in("status", ["rascunho", "enviada", "respondida"])
-        if (e3) throw e3
-      }
-      if (Object.keys(itens).length) {
-        const { error } = await supabase.from("pedido_itens").update(itens).eq("pedido_id", pedidoId).neq("status", "removido")
-        if (error) throw error
-      }
-      const campos: CamposPedido = { ...pedido, ...(tudo ? { status: "novo" } : {}) }
-      if (Object.keys(campos).length) await atualizarPedido(pedidoId, campos)
-      // Registro para análise: a política equipe_nota agora também aceita tipo 'reiniciado'.
-      await supabase.from("pedido_eventos").insert({
-        pedido_id: pedidoId, tipo: "reiniciado", de: etapa, texto: tudo ? "pedido inteiro" : `etapa ${etapa}`,
-      })
+      const { error } = await supabase.rpc("reiniciar_pedido", { p_pedido: pedidoId, p_etapa: etapa, p_tudo: tudo })
+      if (error) throw error
     },
     onSuccess: (_, a) => toast.success(a.tudo ? "Pedido reiniciado" : "Etapa reiniciada"),
     onError: (e) => toast.error(msg(e)),
@@ -480,10 +448,15 @@ export function useReiniciar(pedidoId: string) {
   })
 }
 
-// Registra a leitura do leitor de código (histórico em "bipagens"). Não trava a tela.
-export async function registrarBipagem(pedidoId: string, itemId: string | null, codigo: string, resultado: ResultadoBipagem) {
-  const { error } = await supabase.from("bipagens").insert({ pedido_id: pedidoId, item_id: itemId, codigo, resultado })
-  if (error) toast.error(msg(error))
+// Leitura do leitor de código: soma 1 na peça (sem passar da quantidade) e grava o histórico em "bipagens",
+// tudo no banco (função bipar). Sem itemId, registra "fora_do_pedido". Devolve o resultado.
+export async function registrarBipagem(pedidoId: string, itemId: string | null, codigo: string): Promise<ResultadoBipagem | null> {
+  const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId, p_codigo: codigo })
+  if (error) {
+    toast.error(msg(error))
+    return null
+  }
+  return data as ResultadoBipagem
 }
 
 export function useAtualizarItem() {
@@ -532,40 +505,12 @@ export function useAcoesItemVenda(pedidoId: string) {
 }
 
 // Com somar (só na venda), peça já no pedido ganha quantidade em vez de uma linha nova.
+// A ordem das linhas e a soma são feitas no banco (função adicionar_itens), numa transação.
 export function useAdicionarItens() {
   return useAcao(
     async ({ pedidoId, itens, somar }: { pedidoId: string; itens: NovoItem[]; somar?: boolean }) => {
-      let novos = itens
-      if (somar) {
-        const { data: vivos, error: e1 } = await supabase
-          .from("pedido_itens")
-          .select("id, qtd, shopify_variant_id, peca_clube_id")
-          .eq("pedido_id", pedidoId)
-          .neq("status", "removido")
-        if (e1) throw e1
-        const existentes = (vivos ?? []) as Pick<Item, "id" | "qtd" | "shopify_variant_id" | "peca_clube_id">[]
-        novos = []
-        for (const i of itens) {
-          const igual = existentes.find((x) =>
-            i.shopify_variant_id != null ? x.shopify_variant_id === i.shopify_variant_id : i.peca_clube_id != null && x.peca_clube_id === i.peca_clube_id,
-          )
-          if (igual) {
-            igual.qtd += i.qtd
-            const { error } = await supabase.from("pedido_itens").update({ qtd: igual.qtd }).eq("id", igual.id)
-            if (error) throw error
-          } else novos.push(i)
-        }
-      }
-      if (!novos.length) return
-      const { data: ult } = await supabase
-        .from("pedido_itens")
-        .select("ordem")
-        .eq("pedido_id", pedidoId)
-        .order("ordem", { ascending: false })
-        .limit(1)
-      const base = (ult?.[0]?.ordem ?? 0) + 1
-      const linhas = novos.map((i, n) => ({
-        pedido_id: pedidoId,
+      if (!itens.length) return
+      const linhas = itens.map((i) => ({
         origem: i.origem,
         shopify_variant_id: i.shopify_variant_id,
         peca_clube_id: i.peca_clube_id,
@@ -575,9 +520,8 @@ export function useAdicionarItens() {
         foto_url: i.foto_url,
         qtd: i.qtd,
         preco: i.preco,
-        ordem: base + n,
       }))
-      const { error } = await supabase.from("pedido_itens").insert(linhas)
+      const { error } = await supabase.rpc("adicionar_itens", { p_pedido: pedidoId, p_itens: linhas, p_somar: !!somar })
       if (error) throw error
     },
     TODAS,
@@ -619,6 +563,8 @@ export type DadosCliente = {
 } & Partial<Endereco>
 
 const soDigitos = (t: string | null | undefined) => (t ?? "").replace(/\D/g, "")
+const semAcento = (t: string | null | undefined) =>
+  (t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim()
 
 // Cria ou atualiza a cliente em "clientes" (telefone, CPF e CEP só com dígitos) e devolve o id.
 export async function salvarCliente(id: string | null, d: DadosCliente): Promise<string> {
@@ -640,15 +586,19 @@ export async function salvarCliente(id: string | null, d: DadosCliente): Promise
   }
   let alvo = id
   if (!alvo) {
-    // Evita duplicar: procura quem já tem o mesmo CPF, e-mail ou telefone.
+    // Evita duplicar: CPF identifica a pessoa. Telefone e e-mail são compartilhados (mãe e filha, o
+    // mesmo contato), então só valem se o nome também for o mesmo; senão nasce uma cliente nova.
+    if (linha.cpf) {
+      const { data } = await supabase.from("clientes").select("id").eq("cpf", linha.cpf).limit(1)
+      alvo = data?.[0]?.id ?? null
+    }
     const filtros = [
-      linha.cpf ? `cpf.eq.${linha.cpf}` : null,
       linha.email ? `email.eq.${linha.email}` : null,
       linha.telefone ? `telefone.eq.${linha.telefone}` : null,
     ].filter(Boolean)
-    if (filtros.length) {
-      const { data } = await supabase.from("clientes").select("id").or(filtros.join(",")).limit(1)
-      alvo = data?.[0]?.id ?? null
+    if (!alvo && filtros.length) {
+      const { data } = await supabase.from("clientes").select("id, nome").or(filtros.join(",")).limit(20)
+      alvo = data?.find((c) => semAcento(c.nome) === semAcento(linha.nome))?.id ?? null
     }
   }
   if (alvo) {
@@ -729,7 +679,8 @@ export function useAtivarPecaClube() {
   )
 }
 
-export type AcaoItem = (item: Item, campos: ItemPatch) => void
+// codigo (só na bipagem): grava pela função bipar, que soma 1 no banco e registra o histórico.
+export type AcaoItem = (item: Item, campos: ItemPatch, codigo?: string) => void
 
 // Feedbacks da equipe (página /feedbacks): guardados e visíveis a todos.
 export function useFeedbacks() {
@@ -860,32 +811,13 @@ export function useCategorias(ativo = true) {
 }
 
 // Garante a troca do pedido e uma peça para cada item em falta (cria o rascunho, ou acrescenta peças
-// à troca que já existe). Devolve o id da troca.
+// à troca que já existe) numa transação (função garantir_troca). Devolve o id da troca.
 export function useCriarTroca() {
   return useAcao(
     async ({ pedidoId, itemIds }: { pedidoId: string; itemIds: string[] }) => {
-      const { data: existente, error: e0 } = await supabase
-        .from("trocas")
-        .select("id, status, troca_pecas(item_id)")
-        .eq("pedido_id", pedidoId)
-        .in("status", ["rascunho", "enviada", "respondida"])
-        .maybeSingle()
-      if (e0) throw e0
-      let trocaId = existente?.id as string | undefined
-      if (!trocaId) {
-        const { data, error } = await supabase.from("trocas").insert({ pedido_id: pedidoId }).select("id").single()
-        if (error) throw error
-        trocaId = data.id as string
-      }
-      const tem = new Set(((existente?.troca_pecas ?? []) as { item_id: string }[]).map((p) => p.item_id))
-      const faltam = itemIds.filter((id) => !tem.has(id))
-      if (faltam.length > 0) {
-        const { error } = await supabase.from("troca_pecas").insert(faltam.map((item_id) => ({ troca_id: trocaId, item_id })))
-        if (error) throw error
-        // Peça nova numa troca já respondida: volta a aguardar a cliente.
-        if (existente?.status === "respondida") await supabase.from("trocas").update({ status: "enviada" }).eq("id", trocaId)
-      }
-      return trocaId
+      const { data, error } = await supabase.rpc("garantir_troca", { p_pedido: pedidoId, p_itens: itemIds })
+      if (error) throw error
+      return data as string
     },
     [["troca"]],
   )
@@ -987,15 +919,8 @@ export function useOpcaoTroca(pedidoId: string) {
 export function useEnviarTroca() {
   return useAcao(
     async ({ troca }: { troca: Troca }) => {
-      if (troca.status === "rascunho") {
-        const { error } = await supabase
-          .from("trocas")
-          .update({ status: "enviada", enviada_em: new Date().toISOString() })
-          .eq("id", troca.id)
-        if (error) throw error
-      }
-      const { data: ped } = await supabase.from("pedidos").select("status").eq("id", troca.pedido_id).single()
-      if (ped?.status === "avisar_cliente") await atualizarPedido(troca.pedido_id, { status: "aguardando_cliente" })
+      const { error } = await supabase.rpc("enviar_troca", { p_troca: troca.id })
+      if (error) throw error
     },
     TROCAS_TUDO,
   )

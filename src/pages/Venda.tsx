@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, Navigate, useNavigate, useParams } from "react-router"
-import { useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { ArrowLeft, ChevronUp } from "lucide-react"
 import ClienteCard from "@/components/venda/ClienteCard"
@@ -22,7 +22,8 @@ import { StatusBadge } from "@/components/StatusBadge"
 
 type Estado = "salvo" | "pendente" | "salvando" | "erro"
 
-// Salva sozinho, 600 ms depois da última digitação.
+// Salva sozinho, 600 ms depois da última digitação. Vai em fila por pedido (como usePatchPedido), manda só
+// os campos que mudaram desde o último salvo e grava na hora ao sair da tela ou esconder a aba.
 function useAutosave(pedidoId: string, form: FormVenda) {
   const qc = useQueryClient()
   const [estado, setEstado] = useState<Estado>("salvo")
@@ -30,35 +31,63 @@ function useAutosave(pedidoId: string, form: FormVenda) {
   useEffect(() => {
     ref.current = form
   }, [form])
-  const salvo = useRef(JSON.stringify(camposDe(form)))
+  const salvo = useRef<Record<string, unknown>>(camposDe(form))
 
-  const gravar = useCallback(
-    async (extra?: CamposPedido) => {
-      const base = camposDe(ref.current)
-      const chave = JSON.stringify(base)
-      if (!extra && chave === salvo.current) return setEstado("salvo")
-      setEstado("salvando")
-      try {
-        await atualizarPedido(pedidoId, { ...base, ...extra })
-        salvo.current = chave
-        setEstado("salvo")
+  const mutacao = useMutation({
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: (campos: CamposPedido) => atualizarPedido(pedidoId, campos),
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: ["autosave", pedidoId] }) <= 1) {
         qc.invalidateQueries({ queryKey: ["pedido", pedidoId] })
         qc.invalidateQueries({ queryKey: ["pedidos"] })
+      }
+    },
+    mutationKey: ["autosave", pedidoId],
+  })
+
+  const { mutateAsync } = mutacao // estável entre renders
+  const gravar = useCallback(
+    async (extra?: CamposPedido) => {
+      const atuais = camposDe(ref.current) as Record<string, unknown>
+      const mudados = Object.fromEntries(Object.entries(atuais).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(salvo.current[k])))
+      if (!extra && !Object.keys(mudados).length) return setEstado("salvo")
+      setEstado("salvando")
+      try {
+        await mutateAsync({ ...mudados, ...extra })
+        salvo.current = { ...salvo.current, ...mudados }
+        setEstado(JSON.stringify(camposDe(ref.current)) === JSON.stringify(salvo.current) ? "salvo" : "pendente")
       } catch (e) {
         setEstado("erro")
         toast.error(e instanceof Error ? e.message : "Não foi possível salvar")
         throw e
       }
     },
-    [pedidoId, qc],
+    [mutateAsync],
   )
 
+  // Sempre a versão mais recente, para os ouvintes de saída abaixo.
+  const gravarRef = useRef(gravar)
   useEffect(() => {
-    if (JSON.stringify(camposDe(form)) === salvo.current) return
+    gravarRef.current = gravar
+  }, [gravar])
+
+  useEffect(() => {
+    if (JSON.stringify(camposDe(form)) === JSON.stringify(salvo.current)) return
     setEstado("pendente")
     const t = setTimeout(() => void gravar().catch(() => {}), 600)
     return () => clearTimeout(t)
   }, [form, gravar])
+
+  useEffect(() => {
+    const aoEsconder = () => {
+      if (document.visibilityState === "hidden") void gravarRef.current().catch(() => {})
+    }
+    document.addEventListener("visibilitychange", aoEsconder)
+    return () => {
+      document.removeEventListener("visibilitychange", aoEsconder)
+      void gravarRef.current().catch(() => {}) // saiu da tela: grava o que faltar
+    }
+  }, [])
 
   return { estado, gravar }
 }
