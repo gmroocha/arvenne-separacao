@@ -9,7 +9,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { ItemGroup } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { usePedidosFase } from "@/lib/api"
+import { LIMITE_LISTA, usePedidosFase } from "@/lib/api"
 import { digitos } from "@/lib/formato"
 
 export default function Vendas() {
@@ -58,6 +58,10 @@ export default function Vendas() {
           </TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {(data?.length ?? 0) >= LIMITE_LISTA && (
+        <p className="text-xs text-muted-foreground">Mostrando as {LIMITE_LISTA} vendas mais recentes: pode haver mais. Use a busca.</p>
+      )}
 
       {isLoading ? (
         <div className="flex flex-col gap-2">

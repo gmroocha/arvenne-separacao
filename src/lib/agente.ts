@@ -1,3 +1,4 @@
+import { reais } from "@/lib/formato"
 import { NOME_ITEM } from "@/lib/status"
 import type { Item, Pedido } from "@/lib/tipos"
 
@@ -35,11 +36,11 @@ const primeiroNome = (p: Pedido) => {
 const descricaoPeca = (i: Item) => [i.nome, i.variante].filter(Boolean).join(", ")
 
 // Mensagem para a cliente com o link da troca. Não lista peças: o link mostra tudo.
-export function mensagemTroca(pedido: Pedido, itens: Item[], link: string): string {
+export function mensagemTroca(pedido: Pedido, itens: Item[], link: string, cobrirAte = 0): string {
   const nome = primeiroNome(pedido)
   const plural = itens.length > 1
   return [
-    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas. Infelizmente ${plural ? "algumas peças" : "uma peça"} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕 Separamos opções para você escolher, com fotos e valores, neste link:`,
+    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas. Infelizmente ${plural ? "algumas peças" : "uma peça"} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕 Separamos opções para você escolher, com fotos e valores${cobrirAte > 0 ? `. A loja cobre até ${reais(cobrirAte)} da diferença` : ""}, neste link:`,
     link,
     "Qualquer dúvida é só responder aqui.",
   ].join("\n")

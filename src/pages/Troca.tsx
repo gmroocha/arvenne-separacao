@@ -1,17 +1,20 @@
 import { useState } from "react"
 import { useParams } from "react-router"
-import { Check, CircleCheck, HandCoins, MessageCircle, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
+import { Check, CircleCheck, HandCoins, MessageCircle, Minus, PackageX, Plus, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
 import Logo from "@/components/Logo"
 import Foto from "@/components/Foto"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { useEscolherTroca, useTrocaPublica } from "@/lib/api"
+import { carrinhoDaPeca, useCarrinhoTroca, useEscolherTroca, useTrocaPublica } from "@/lib/api"
 import { reais } from "@/lib/formato"
 import { fotoTamanho } from "@/lib/foto"
 import type { TrocaPublica } from "@/lib/tipos"
+import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import { cn } from "@/lib/utils"
 
 type Peca = TrocaPublica["pecas"][number]
@@ -20,20 +23,224 @@ type Opcao = Peca["opcoes"][number]
 // Número da loja (só dígitos) para o link do WhatsApp. Sem ele, o botão não aparece.
 const WHATSAPP_LOJA = ((import.meta.env.VITE_WHATSAPP_LOJA as string | undefined) ?? "").replace(/\D/g, "")
 
-function textoOpcao(o: Opcao) {
-  return o.situacao === "paga_diferenca"
-    ? `Você paga +${reais(o.diferenca)}`
-    : o.situacao === "credito"
-      ? `Sobra ${reais(Math.abs(o.diferenca))} de crédito`
-      : "Mesmo valor"
+// Diferença da opção em poucas palavras (o valor vem do banco: v_troca_valores).
+function seloDiferenca(o: Opcao) {
+  if (o.situacao === "paga_diferenca") return `paga + ${reais(o.diferenca)}`
+  if (o.situacao === "credito") return `sobra ${reais(Math.abs(o.diferenca))}`
+  return "mesmo valor"
 }
 
-function Linha({ rotulo, children, forte, grande }: { rotulo: string; children: React.ReactNode; forte?: boolean; grande?: boolean }) {
+// Mesmo modelo (mesmo produto, mesma pedra/cor e mesmo valor) em vários TAMANHOS vira um cartão só:
+// "ABALONE / N°12" e "ABALONE / N°16" juntam; "MADREPÉROLA / N°16" fica em outro cartão (outra foto).
+// Variante sem tamanho (cor, pedra, mm) fica sozinha. Só agrupa; os valores vêm prontos do banco.
+function agrupar(opcoes: Opcao[]): Opcao[][] {
+  const grupos = new Map<string, Opcao[]>()
+  for (const o of opcoes) {
+    const chave = separarTamanho(o.variante).tamanho ? `${chaveModelo(o.nome, o.variante)}|${o.valor}|${o.diferenca}` : `id:${o.id}`
+    const g = grupos.get(chave)
+    if (g) g.push(o)
+    else grupos.set(chave, [o])
+  }
+  return [...grupos.values()].map((g) => [...g].sort((a, b) => numeroTamanho(separarTamanho(a.variante).tamanho) - numeroTamanho(separarTamanho(b.variante).tamanho)))
+}
+
+// O código (SKU) é o nome na página: o nome da Shopify é comprido demais.
+const titulo = (x: { sku: string | null; nome: string }) => x.sku?.trim() || x.nome
+
+// Código do modelo de um grupo de tamanhos: o começo comum dos SKUs (AN3597-12, AN3597-16 → AN3597).
+function codigoModelo(g: Opcao[]) {
+  const skus = g.map((o) => o.sku?.trim() ?? "")
+  if (skus.some((x) => !x)) return g[0].nome
+  let p = skus[0]
+  for (const x of skus) while (!x.startsWith(p)) p = p.slice(0, -1)
+  p = p.replace(/[-_.\s]+$/, "")
+  return p.length >= 3 ? p : g[0].nome
+}
+
+const MAX_UNIDADES = 20 // limite do banco por peça
+
+function Preco({ o }: { o: Opcao }) {
   return (
-    <div className={`flex items-baseline justify-between gap-3 ${grande ? "text-2xl font-semibold" : forte ? "text-lg font-semibold" : "text-base"}`}>
-      <span className={forte ? "" : "text-muted-foreground"}>{rotulo}</span>
-      <span className="tabular-nums">{children}</span>
+    <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="text-base font-semibold tabular-nums">{reais(o.valor)}</span>
+      <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal tabular-nums">
+        {seloDiferenca(o)}
+      </Badge>
     </div>
+  )
+}
+
+// [−] n [+]: botões grandes para o dedo. O número já muda na hora; o banco grava em seguida.
+function Passo({ qtd, aoMudar, cheio, rotulo }: { qtd: number; aoMudar: (n: number) => void; cheio: boolean; rotulo: string }) {
+  return (
+    <div className="flex items-center gap-3" role="group" aria-label={rotulo}>
+      <Button type="button" variant="outline" size="icon" className="size-10" aria-label={`Tirar uma: ${rotulo}`} disabled={qtd <= 0} onClick={() => aoMudar(qtd - 1)}>
+        <Minus />
+      </Button>
+      <span className="w-8 text-center text-base font-semibold tabular-nums" aria-live="polite">
+        {qtd}
+      </span>
+      <Button type="button" variant="outline" size="icon" className="size-10" aria-label={`Colocar mais uma: ${rotulo}`} disabled={cheio} onClick={() => aoMudar(qtd + 1)}>
+        <Plus />
+      </Button>
+    </div>
+  )
+}
+
+type CartaoProps = {
+  o: Opcao
+  qtd: number
+  // Carrinho vazio: aparece o atalho "Quero esta". Com itens no carrinho, aparece o seletor de quantidade.
+  vazio: boolean
+  cheio: boolean
+  carregando: boolean
+  ocupado: boolean
+  aoEscolher: () => void
+  aoQtd: (n: number) => void
+}
+
+function CartaoOpcao({ o, qtd, vazio, cheio, carregando, ocupado, aoEscolher, aoQtd }: CartaoProps) {
+  return (
+    <li className={cn("flex flex-col gap-2.5 rounded-2xl border bg-card p-3", qtd > 0 && "border-emerald-600 ring-1 ring-emerald-600")}>
+      <div className="flex gap-3">
+        <Foto url={fotoTamanho(o.foto_url, 300)} alt={o.nome} ampliar className="size-16 shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="font-mono text-sm leading-snug font-semibold">{titulo(o)}</div>
+          {o.variante && <div className="text-xs text-muted-foreground">{o.variante}</div>}
+          <Preco o={o} />
+        </div>
+      </div>
+      {vazio ? (
+        <Button type="button" className="h-10 w-full text-sm" disabled={ocupado} onClick={aoEscolher}>
+          {carregando ? <Spinner /> : null}
+          Quero esta
+        </Button>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">Quantas?</span>
+          <Passo qtd={qtd} aoMudar={aoQtd} cheio={cheio} rotulo={titulo(o)} />
+        </div>
+      )}
+    </li>
+  )
+}
+
+// Um modelo, vários tamanhos: foto, nome e preço uma vez; cada toque no tamanho coloca mais uma no carrinho.
+function CartaoModelo({
+  grupo,
+  qtds,
+  cheio,
+  aoQtd,
+}: {
+  grupo: Opcao[]
+  qtds: Record<string, number>
+  cheio: boolean
+  aoQtd: (opcaoId: string, n: number) => void
+}) {
+  const marcados = grupo.filter((o) => (qtds[o.id] ?? 0) > 0)
+  const base = marcados[0] ?? grupo[0]
+  const modelo = separarTamanho(base.variante).base
+  return (
+    <li className={cn("flex flex-col gap-3 rounded-2xl border bg-card p-3", marcados.length > 0 && "border-emerald-600 ring-1 ring-emerald-600")}>
+      <div className="flex gap-3">
+        <Foto url={fotoTamanho(base.foto_url, 300)} alt={base.nome} ampliar className="size-16 shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="font-mono text-sm leading-snug font-semibold">{codigoModelo(grupo)}</div>
+          {modelo && <div className="text-xs text-muted-foreground">{modelo}</div>}
+          <div className="text-xs text-muted-foreground">{grupo.length} tamanhos disponíveis</div>
+          <Preco o={base} />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span className="text-xs text-muted-foreground">Toque no tamanho para colocar no carrinho</span>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Tamanhos">
+          {grupo.map((o) => {
+            const n = qtds[o.id] ?? 0
+            const tam = separarTamanho(o.variante).tamanho ?? o.variante ?? o.nome
+            return (
+              <Button
+                key={o.id}
+                type="button"
+                variant={n > 0 ? "default" : "outline"}
+                aria-label={n > 0 ? `Tamanho ${tam}, ${n} no carrinho. Toque para colocar mais uma` : `Tamanho ${tam}`}
+                className={cn("relative h-10 min-w-16 px-3 text-sm tabular-nums", n > 0 && "bg-emerald-600 text-white hover:bg-emerald-600/90")}
+                disabled={cheio}
+                onClick={() => aoQtd(o.id, n + 1)}
+              >
+                {tam}
+                {n > 0 && (
+                  <span className="absolute -top-2 -right-2 flex size-5 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background tabular-nums">{n}</span>
+                )}
+              </Button>
+            )
+          })}
+        </div>
+      </div>
+      {marcados.length > 0 && (
+        <div className="flex flex-col gap-2 border-t pt-3">
+          {marcados.map((o) => (
+            <div key={o.id} className="flex items-center justify-between gap-3">
+              <span className="text-sm">Tamanho {separarTamanho(o.variante).tamanho ?? o.variante ?? o.nome}</span>
+              <Passo qtd={qtds[o.id] ?? 0} aoMudar={(n) => aoQtd(o.id, n)} cheio={cheio} rotulo={`Tamanho ${separarTamanho(o.variante).tamanho ?? o.nome}`} />
+            </div>
+          ))}
+        </div>
+      )}
+    </li>
+  )
+}
+
+// Quanto ela já escolheu em relação ao que pagou (os dois valores vêm do banco; aqui só se compara para o texto).
+function LinhaEscolhido({ escolhido, pago }: { escolhido: number; pago: number }) {
+  return (
+    <div className="sticky top-0 z-10 flex flex-col gap-1.5 rounded-xl border bg-background/95 p-3 backdrop-blur" role="status">
+      <div className="flex items-baseline justify-between gap-2 text-sm font-semibold tabular-nums">
+        <span>
+          Você escolheu {reais(escolhido)} de {reais(pago)}
+        </span>
+      </div>
+      <Progress value={pago > 0 ? Math.min(100, (escolhido / pago) * 100) : 0} className="h-1.5" />
+      <p className="text-xs text-muted-foreground">
+        {escolhido < pago ? "A diferença vira crédito para você." : escolhido > pago ? "Você paga a diferença." : "Valor certinho, sem diferença."}
+      </p>
+    </div>
+  )
+}
+
+// Resumo no fim da página: o valor final (pagar a mais ou crédito), depois da primeira escolha.
+function Resumo({ data, respondidas }: { data: TrocaPublica; respondidas: number }) {
+  const concluida = data.status === "concluida"
+  const dif = data.resumo.diferenca
+  const temValor = respondidas > 0 || concluida
+  const coberto = data.resumo.coberto ?? 0
+  const bruta = data.resumo.diferenca_bruta ?? dif + coberto
+  if (!temValor) return null
+  return (
+    <section aria-label="Resumo" className="flex flex-col gap-3 rounded-2xl border bg-card p-4">
+      {concluida && (
+        <div className="flex items-center gap-2 text-base font-semibold">
+          <CircleCheck className="size-5 shrink-0 text-emerald-600" /> Troca concluída. Obrigada!
+        </div>
+      )}
+      {temValor && coberto > 0 && (
+        <div className="flex flex-col gap-1 text-sm text-muted-foreground tabular-nums">
+          <div className="flex justify-between gap-3">
+            <span>Diferença</span>
+            <span>+ {reais(bruta)}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span>A loja cobre</span>
+            <span>− {reais(coberto)}</span>
+          </div>
+        </div>
+      )}
+      {temValor && (
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-base">{dif > 0 ? "Você paga a mais" : dif < 0 ? "Seu crédito" : "Sem diferença a pagar"}</span>
+          {dif !== 0 && <span className="text-2xl font-semibold tabular-nums">{reais(Math.abs(dif))}</span>}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -43,6 +250,7 @@ export default function Troca() {
   const { token } = useParams()
   const { data, isLoading, isError, refetch, isFetching } = useTrocaPublica(token)
   const escolher = useEscolherTroca(token)
+  const carrinho = useCarrinhoTroca(token)
   const [gravando, setGravando] = useState<string | null>(null) // `${itemId}:${opcaoId|tipo}`
 
   function escolha(itemId: string, tipo: "opcao" | "credito", opcaoId: string | null) {
@@ -56,7 +264,6 @@ export default function Troca() {
   const total = data?.resumo.pecas_total ?? pecas.length
   const respondidas = pecas.filter((p) => p.escolha_tipo).length
   const tudo = total > 0 && respondidas === total
-  const dif = data?.resumo.diferenca ?? 0
 
   const linkWa =
     WHATSAPP_LOJA && data
@@ -71,7 +278,7 @@ export default function Troca() {
       {isLoading ? (
         <div className="flex flex-col gap-4" role="status" aria-label="Carregando">
           <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-24 w-full" />
           <Skeleton className="aspect-square w-full" />
         </div>
       ) : isError ? (
@@ -94,38 +301,75 @@ export default function Troca() {
       ) : (
         <>
           <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold">Pedido {data.numero.replace(/^#/, "")}</h1>
-            {cliente && <p className="text-base text-muted-foreground">Olá, {cliente}</p>}
+            <h1 className="text-2xl font-semibold">{cliente ? `Olá, ${cliente}! 🤍` : "Olá! 🤍"}</h1>
+            <p className="text-sm text-muted-foreground">Pedido {data.numero.replace(/^#/, "")}</p>
           </div>
 
           <p className="text-base">
-            {total === 1 ? "Uma peça" : `${total} peças`} {total === 1 ? "ficou" : "ficaram"} sem estoque. Escolha o que prefere para {total === 1 ? "ela" : "cada uma"}.
+            {total === 1 ? "Uma peça do seu pedido ficou" : `${total} peças do seu pedido ficaram`} sem estoque. Escolha uma troca ou crédito para{" "}
+            {total === 1 ? "ela" : "cada uma"}.
           </p>
 
-          <h2 className="text-sm font-semibold">Peças em falta</h2>
+          {(data.resumo.cobrir_ate ?? 0) > 0 && !concluida && (
+            <p className="text-sm text-muted-foreground">A loja cobre até {reais(data.resumo.cobrir_ate ?? 0)} da diferença 🤍</p>
+          )}
+
           {pecas.map((p, n) => {
             const feita = concluida || p.concluida
+            const cart = carrinhoDaPeca(p)
+            const qtds: Record<string, number> = Object.fromEntries(cart.map((c) => [c.opcao_id, c.qtd]))
+            const unidades = cart.reduce((n, c) => n + c.qtd, 0)
+            const novas = p.novas && p.novas.length > 0 ? p.novas : p.nova ? [{ ...p.nova, qtd: 0 }] : []
             return (
               <section key={p.item_id} className="flex flex-col gap-3" aria-label={`Peça ${n + 1}`}>
-                <div className="flex gap-3 rounded-xl border bg-card p-3">
-                  <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-28 shrink-0" />
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <div className="text-base leading-snug font-medium">{p.nome}</div>
-                    {p.variante && <div className="text-sm text-muted-foreground">{p.variante}</div>}
-                    {p.sku && <div className="font-mono text-xs text-muted-foreground">{p.sku}</div>}
-                    <div className="mt-auto pt-1 text-sm tabular-nums">Você pagou {reais(p.valor_pago)}</div>
+                {/* Entre uma peça e outra: linha e número grande, para não misturar as escolhas. */}
+                {n > 0 && <Separator className="mb-3" />}
+                {total > 1 && (
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums",
+                        p.escolha_tipo || feita ? "bg-emerald-600 text-white" : "bg-foreground text-background",
+                      )}
+                    >
+                      {p.escolha_tipo || feita ? <Check className="size-4" /> : n + 1}
+                    </span>
+                    <span className="text-lg font-semibold">
+                      Peça {n + 1} de {total}
+                    </span>
+                  </div>
+                )}
+                {/* Peça que faltou */}
+                <div className="flex flex-col gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-3">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                    <PackageX className="size-3.5" />
+                    Ficou sem estoque
+                  </div>
+                  <div className="flex gap-3">
+                    <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-20 shrink-0" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <div className="font-mono text-base leading-snug font-semibold">{titulo(p)}</div>
+                      {p.variante && <div className="text-sm text-muted-foreground">{p.variante}</div>}
+                      <div className="mt-auto text-sm text-muted-foreground tabular-nums">Você pagou {reais(p.valor_pago)}</div>
+                    </div>
                   </div>
                 </div>
 
+                {/* O que ela escolhe no lugar */}
                 {feita ? (
-                  <div className="flex items-start gap-2 rounded-xl border border-emerald-600/40 bg-emerald-50 p-3 text-sm font-medium text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-50">
+                  <div className="flex items-start gap-2 rounded-2xl border border-emerald-600/40 bg-emerald-50 p-3 text-sm font-medium text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-50">
                     <CircleCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
                     <span className="min-w-0">
-                      {p.nova ? (
+                      {novas.length > 0 ? (
                         <>
-                          Troca confirmada: {p.nova.nome}
-                          {p.nova.variante ? ` · ${p.nova.variante}` : ""}
-                          {p.nova.sku && <span className="block font-mono text-xs font-normal">{p.nova.sku}</span>}
+                          Troca confirmada:
+                          {novas.map((n, k) => (
+                            <span key={k} className="block">
+                              {n.qtd > 1 ? `${n.qtd}× ` : ""}
+                              {titulo(n)}
+                              {n.variante ? ` · ${n.variante}` : ""}
+                            </span>
+                          ))}
                         </>
                       ) : (
                         `Troca confirmada: crédito de ${reais(p.valor_pago)}`
@@ -134,37 +378,39 @@ export default function Troca() {
                     </span>
                   </div>
                 ) : (
-                  <>
-                    {p.opcoes.length > 0 && <h3 className="text-sm font-semibold">Escolha uma opção</h3>}
-                    <ul className="flex flex-col gap-2">
-                      {p.opcoes.map((o) => {
-                        const selecionada = p.escolha_tipo === "opcao" && p.escolha_opcao_id === o.id
-                        const carregando = gravando === `${p.item_id}:${o.id}`
-                        return (
-                          <li key={o.id} className={cn("flex flex-col gap-2 rounded-xl border bg-card p-2.5", selecionada && "border-emerald-600 ring-1 ring-emerald-600")}>
-                            <div className="flex gap-3">
-                              <Foto url={fotoTamanho(o.foto_url, 300)} alt={o.nome} ampliar className="size-16 shrink-0" />
-                              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                <div className="text-sm leading-snug font-medium">{o.nome}</div>
-                                {o.variante && <div className="text-xs text-muted-foreground">{o.variante}</div>}
-                                {o.sku && <div className="font-mono text-xs text-muted-foreground">{o.sku}</div>}
-                                <div className="text-sm font-semibold tabular-nums">{textoOpcao(o)}</div>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant={selecionada ? "secondary" : "default"}
-                              className="h-10 w-full text-sm"
-                              disabled={selecionada || escolher.isPending}
-                              onClick={() => escolha(p.item_id, "opcao", o.id)}
-                            >
-                              {carregando ? <Spinner /> : selecionada ? <Check /> : null}
-                              {selecionada ? "Escolhida" : "Quero esta"}
-                            </Button>
-                          </li>
-                        )
-                      })}
-                    </ul>
+                  <div className="flex flex-col gap-3 pt-1">
+                    <h2 className="text-base font-semibold">{p.opcoes.length > 0 ? "Escolha o que vai no lugar dela" : "Sua opção"}</h2>
+                    {unidades > 0 && p.valor_escolhido != null && <LinhaEscolhido escolhido={p.valor_escolhido} pago={p.valor_pago} />}
+                    {p.opcoes.length > 0 && (
+                      <>
+                        {unidades > 0 && <p className="text-xs text-muted-foreground">Use + e − para escolher quantas de cada. Pode juntar peças diferentes.</p>}
+                        <ul className="flex flex-col gap-3">
+                          {agrupar(p.opcoes).map((g) =>
+                            g.length === 1 ? (
+                              <CartaoOpcao
+                                key={g[0].id}
+                                o={g[0]}
+                                qtd={qtds[g[0].id] ?? 0}
+                                vazio={unidades === 0}
+                                cheio={unidades >= MAX_UNIDADES}
+                                carregando={gravando === `${p.item_id}:${g[0].id}`}
+                                ocupado={escolher.isPending}
+                                aoEscolher={() => escolha(p.item_id, "opcao", g[0].id)}
+                                aoQtd={(n) => carrinho.mutate({ itemId: p.item_id, opcaoId: g[0].id, qtd: n })}
+                              />
+                            ) : (
+                              <CartaoModelo
+                                key={g[0].id}
+                                grupo={g}
+                                qtds={qtds}
+                                cheio={unidades >= MAX_UNIDADES}
+                                aoQtd={(id, n) => carrinho.mutate({ itemId: p.item_id, opcaoId: id, qtd: n })}
+                              />
+                            ),
+                          )}
+                        </ul>
+                      </>
+                    )}
                     <Button
                       type="button"
                       variant="outline"
@@ -173,38 +419,36 @@ export default function Troca() {
                       onClick={() => escolha(p.item_id, "credito", null)}
                     >
                       {gravando === `${p.item_id}:credito` ? <Spinner /> : p.escolha_tipo === "credito" ? <Check /> : <HandCoins />}
-                      Prefiro crédito de {reais(p.valor_pago)}
+                      {p.escolha_tipo === "credito" ? "Crédito escolhido" : "Prefiro crédito"} de {reais(p.valor_pago)}
                     </Button>
-                  </>
+                  </div>
                 )}
               </section>
             )
           })}
 
           <Separator />
-          <section className="flex flex-col gap-1.5" aria-label="Resumo">
-            <Linha rotulo="Você pagou nas peças em falta">{reais(data.resumo.total_pago)}</Linha>
-            {(respondidas > 0 || concluida) && (
-              <>
-                <Linha rotulo="Diferença">{dif > 0 ? `+ ${reais(dif)}` : dif < 0 ? `− ${reais(-dif)}` : reais(0)}</Linha>
-                <Separator className="my-1" />
-                <Linha rotulo={dif > 0 ? "Você paga a mais" : dif < 0 ? "Seu crédito" : "Sem diferença a pagar"} forte grande>
-                  {dif !== 0 && reais(Math.abs(dif))}
-                </Linha>
-              </>
-            )}
-            <p className="pt-2 text-sm text-muted-foreground">
-              {concluida ? (
-                <span className="flex items-start gap-2 font-medium text-foreground">
-                  <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" /> Troca concluída. Obrigada!
+          <Resumo data={data} respondidas={respondidas} />
+
+          {!concluida && (
+            <div className="flex flex-col gap-2" aria-label="Suas escolhas">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Suas escolhas</span>
+                <span className="font-medium tabular-nums">
+                  {respondidas} de {total}
                 </span>
-              ) : tudo ? (
-                "Recebemos todas as suas escolhas. Se mudar de ideia, é só escolher outra opção acima."
-              ) : (
-                `Faltam ${total - respondidas} ${total - respondidas === 1 ? "peça" : "peças"} para escolher. Cada toque já fica salvo.`
-              )}
+              </div>
+              <Progress value={total ? (respondidas / total) * 100 : 0} className="h-1.5" />
+            </div>
+          )}
+
+          {!concluida && (
+            <p className="text-sm text-muted-foreground">
+              {tudo
+                ? "Recebemos todas as suas escolhas. Se mudar de ideia, é só escolher outra opção."
+                : "Cada toque já fica salvo. Se mudar de ideia, é só escolher outra opção."}
             </p>
-          </section>
+          )}
 
           {linkWa && (
             <Button asChild size="lg" variant="outline" className="h-11 w-full text-base">

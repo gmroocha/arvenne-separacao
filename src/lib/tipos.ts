@@ -78,6 +78,9 @@ export type Pedido = {
   desconto_frete: number | null
   // Há troca concluída com diferença ainda não acertada (cobrar ou registrar crédito).
   acerto_pendente: boolean
+  troca_coberto?: number
+  // Reembolso pendente de peças tiradas ("cliente desistiu") depois do pagamento. Ausente em bancos sem a coluna.
+  a_devolver?: number | null
   pendente_rastreio: boolean
   fotos: string[]
   fase: Fase
@@ -107,6 +110,9 @@ export type Item = {
   etiqueta_previa: boolean
   qtd_bipada: number
   bipado_em: string | null
+  removido_em?: string | null
+  devolvido_em?: string | null
+  shopify_line_id?: number | string | null
 }
 
 export type ResultadoBipagem = "ok" | "fora_do_pedido" | "excedente"
@@ -255,8 +261,27 @@ export type TrocaValor = {
   qtd: number
   valor_pago_item: number
   valor_opcao: number
+  // Por unidade (só depois da migration do carrinho).
+  valor_unit?: number
   diferenca: number
   situacao: SituacaoTroca
+}
+
+// Uma opção no carrinho que a cliente montou (tabela troca_escolhas).
+export type TrocaEscolha = { id: string; troca_peca_id: string; opcao_id: string; qtd: number; created_at: string }
+
+// Linha de v_troca_carrinho: o carrinho de uma peça com os totais prontos do banco.
+export type TrocaCarrinho = {
+  troca_peca_id: string
+  troca_id: string
+  pedido_id: string
+  item_id: string
+  unidades: number
+  valor_escolhido: number
+  valor_pago_item: number
+  // positivo = a cliente paga, negativo = crédito
+  diferenca: number
+  itens: { opcao_id: string; qtd: number; valor_unit: number; valor: number }[]
 }
 
 // Uma peça em falta dentro da troca, com as opções montadas e os valores prontos do banco.
@@ -274,6 +299,9 @@ export type TrocaPeca = {
   created_at: string
   opcoes: TrocaOpcao[]
   valores: TrocaValor[]
+  // Carrinho da cliente (vazio/ausente até a migration do carrinho).
+  escolhas?: TrocaEscolha[]
+  carrinho?: TrocaCarrinho | null
 }
 
 // Linha de v_troca_resumo: diferenca_total positivo = a cliente paga, negativo = crédito.
@@ -283,7 +311,11 @@ export type TrocaResumo = {
   pecas_total: number
   pecas_respondidas: number
   total_pago: number
+  // Líquida: já descontado o que a loja cobre.
   diferenca_total: number
+  diferenca_bruta?: number
+  coberto?: number
+  cobrir_ate?: number
 }
 
 export type Troca = {
@@ -297,6 +329,8 @@ export type Troca = {
   acerto_status: StatusAcerto | null
   acerto_em: string | null
   acerto_por: string | null
+  // A loja cobre até este valor da diferença positiva da troca (0 = não cobre).
+  cobrir_ate?: number
   created_at: string
   pecas: TrocaPeca[]
   resumo: TrocaResumo | null
@@ -317,6 +351,8 @@ export type AcertoPeca = {
   concluida_em: string
   antes: { sku: string | null; nome: string; variante: string | null; foto_url: string | null }
   depois: { sku: string | null; nome: string; variante: string | null; foto_url: string | null } | null
+  // Todas as peças novas (a 1ª também está em `depois`).
+  depois_lista?: { sku: string | null; nome: string; variante: string | null; foto_url: string | null; qtd: number }[] | null
 }
 
 // Linha de v_pedido_acerto (um pedido com peça trocada). Todo o dinheiro vem pronto do banco.
@@ -327,6 +363,7 @@ export type AcertoPedido = {
   total_a_cobrar: number
   total_credito: number
   saldo: number
+  coberto?: number
   novo_total: number
   troca_id: string | null
   acerto_status: StatusAcerto | null
@@ -364,6 +401,8 @@ export type Sugestao = {
   situacao: "paga_diferenca" | "credito" | "sem_diferenca"
   // A variante já é peça viva do pedido (só vem com incluirPedido).
   no_pedido: boolean
+  // Marcada como "vender sem estoque" na Shopify (vem do banco; pode faltar até atualizar o catálogo).
+  vende_sem_estoque?: boolean | null
 }
 
 // Resposta de troca_publica (página da cliente).
@@ -384,6 +423,12 @@ export type TrocaPublicaPeca = {
   resultado: number | null
   // Peça nova escolhida (só quando a escolha foi uma opção).
   nova: { foto_url: string | null; nome: string; variante: string | null; sku: string | null } | null
+  // Carrinho da cliente: quantas unidades de cada opção. Valores prontos do banco.
+  carrinho?: { opcao_id: string; qtd: number }[]
+  valor_escolhido?: number
+  unidades?: number
+  // Todas as peças novas (quando concluída).
+  novas?: { foto_url: string | null; nome: string; variante: string | null; sku: string | null; qtd: number }[]
   opcoes: {
     id: string
     foto_url: string | null
@@ -391,6 +436,7 @@ export type TrocaPublicaPeca = {
     variante: string | null
     sku: string | null
     valor: number
+    valor_unit?: number
     diferenca: number
     situacao: SituacaoTroca
   }[]
@@ -400,6 +446,7 @@ export type TrocaPublica = {
   numero: string
   cliente: string | null
   status: StatusTroca
-  resumo: { total_pago: number; diferenca: number; pecas_total: number; pecas_respondidas: number }
+  // diferenca é a líquida (depois do que a loja cobre); cada opção traz a diferença cheia.
+  resumo: { total_pago: number; diferenca: number; diferenca_bruta?: number; coberto?: number; cobrir_ate?: number; pecas_total: number; pecas_respondidas: number }
   pecas: TrocaPublicaPeca[]
 }

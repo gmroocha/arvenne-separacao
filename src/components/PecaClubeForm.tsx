@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { toast } from "sonner"
 import { ExternalLink, ImagePlus, RefreshCw, Sparkles, X } from "lucide-react"
+import CampoReais from "@/components/CampoReais"
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { useCriarPecaClube } from "@/lib/api"
 import { enviarFoto } from "@/lib/foto"
+import { lerNumero } from "@/lib/formato"
 import type { PecaClube } from "@/lib/tipos"
 
 // Endereço do agente do GPT que melhora as fotos. Fica em .env.local / Cloudflare, para trocar sem código.
@@ -45,6 +47,8 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
 
   async function enviar(e: FormEvent) {
     e.preventDefault()
+    const precoLido = preco.trim() ? lerNumero(preco) : null
+    if (preco.trim() && precoLido == null) return void toast.error("Preço não entendido. Use, por exemplo, 49,90")
     setEnviando(true)
     let foto_url: string | null = null
     try {
@@ -59,7 +63,7 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
         codigo: codigo.trim(),
         nome: nome.trim(),
         variante: variante.trim() || null,
-        preco: preco ? Number(preco.replace(",", ".")) : null,
+        preco: precoLido,
         foto_url,
       })
       toast.success("Peça salva no Clube")
@@ -138,8 +142,8 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="preco">Preço (R$)</FieldLabel>
-            <Input id="preco" inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} />
+            <FieldLabel htmlFor="preco">Preço</FieldLabel>
+            <CampoReais id="preco" value={preco} onValueChange={setPreco} />
           </Field>
         </div>
         <Button type="submit" disabled={enviando}>

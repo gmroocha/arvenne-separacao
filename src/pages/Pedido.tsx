@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
@@ -17,6 +18,7 @@ import { type StatusPedido } from "@/lib/status"
 import type { Item, NovoItem } from "@/lib/tipos"
 
 function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
+  const qc = useQueryClient()
   const mudarStatus = useMudarStatus()
   const patch = usePatchPedido(pedido.id)
   const [concluida, setConcluida] = useState<StatusPedido | null>(null) // etapa que abriu o Dialog
@@ -28,13 +30,26 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   const [trocando, setTrocando] = useState<Item | null>(null)
 
   const aoAdicionar = (novos: NovoItem[]) => {
-    adicionarItens.mutate({ pedidoId: pedido.id, itens: novos })
-    if (trocando) {
-      const dados = novos[0]
-      acao(trocando, {
-        status: "removido",
-        observacao: `trocada por ${[dados.sku, dados.nome].filter(Boolean).join(" · ")}`,
-      })
+    const velha = trocando
+    // Depois da separação a peça nova já entra como encontrada (as etapas só mostram essas).
+    const jaEncontradas = ["conferencia", "etiquetagem", "bipagem"].includes(pedido.status)
+    adicionarItens.mutate(
+      { pedidoId: pedido.id, itens: novos, jaEncontradas },
+      {
+        // A peça antiga só sai depois que a nova entrou de verdade. Recarrega antes, para a checagem de
+        // etapa completa enxergar a peça nova (e não abrir o Dialog antes da hora).
+        onSuccess: async () => {
+          if (!velha) return
+          await qc.refetchQueries({ queryKey: ["pedido", pedido.id] })
+          const dados = novos[0]
+          acao(velha, {
+            status: "removido",
+            observacao: `trocada por ${[dados.sku, dados.nome].filter(Boolean).join(" · ")}`,
+          })
+        },
+      },
+    )
+    if (velha) {
       setTrocando(null)
       setAdicionando(false)
     }
@@ -54,7 +69,8 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         </Alert>
       )}
       <Etapas status={pedido.status} eventos={pedido.pedido_eventos} />
-      <AcertoTroca pedidoId={pedido.id} />
+      {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota e frete em diante. */}
+      {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
         <PainelEtapa
           pedido={pedido}
@@ -113,12 +129,17 @@ export default function Pedido() {
         <Skeleton className="h-40 w-full" />
       </div>
     )
-  if (error || !data)
+  if (!data)
     return (
       <Alert variant="destructive">
-        <AlertDescription>Pedido não encontrado.</AlertDescription>
+        <AlertDescription>{error ? "Não foi possível carregar o pedido. Tente de novo." : "Pedido não encontrado."}</AlertDescription>
       </Alert>
     )
   if (data.fase === "venda") return <Navigate to={`/vendas/${data.id}`} replace />
-  return <Conteudo key={data.id} pedido={data} />
+  return (
+    <>
+      {error && <p className="mb-2 text-xs text-muted-foreground">Sem conexão com o servidor: mostrando o último dado carregado.</p>}
+      <Conteudo key={data.id} pedido={data} />
+    </>
+  )
 }

@@ -11,7 +11,8 @@
     "capturas": "node scripts/capturas.mjs",
     "test:banco": "node tests/banco.test.mjs",
     "test:trocas": "npm run test:banco",
-    "test:trocas:ui": "node tests/trocas-ui.mjs"
+    "test:trocas:ui": "node tests/trocas-ui.mjs",
+    "simular": "node scripts/simular.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter-tight": "^5.3.0",

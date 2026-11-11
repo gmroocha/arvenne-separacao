@@ -1,4 +1,6 @@
-import { Copy, Send, Wallet, XCircle } from "lucide-react"
+import { useState } from "react"
+import { Copy, Send, Store, User, Wallet, XCircle } from "lucide-react"
+import CampoReais from "@/components/CampoReais"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -35,17 +37,21 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
   return (
     <Field>
       <FieldLabel htmlFor={id}>{rotulo}</FieldLabel>
-      <InputGroup>
-        <InputGroupAddon>R$</InputGroupAddon>
-        <InputGroupInput id={id} inputMode="decimal" className="tabular-nums" placeholder="0,00" value={valor} onChange={(e) => aoMudar(e.target.value)} />
-      </InputGroup>
+      <CampoReais id={id} value={valor} onValueChange={aoMudar} />
     </Field>
   )
 }
 
 // Conteúdo do resumo: card fixo no PC, gaveta no celular. Os números vêm calculados do banco.
+// Seleção de PAC (laranja) e SEDEX (verde): fundo tingido, borda e texto na cor. Compartilhado com a Nota e frete.
+export const COR_PAC = "data-[state=on]:border-orange-500 data-[state=on]:bg-orange-600/15 data-[state=on]:text-orange-600 data-[state=on]:ring-1 data-[state=on]:ring-orange-500 data-[state=on]:hover:bg-orange-600/20 dark:data-[state=on]:border-orange-500 dark:data-[state=on]:bg-orange-600/15 dark:data-[state=on]:text-orange-300"
+export const COR_SEDEX = "data-[state=on]:border-emerald-600 data-[state=on]:bg-emerald-600/15 data-[state=on]:text-emerald-700 data-[state=on]:ring-1 data-[state=on]:ring-emerald-600 data-[state=on]:hover:bg-emerald-600/20 dark:data-[state=on]:border-emerald-600 dark:data-[state=on]:bg-emerald-600/15 dark:data-[state=on]:text-emerald-300"
+
 export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, aoCopiar, aoPago, aoPerdida, enviando, prefixo }: Props) {
   const p = (s: string) => `${prefixo}-${s}`
+  // A forma muda na hora na tela; o banco grava em seguida (o total com Pix vem dele depois).
+  const [formaLocal, setFormaLocal] = useState<string | null | undefined>(undefined)
+  const forma = formaLocal !== undefined ? formaLocal : pedido.forma_pagamento
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -55,8 +61,11 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
           variant="outline"
           spacing={1}
           className="flex-wrap"
-          value={pedido.forma_pagamento ?? ""}
-          onValueChange={(v) => aoForma(v || null)}
+          value={forma ?? ""}
+          onValueChange={(v) => {
+            setFormaLocal(v || null)
+            aoForma(v || null)
+          }}
         >
           {FORMAS_PAGAMENTO.map((f) => (
             <ToggleGroupItem key={f.nome} value={f.nome}>
@@ -89,14 +98,21 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
               %
             </ToggleGroupItem>
           </ToggleGroup>
-          <Input
-            inputMode="decimal"
-            aria-label="Valor do desconto"
-            className="tabular-nums"
-            placeholder="0"
-            value={form.desconto_valor}
-            onChange={(e) => aoMudar({ desconto_valor: e.target.value })}
-          />
+          {form.desconto_tipo === "valor" ? (
+            <CampoReais aria-label="Valor do desconto" value={form.desconto_valor} onValueChange={(v) => aoMudar({ desconto_valor: v })} />
+          ) : (
+            <InputGroup>
+              <InputGroupInput
+                inputMode="decimal"
+                aria-label="Porcentagem do desconto"
+                className="tabular-nums"
+                placeholder="0"
+                value={form.desconto_valor}
+                onChange={(e) => aoMudar({ desconto_valor: e.target.value })}
+              />
+              <InputGroupAddon align="inline-end">%</InputGroupAddon>
+            </InputGroup>
+          )}
         </div>
       </div>
 
@@ -115,8 +131,13 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
           value={form.frete_tipo ?? ""}
           onValueChange={(v) => aoMudar({ frete_tipo: (v || null) as FreteTipo | null })}
         >
-          <ToggleGroupItem value="PAC">PAC</ToggleGroupItem>
-          <ToggleGroupItem value="SEDEX">SEDEX</ToggleGroupItem>
+          {/* PAC laranja, SEDEX verde (iguais às da Nota e frete). */}
+          <ToggleGroupItem value="PAC" className={COR_PAC}>
+            PAC
+          </ToggleGroupItem>
+          <ToggleGroupItem value="SEDEX" className={COR_SEDEX}>
+            SEDEX
+          </ToggleGroupItem>
           <ToggleGroupItem value="retirada">Retirada</ToggleGroupItem>
           <ToggleGroupItem value="outro">Outro</ToggleGroupItem>
         </ToggleGroup>
@@ -130,8 +151,12 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
                 value={form.frete_pago_por}
                 onValueChange={(v) => v && aoMudar({ frete_pago_por: v as FretePagoPor })}
               >
-                <ToggleGroupItem value="cliente">Cliente</ToggleGroupItem>
-                <ToggleGroupItem value="arvenne">Arvenne</ToggleGroupItem>
+                <ToggleGroupItem value="cliente">
+                  <User /> Cliente
+                </ToggleGroupItem>
+                <ToggleGroupItem value="arvenne">
+                  <Store /> Arvenne
+                </ToggleGroupItem>
               </ToggleGroup>
             </div>
             {form.frete_pago_por === "cliente" && (

@@ -1,7 +1,8 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { ClipboardPaste, Minus, Plus, Trash2, TriangleAlert } from "lucide-react"
 import AdicionarPecas from "@/components/AdicionarPecas"
+import CampoReais from "@/components/CampoReais"
 import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -10,29 +11,23 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Spinner } from "@/components/ui/spinner"
 import { buscarVariantes, useAcoesItemVenda, useAdicionarItens, useAtualizarCatalogo, type PedidoDetalhe } from "@/lib/api"
 import { lerLinkCarrinho } from "@/lib/carrinho"
-import { lerNumero, numeroParaTexto } from "@/lib/formato"
+import { numeroParaTexto } from "@/lib/formato"
 import { itemDoSite } from "@/lib/itens"
 import type { Item } from "@/lib/tipos"
 
 function PrecoInput({ item, aoSalvar }: { item: Item; aoSalvar: (preco: number | null) => void }) {
   const [v, setV] = useState(numeroParaTexto(item.preco))
   return (
-    <InputGroup className="h-8 w-28">
-      <InputGroupAddon>R$</InputGroupAddon>
-      <InputGroupInput
-        inputMode="decimal"
-        aria-label="Preço"
-        className="text-right tabular-nums"
-        value={v}
-        placeholder="0,00"
-        onChange={(e) => setV(e.target.value)}
-        onBlur={() => {
-          const n = lerNumero(v)
-          if (n !== item.preco) aoSalvar(n)
-        }}
-        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-      />
-    </InputGroup>
+    <CampoReais
+      className="h-8 w-28"
+      aria-label="Preço"
+      inputClassName="text-right"
+      value={v}
+      onValueChange={setV}
+      onCommit={(n) => {
+        if (n !== item.preco) aoSalvar(n)
+      }}
+    />
   )
 }
 
@@ -50,11 +45,14 @@ export default function PecasVenda({ pedido }: Props) {
   const itens = pedido.pedido_itens.filter((i) => i.status !== "removido")
 
   // Lê o carrinho colado e adiciona todas as peças sozinho, a partir do catálogo local.
+  const lendoRef = useRef(false)
   async function lerCarrinho(link: string, lidos = lerLinkCarrinho(link)) {
+    if (lendoRef.current) return // já está lendo: evita adicionar duas vezes
     if (!lidos) {
       if (link.trim()) toast.error("Não reconheci o carrinho. Cole o link completo, com /cart/…")
       return
     }
+    lendoRef.current = true
     setLendo(true)
     try {
       const { variantes, faltando: sem } = await buscarVariantes(lidos.map((l) => l.variantId))
@@ -72,6 +70,7 @@ export default function PecasVenda({ pedido }: Props) {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível ler o carrinho")
     } finally {
+      lendoRef.current = false
       setLendo(false)
     }
   }
@@ -179,6 +178,7 @@ export default function PecasVenda({ pedido }: Props) {
       </div>
 
       <AdicionarPecas
+        comPreco
         aberto={adicionando}
         aoMudar={setAdicionando}
         aoAdicionar={(novos) => adicionar.mutate({ pedidoId: pedido.id, itens: novos, somar: true })}

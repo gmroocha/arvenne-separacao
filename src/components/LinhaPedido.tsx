@@ -37,7 +37,7 @@ export default function LinhaPedido({ p }: { p: Pedido }) {
             <>
               <StatusBadge status={p.status} />
               <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
-              {p.acerto_pendente && <SeloAcerto />}
+              {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
             </>
           )}
           {p.fase === "venda" && <span className="text-xs text-muted-foreground">há {tempoDesde(p.status_desde)}</span>}

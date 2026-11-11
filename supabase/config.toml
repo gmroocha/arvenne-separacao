@@ -2,3 +2,7 @@
 # então o gateway não precisa exigir JWT.
 [functions.shopify-sync]
 verify_jwt = false
+
+# catalogo-sync também é chamado pelo agendamento (pg_cron) com o CRON_SECRET; o código confere quem chama.
+[functions.catalogo-sync]
+verify_jwt = false

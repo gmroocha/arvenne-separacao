@@ -68,6 +68,12 @@ function escapar(texto: string): string {
   return texto.replace(/[_^~]/g, (c) => `_${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`)
 }
 
+// Dentro de um código de barras (^BC), ">" é comando de troca de subconjunto: o caractere de verdade é "><".
+const escaparBarras = (texto: string) => escapar(texto).replace(/>/g, "><")
+
+// O Code 128 e a etiqueta só aceitam ASCII imprimível (sem acento nem símbolos especiais).
+export const skuImprimivel = (sku: string) => /^[\x20-\x7E]+$/.test(sku)
+
 const corta = (t: string, max: number) => t.slice(0, max)
 
 function zplEtiqueta(e: Etiqueta): string {
@@ -85,7 +91,7 @@ function zplEtiqueta(e: Etiqueta): string {
   return [
     "^XA^CI28^PW400^LL240^LH0,0",
     `^FO24,36^A0N,34,34^FH_^FDSKU: ${escapar(e.sku)}^FS`,
-    `^FO24,90^BY${m},3,110^BCN,110,N,N,N^FH_^FD${escapar(e.sku)}^FS`,
+    `^FO24,90^BY${m},3,110^BCN,110,N,N,N^FH_^FD${escaparBarras(e.sku)}^FS`,
     "^XZ",
   ].join("")
 }

@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
+import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, Minus, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
 import Foto from "@/components/Foto"
 import { COR_SELO } from "@/lib/selo"
+import RespDialog from "@/components/RespDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,19 +11,27 @@ import { ButtonGroup } from "@/components/ui/button-group"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { useConcluirTroca, useEnviarTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { useConcluirTroca, useEnviarTroca, useMarcarFalta, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { etapaCompleta } from "@/lib/etapa"
 import { fotoTamanho } from "@/lib/foto"
-import { linkWhatsApp, reais } from "@/lib/formato"
+import { linkWhatsApp } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
-import { fraseCredito, fraseTroca, textoSituacao, valorDaOpcao, valorPagoPeca } from "@/lib/trocaTexto"
-import type { Item, Troca, TrocaPeca } from "@/lib/tipos"
+import { fraseCarrinho, fraseCredito, fraseTroca } from "@/lib/trocaTexto"
+import type { Item, Troca, TrocaOpcao, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import ConfirmarTroca from "./ConfirmarTroca"
 import LinhaPeca from "./LinhaPeca"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 import TrocaDialog from "./TrocaDialog"
+
+// Carrinho da cliente com a opção completa. Banco antigo: só a opção escolhida, na quantidade da peça.
+function listaEscolhida(peca: TrocaPeca): { opcao: TrocaOpcao; qtd: number }[] {
+  const itens = peca.carrinho?.itens ?? []
+  if (itens.length > 0) return itens.flatMap((c) => { const opcao = peca.opcoes.find((o) => o.id === c.opcao_id); return opcao ? [{ opcao, qtd: c.qtd }] : [] })
+  const o = peca.opcoes.find((x) => x.id === peca.escolha_opcao_id)
+  return o ? [{ opcao: o, qtd: 0 }] : []
+}
 
 const COR_TITULO = { avisar_cliente: "text-destructive", aguardando_cliente: "text-amber-700 dark:text-amber-300" } as const
 
@@ -43,29 +52,40 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
     )
 
   const opcao = peca.escolha_tipo === "opcao" ? peca.opcoes.find((o) => o.id === peca.escolha_opcao_id) : undefined
-  const pago = valorPagoPeca(peca)
+  // Carrinho da cliente: todas as peças que ela escolheu (ou só a opção, em banco antigo).
+  const lista = peca.escolha_tipo === "opcao" ? listaEscolhida(peca) : []
   const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, peca, tipo }, { onSuccess: () => setConfirmar(null) })
-  const frase = confirmar === "opcao" && opcao ? fraseTroca(item.sku ?? item.nome, peca, opcao) : fraseCredito(peca)
+  const frase =
+    confirmar === "opcao" && lista.length > 1
+      ? fraseCarrinho(item.sku ?? item.nome, peca)
+      : confirmar === "opcao" && opcao
+        ? fraseTroca(item.sku ?? item.nome, peca, opcao)
+        : fraseCredito(peca)
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-emerald-500/10 p-2">
-      {opcao ? (
-        <div className="flex items-center gap-2">
-          <Foto url={fotoTamanho(opcao.foto_url, 200)} alt={opcao.nome} ampliar className="size-12 shrink-0" />
-          <div className="min-w-0 text-sm">
-            <div className="font-medium text-emerald-700 dark:text-emerald-400">Cliente escolheu</div>
-            <div className="truncate font-mono font-semibold">{opcao.sku ?? "sem código"}</div>
-            <div className="truncate text-muted-foreground">
-              {opcao.variante ?? opcao.nome} · {textoSituacao(valorDaOpcao(peca, opcao))}
+      {lista.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Cliente escolheu</div>
+          {lista.map(({ opcao: o, qtd }) => (
+            <div key={o.id} className="flex items-center gap-2">
+              <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} ampliar className="size-12 shrink-0" />
+              <div className="min-w-0 text-sm">
+                <div className="truncate font-mono font-semibold">
+                  {qtd > 1 && <span className="tabular-nums">{qtd}× </span>}
+                  {o.sku ?? "sem código"}
+                </div>
+                <div className="truncate text-muted-foreground">{o.variante ?? o.nome}</div>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       ) : peca.escolha_tipo === "credito" ? (
-        <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Prefere crédito de {reais(pago)}</div>
+        <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Prefere crédito</div>
       ) : (
         <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Quer falar no WhatsApp</div>
       )}
       <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
-        {peca.escolha_tipo === "opcao" && (
+        {peca.escolha_tipo === "opcao" && lista.length > 0 && (
           <Button className="h-10 text-sm" disabled={concluir.isPending} onClick={() => setConfirmar("opcao")}>
             <Check /> Fazer a troca
           </Button>
@@ -159,6 +179,24 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const marcar = (item: Item, status: Item["status"], observacao?: string | null) =>
     acao(item, observacao === undefined ? { status } : { status, observacao })
 
+  // "Em falta" em peça com 2 ou mais: pergunta quantas faltam (o banco divide a linha). Com 1, direto.
+  const marcarFalta = useMarcarFalta(pedido.id)
+  const [faltaItem, setFaltaItem] = useState<Item | null>(null)
+  const [faltam, setFaltam] = useState(1)
+  const pedirFalta = (i: Item) => {
+    if (i.qtd >= 2) {
+      setFaltam(1)
+      setFaltaItem(i)
+    } else marcar(i, "falta")
+  }
+  function confirmarFalta(n: number) {
+    const i = faltaItem
+    if (!i) return
+    setFaltaItem(null)
+    if (n >= i.qtd) marcar(i, "falta")
+    else marcarFalta.mutate({ item: i, qtd: n })
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <ProgressoEtapa titulo="Separação" feitas={achadas.length} total={vivas} unidade="peças" />
@@ -198,7 +236,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     )}
                   >
                     <PackageX />
-                    Em falta
+                    {i.qtd > 1 ? `Faltam ${i.qtd}` : "Em falta"}
                   </Badge>
                   <MenuPeca
                     rotulo="Resolver"
@@ -233,25 +271,18 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             </div>
             <Separator />
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">Falar com a cliente</span>
               <ButtonGroup className="w-full sm:w-fit">
                 <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarComTroca(textoCliente(), "Mensagem copiada")}>
                   <Copy /> Copiar mensagem
                 </Button>
-                {wa && (
-                  <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" asChild>
-                    <a href={wa} target="_blank" rel="noreferrer">
-                      <MessageCircle /> WhatsApp
-                    </a>
-                  </Button>
-                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex min-w-0 flex-1 sm:flex-none" tabIndex={trocaPronta ? -1 : 0}>
                       <Button
                         variant="outline"
                         disabled={!trocaPronta || enviar.isPending}
-                        className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block"
+                        // Dentro do <span> da dica, o grupo não alcança o botão: cantos e borda de junção aqui.
+                        className="h-10 min-w-0 flex-1 rounded-l-none border-l-0 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block"
                         onClick={() => copiarComTroca(linkTroca, "Link copiado")}
                       >
                         <Link2 /> Copiar link
@@ -279,7 +310,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                 </Button>
                 <MenuPeca
                   itens={[
-                    { rotulo: "Falta", icone: PackageX, aoClicar: () => marcar(i, "falta") },
+                    { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
                     { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
                     { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
                   ]}
@@ -313,6 +344,35 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      <RespDialog aberto={!!faltaItem} aoMudar={(a) => !a && setFaltaItem(null)} titulo="Quantas faltam?" descricao={faltaItem ? `${faltaItem.sku ?? faltaItem.nome} · o pedido tem ${faltaItem.qtd}` : undefined}>
+        {faltaItem && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-center gap-4">
+              <Button variant="outline" size="icon" className="size-12" aria-label="Menos uma" disabled={faltam <= 1} onClick={() => setFaltam((n) => n - 1)}>
+                <Minus />
+              </Button>
+              <span className="w-12 text-center text-3xl font-semibold tabular-nums" aria-live="polite">
+                {faltam}
+              </span>
+              <Button variant="outline" size="icon" className="size-12" aria-label="Mais uma" disabled={faltam >= faltaItem.qtd} onClick={() => setFaltam((n) => n + 1)}>
+                <Plus />
+              </Button>
+            </div>
+            <p className="text-center text-sm text-muted-foreground">
+              {faltam >= faltaItem.qtd ? "Todas as unidades vão para a troca." : `${faltaItem.qtd - faltam} ${faltaItem.qtd - faltam === 1 ? "segue" : "seguem"} na separação e ${faltam} ${faltam === 1 ? "vai" : "vão"} para a troca.`}
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" className="h-10 w-full text-sm sm:w-auto" onClick={() => confirmarFalta(faltaItem.qtd)}>
+                Todas ({faltaItem.qtd})
+              </Button>
+              <Button className="h-10 w-full text-sm sm:w-auto" onClick={() => confirmarFalta(faltam)}>
+                <Check /> Confirmar
+              </Button>
+            </div>
+          </div>
+        )}
+      </RespDialog>
 
       {/* Sempre montado: desmontar uma gaveta aberta (vaul) pode deixar a rolagem da página travada. */}
       <TrocaDialog

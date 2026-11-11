@@ -1,4 +1,4 @@
-# Estado atual (atualizado em 10/11/2026)
+# Estado atual (atualizado em 11/11/2026)
 
 ## Onde as coisas estão
 
@@ -11,6 +11,33 @@
 | Funções Edge publicadas | `shopify-sync`, `catalogo-sync`, `shopify-clientes` (`shopify-produtos` removida do código; nunca esteve publicada). Republicadas em 11/11/2026: `shopify-sync` v5, `catalogo-sync` v3, `shopify-clientes` v5 |
 | Repositório | `gmroocha/arvenne-separacao`, branch `main`, tudo enviado |
 | Cloudflare Pages | **ainda não publicado**; o app roda só com `npm run dev` |
+
+## Vistoria e melhorias de 11/11/2026 (aplicadas no Supabase)
+
+Migrations aplicadas em 11/11/2026: `20261114090000_vistoria`, `20261114100000_troca_cobertura`,
+`20261114120000_vende_sem_estoque`, `20261114130000_carrinho_falta_parcial`. Funções republicadas:
+`shopify-sync`, `shopify-clientes`, `catalogo-sync`. Testes: `npm run test:banco` (68) e
+`npm run test:trocas:ui`.
+
+- **Sincronização Shopify:** consulta dentro do limite de custo (50 linhas + paginação), mais novos
+  primeiro, reembolso cancela o pedido, desconto por linha, valor atual da Shopify, despachado antes da
+  embalagem só avisa (`shopify_alerta`).
+- **Dinheiro:** peça removida depois de pago (cliente desistiu) vira **A devolver** + botão "Devolvido";
+  na Shopify, subtotal − desconto + frete = total; reiniciar bloqueado com troca concluída; opção sem
+  preço recusada; prazo pago em fim de semana/feriado conta do 1º dia útil 00h; feriados 2028.
+- **Troca:** "Cobrir diferença até R$ X" (troca inteira), página da cliente com SKU, tamanhos agrupados,
+  peças numeradas, resumo no fim; **carrinho** (várias peças/quantidades por peça em falta, "Você
+  escolheu R$ X de R$ Y") e "Aprovar escolha da cliente"; filtro "vender sem estoque" (precisa clicar
+  **Atualizar catálogo** uma vez).
+- **Separação:** falta parcial ("Quantas faltam?" divide a linha); Bipagem com "Tirar 1 / Contar 1";
+  Etiquetagem sem "Já tinha etiqueta" e sem marcar ao imprimir.
+- **Nota e frete:** PAC/SEDEX ("Enviado por"), "Cliente pagou de frete" × "Frenet cobrou" e
+  "A Arvenne cobre R$ X".
+- **Testar sem pedido na etapa:** `npm run simular -- <rota> '<json>' <nome> ["botão > outro"]`
+  (dados reais, nenhuma gravação).
+
+**Próxima ação:** Gustavo clicar "Atualizar catálogo" (marca "vender sem estoque") e "Sincronizar";
+conferir uma troca com carrinho e uma falta parcial de ponta a ponta.
 
 ## O que já funciona
 

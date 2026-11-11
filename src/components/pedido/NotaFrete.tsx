@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert, Truck } from "lucide-react"
+import CampoReais from "@/components/CampoReais"
 import Foto from "@/components/Foto"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { COR_PAC, COR_SEDEX } from "@/components/venda/ResumoVenda"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { buscarCnpj } from "@/lib/cnpj"
 import { copiar } from "@/lib/copiar"
-import { digitos, lerNumero, mascaraCep, mascaraDocumento, numeroParaTexto, quando, reais } from "@/lib/formato"
-import { vivas } from "@/lib/etapa"
+import { digitos, mascaraCep, mascaraDocumento, numeroParaTexto, quando, reais } from "@/lib/formato"
 import { cn } from "@/lib/utils"
 import CampoSalvo from "./CampoSalvo"
 
@@ -41,6 +44,25 @@ function LinhaDado({ rotulo, valor }: Dado) {
         <Copy />
       </Button>
     </div>
+  )
+}
+
+// "Frenet cobrou": campo de reais que grava ao sair; vazio limpa, texto ilegível mantém o anterior.
+function FreteCusto({ custo, patch }: { custo: number | null; patch: Patch }) {
+  const [v, setV] = useState(numeroParaTexto(custo))
+  return (
+    <Field>
+      <FieldLabel htmlFor="frete-custo">Frenet cobrou (nosso custo)</FieldLabel>
+      <CampoReais
+        id="frete-custo"
+        className="h-11 md:h-9"
+        value={v}
+        onValueChange={setV}
+        onCommit={(n) => {
+          if (n !== custo) patch({ frete_custo: n })
+        }}
+      />
+    </Field>
   )
 }
 
@@ -191,9 +213,52 @@ function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
   )
 }
 
+const COR_MODALIDADE = { PAC: COR_PAC, SEDEX: COR_SEDEX } as const
+type Modalidade = keyof typeof COR_MODALIDADE
+
+// PAC ou SEDEX enviado. Mostra o que a cliente escolheu e avisa quando a equipe mandou outro.
+function ModalidadeFrete({
+  escolhida,
+  clientePediu,
+  aoEscolher,
+}: {
+  escolhida: Modalidade | null
+  clientePediu: string | null
+  aoEscolher: (m: Modalidade) => void
+}) {
+  const diferente = escolhida && (clientePediu === "PAC" || clientePediu === "SEDEX") && clientePediu !== escolhida
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium">Enviado por</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          spacing={1}
+          aria-label="Modalidade do frete"
+          value={escolhida ?? ""}
+          onValueChange={(v) => v && v !== escolhida && aoEscolher(v as Modalidade)}
+        >
+          {(Object.keys(COR_MODALIDADE) as Modalidade[]).map((m) => (
+            <ToggleGroupItem key={m} value={m} className={cn("h-10 min-w-24 px-4", COR_MODALIDADE[m])}>
+              {m}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {clientePediu && (
+          <span className="text-sm text-muted-foreground">
+            Cliente escolheu {clientePediu === "retirada" ? "retirada" : clientePediu}
+          </span>
+        )}
+      </div>
+      {diferente && <span className="text-sm text-amber-700 dark:text-amber-300">Diferente do que a cliente escolheu.</span>}
+    </div>
+  )
+}
+
 export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
   const [pecasAbertas, setPecasAbertas] = useState(false)
-  const itens = vivas(pedido.pedido_itens)
+  const itens = pedido.pedido_itens.filter((i) => i.status === "encontrado")
   const ruaNumero = [pedido.entrega_logradouro, pedido.entrega_numero].filter(Boolean).join(", ")
   const endereco = [
     [ruaNumero, pedido.entrega_complemento].filter(Boolean).join(" - "),
@@ -238,7 +303,10 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
   const nf = Boolean(pedido.nf_emitida_em)
   const frete = Boolean(pedido.frete_gerado_em)
   const lr = Boolean(pedido.pedido_fornecedor_em)
-  const diferenca = pedido.frete_diferenca
+  const diferenca = pedido.frete_custo != null ? pedido.frete_diferenca : null
+  // Modalidade enviada: a salva ou, enquanto não houver, a que a cliente escolheu (gravada no "Frete gerado").
+  const pedida = pedido.frete_tipo === "PAC" || pedido.frete_tipo === "SEDEX" ? pedido.frete_tipo : null
+  const servico = pedido.frete_servico === "PAC" || pedido.frete_servico === "SEDEX" ? pedido.frete_servico : pedido.frete_servico ? null : pedida
 
   return (
     <div className="flex flex-col gap-4">
@@ -312,22 +380,33 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         </div>
         <CopiarTudo dados={dadosFrete} />
 
+        <ModalidadeFrete
+          escolhida={servico}
+          clientePediu={pedido.frete_tipo}
+          aoEscolher={(v) => patch({ frete_servico: v })}
+        />
+
         <div className="grid gap-3 sm:grid-cols-2">
-          <CampoSalvo
-            id="frete-custo"
-            rotulo="Valor cobrado pela Frenet (R$)"
-            valor={numeroParaTexto(pedido.frete_custo) || null}
-            inputMode="decimal"
-            aoSalvar={(v) => patch({ frete_custo: v == null ? null : lerNumero(v) })}
-          />
-          <CampoSalvo id="frete-servico" rotulo="Serviço escolhido" valor={pedido.frete_servico} aoSalvar={(v) => patch({ frete_servico: v })} />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Cliente pagou de frete</span>
+            <div className="flex h-11 items-center rounded-md border bg-muted/40 px-3 text-sm tabular-nums sm:h-9">
+              {reais(pedido.frete_na_conta)}
+              <span className="ml-1.5 truncate text-muted-foreground">
+                {pedido.frete_pago_por === "arvenne" ? "· frete grátis" : pedido.origem === "shopify" ? "· no site" : "· no WhatsApp"}
+              </span>
+            </div>
+          </div>
+          <FreteCusto key={pedido.frete_custo ?? ""} custo={pedido.frete_custo} patch={patch} />
         </div>
-        {pedido.frete_custo != null && (
-          <p className="text-sm tabular-nums">
-            Cliente pagou {reais(pedido.frete_na_conta)} · Frenet cobrou {reais(pedido.frete_custo)} ·{" "}
-            <span className={cn("font-semibold", diferenca != null && diferenca < 0 && "text-destructive")}>
-              diferença {reais(diferenca)}
-            </span>
+        {/* Diferença calculada no banco (v_pedidos.frete_diferenca = o que a cliente pagou − custo da Frenet). */}
+        {diferenca != null && (
+          <p
+            className={cn(
+              "rounded-md px-3 py-2 text-sm font-medium tabular-nums",
+              diferenca < 0 ? "bg-amber-500/10 text-amber-800 dark:text-amber-300" : "bg-muted text-foreground",
+            )}
+          >
+            {diferenca < 0 ? `A Arvenne cobre ${reais(-diferenca)} de frete` : diferenca > 0 ? `Sobrou ${reais(diferenca)} do frete pago` : "Frete empatado: a cliente pagou o custo"}
           </p>
         )}
         <CampoSalvo
@@ -342,7 +421,10 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
             Desfazer frete gerado
           </Button>
         ) : (
-          <Button className="h-11 w-full text-base" onClick={() => patch({ frete_gerado_em: agora() })}>
+          <Button
+            className="h-11 w-full text-base"
+            onClick={() => patch({ frete_gerado_em: agora(), ...(!pedido.frete_servico && servico ? { frete_servico: servico } : {}) })}
+          >
             <Check /> Frete gerado
           </Button>
         )}

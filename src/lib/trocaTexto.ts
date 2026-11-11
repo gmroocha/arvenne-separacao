@@ -28,3 +28,25 @@ export function fraseTroca(antigo: string, peca: TrocaPeca, opcao: TrocaOpcao): 
 }
 
 export const fraseCredito = (peca: TrocaPeca) => `Dar crédito de ${reais(valorPagoPeca(peca))}`
+
+// Diferença do carrinho da cliente (valor pronto de v_troca_carrinho), no mesmo estilo de fraseSituacao.
+export function fraseDiferencaCarrinho(dif: number | undefined): string {
+  if (dif == null) return ""
+  if (dif > 0) return `cliente paga +${reais(dif)}`
+  if (dif < 0) return `cliente fica com ${reais(-dif)} de crédito`
+  return "sem diferença"
+}
+
+// "2× AN3597-16 + 1× AN3597-18" a partir do carrinho da peça.
+export function listaCarrinho(peca: TrocaPeca): string {
+  return (peca.carrinho?.itens ?? [])
+    .map((c) => {
+      const o = peca.opcoes.find((x) => x.id === c.opcao_id)
+      return `${c.qtd}× ${o?.sku ?? o?.nome ?? "peça"}`
+    })
+    .join(" + ")
+}
+
+// Confirmação para vários itens: "Trocar BLR29-S por 2× A + 1× B · cliente paga +R$ 6,58".
+export const fraseCarrinho = (antigo: string, peca: TrocaPeca) =>
+  `Trocar ${antigo} por ${listaCarrinho(peca)} · ${fraseDiferencaCarrinho(peca.carrinho?.diferenca)}`

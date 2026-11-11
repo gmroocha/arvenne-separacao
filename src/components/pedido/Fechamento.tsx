@@ -26,6 +26,7 @@ export function Embalagem({ patch, aoConcluir }: Props) {
           <li key={t}>
             <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-data-checked:bg-muted/50 has-data-checked:text-muted-foreground">
               <Checkbox
+                className="data-checked:border-emerald-600 data-checked:bg-emerald-600 data-checked:text-white dark:data-checked:bg-emerald-600"
                 checked={marcados.has(n)}
                 onCheckedChange={(c) =>
                   setMarcados((s) => {

@@ -437,10 +437,11 @@ test('importação: preco_pago e frete exatos da Shopify vencem o provisório do
 test('troca usa o preco_pago exato da peça em falta; as opções usam preço x fator', async () => {
   const { pedido, a } = await pedidoShopifyAntigo(777004)
   await db.exec(BACKFILL)
-  await db.query('update pedido_itens set preco_pago = 76.9 where id = $1', [a.id])
   await db.exec('set local role authenticated')
   const troca = await one('insert into trocas (pedido_id) values ($1) returning *', [pedido.id])
   assert.equal(Number(troca.fator_desconto).toFixed(4), '0.7500')
+  // O preço pago exato chega depois (o fator da troca já foi gravado).
+  await db.query('update pedido_itens set preco_pago = 76.9 where id = $1', [a.id])
   const peca = await one('insert into troca_pecas (troca_id, item_id) values ($1, $2) returning *', [troca.id, a.id])
   await db.query("insert into troca_opcoes (troca_peca_id, origem, nome, sku, preco) values ($1, 'site', 'Brinco novo', 'NOVO', 100)", [peca.id])
   const pago = await one('select * from troca_valor_pago($1)', [a.id])
@@ -468,6 +469,23 @@ test('sugerir_troca exclui peças que já estão no pedido, a menos que peça pa
   const preco = async inc => (await db.query("select variant_id::int v, no_pedido from sugerir_troca($1, 'preco', null, 1, null, $2) order by variant_id", [a.id, inc])).rows
   assert.deepEqual((await preco(false)).map(r => r.v), [22])
   assert.deepEqual(await preco(true), [{ v: 21, no_pedido: true }, { v: 22, no_pedido: false }])
+})
+
+test('sugerir_troca com p_so_sem_estoque: só vende_sem_estoque true; padrão false mantém tudo; devolve a coluna', async () => {
+  const { a } = await pedidoShopifyAntigo(777006)
+  await db.exec(`reset role;
+    insert into catalogo_site (variant_id, produto_id, produto, variante, preco, status, vende_sem_estoque) values
+      (31, 1, 'Brinco', '10', 100, 'ACTIVE', null), (32, 1, 'Brinco', '12', 100, 'ACTIVE', true),
+      (33, 1, 'Brinco', '14', 100, 'ACTIVE', false), (34, 1, 'Brinco', '16', 100, 'ACTIVE', true),
+      (41, 2, 'Anel', '16', 100, 'ACTIVE', true), (42, 3, 'Colar', '40', 100, 'ACTIVE', false), (43, 4, 'Pulseira', '18', 100, 'ACTIVE', null);
+    set local role authenticated;`)
+  await db.query('update pedido_itens set shopify_variant_id = 31 where id = $1', [a.id])
+  const q = async (modo, so) => (await db.query('select variant_id::int v, vende_sem_estoque s from sugerir_troca($1, $2, null, 1, null, false, $3) order by variant_id', [a.id, modo, so])).rows
+  assert.deepEqual(await q('variantes', true), [{ v: 32, s: true }, { v: 34, s: true }])
+  assert.deepEqual((await q('variantes', false)).map(r => r.v), [32, 33, 34])
+  assert.deepEqual(await q('preco', true), [{ v: 41, s: true }])
+  assert.deepEqual((await q('preco', false)).map(r => r.v), [41, 42, 43])
+  assert.equal((await db.query("select * from sugerir_troca($1, 'preco', null, 1, null)", [a.id])).rows.length, 3)
 })
 
 test('troca_aprovar em troca em rascunho: opção e crédito, concluída na hora, total certo', async () => {
@@ -560,11 +578,625 @@ test('funções novas da troca v2: anon não executa', async () => {
   await recusa(() => one('select troca_aprovar($1, $2, $3, null)', [f.troca.id, f.pecas[0].id, 'credito']), /permission denied/)
   await recusa(() => one('select troca_acerto($1, $2)', [f.troca.id, 'recebido']), /permission denied/)
   await recusa(() => one("select * from sugerir_troca($1, 'variantes', null, 0.2, null, true)", [zero]), /permission denied/)
+  await recusa(() => one("select * from sugerir_troca($1, 'variantes', null, 0.2, null, false, true)", [zero]), /permission denied/)
   await recusa(() => one('select fator_pedido($1)', [zero]), /permission denied/)
   await recusa(() => one('select * from v_pedido_acerto'), /permission denied/)
   await recusa(() => one('select troca_concluir_peca($1, $2, $3, null, $3)', [f.troca.id, f.pecas[0].id, 'credito']), /permission denied/)
   // A página pública continua aberta.
   assert.equal((await publica(f)).status, 'enviada')
+})
+
+
+// ---- Vistoria 11/11: reembolso, desconto por linha, devolução, prazo e bipagem ----
+const zero = '00000000-0000-0000-0000-000000000000'
+// Pedido da Shopify com duas linhas e frete: A 1x100 (pago 80), B 1x50 (pago 40), frete 20. Total 140.
+const payloadV2 = (extra = {}) => ({
+  shopify_order_id: '888001', numero: 'ARV-V1', cliente_nome: 'Cliente', valor_total: '140', valor_pago: '140',
+  pedido_em: '2020-01-01T10:00:00Z', pago_em: '2020-01-01T10:00:00Z', entrega_cep: '01001000',
+  frete_original: '20', frete_cobrado: '20', frete_titulo: 'PAC', desconto_valor: '30', desconto_codigos: [],
+  itens: [
+    { shopify_line_id: 'L1', shopify_variant_id: '11', sku: 'BRI-1', nome: 'Brinco', qtd: 1, preco: '100', preco_pago: '80' },
+    { shopify_line_id: 'L2', shopify_variant_id: '12', sku: 'ANEL-1', nome: 'Anel', qtd: 1, preco: '50', preco_pago: '40' }],
+  ...extra,
+})
+const pedidoDe = id => one('select * from pedidos where shopify_order_id = $1', [id])
+const eventos = async (pedidoId, tipo) =>
+  (await one('select count(*)::int n from pedido_eventos where pedido_id = $1 and tipo = $2', [pedidoId, tipo])).n
+
+test('reembolsado na Shopify cancela o pedido (uma vez só no histórico); novo reembolsado não entra', async () => {
+  await importar(payload())
+  const p0 = await pedidoDe(777001)
+  await importar(payload({ reembolsado: true }))
+  await importar(payload({ reembolsado: true }))
+  assert.equal((await pedidoDe(777001)).status, 'cancelado')
+  assert.equal(await eventos(p0.id, 'shopify_alerta'), 1)
+  assert.equal(await importar(payload({ shopify_order_id: '777010', reembolsado: true })), false)
+  assert.equal((await db.query('select 1 from pedidos where shopify_order_id = 777010')).rows.length, 0)
+  // Já enviado: não volta atrás, só avisa.
+  await importar(payload({ shopify_order_id: '777011' }))
+  await db.query("update pedidos set status = 'enviado' where shopify_order_id = 777011")
+  await importar(payload({ shopify_order_id: '777011', reembolsado: true }))
+  assert.equal((await pedidoDe(777011)).status, 'enviado')
+})
+
+test('reembolso parcial: valor atual é regravado, desconto da carga vale e subtotal - desconto + frete = total', async () => {
+  await importar(payloadV2())
+  const p0 = await pedidoDe(888001)
+  const v = await one('select * from v_pedidos where id = $1', [p0.id])
+  assert.deepEqual([Number(v.subtotal), Number(v.desconto), Number(v.frete_na_conta), Number(v.total)], [150, 30, 20, 140])
+  // Reembolso parcial da linha B: valor atual 100 (peça B 40 + frete 20 saíram? aqui só B), desconto da carga igual.
+  await importar(payloadV2({ valor_total: '100', valor_pago: '100',
+    itens: [payloadV2().itens[0]] }))
+  const p1 = await pedidoDe(888001)
+  assert.deepEqual([Number(p1.valor_total), Number(p1.valor_pago), Number(p1.desconto_valor)], [100, 100, 30])
+  assert.equal(await eventos(p0.id, 'shopify_alterado'), 1)
+})
+
+test('preco_pago casa por linha da Shopify, mesmo com a mesma variante repetida', async () => {
+  const itens = [
+    { shopify_line_id: 'R1', shopify_variant_id: '55', sku: 'AN-1', nome: 'Anel', qtd: 1, preco: '50', preco_pago: '40' },
+    { shopify_line_id: 'R2', shopify_variant_id: '55', sku: 'AN-1', nome: 'Anel', qtd: 1, preco: '50', preco_pago: '50' }]
+  await importar(payloadV2({ shopify_order_id: '888002', itens }))
+  const pega = async () => (await db.query(`select i.shopify_line_id l, i.preco_pago::float pp from pedido_itens i
+    join pedidos p on p.id = i.pedido_id where p.shopify_order_id = 888002 order by i.ordem`)).rows
+  assert.deepEqual(await pega(), [{ l: 'R1', pp: 40 }, { l: 'R2', pp: 50 }])
+  itens[0].preco_pago = '45'
+  await importar(payloadV2({ shopify_order_id: '888002', itens }))
+  assert.deepEqual(await pega(), [{ l: 'R1', pp: 45 }, { l: 'R2', pp: 50 }])
+  // Linhas antigas sem id: variante repetida não casa (ficam como estão); variante única casa e ganha o id.
+  const ped = await one(`insert into pedidos (origem, status, valor_total, shopify_order_id) values ('shopify', 'novo', 100, 888003) returning id`)
+  for (const [n, v] of [[1, 55], [2, 55], [3, 66]])
+    await db.query(`insert into pedido_itens (pedido_id, origem, shopify_variant_id, nome, qtd, preco, ordem) values ($1, 'shopify', $2, 'X', 1, 50, $3)`, [ped.id, v, n])
+  await importar(payloadV2({ shopify_order_id: '888003', itens: [
+    ...itens, { shopify_line_id: 'R3', shopify_variant_id: '66', sku: 'B', nome: 'B', qtd: 1, preco: '50', preco_pago: '30' }] }))
+  const l = (await db.query('select shopify_variant_id::int v, shopify_line_id l, preco_pago::float pp from pedido_itens where pedido_id = $1 order by ordem', [ped.id])).rows
+  assert.deepEqual(l, [{ v: 55, l: null, pp: null }, { v: 55, l: null, pp: null }, { v: 66, l: 'R3', pp: 30 }])
+})
+
+test('importação: frete_pago_por da equipe fica, retirada vem antes de pac, pago_em estimado é corrigido', async () => {
+  await importar(payloadV2({ pago_em_estimado: true, pago_em: '2020-01-01T10:00:00Z', frete_titulo: 'Retirada na loja (sem PAC)' }))
+  let p = await pedidoDe(888001)
+  assert.deepEqual([p.frete_tipo, p.frete_pago_por, p.pago_em_estimado], ['retirada', 'cliente', true])
+  await db.query("update pedidos set frete_pago_por = 'arvenne' where id = $1", [p.id])
+  await importar(payloadV2({ pago_em: '2020-01-01T12:00:00Z' }))
+  p = await pedidoDe(888001)
+  assert.equal(p.frete_pago_por, 'arvenne')
+  assert.equal(p.pago_em_estimado, false)
+  assert.equal(new Date(p.pago_em).toISOString(), '2020-01-01T12:00:00.000Z')
+  // Estimativa nova não sobrescreve nada; "Pacote" não é PAC.
+  await importar(payloadV2({ pago_em: '2020-02-02T12:00:00Z', pago_em_estimado: true }))
+  assert.equal(new Date((await pedidoDe(888001)).pago_em).toISOString(), '2020-01-01T12:00:00.000Z')
+  await importar(payloadV2({ shopify_order_id: '888004', frete_titulo: 'Pacote econômico' }))
+  assert.equal((await pedidoDe(888004)).frete_tipo, 'outro')
+  await importar(payloadV2({ shopify_order_id: '888005', frete_titulo: 'PAC Mini' }))
+  assert.equal((await pedidoDe(888005)).frete_tipo, 'PAC')
+})
+
+test('Shopify despachada antes da embalagem só avisa (uma vez), sem mover o pedido', async () => {
+  await importar(payloadV2())
+  await importar(payloadV2({ despachado: true }))
+  await importar(payloadV2({ despachado: true }))
+  const p = await pedidoDe(888001)
+  assert.equal(p.status, 'novo')
+  assert.equal(await eventos(p.id, 'shopify_alerta'), 1)
+})
+
+test('peça removida depois do pagamento: a devolver + acerto pendente; marcar_devolvido e desfazer', async () => {
+  await importar(payloadV2())
+  const p = await pedidoDe(888001)
+  const b = await one("select id from pedido_itens where pedido_id = $1 and shopify_line_id = 'L2'", [p.id])
+  await db.query("update pedido_itens set status = 'removido', observacao = 'cliente desistiu' where id = $1", [b.id])
+  const ver = () => one('select a_devolver, acerto_pendente, total, valor_removido, subtotal, desconto, frete_na_conta from v_pedidos where id = $1', [p.id])
+  let v = await ver()
+  assert.deepEqual([Number(v.a_devolver), v.acerto_pendente, Number(v.total), Number(v.valor_removido)], [40, true, 100, 40])
+  assert.equal(Number(v.subtotal) - Number(v.desconto) + Number(v.frete_na_conta), 100)
+  assert.notEqual((await one('select removido_em from pedido_itens where id = $1', [b.id])).removido_em, null)
+  await db.exec('set local role authenticated')
+  await one('select marcar_devolvido($1)', [p.id])
+  await one('select marcar_devolvido($1)', [p.id]) // repetir não duplica o histórico
+  v = await ver()
+  assert.deepEqual([Number(v.a_devolver), v.acerto_pendente, Number(v.total)], [0, false, 100])
+  assert.equal(await eventos(p.id, 'devolvido'), 1)
+  await one('select marcar_devolvido($1, true)', [p.id])
+  v = await ver()
+  assert.deepEqual([Number(v.a_devolver), v.acerto_pendente], [40, true])
+  assert.equal(await eventos(p.id, 'devolvido_desfeito'), 1)
+  // Peça que volta (reiniciar não é possível aqui; volta pelo status) zera removido_em e devolvido_em.
+  await one('select marcar_devolvido($1)', [p.id])
+  await db.query("update pedido_itens set status = 'pendente' where id = $1", [b.id])
+  const i = await one('select removido_em, devolvido_em from pedido_itens where id = $1', [b.id])
+  assert.deepEqual(i, { removido_em: null, devolvido_em: null })
+  assert.equal(Number((await ver()).a_devolver), 0)
+})
+
+test('peça removida no app e reembolsada na Shopify: não desconta duas vezes do total', async () => {
+  await importar(payloadV2())
+  const p = await pedidoDe(888001)
+  const b = await one("select id from pedido_itens where pedido_id = $1 and shopify_line_id = 'L2'", [p.id])
+  await db.query("update pedido_itens set status = 'removido', observacao = 'cliente desistiu' where id = $1", [b.id])
+  // Reembolso na Shopify: linha L2 volta com quantidade 0 e o total atual cai de 100 para 60.
+  const itens = payloadV2().itens.map(i => i.shopify_line_id === 'L2' ? { ...i, qtd: 0 } : i)
+  await importar(payloadV2({ valor_total: '100', valor_pago: '100', desconto_valor: '20', itens }))
+  await importar(payloadV2({ valor_total: '100', valor_pago: '100', desconto_valor: '20', itens })) // repetir não muda
+  const v = await one('select a_devolver, acerto_pendente, total, valor_removido, subtotal, desconto, frete_na_conta from v_pedidos where id = $1', [p.id])
+  assert.deepEqual([Number(v.a_devolver), v.acerto_pendente, Number(v.total), Number(v.valor_removido)], [0, false, 100, 0])
+  assert.equal(Number(v.subtotal) - Number(v.desconto) + Number(v.frete_na_conta), 100)
+  // Desfazer "devolvido" não reabre a peça reembolsada na Shopify.
+  await db.exec('set local role authenticated')
+  await one('select marcar_devolvido($1, true)', [p.id])
+  assert.equal(Number((await one('select a_devolver from v_pedidos where id = $1', [p.id])).a_devolver), 0)
+})
+
+test('venda do WhatsApp: peça removida depois de paga devolve o que passou do total', async () => {
+  const p = await pedidoWhats('novo')
+  await db.query("update pedidos set valor_pago = 80, pago_em = now() - interval '1 day' where id = $1", [p.id])
+  const co = await one("select id from pedido_itens where pedido_id = $1 and sku = 'C1'", [p.id])
+  await db.query("update pedido_itens set status = 'removido', observacao = 'cliente desistiu' where id = $1", [co.id])
+  const v = await one('select a_devolver, acerto_pendente, total from v_pedidos where id = $1', [p.id])
+  assert.deepEqual([Number(v.a_devolver), v.acerto_pendente, Number(v.total)], [30, true, 50])
+  await db.exec('set local role authenticated')
+  await one('select marcar_devolvido($1)', [p.id])
+  assert.equal(Number((await one('select a_devolver from v_pedidos where id = $1', [p.id])).a_devolver), 0)
+})
+
+test('Shopify depois da troca: subtotal - desconto + frete = total, e a contagem ignora a peça de troca', async () => {
+  await importar(payloadV2())
+  const p = await pedidoDe(888001)
+  const a = await one("select id from pedido_itens where pedido_id = $1 and shopify_line_id = 'L1'", [p.id])
+  await db.query("update pedido_itens set status = 'falta' where id = $1", [a.id])
+  await db.exec('set local role authenticated')
+  const troca = await one('insert into trocas (pedido_id) values ($1) returning *', [p.id])
+  assert.equal(Number(troca.fator_desconto).toFixed(4), '0.8000') // (80 + 40) / (100 + 50)
+  const peca = await one('insert into troca_pecas (troca_id, item_id) values ($1, $2) returning *', [troca.id, a.id])
+  const opcao = await one("insert into troca_opcoes (troca_peca_id, origem, nome, sku, preco) values ($1, 'site', 'Brinco novo', 'NOVO', 150) returning *", [peca.id])
+  await one('select troca_aprovar($1, $2, $3, $4)', [troca.id, peca.id, 'opcao', opcao.id])
+  const ver = () => one('select subtotal, desconto, frete_na_conta, total, valor_removido from v_pedidos where id = $1', [p.id])
+  let v = await ver()
+  assert.deepEqual([Number(v.subtotal), Number(v.desconto), Number(v.frete_na_conta), Number(v.total)], [200, 40, 20, 180])
+  assert.equal(Number(v.subtotal) - Number(v.desconto) + Number(v.frete_na_conta), Number(v.total))
+  const ac = await one('select saldo, valor_pago_original, novo_total from v_pedido_acerto where pedido_id = $1', [p.id])
+  assert.deepEqual([Number(ac.saldo), Number(ac.valor_pago_original), Number(ac.novo_total)], [40, 140, 180])
+  // Sincronizar de novo não acusa "peças mudaram" por causa da peça de troca.
+  await db.exec('reset role')
+  await importar(payloadV2())
+  assert.equal(await eventos(p.id, 'shopify_alterado'), 0)
+  // Cliente desiste da peça B depois de pago: total, desconto e frete continuam fechando.
+  const b = await one("select id from pedido_itens where pedido_id = $1 and shopify_line_id = 'L2'", [p.id])
+  await db.query("update pedido_itens set status = 'removido', observacao = 'cliente desistiu' where id = $1", [b.id])
+  v = await ver()
+  assert.deepEqual([Number(v.subtotal), Number(v.desconto), Number(v.total), Number(v.valor_removido)], [150, 30, 140, 40])
+  assert.equal(Number(v.subtotal) - Number(v.desconto) + Number(v.frete_na_conta), Number(v.total))
+})
+
+test('v_pedido_acerto: o saldo é o da mesma troca que aparece no troca_id', async () => {
+  const f = await fixture({ quantidade: 2, desconto: 20 })
+  // Primeira troca concluída com diferença de pagar; a segunda, de crédito.
+  await db.query("update trocas set status = 'rascunho' where id = $1", [f.troca.id])
+  await one('select troca_aprovar($1, $2, $3, $4)', [f.troca.id, f.pecas[0].id, 'opcao', f.opcoes[0].id])
+  await one('select troca_aprovar($1, $2, $3, null)', [f.troca.id, f.pecas[1].id, 'credito'])
+  const t2 = await one('insert into trocas (pedido_id) values ($1) returning *', [f.pedido.id])
+  const novo = await one("select id from pedido_itens where pedido_id = $1 and status = 'pendente'", [f.pedido.id])
+  await db.query("update pedido_itens set status = 'falta' where id = $1", [novo.id])
+  const p2 = await one('insert into troca_pecas (troca_id, item_id) values ($1, $2) returning *', [t2.id, novo.id])
+  await one('select troca_aprovar($1, $2, $3, null)', [t2.id, p2.id, 'credito'])
+  const ac = await one('select * from v_pedido_acerto where pedido_id = $1', [f.pedido.id])
+  const saldoDaTroca = Number((await one('select sum(resultado_diferenca) s from troca_pecas where troca_id = $1', [ac.troca_id])).s)
+  assert.equal(Number(ac.saldo), saldoDaTroca)
+  assert.equal(Number(ac.total_a_cobrar) - Number(ac.total_credito), saldoDaTroca)
+})
+
+test('reiniciar do zero é recusado se já houve troca concluída (a etapa sozinha continua valendo)', async () => {
+  const f = await fixture({ desconto: 20 })
+  await one('select troca_aprovar($1, $2, $3, null)', [f.troca.id, f.pecas[0].id, 'credito'])
+  await recusa(() => one('select reiniciar_pedido($1, $2, true)', [f.pedido.id, 'novo']), /troca concluída/)
+  assert.equal((await one('select status from trocas where id = $1', [f.troca.id])).status, 'concluida')
+  await one('select reiniciar_pedido($1, $2, false)', [f.pedido.id, 'bipagem'])
+})
+
+test('opção sem preço: não vira crédito na view e a troca é recusada (equipe e cliente)', async () => {
+  const f = await fixture({ quantidade: 2, desconto: 20 })
+  await escolher(f, 0)
+  await db.query('update troca_opcoes set preco = null where id = $1', [f.opcoes[0].id])
+  assert.equal((await db.query("select 1 from v_troca_valores where opcao_id = $1", [f.opcoes[0].id])).rows.length, 0)
+  await recusa(() => concluir(f, 0), /sem preço/)
+  await recusa(() => one('select troca_aprovar($1, $2, $3, $4)', [f.troca.id, f.pecas[0].id, 'opcao', f.opcoes[0].id]), /sem preço/)
+  assert.equal((await one('select status from pedido_itens where id = $1', [f.itens[0].id])).status, 'falta')
+  await db.exec('set local role anon')
+  await recusa(() => one('select troca_escolher($1, $2, $3, $4)', [f.troca.token, f.itens[1].id, 'opcao', f.opcoes[0].id]), /inválida/)
+})
+
+test('pedido cancelado cancela as trocas ativas; pedido cancelado ou enviado recusa escolher e concluir', async () => {
+  const f = await fixture({ desconto: 20 })
+  await escolher(f)
+  await db.query("update pedidos set status = 'cancelado' where id = $1", [f.pedido.id])
+  assert.equal((await one('select status from trocas where id = $1', [f.troca.id])).status, 'cancelada')
+  await recusa(() => concluir(f), /cancelada/)
+  await db.exec('set local role anon')
+  await recusa(() => one('select troca_escolher($1, $2, $3, $4)', [f.troca.token, f.itens[0].id, 'opcao', f.opcoes[0].id]), /não aceita/)
+  await db.exec('set local role authenticated')
+  // Pedido enviado com troca ativa (caso de dado antigo): escolher, aprovar e concluir recusam.
+  const g = await fixture({ desconto: 20 })
+  await escolher(g)
+  await db.query("update pedidos set status = 'enviado' where id = $1", [g.pedido.id])
+  await recusa(() => concluir(g), /enviado/)
+  await recusa(() => one('select troca_aprovar($1, $2, $3, $4)', [g.troca.id, g.pecas[0].id, 'opcao', g.opcoes[0].id]), /enviado/)
+  await db.exec('set local role anon')
+  await recusa(() => one('select troca_escolher($1, $2, $3, $4)', [g.troca.token, g.itens[0].id, 'credito', null]), /não aceita/)
+})
+
+test('prazo de envio: fim de semana e feriado contam do 1º dia útil 00h; dia útil mantém a hora', async () => {
+  const prazo = async ts => (await one(
+    `select to_char(prazo_envio($1::timestamptz) at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI') as d`, [ts])).d
+  assert.equal(await prazo('2026-11-14 10:00-03'), '2026-11-18 00:00') // sábado -> quarta 00h
+  assert.equal(await prazo('2026-11-15 22:00-03'), '2026-11-18 00:00') // domingo (e feriado)
+  assert.equal(await prazo('2026-11-06 15:00-03'), '2026-11-10 15:00') // sexta 15h -> terça 15h
+  assert.equal(await prazo('2026-09-07 10:00-03'), '2026-09-10 00:00') // feriado (segunda) -> terça 00h + 2 úteis
+  assert.equal(await prazo('2026-11-19 15:00-03'), '2026-11-24 15:00') // quinta; sexta 20/11 é feriado
+})
+
+test('feriados de 2028: Páscoa em 16/04, Carnaval, Sexta Santa e Corpus Christi nos dias certos', async () => {
+  const dia = async nome => (await db.query("select data::text d, extract(isodow from data)::int dow from feriados where data between '2028-01-01' and '2028-12-31' and nome like $1 order by data", [nome])).rows
+  assert.deepEqual(await dia('Carnaval%'), [{ d: '2028-02-28', dow: 1 }, { d: '2028-02-29', dow: 2 }])
+  assert.deepEqual(await dia('Sexta-feira Santa'), [{ d: '2028-04-14', dow: 5 }])
+  assert.deepEqual(await dia('Corpus Christi%'), [{ d: '2028-06-15', dow: 4 }])
+  assert.equal((await one("select count(*)::int n from feriados where data between '2028-01-01' and '2028-12-31'")).n, 13)
+})
+
+test('bipar_ajustar soma e tira no banco, sem passar de 0 nem da quantidade', async () => {
+  const p = await pedidoWhats('bipagem')
+  const i = await one("select id from pedido_itens where pedido_id = $1 and sku = 'A1'", [p.id])
+  await db.query('update pedido_itens set qtd = 2 where id = $1', [i.id])
+  await db.exec('set local role authenticated')
+  const aj = async d => (await one('select bipar_ajustar($1, $2) as v', [i.id, d])).v
+  assert.equal(await aj(1), 1)
+  assert.equal(await aj(5), 2)
+  assert.equal(await aj(-1), 1)
+  assert.equal(await aj(-9), 0)
+  assert.equal((await one('select bipado_em from pedido_itens where id = $1', [i.id])).bipado_em, null)
+  assert.ok(await eventos(p.id, 'bipada') >= 3)
+  await recusa(() => one('select bipar_ajustar($1, 1)', [zero]), /não encontrada/)
+})
+
+test('funções da vistoria: anon não executa nem lê as views', async () => {
+  await db.exec('set local role anon')
+  await recusa(() => one('select marcar_devolvido($1)', [zero]), /permission denied/)
+  await recusa(() => one('select bipar_ajustar($1, 1)', [zero]), /permission denied/)
+  await recusa(() => one('select reiniciar_pedido($1, $2, false)', [zero, 'novo']), /permission denied/)
+  await recusa(() => one('select prazo_envio(now())'), /permission denied/)
+  await recusa(() => one('select importar_pedido_shopify($1::jsonb)', ['{}']), /permission denied/)
+  await recusa(() => one('select * from v_pedidos'), /permission denied/)
+  await db.exec('set local role authenticated')
+  await recusa(() => one('select importar_pedido_shopify($1::jsonb)', ['{}']), /permission denied/)
+})
+
+// ---- Cobertura da loja ("a loja cobre até R$ X da diferença") ----
+// Fixture WhatsApp: 2 x 50 com R$ 20 de desconto => cliente pagou 80; opção a p vale 2*p*0,8 - 80 de diferença.
+const num = v => Number(Number(v).toFixed(2))
+const preco = (f, n, p) => db.query('update troca_opcoes set preco = $1 where id = $2', [p, f.opcoes[n].id])
+const cobrir = (f, x) => db.query('update trocas set cobrir_ate = $1 where id = $2', [x, f.troca.id])
+const resumo = f => one('select * from v_troca_resumo where troca_id = $1', [f.troca.id])
+
+test('cobertura parcial, total e crédito: resumo e troca_publica', async () => {
+  const f = await fixture({ desconto: 20 })
+  await preco(f, 0, 60) // diferença cheia 16
+  await cobrir(f, 10)
+  await escolher(f)
+  let r = await resumo(f)
+  assert.deepEqual([num(r.diferenca_bruta), num(r.coberto), num(r.diferenca_total), num(r.cobrir_ate)], [16, 10, 6, 10])
+  const pub = (await publica(f)).resumo
+  assert.deepEqual([num(pub.diferenca), num(pub.diferenca_bruta), num(pub.coberto), num(pub.cobrir_ate)], [6, 16, 10, 10])
+  // Por opção o valor continua cheio.
+  assert.equal(num((await publica(f)).pecas[0].opcoes[0].diferenca), 16)
+  // Cobertura maior que a diferença: líquido zero, coberto = diferença.
+  await preco(f, 0, 50.4) // 0,64
+  r = await resumo(f)
+  assert.deepEqual([num(r.diferenca_bruta), num(r.coberto), num(r.diferenca_total)], [0.64, 0.64, 0])
+  // Crédito nunca é afetado.
+  const g = await fixture({ desconto: 20 })
+  await cobrir(g, 10)
+  await escolher(g, 0, 'credito')
+  r = await resumo(g)
+  assert.deepEqual([num(r.diferenca_bruta), num(r.coberto), num(r.diferenca_total)], [-80, 0, -80])
+})
+
+test('cobertura na troca com várias peças: soma a troca inteira (+13,50 e -5,40)', async () => {
+  const f = await fixture({ quantidade: 2, desconto: 20 })
+  await preco(f, 0, 57.5) // +13,50
+  await preco(f, 1, 47)   // -5,40
+  await cobrir(f, 10)
+  await escolher(f, 0)
+  await escolher(f, 1)
+  const r = await resumo(f)
+  assert.deepEqual([num(r.diferenca_bruta), num(r.coberto), num(r.diferenca_total)], [8.1, 8.1, 0])
+})
+
+test('cobertura: total do pedido do WhatsApp com desconto em R$ e Pix = original + líquido, identidade do desconto', async () => {
+  const f = await fixture({ desconto: 20, pix: true })
+  await preco(f, 0, 70)
+  await cobrir(f, 10)
+  const antes = await one('select * from v_pedidos where id = $1', [f.pedido.id])
+  await escolher(f)
+  await concluir(f)
+  const r = await resumo(f)
+  assert.equal(num(r.coberto), 10)
+  const v = await one('select * from v_pedidos where id = $1', [f.pedido.id])
+  assert.equal(num(v.troca_coberto), 10)
+  assert.equal(num(v.total), num(Number(antes.total) + Number(r.diferenca_total)))
+  assert.equal(num(Number(v.subtotal) - Number(v.desconto) - Number(v.desconto_pix) + Number(v.frete_na_conta)), num(v.total))
+  assert.equal(num(Number(v.subtotal) - Number(v.desconto) - Number(v.desconto_pix)), num(v.valor_pecas_com_desconto))
+  // O Pix não muda por causa da cobertura (10% do valor cheio).
+  assert.equal(num(v.desconto_pix), num(Number(v.subtotal) * 0.10))
+  // Romaneio público acompanha a view.
+  const rom = (await one('select romaneio_publico($1) d', [v.token_publico])).d
+  assert.deepEqual([num(rom.desconto), num(rom.total)], [num(v.desconto), num(v.total)])
+})
+
+test('cobertura: pedido da Shopify abate o total e v_pedido_acerto fica líquido', async () => {
+  const f = await fixture({ shopify: true })
+  await preco(f, 0, 60)
+  await cobrir(f, 10)
+  const antes = Number((await one('select total from v_pedidos where id = $1', [f.pedido.id])).total)
+  await escolher(f)
+  await concluir(f)
+  const bruta = num((await one('select resultado_diferenca d from troca_pecas where id = $1', [f.pecas[0].id])).d)
+  assert.ok(bruta > 10)
+  const v = await one('select * from v_pedidos where id = $1', [f.pedido.id])
+  assert.equal(num(v.total), num(antes + bruta - 10))
+  assert.equal(num(v.desconto) - 0, num(Number(v.subtotal) - Number(v.valor_pecas_com_desconto) - Number(v.desconto_pix)))
+  const ac = await one('select * from v_pedido_acerto where pedido_id = $1', [f.pedido.id])
+  assert.deepEqual([num(ac.saldo), num(ac.total_a_cobrar), num(ac.coberto)], [num(bruta - 10), num(bruta - 10), 10])
+  assert.equal(num(ac.valor_pago_original), antes)
+  assert.equal(num(ac.novo_total), num(v.total))
+})
+
+test('cobertura: troca cancelada não cobre; trava em troca concluída; anon não lê', async () => {
+  const f = await fixture({ desconto: 20 })
+  await preco(f, 0, 60)
+  await cobrir(f, 10)
+  await escolher(f)
+  await concluir(f)
+  assert.equal((await one('select status from trocas where id = $1', [f.troca.id])).status, 'concluida')
+  await recusa(() => cobrir(f, 5), /não pode mudar numa troca concluída/)
+  await recusa(() => one("update trocas set cobrir_ate = -1 where id = $1", [f.troca.id]), /check|não pode/)
+  const g = await fixture({ desconto: 20 })
+  await db.query("update trocas set status = 'cancelada' where id = $1", [g.troca.id])
+  await recusa(() => cobrir(g, 5), /cancelada/)
+  await db.exec('set local role anon')
+  await recusa(() => one('select * from v_troca_resumo'), /permission denied/)
+  await recusa(() => one('select * from v_pedido_acerto'), /permission denied/)
+  await db.exec('set local role authenticated')
+})
+
+// ---- Falta parcial e carrinho da troca ----
+async function itemQtd4() {
+  const p = await one("insert into pedidos (origem, status, cliente_nome) values ('shopify', 'separacao', 'Cliente') returning *")
+  const i = await one(`insert into pedido_itens (pedido_id, origem, shopify_variant_id, sku, nome, variante, foto_url, qtd, preco, preco_pago,
+      shopify_line_id, ordem, status, conferido_em, etiquetado_em, etiqueta_previa, qtd_bipada, bipado_em)
+    values ($1, 'shopify', 55, 'AN-4', 'Anel', '18', 'http://foto', 4, 50, 40, 'L1', 3, 'encontrado', now(), now(), true, 4, now()) returning *`, [p.id])
+  await db.exec('set local role authenticated')
+  return { p, i }
+}
+
+test('falta parcial: 4 viram 3 + 1 em falta, copiando preço pago e linha da Shopify, com evento e bipagem limitada', async () => {
+  const { p, i } = await itemQtd4()
+  const novoId = await one('select marcar_falta($1, 1) as id', [i.id]).then(r => r.id)
+  assert.notEqual(novoId, i.id)
+  const nova = await one('select * from pedido_itens where id = $1', [novoId])
+  assert.deepEqual([nova.status, nova.qtd, num(nova.preco_pago), num(nova.preco), nova.shopify_line_id, nova.ordem, nova.sku, nova.variante, nova.foto_url, Number(nova.shopify_variant_id)],
+    ['falta', 1, 40, 50, 'L1', 3, 'AN-4', '18', 'http://foto', 55])
+  assert.equal(nova.observacao, null); assert.equal(nova.conferido_em, null); assert.equal(nova.qtd_bipada, 0)
+  const velha = await one('select * from pedido_itens where id = $1', [i.id])
+  assert.deepEqual([velha.status, velha.qtd, velha.qtd_bipada], ['encontrado', 3, 3])
+  const ev = await db.query("select * from pedido_eventos where item_id = $1 and tipo = 'item'", [novoId])
+  assert.equal(ev.rows.length, 1)
+  assert.equal(ev.rows[0].para, 'falta')
+  assert.equal(ev.rows[0].pedido_id, p.id)
+  // Defeito de 2: nova linha em defeito.
+  const d = await one("select marcar_falta($1, 2, 'defeito') as id", [i.id]).then(r => r.id)
+  assert.deepEqual(Object.values(await one('select status, qtd from pedido_itens where id = $1', [d])), ['defeito', 2])
+  assert.equal((await one('select qtd from pedido_itens where id = $1', [i.id])).qtd, 1)
+})
+
+test('falta parcial: quantidade igual ou maior marca a linha inteira e zera as etapas; recusas', async () => {
+  const { p, i } = await itemQtd4()
+  assert.equal((await one('select marcar_falta($1, 9) as id', [i.id])).id, i.id)
+  const r = await one('select * from pedido_itens where id = $1', [i.id])
+  assert.deepEqual([r.status, r.qtd, r.qtd_bipada, r.conferido_em, r.etiquetado_em, r.etiqueta_previa, r.bipado_em], ['falta', 4, 0, null, null, false, null])
+  assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id = $1', [p.id])).n, 1)
+  await recusa(() => one("select marcar_falta($1, 1, 'x')", [i.id]), /Status inválido/)
+  await recusa(() => one('select marcar_falta($1, 0)', [i.id]), /quantas/)
+  await db.query("update pedido_itens set status = 'removido' where id = $1", [i.id])
+  await recusa(() => one('select marcar_falta($1, 1)', [i.id]), /removida/)
+  const g = await itemQtd4()
+  await db.query("update pedidos set status = 'cancelado' where id = $1", [g.p.id])
+  await recusa(() => one('select marcar_falta($1, 1)', [g.i.id]), /não aceita/)
+  await db.exec('set local role anon')
+  await recusa(() => one('select marcar_falta($1, 1)', [g.i.id]), /permission denied/)
+})
+
+// Fixture WhatsApp com desconto 20 em 2 x 50: a cliente pagou 80 (fator 0,8). Opção A = 50 (unit 40), B = 25 (unit 20).
+const opcaoB = async (f, n = 0, p = 25, sku = 'NOVO-B') =>
+  one(`insert into troca_opcoes (troca_peca_id, origem, nome, sku, preco, ordem) values ($1, 'site', 'Brinco', $2, $3, 1) returning *`, [f.pecas[n].id, sku, p])
+const carrinho = async (f, n, opcao, qtd) => {
+  await db.exec('set local role anon')
+  const r = (await one('select troca_carrinho($1, $2, $3, $4) as ok', [f.troca.token, f.itens[n].id, opcao, qtd])).ok
+  await db.exec('set local role authenticated') // em erro, o rollback do savepoint de recusa() restaura o papel
+  return r
+}
+const cart = (f, n = 0) => one('select * from v_troca_carrinho where troca_peca_id = $1', [f.pecas[n].id])
+
+test('carrinho: duas opções batendo o valor (diferença 0), menor (crédito) e maior (paga)', async () => {
+  const f = await fixture()
+  await preco(f, 0, 50)
+  const b = await opcaoB(f)
+  await carrinho(f, 0, f.opcoes[0].id, 1); await carrinho(f, 0, b.id, 2) // 40 + 40 = 80
+  let c = await cart(f)
+  assert.deepEqual([c.unidades, num(c.valor_escolhido), num(c.valor_pago_item), num(c.diferenca)], [3, 80, 80, 0])
+  assert.deepEqual(c.itens.map(x => [x.qtd, num(x.valor_unit), num(x.valor)]), [[1, 40, 40], [2, 20, 40]])
+  let pub = await publica(f)
+  assert.deepEqual([pub.status, pub.pecas[0].escolha_tipo, pub.pecas[0].unidades, num(pub.pecas[0].valor_escolhido), num(pub.resumo.diferenca)], ['respondida', 'opcao', 3, 80, 0])
+  assert.deepEqual(pub.pecas[0].carrinho, [{ opcao_id: f.opcoes[0].id, qtd: 1 }, { opcao_id: b.id, qtd: 2 }])
+  assert.deepEqual(pub.pecas[0].opcoes.map(o => num(o.valor_unit)), [40, 20])
+  assert.equal((await resumo(f)).pecas_respondidas, 1)
+  await carrinho(f, 0, b.id, 1) // 40 + 20 = 60 -> crédito de 20
+  assert.equal(num((await cart(f)).diferenca), -20)
+  assert.equal(num((await resumo(f)).diferenca_total), -20)
+  await carrinho(f, 0, f.opcoes[0].id, 2); await carrinho(f, 0, b.id, 1) // 80 + 20 = 100 -> paga 20
+  assert.equal(num((await cart(f)).diferenca), 20)
+  await cobrir(f, 15)
+  const r = await resumo(f)
+  assert.deepEqual([num(r.diferenca_bruta), num(r.coberto), num(r.diferenca_total)], [20, 15, 5])
+  // Esvaziar o carrinho volta a aguardar resposta.
+  await carrinho(f, 0, f.opcoes[0].id, 0); await carrinho(f, 0, b.id, 0)
+  pub = await publica(f)
+  assert.deepEqual([pub.status, pub.pecas[0].escolha_tipo, pub.pecas[0].escolha_opcao_id, pub.pecas[0].unidades], ['enviada', null, null, 0])
+})
+
+test('carrinho: limite de 20 unidades, opção inválida e troca já concluída', async () => {
+  const f = await fixture()
+  const b = await opcaoB(f)
+  await carrinho(f, 0, f.opcoes[0].id, 10)
+  await carrinho(f, 0, b.id, 10)
+  await recusa(() => carrinho(f, 0, b.id, 11), /limite é de 20/)
+  await recusa(() => carrinho(f, 0, b.id, -1), /inválida/)
+  const g = await fixture()
+  await recusa(() => carrinho(f, 0, g.opcoes[0].id, 1), /Opção inválida/)
+  await db.query('update troca_opcoes set preco = null where id = $1', [b.id])
+  await recusa(() => carrinho(f, 0, b.id, 1), /Opção inválida/)
+  await carrinho(g, 0, g.opcoes[0].id, 1)
+  await concluir(g)
+  await recusa(() => carrinho(g, 0, g.opcoes[0].id, 2), /não aceita|Peça inválida/)
+})
+
+test('carrinho: apagar uma opção tira a escolha dela e acerta escolha_tipo / escolha_opcao_id', async () => {
+  const f = await fixture()
+  const b = await opcaoB(f)
+  await carrinho(f, 0, f.opcoes[0].id, 1); await carrinho(f, 0, b.id, 2)
+  await db.query('delete from troca_opcoes where id = $1', [f.opcoes[0].id]) // a 1ª escolha some
+  let p = await one('select * from troca_pecas where id = $1', [f.pecas[0].id])
+  assert.deepEqual([p.escolha_tipo, p.escolha_opcao_id], ['opcao', b.id])
+  assert.equal((await db.query('select 1 from troca_escolhas where troca_peca_id = $1', [f.pecas[0].id])).rows.length, 1)
+  assert.equal((await publica(f)).status, 'respondida')
+  await db.query('delete from troca_opcoes where id = $1', [b.id]) // o carrinho esvazia
+  p = await one('select * from troca_pecas where id = $1', [f.pecas[0].id])
+  assert.deepEqual([p.escolha_tipo, p.escolha_opcao_id, p.respondida_em], [null, null, null])
+  assert.equal((await publica(f)).status, 'enviada')
+  // Apagar a opção que NÃO é a primeira mantém a escolha.
+  const g = await fixture()
+  const b2 = await opcaoB(g)
+  await carrinho(g, 0, g.opcoes[0].id, 1); await carrinho(g, 0, b2.id, 1)
+  await db.query('delete from troca_opcoes where id = $1', [b2.id])
+  p = await one('select * from troca_pecas where id = $1', [g.pecas[0].id])
+  assert.deepEqual([p.escolha_tipo, p.escolha_opcao_id], ['opcao', g.opcoes[0].id])
+})
+
+test('troca_escolher: "Quero esta" mantém a quantidade da linha; crédito e WhatsApp limpam o carrinho', async () => {
+  const f = await fixture()
+  const b = await opcaoB(f)
+  await carrinho(f, 0, b.id, 3)
+  await escolher(f) // opcoes[0]
+  let e = (await db.query('select opcao_id, qtd from troca_escolhas where troca_peca_id = $1', [f.pecas[0].id])).rows
+  assert.deepEqual(e, [{ opcao_id: f.opcoes[0].id, qtd: 2 }])
+  assert.equal((await one('select escolha_opcao_id from troca_pecas where id = $1', [f.pecas[0].id])).escolha_opcao_id, f.opcoes[0].id)
+  await escolher(f, 0, 'credito')
+  assert.equal((await db.query('select 1 from troca_escolhas where troca_peca_id = $1', [f.pecas[0].id])).rows.length, 0)
+  const pub = await publica(f)
+  assert.deepEqual([pub.pecas[0].escolha_tipo, pub.pecas[0].carrinho, pub.pecas[0].unidades], ['credito', [], 0])
+  await carrinho(f, 0, b.id, 1)
+  await escolher(f, 0, 'whatsapp')
+  assert.equal((await db.query('select 1 from troca_escolhas where troca_peca_id = $1', [f.pecas[0].id])).rows.length, 0)
+})
+
+test('carrinho: concluir gera uma linha por peça e o total fecha (WhatsApp desconto fixo + Pix)', async () => {
+  const f = await fixture({ desconto: 20, pix: true })
+  await preco(f, 0, 50)
+  const b = await opcaoB(f)
+  await carrinho(f, 0, f.opcoes[0].id, 2); await carrinho(f, 0, b.id, 1)
+  const dif = num((await cart(f)).diferenca)
+  await totalFecha(f, () => concluir(f))
+  const novas = (await db.query("select * from pedido_itens where pedido_id = $1 and status <> 'removido' order by ordem", [f.pedido.id])).rows
+  assert.deepEqual(novas.map(x => [x.sku, x.qtd, num(x.preco), x.observacao]),
+    [['NOVO', 2, 50, 'troca de ORIGINAL-0'], ['NOVO-B', 1, 25, 'troca de ORIGINAL-0']])
+  const orig = await one('select * from pedido_itens where id = $1', [f.itens[0].id])
+  assert.equal(orig.status, 'removido')
+  assert.match(orig.observacao, /^trocada por NOVO .*\+ .*NOVO-B/)
+  assert.equal(num((await one('select resultado_diferenca from troca_pecas where id = $1', [f.pecas[0].id])).resultado_diferenca), dif)
+  const ac = await one('select * from v_pedido_acerto where pedido_id = $1', [f.pedido.id])
+  assert.deepEqual(ac.pecas[0].depois_lista.map(x => [x.sku, x.qtd]), [['NOVO', 2], ['NOVO-B', 1]])
+  assert.equal(ac.pecas[0].depois.sku, 'NOVO')
+  const pub = await publica(f)
+  assert.deepEqual(pub.pecas[0].novas.map(x => [x.sku, x.qtd]), [['NOVO', 2], ['NOVO-B', 1]])
+  assert.equal(pub.pecas[0].nova.sku, 'NOVO')
+})
+
+test('carrinho: concluir fecha o total também no desconto percentual, na Shopify e com cobertura', async () => {
+  const p = await fixture({ desconto: 10, tipoDesconto: 'percentual' })
+  const pb = await opcaoB(p)
+  await carrinho(p, 0, p.opcoes[0].id, 1); await carrinho(p, 0, pb.id, 3)
+  await totalFecha(p, () => concluir(p))
+  const s = await fixture({ shopify: true, desconto: 0 })
+  const sb = await opcaoB(s)
+  await carrinho(s, 0, s.opcoes[0].id, 1); await carrinho(s, 0, sb.id, 2)
+  const r = await totalFecha(s, () => concluir(s))
+  assert.equal(r.antes, 80)
+  const c = await fixture({ desconto: 20 })
+  await preco(c, 0, 50)
+  const cb = await opcaoB(c)
+  await cobrir(c, 15)
+  await carrinho(c, 0, c.opcoes[0].id, 2); await carrinho(c, 0, cb.id, 1) // paga 20, loja cobre 15
+  const t = await totalFecha(c, () => concluir(c))
+  assert.equal(t.anunciado, 5)
+})
+
+test('carrinho: concluir exige carrinho e preço; p_versao protege contra mudança; 5 argumentos continuam valendo', async () => {
+  const f = await fixture()
+  await recusa(() => one("select troca_concluir_peca($1, $2, 'opcao', null, 'opcao')", [f.troca.id, f.pecas[0].id]), /cliente mudou|ainda não escolheu/)
+  await carrinho(f, 0, f.opcoes[0].id, 1)
+  const v = (await one('select respondida_em from troca_pecas where id = $1', [f.pecas[0].id])).respondida_em
+  const outra = new Date(new Date(v).getTime() - 60000).toISOString()
+  await recusa(() => one("select troca_concluir_peca($1, $2, 'opcao', null, 'opcao', $3)", [f.troca.id, f.pecas[0].id, outra]), /cliente mudou a escolha/)
+  assert.equal((await one('select status from pedido_itens where id = $1', [f.itens[0].id])).status, 'falta')
+  assert.equal((await one("select troca_concluir_peca($1, $2, 'opcao', null, 'opcao', $3) as ok", [f.troca.id, f.pecas[0].id, v])).ok, true)
+  assert.equal((await one('select status from trocas where id = $1', [f.troca.id])).status, 'concluida')
+})
+
+test('troca_aprovar_carrinho aprova o que a cliente montou; troca_aprovar de opção troca o carrinho', async () => {
+  const f = await fixture({ desconto: 20 })
+  await preco(f, 0, 50)
+  const b = await opcaoB(f)
+  await recusa(() => one('select troca_aprovar_carrinho($1, $2)', [f.troca.id, f.pecas[0].id]), /não montou/)
+  await carrinho(f, 0, f.opcoes[0].id, 1); await carrinho(f, 0, b.id, 2)
+  await one('select troca_aprovar_carrinho($1, $2)', [f.troca.id, f.pecas[0].id])
+  const p = await one('select * from troca_pecas where id = $1', [f.pecas[0].id])
+  assert.equal(p.escolhida_por, null); assert.notEqual(p.concluida_em, null); assert.equal(num(p.resultado_diferenca), 0)
+  assert.equal((await db.query("select 1 from pedido_itens where pedido_id = $1 and observacao like 'troca de%'", [f.pedido.id])).rows.length, 2)
+  // Aprovar uma opção avulsa: o carrinho passa a ser só ela, com a quantidade da linha.
+  const g = await fixture({ desconto: 20 })
+  const gb = await opcaoB(g)
+  await carrinho(g, 0, gb.id, 5)
+  await one('select troca_aprovar($1, $2, $3, $4)', [g.troca.id, g.pecas[0].id, 'opcao', g.opcoes[0].id])
+  const e = (await db.query('select opcao_id, qtd from troca_escolhas where troca_peca_id = $1', [g.pecas[0].id])).rows
+  assert.deepEqual(e, [{ opcao_id: g.opcoes[0].id, qtd: 2 }])
+  const gp = await one('select * from troca_pecas where id = $1', [g.pecas[0].id])
+  assert.equal(gp.escolhida_por, 'equipe'); assert.notEqual(gp.concluida_em, null)
+  assert.equal((await db.query("select 1 from pedido_itens where pedido_id = $1 and observacao like 'troca de%'", [g.pedido.id])).rows.length, 1)
+})
+
+test('carrinho: anon só usa troca_carrinho, troca_escolher e troca_publica', async () => {
+  const f = await fixture()
+  await carrinho(f, 0, f.opcoes[0].id, 1)
+  await db.exec('set local role anon')
+  await one('select troca_escolher($1, $2, $3, $4)', [f.troca.token, f.itens[0].id, 'opcao', f.opcoes[0].id])
+  assert.ok((await publica(f)).pecas[0].carrinho)
+  await recusa(() => one('select * from troca_escolhas'), /permission denied/)
+  await recusa(() => one('select * from v_troca_carrinho'), /permission denied/)
+  await recusa(() => one('select troca_carrinho_definir($1, $2)', [f.pecas[0].id, f.opcoes[0].id]), /permission denied/)
+  await recusa(() => one('select troca_aprovar_carrinho($1, $2)', [f.troca.id, f.pecas[0].id]), /permission denied/)
+  await recusa(() => one('select troca_recalcular_escolha($1)', [f.pecas[0].id]), /permission denied/)
+  await recusa(() => db.query('delete from troca_escolhas'), /permission denied/)
+  await db.exec('set local role authenticated')
+  await recusa(() => db.query('delete from troca_escolhas'), /permission denied/)
+  await recusa(() => db.query('insert into troca_escolhas (troca_peca_id, opcao_id, qtd) values ($1, $2, 1)', [f.pecas[0].id, f.opcoes[0].id]), /permission denied/)
 })
 
 await preparar()

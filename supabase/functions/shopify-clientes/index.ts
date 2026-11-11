@@ -4,6 +4,7 @@
 
 import { cors, exigirEquipe, json } from "../_shared/http.ts";
 import { shopify } from "../_shared/shopify.ts";
+import { enderecoBR, nomeReal } from "../_shared/cliente.ts";
 
 const QUERY = `
 query Clientes($q: String!) {
@@ -19,6 +20,7 @@ query Clientes($q: String!) {
         address1
         address2
         city
+        province
         provinceCode
       }
     }
@@ -71,22 +73,10 @@ type Cliente = {
     address1: string | null;
     address2: string | null;
     city: string | null;
+    province: string | null;
     provinceCode: string | null;
   } | null;
 };
-
-// "Rua das Flores, 123" -> rua e número. A Shopify guarda tudo em address1.
-function separarRua(address1: string | null): { logradouro: string | null; numero: string | null } {
-  if (!address1) return { logradouro: null, numero: null };
-  const m = address1.match(/^(.*?)[,\s-]+(\d+\w*)\s*$/);
-  return m ? { logradouro: m[1].trim(), numero: m[2] } : { logradouro: address1.trim(), numero: null };
-}
-
-// Sem nome cadastrado a Shopify devolve o e-mail como nome: vira null.
-function nomeReal(c: Cliente): string | null {
-  const n = (c.displayName ?? "").trim();
-  return !n || n.toLowerCase() === (c.email ?? "").trim().toLowerCase() ? null : n;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -95,35 +85,41 @@ Deno.serve(async (req) => {
 
   try {
     const { q } = (await req.json()) as { q?: string };
-    const termo = (q ?? "").trim().replace(/["\\]/g, "");
+    // Entre aspas na busca da Shopify: tira o que tem significado na sintaxe (aspas, barra, : * ( ) -).
+    const termo = (q ?? "").trim().replace(/["\\:*()-]/g, " ").replace(/\s+/g, " ").trim();
     if (termo.length < 3) return json({ clientes: [] });
 
-    const digitos = termo.replace(/\D/g, "");
-    // Busca por telefone usa só os dígitos; e-mail e nome vão como estão.
-    const consulta = digitos.length >= 8 && digitos.length === termo.replace(/[\s()+-]/g, "").length
+    const bruto = termo.replace(/\D/g, "");
+    const digitos = bruto.length >= 12 && bruto.startsWith("55") ? bruto.slice(2) : bruto; // tira o +55 digitado
+    // Telefone brasileiro (DDD + número, 10 ou 11 dígitos): a Shopify guarda em E.164 (+55...).
+    // Só o e-mail e o nome entram como texto.
+    const soTelefone = bruto.length > 0 && bruto.length === termo.replace(/[\s+]/g, "").length;
+    const consulta = soTelefone && (digitos.length === 10 || digitos.length === 11)
+      ? `phone:+55${digitos}`
+      : soTelefone && digitos.length >= 8
       ? `phone:*${digitos}*`
-      : termo.includes("@")
-      ? `email:${termo}`
-      : termo;
+      : (q ?? "").includes("@")
+      ? `email:"${(q ?? "").trim().replace(/["\\]/g, "")}"`
+      : `"${termo}"`;
 
     const data = await shopify<{ customers: { nodes: Cliente[] } }>(QUERY, { q: consulta });
     const cpfs = await cpfPorCliente(data.customers.nodes.map((c) => c.legacyResourceId));
     const clientes = data.customers.nodes.map((c) => {
       const a = c.defaultAddress;
-      const { logradouro, numero } = separarRua(a?.address1 ?? null);
+      const e = enderecoBR(a) as Record<string, string | null | undefined>;
       return {
         shopify_customer_id: Number(c.legacyResourceId),
-        nome: nomeReal(c),
+        nome: nomeReal(c.displayName, c.email),
         cpf: cpfs.get(c.legacyResourceId) ?? null,
         email: c.email,
         telefone: c.phone ?? a?.phone ?? null,
-        cep: a?.zip ?? null,
-        logradouro,
-        numero,
-        complemento: a?.address2 ?? null,
-        bairro: null, // a Shopify não separa o bairro; o ViaCEP completa na tela
-        cidade: a?.city ?? null,
-        uf: a?.provinceCode ?? null,
+        cep: e.entrega_cep ?? null,
+        logradouro: e.entrega_logradouro ?? null,
+        numero: e.entrega_numero ?? null,
+        complemento: e.entrega_complemento ?? null,
+        bairro: e.entrega_bairro ?? null, // address2 do checkout ("complemento, bairro"); o ViaCEP confirma na tela
+        cidade: e.entrega_cidade ?? null,
+        uf: e.entrega_uf ?? null,
       };
     });
     return json({ clientes });

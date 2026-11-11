@@ -13,9 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
 import { etiquetasDe } from "@/lib/etiquetas"
-import { useMudarStatus, usePecasParaEtiquetar, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
+import { LIMITE_LISTA, useContagens, useMudarStatus, usePecasParaEtiquetar, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
 import { digitos } from "@/lib/formato"
-import { ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
+import { destinoAoConcluir, ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import { useAgora } from "@/lib/useAgora"
@@ -44,12 +44,17 @@ const COLUNAS: Coluna[] = [
   { id: "rastreio", nome: "Enviar rastreio", icone: "rastreio", statuses: ["enviado"], rastreio: true },
 ]
 
-// Pela ordem da esteira (src/lib/status.ts): a próxima etapa ou qualquer anterior.
+// Pela ordem da esteira (src/lib/status.ts): o destino natural ao concluir a etapa (o mesmo do Dialog) ou
+// qualquer etapa anterior do fluxo principal. "Avisar" e "Aguardando cliente" são desvios: só entram
+// como destino quando são o destino natural.
 function podeSoltar(p: Pedido, c: Coluna) {
   const de = ETAPAS_EXPEDICAO.indexOf(p.status)
-  const para = ETAPAS_EXPEDICAO.indexOf(c.statuses[0])
+  const alvo = c.statuses[0]
+  const para = ETAPAS_EXPEDICAO.indexOf(alvo)
   if (de < 0 || para < 0) return false
-  return para < de || para === de + 1
+  if (alvo === destinoAoConcluir(p.status)) return true
+  const desvio = alvo === "avisar_cliente" || alvo === "aguardando_cliente"
+  return para < de && !desvio
 }
 
 // Cores suaves dos desvios: vermelho (avisar) e amarelo (aguardando).
@@ -114,6 +119,7 @@ export default function Expedicao() {
   const soAtrasados = params.get("atrasados") === "1"
   const [busca, setBusca] = useState("")
   const { data, isLoading } = usePedidosFase("expedicao")
+  const { data: contagens } = useContagens()
   const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
   const paraEtiquetar = usePecasParaEtiquetar()
@@ -182,7 +188,8 @@ export default function Expedicao() {
       .filter((p) => (c.rastreio ? p.pendente_rastreio : !p.pendente_rastreio && c.statuses.includes(p.status)))
       .filter((p) => !soAtrasados || atrasado(p.prazo))
   const porColuna = COLUNAS.map((c) => ({ ...c, pedidos: dentro(c) }))
-  const totalAtrasados = filtrados.filter((p) => !p.pendente_rastreio && atrasado(p.prazo)).length
+  // Sem busca, o total vem do banco (conta mesmo além do limite da lista); com busca, conta os da lista filtrada.
+  const totalAtrasados = busca.trim() || !contagens ? filtrados.filter((p) => !p.pendente_rastreio && atrasado(p.prazo)).length : contagens.atrasados
 
   // Celular: o padrão é a primeira etapa que tem pedidos. Com busca, mostra todas as colunas juntas.
   const primeiraComPedidos = porColuna.find((c) => c.pedidos.length > 0)?.id ?? COLUNAS[0].id
@@ -228,6 +235,10 @@ export default function Expedicao() {
           {sincronizar.isPending ? <Spinner /> : <RefreshCw />} <span className="hidden lg:inline">Sincronizar</span>
         </Button>
       </div>
+
+      {(data?.length ?? 0) >= LIMITE_LISTA && (
+        <p className="text-xs text-muted-foreground">Mostrando os {LIMITE_LISTA} primeiros pedidos da expedição: pode haver mais. Use a busca para achar os outros.</p>
+      )}
 
       {/* Celular: faixa da esteira, uma etapa por ícone ligada por linha. Toque filtra a lista. */}
       <div className="lg:hidden">

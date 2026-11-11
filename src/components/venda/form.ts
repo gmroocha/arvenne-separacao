@@ -56,9 +56,24 @@ export function formDe(p: Pedido): FormVenda {
 
 const t = (s: string) => s.trim() || null
 
+// Campo de dinheiro: vazio = limpar (null); texto que não lê = undefined (não grava, mantém o que já estava).
+function dinheiro(texto: string): number | null | undefined {
+  if (!texto.trim()) return null
+  return lerNumero(texto) ?? undefined
+}
+
+// Nomes dos campos de dinheiro com texto que não dá para ler (para avisar; esses não são salvos).
+export function dinheiroInvalido(f: FormVenda): string[] {
+  const nomes: string[] = []
+  if (dinheiro(f.desconto_valor) === undefined) nomes.push("desconto")
+  if (dinheiro(f.frete_cobrado) === undefined) nomes.push("frete cobrado")
+  return nomes
+}
+
 export function camposDe(f: FormVenda): CamposPedido {
-  const desconto = lerNumero(f.desconto_valor)
-  return {
+  const desconto = dinheiro(f.desconto_valor)
+  const frete = dinheiro(f.frete_cobrado)
+  const campos: CamposPedido = {
     cliente_id: f.cliente_id,
     cliente_nome: t(f.cliente_nome),
     cliente_cpf: t(digitos(f.cliente_cpf)),
@@ -73,14 +88,17 @@ export function camposDe(f: FormVenda): CamposPedido {
     entrega_bairro: t(f.entrega_bairro),
     entrega_cidade: t(f.entrega_cidade),
     entrega_uf: t(f.entrega_uf.toUpperCase()),
-    desconto_tipo: desconto == null ? null : f.desconto_tipo,
-    desconto_valor: desconto,
     cupom: t(f.cupom),
     frete_tipo: f.frete_tipo,
     frete_pago_por: f.frete_tipo ? f.frete_pago_por : null,
-    frete_cobrado: lerNumero(f.frete_cobrado),
     observacoes: t(f.observacoes),
   }
+  if (desconto !== undefined) {
+    campos.desconto_tipo = desconto == null ? null : f.desconto_tipo
+    campos.desconto_valor = desconto
+  }
+  if (frete !== undefined) campos.frete_cobrado = frete
+  return campos
 }
 
 // O texto em "nome" é o valor gravado no banco: não mudar.

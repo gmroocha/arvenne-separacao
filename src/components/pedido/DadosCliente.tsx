@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAcerto, useAdicionarNota, useAtualizarPedido, type PedidoDetalhe } from "@/lib/api"
 import { copiar } from "@/lib/copiar"
-import { digitos, linkWhatsApp, mascaraCpf, mascaraTelefone, quando, reais } from "@/lib/formato"
+import { digitos, linkWhatsApp, mascaraDocumento, mascaraTelefone, quando, reais } from "@/lib/formato"
 import { NOME_ETAPA, NOME_ITEM, type StatusItem } from "@/lib/status"
 import { textoEndereco } from "@/lib/endereco"
 import type { Evento } from "@/lib/tipos"
@@ -22,6 +22,7 @@ const ROTULO_EVENTO: Record<string, string> = {
   pedido_lr: "Pedido ao fornecedor (LR)", pedido_lr_desfeito: "Pedido ao fornecedor desfeito",
   embalado: "Embalado", desembalado: "Embalagem desfeita", postado: "Postado", desfeito_postagem: "Postagem desfeita",
   pago: "Pagamento registrado", rastreio_enviado: "Rastreio enviado à cliente", reiniciado: "Reiniciado",
+  devolvido: "Valor devolvido à cliente", devolvido_desfeito: "Devolução desfeita", shopify_alerta: "Aviso da Shopify",
 }
 
 function descreverEvento(e: Evento) {
@@ -112,7 +113,7 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
               )}
               {pedido.cliente_cpf && (
                 <LinhaContato icone={IdCard}>
-                  <span className="text-muted-foreground tabular-nums">{mascaraCpf(pedido.cliente_cpf)}</span>
+                  <span className="text-muted-foreground tabular-nums">{mascaraDocumento(pedido.cliente_cpf)}</span>
                 </LinhaContato>
               )}
             </div>

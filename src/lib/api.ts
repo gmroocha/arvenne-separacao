@@ -5,13 +5,20 @@ import { supabase, chamarFuncao } from "@/lib/supabase"
 import { etapaCompleta } from "@/lib/etapa"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 export const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
+
+// Banco ainda sem a migration de uma função/tabela nova: mensagem clara em vez do erro cru.
+const semFuncao = (e: unknown) => /could not find the function|could not find the table|does not exist|schema cache|relationship/i.test(`${msg(e)} ${(e as { details?: string })?.details ?? ""}`)
+export const msgBanco = (e: unknown) => (semFuncao(e) ? "Atualize o banco para usar esta função" : msg(e))
 
 export type PedidoLista = Pedido
 export type PedidoDetalhe = Pedido & { pedido_itens: Item[]; pedido_eventos: Evento[] }
 export type VarianteSite = Omit<NovoItem, "chave" | "origem" | "peca_clube_id" | "qtd">
+
+// Tamanho máximo das listas de uma fase; ao bater, a tela avisa que pode haver mais.
+export const LIMITE_LISTA = 300
 
 // Listas de uma fase, lidas de v_pedidos (o banco calcula total, prazo e contagens).
 export function usePedidosFase(fase: "venda" | "expedicao") {
@@ -19,7 +26,7 @@ export function usePedidosFase(fase: "venda" | "expedicao") {
     queryKey: ["pedidos", fase],
     refetchInterval: intervaloListas,
     queryFn: async () => {
-      let q = supabase.from("v_pedidos").select("*").in("status", STATUS_DA_FASE[fase]).limit(300)
+      let q = supabase.from("v_pedidos").select("*").in("status", STATUS_DA_FASE[fase]).limit(LIMITE_LISTA)
       q = fase === "expedicao"
         ? q.order("prazo", { ascending: true, nullsFirst: false })
         : q.order("pedido_em", { ascending: false })
@@ -51,6 +58,7 @@ export function usePendentesRastreio() {
 export function useArquivo(busca: string, limite: number) {
   return useQuery({
     queryKey: ["pedidos", "arquivo", busca, limite],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       let q = supabase
         .from("v_pedidos")
@@ -137,6 +145,18 @@ export function useRepetidas() {
         .order("qtd_pedidos", { ascending: false })
       if (error) throw error
       return data as PecaRepetida[]
+    },
+  })
+}
+
+// Contagem das peças em vários pedidos, só para o selo da barra lateral (não carrega as linhas).
+export function useContagemRepetidas() {
+  return useQuery({
+    queryKey: ["repetidas", "contagem"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("v_pecas_em_varios_pedidos").select("chave", { count: "exact", head: true })
+      if (error) throw error
+      return count ?? 0
     },
   })
 }
@@ -244,7 +264,7 @@ function useAcao<A, R = unknown>(fn: (a: A) => Promise<R>, invalidar: unknown[][
   })
 }
 
-const TODAS = [["pedidos"], ["pedido"], ["repetidas"]]
+const TODAS = [["pedidos"], ["pedido"], ["repetidas"], ["acerto"], ["etiquetar"]]
 
 export type ItemPatch = Partial<
   Pick<Item, "status" | "observacao" | "conferido_em" | "etiquetado_em" | "etiqueta_previa" | "qtd_bipada" | "bipado_em" | "qtd" | "preco">
@@ -288,15 +308,17 @@ export function useMudarStatus() {
       await qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
       await qc.cancelQueries({ queryKey: ["pedidos"] })
       // Listas (esteira) também mudam na hora, para o cartão arrastado não "voltar" até o refetch.
+      const listas = qc.getQueriesData({ queryKey: ["pedidos"] })
       qc.setQueriesData({ queryKey: ["pedidos"] }, (old: unknown) =>
         Array.isArray(old)
           ? old.map((p: { id: string }) => (p.id === pedidoId ? { ...p, ...campos, status: para, status_desde: new Date().toISOString() } : p))
           : old,
       )
-      return { anterior: aplicarNoCache(qc, pedidoId, (p) => ({ ...p, ...campos, status: para, status_desde: new Date().toISOString() })) }
+      return { listas, anterior: aplicarNoCache(qc, pedidoId, (p) => ({ ...p, ...campos, status: para, status_desde: new Date().toISOString() })) }
     },
     onError: (e, a, ctx) => {
       if (ctx?.anterior) qc.setQueryData(chavePedido(a.pedidoId), ctx.anterior)
+      ctx?.listas.forEach(([chave, dados]) => qc.setQueryData(chave, dados))
       toast.error(msg(e))
     },
     onSuccess: (_, a) => {
@@ -309,6 +331,8 @@ export function useMudarStatus() {
         qc.invalidateQueries({ queryKey: chavePedido(a.pedidoId) })
       }
       qc.invalidateQueries({ queryKey: ["pedidos"] })
+      qc.invalidateQueries({ queryKey: ["acerto"] })
+      qc.invalidateQueries({ queryKey: ["etiquetar"] })
     },
   })
 }
@@ -380,15 +404,22 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
   const gravar = useMutation({
     mutationKey: chave,
     scope: { id: `pedido-${pedidoId}` },
-    mutationFn: async ({ itemId, campos, codigo }: { itemId: string; campos: ItemPatch; codigo?: string }) => {
+    mutationFn: async ({ itemId, campos, codigo, delta }: { itemId: string; campos: ItemPatch; codigo?: string; delta?: number }): Promise<ResultadoBipagem | null> => {
       // Com código (bipagem), o banco soma 1 e registra o histórico: duas leituras seguidas contam as duas.
       if (codigo) {
-        const { error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId, p_codigo: codigo })
+        const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId, p_codigo: codigo })
         if (error) throw error
-        return
+        return data as ResultadoBipagem
+      }
+      // "Contar 1" / "Tirar 1": o banco soma ou tira 1 (sem sair de 0..qtd), sem depender da tela.
+      if (delta) {
+        const { error } = await supabase.rpc("bipar_ajustar", { p_item: itemId, p_delta: delta })
+        if (error) throw error
+        return null
       }
       const { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
       if (error) throw error
+      return null
     },
     onError: (e) => {
       toast.error(msg(e))
@@ -399,18 +430,27 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
         qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
         qc.invalidateQueries({ queryKey: ["pedidos"] })
         qc.invalidateQueries({ queryKey: ["repetidas"] })
+        qc.invalidateQueries({ queryKey: ["acerto"] })
+        qc.invalidateQueries({ queryKey: ["etiquetar"] })
       }
     },
   })
 
-  return (item: Item, campos: ItemPatch, codigo?: string) => {
+  // Com codigo (leitura do leitor) devolve o resultado do banco; com delta (+1/-1) o banco ajusta a contagem.
+  return (item: Item, campos: ItemPatch, codigo?: string, delta?: number): Promise<ResultadoBipagem | null> | void => {
     const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
     if (!atual) return
     const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
     const antes = atual.pedido_itens
     const depois = antes.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
-    comTransicao(() => qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), { ...atual, pedido_itens: depois }))
-    gravar.mutate({ itemId: item.id, campos: patch, codigo })
+    // Cancela uma leitura em andamento (ela traria o estado velho de volta) e grava sobre o que está no cache agora.
+    void qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
+    comTransicao(() =>
+      qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) =>
+        old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i)) } : old,
+      ),
+    )
+    const resultado = gravar.mutateAsync({ itemId: item.id, campos: patch, codigo, delta }).catch(() => null)
 
     let estado = atual.status
     if (campos.status) {
@@ -428,7 +468,37 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
       }
     }
     if (etapaCompleta(estado, depois) && !etapaCompleta(estado, antes)) aoCompletar?.(estado)
+    return resultado
   }
+}
+
+// Falta parcial: "faltam N de M". O banco divide a linha (função marcar_falta): o resto segue na separação
+// e as N em falta viram uma linha nova. Com N igual à quantidade, é a linha inteira. Como em useAcoesItem,
+// a primeira peça em falta leva o pedido a "avisar cliente".
+export function useMarcarFalta(pedidoId: string) {
+  const qc = useQueryClient()
+  const mudarStatus = useMudarStatus()
+  return useMutation({
+    mutationKey: ["item", pedidoId],
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async ({ item, qtd, status = "falta" }: { item: Item; qtd: number; status?: "falta" | "defeito" }) => {
+      const { error } = await supabase.rpc("marcar_falta", { p_item: item.id, p_qtd: qtd, p_status: status })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
+      if (atual && ESTADOS_DE_PECAS.includes(atual.status)) {
+        toast.info("Avise a cliente sobre a peça em falta")
+        mudarStatus.mutate({ pedidoId, para: "avisar_cliente", silencioso: true })
+      }
+    },
+    onError: (e) => toast.error(msgBanco(e)),
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: ["item", pedidoId] }) <= 1) {
+        ;[chavePedido(pedidoId), ["pedidos"], ["troca"], ["repetidas"], ["acerto"], ["etiquetar"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
+      }
+    },
+  })
 }
 
 // Reiniciar: zera o trabalho de uma etapa (ou de todas) para refazer, numa transação no banco
@@ -509,7 +579,7 @@ export function useAcoesItemVenda(pedidoId: string) {
 // A ordem das linhas e a soma são feitas no banco (função adicionar_itens), numa transação.
 export function useAdicionarItens() {
   return useAcao(
-    async ({ pedidoId, itens, somar }: { pedidoId: string; itens: NovoItem[]; somar?: boolean }) => {
+    async ({ pedidoId, itens, somar, jaEncontradas }: { pedidoId: string; itens: NovoItem[]; somar?: boolean; jaEncontradas?: boolean }) => {
       if (!itens.length) return
       const linhas = itens.map((i) => ({
         origem: i.origem,
@@ -522,8 +592,26 @@ export function useAdicionarItens() {
         qtd: i.qtd,
         preco: i.preco,
       }))
+      // Peças pendentes de antes: não podem virar "encontrado" junto com as novas.
+      let antes = new Set<string>()
+      if (jaEncontradas) {
+        const { data, error: e0 } = await supabase.from("pedido_itens").select("id").eq("pedido_id", pedidoId).eq("status", "pendente")
+        if (e0) throw e0
+        antes = new Set((data ?? []).map((r) => r.id as string))
+      }
       const { error } = await supabase.rpc("adicionar_itens", { p_pedido: pedidoId, p_itens: linhas, p_somar: !!somar })
       if (error) throw error
+      // Peça que entra depois da separação (conferência, etiquetagem, bipagem) já vale como encontrada:
+      // as etapas só listam e contam peças encontradas. Peça nova nasce "pendente".
+      if (jaEncontradas) {
+        const { data, error: e1 } = await supabase.from("pedido_itens").select("id").eq("pedido_id", pedidoId).eq("status", "pendente")
+        if (e1) throw e1
+        const novas = (data ?? []).map((r) => r.id as string).filter((id) => !antes.has(id))
+        if (novas.length) {
+          const { error: e2 } = await supabase.from("pedido_itens").update({ status: "encontrado" }).in("id", novas)
+          if (e2) throw e2
+        }
+      }
     },
     TODAS,
   )
@@ -590,20 +678,26 @@ export async function salvarCliente(id: string | null, d: DadosCliente): Promise
     // Evita duplicar: CPF identifica a pessoa. Telefone e e-mail são compartilhados (mãe e filha, o
     // mesmo contato), então só valem se o nome também for o mesmo; senão nasce uma cliente nova.
     if (linha.cpf) {
-      const { data } = await supabase.from("clientes").select("id").eq("cpf", linha.cpf).limit(1)
+      const { data, error } = await supabase.from("clientes").select("id").eq("cpf", linha.cpf).limit(1)
+      if (error) throw error
       alvo = data?.[0]?.id ?? null
     }
+    // Valores entre aspas: e-mail com vírgula ou parêntese não quebra o filtro.
+    const aspas = (v: string) => `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`
     const filtros = [
-      linha.email ? `email.eq.${linha.email}` : null,
-      linha.telefone ? `telefone.eq.${linha.telefone}` : null,
+      linha.email ? `email.eq.${aspas(linha.email)}` : null,
+      linha.telefone ? `telefone.eq.${aspas(linha.telefone)}` : null,
     ].filter(Boolean)
     if (!alvo && filtros.length) {
-      const { data } = await supabase.from("clientes").select("id, nome").or(filtros.join(",")).limit(20)
+      const { data, error } = await supabase.from("clientes").select("id, nome").or(filtros.join(",")).limit(20)
+      if (error) throw error
       alvo = data?.find((c) => semAcento(c.nome) === semAcento(linha.nome))?.id ?? null
     }
   }
   if (alvo) {
-    const { error } = await supabase.from("clientes").update(linha).eq("id", alvo)
+    // Ao atualizar, campo vazio não apaga o que já está guardado no cadastro.
+    const parcial = Object.fromEntries(Object.entries(linha).filter(([, v]) => v != null && v !== ""))
+    const { error } = await supabase.from("clientes").update(parcial).eq("id", alvo)
     if (error) throw error
     return alvo
   }
@@ -681,7 +775,7 @@ export function useAtivarPecaClube() {
 }
 
 // codigo (só na bipagem): grava pela função bipar, que soma 1 no banco e registra o histórico.
-export type AcaoItem = (item: Item, campos: ItemPatch, codigo?: string) => void
+export type AcaoItem = (item: Item, campos: ItemPatch, codigo?: string, delta?: number) => Promise<ResultadoBipagem | null> | void
 
 // Feedbacks da equipe (página /feedbacks): guardados e visíveis a todos.
 export function useFeedbacks() {
@@ -695,6 +789,18 @@ export function useFeedbacks() {
         .limit(500)
       if (error) throw error
       return data as Feedback[]
+    },
+  })
+}
+
+// Feedbacks ainda em aberto, só a contagem (selo da barra lateral).
+export function useContagemFeedbacksAbertos() {
+  return useQuery({
+    queryKey: ["feedbacks", "contagem"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("feedbacks").select("id", { count: "exact", head: true }).is("resolvido_em", null)
+      if (error) throw error
+      return count ?? 0
     },
   })
 }
@@ -723,7 +829,7 @@ export function useResolverFeedback() {
 // ---------------------------------------------------------------------------
 // Trocas de peça em falta: UMA troca por pedido, com várias peças e um link só.
 // ---------------------------------------------------------------------------
-const TROCAS_TUDO = [["troca"], ["pedido"], ["pedidos"], ["repetidas"]]
+const TROCAS_TUDO = [["troca"], ["pedido"], ["pedidos"], ["repetidas"], ["acerto"], ["etiquetar"]]
 
 // Troca ativa do pedido (rascunho, enviada ou respondida) com peças, opções, valores e resumo.
 // Todo dinheiro (pago, diferença, crédito) vem de v_troca_valores / v_troca_resumo.
@@ -732,28 +838,36 @@ export function useTroca(pedidoId: string | undefined) {
     queryKey: ["troca", pedidoId],
     enabled: !!pedidoId,
     queryFn: async (): Promise<Troca | null> => {
-      const { data: t, error } = await supabase
-        .from("trocas")
-        // Duas chaves ligam troca_pecas e troca_opcoes (a opção e a escolha): nomeia a certa.
-        .select("*, troca_pecas(*, troca_opcoes!troca_opcoes_troca_peca_id_fkey(*))")
-        .eq("pedido_id", pedidoId!)
-        .in("status", ["rascunho", "enviada", "respondida"])
-        .maybeSingle()
+      // Duas chaves ligam troca_pecas e troca_opcoes (a opção e a escolha): nomeia a certa.
+      const consulta = (comEscolhas: boolean) =>
+        supabase
+          .from("trocas")
+          .select(`*, troca_pecas(*, troca_opcoes!troca_opcoes_troca_peca_id_fkey(*)${comEscolhas ? ", troca_escolhas!troca_escolhas_troca_peca_id_fkey(*)" : ""})`)
+          .eq("pedido_id", pedidoId!)
+          .in("status", ["rascunho", "enviada", "respondida"])
+          .maybeSingle()
+      let { data: t, error } = await consulta(true)
+      // Banco sem a migration do carrinho: lê sem as escolhas.
+      if (error && semFuncao(error)) ({ data: t, error } = await consulta(false))
       if (error) throw error
       if (!t) return null
-      const [v, r] = await Promise.all([
+      const [v, r, c] = await Promise.all([
         supabase.from("v_troca_valores").select("*").eq("troca_id", t.id),
         supabase.from("v_troca_resumo").select("*").eq("troca_id", t.id).maybeSingle(),
+        supabase.from("v_troca_carrinho").select("*").eq("troca_id", t.id),
       ])
       if (v.error) throw v.error
       if (r.error) throw r.error
       const valores = v.data as TrocaValor[]
-      const { troca_pecas, ...troca } = t as { troca_pecas: (Omit<TrocaPeca, "opcoes" | "valores"> & { troca_opcoes: TrocaOpcao[] })[] } & Omit<Troca, "pecas" | "resumo">
+      const carrinhos = c.error ? [] : (c.data as TrocaCarrinho[])
+      const { troca_pecas, ...troca } = t as unknown as { troca_pecas: (Omit<TrocaPeca, "opcoes" | "valores"> & { troca_opcoes: TrocaOpcao[]; troca_escolhas?: TrocaEscolha[] })[] } & Omit<Troca, "pecas" | "resumo">
       const pecas: TrocaPeca[] = troca_pecas
-        .map(({ troca_opcoes, ...p }) => ({
+        .map(({ troca_opcoes, troca_escolhas, ...p }) => ({
           ...p,
           opcoes: [...troca_opcoes].sort((a, b) => a.ordem - b.ordem),
           valores: valores.filter((x) => x.troca_peca_id === p.id),
+          escolhas: troca_escolhas ?? [],
+          carrinho: carrinhos.find((x) => x.troca_peca_id === p.id) ?? null,
         }))
         .sort((a, b) => a.created_at.localeCompare(b.created_at))
       return { ...troca, pecas, resumo: (r.data as TrocaResumo | null) ?? null } as Troca
@@ -761,26 +875,44 @@ export function useTroca(pedidoId: string | undefined) {
   })
 }
 
+// Quanto a loja cobre da diferença da troca (0 = não cobre). O banco recusa depois de concluída.
+export function useCobrirTroca() {
+  return useAcao(
+    async ({ trocaId, valor }: { trocaId: string; valor: number }) => {
+      const { error } = await supabase.from("trocas").update({ cobrir_ate: valor }).eq("id", trocaId)
+      if (error) throw error
+    },
+    TROCAS_TUDO,
+  )
+}
+
 // Sugestões de troca. Só consulta quando `ativo` (aba aberta); preços e diferença vêm prontos do banco.
-export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}, ativo = true, incluirPedido = false) {
+export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}, ativo = true, incluirPedido = false, soSemEstoque = false) {
   const categoria = filtros.categoria ?? null
   const faixa = modo === "preco" ? (filtros.faixa === undefined ? 0.2 : filtros.faixa) : 0.2
   return useQuery({
-    queryKey: ["sugestoes", itemId, modo, modo === "preco" ? categoria : null, modo === "preco" ? faixa : null, incluirPedido],
+    queryKey: ["sugestoes", itemId, modo, modo === "preco" ? categoria : null, modo === "preco" ? faixa : null, incluirPedido, soSemEstoque],
     enabled: !!itemId && ativo,
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("sugerir_troca", {
+      const base = {
         p_item: itemId,
         p_modo: modo,
         p_categoria: modo === "preco" ? categoria : null,
         p_faixa: faixa,
         p_busca: null,
         p_incluir_pedido: incluirPedido,
-      })
-      if (error) throw error
-      return (data ?? []) as Sugestao[]
+      }
+      let r = await supabase.rpc("sugerir_troca", soSemEstoque ? { ...base, p_so_sem_estoque: true } : base)
+      let filtroIndisponivel = false
+      // Banco ainda sem a migration do filtro: tenta de novo sem o parâmetro e avisa na tela.
+      if (r.error && soSemEstoque && /could not find the function|does not exist|p_so_sem_estoque/i.test(`${r.error.message} ${r.error.details ?? ""}`)) {
+        filtroIndisponivel = true
+        r = await supabase.rpc("sugerir_troca", base)
+      }
+      if (r.error) throw r.error
+      return { linhas: (r.data ?? []) as Sugestao[], filtroIndisponivel }
     },
   })
 }
@@ -943,12 +1075,14 @@ export function useConcluirTroca() {
         p_tipo: tipo,
         p_opcao: peca.escolha_opcao_id,
         p_escolha_tipo: peca.escolha_tipo,
+        // Versão da escolha vista na tela: o banco recusa se a cliente mexeu no carrinho depois.
+        ...(peca.respondida_em ? { p_versao: peca.respondida_em } : {}),
       })
       if (error) throw error
     },
     // Recarrega também se a cliente mudou a escolha ou se a resposta da rede se perdeu.
     onSettled: () => Promise.all(TROCAS_TUDO.map((queryKey) => qc.invalidateQueries({ queryKey }))),
-    onError: (e) => toast.error(msg(e)),
+    onError: (e) => toast.error(msgBanco(e)),
   })
 }
 
@@ -968,6 +1102,19 @@ export function useAprovarTroca() {
     },
     onSettled: () => Promise.all([...TROCAS_TUDO, ["acerto"]].map((queryKey) => qc.invalidateQueries({ queryKey }))),
     onError: (e) => toast.error(msg(e)),
+  })
+}
+
+// A equipe aprova o carrinho que a cliente montou (troca_aprovar_carrinho): uma transação, como troca_aprovar.
+export function useAprovarCarrinho() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ troca, peca }: { troca: Troca; peca: TrocaPeca }) => {
+      const { error } = await supabase.rpc("troca_aprovar_carrinho", { p_troca: troca.id, p_peca: peca.id })
+      if (error) throw error
+    },
+    onSettled: () => Promise.all([...TROCAS_TUDO, ["acerto"]].map((queryKey) => qc.invalidateQueries({ queryKey }))),
+    onError: (e) => toast.error(msgBanco(e)),
   })
 }
 
@@ -995,6 +1142,32 @@ export function useMarcarAcerto() {
   )
 }
 
+// "A devolver": reembolso de peças tiradas depois do pagamento. Marca como devolvido (ou desfaz) no banco.
+export function useMarcarDevolvido() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ pedidoId, desfazer }: { pedidoId: string; desfazer?: boolean }) => {
+      const { error } = await supabase.rpc("marcar_devolvido", { p_pedido: pedidoId, p_desfazer: !!desfazer })
+      if (error) throw error
+    },
+    onSuccess: (_, a) => {
+      if (a.desfazer) return
+      toast.success("Devolução registrada", {
+        action: { label: "Desfazer", onClick: () => marcarOutraVez(a.pedidoId) },
+      })
+    },
+    onError: (e) => toast.error(msg(e)),
+    onSettled: () => TROCAS_TUDO.forEach((queryKey) => qc.invalidateQueries({ queryKey })),
+  })
+
+  function marcarOutraVez(pedidoId: string) {
+    void supabase.rpc("marcar_devolvido", { p_pedido: pedidoId, p_desfazer: true }).then(({ error }) => {
+      if (error) toast.error(msg(error))
+      else TROCAS_TUDO.forEach((queryKey) => qc.invalidateQueries({ queryKey }))
+    })
+  }
+}
+
 // Página da cliente (sem login).
 export function useTrocaPublica(token: string | undefined) {
   return useQuery({
@@ -1019,23 +1192,54 @@ export function useEscolherTroca(token: string | undefined) {
       if (error) throw error
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["troca-publica", token] }),
-    onError: (e) => toast.error(msg(e)),
+    onError: (e) => toast.error(msgBanco(e)),
   })
 }
 
-// Marca várias peças como etiquetadas de uma vez (depois de imprimir e a pessoa confirmar "Saiu tudo certo?").
-export function useMarcarEtiquetadas() {
-  return useAcao(
-    async ({ ids }: { ids: string[] }) => {
-      if (ids.length === 0) return
-      const { error } = await supabase
-        .from("pedido_itens")
-        .update({ etiquetado_em: new Date().toISOString(), etiqueta_previa: false })
-        .in("id", ids)
+// Carrinho da cliente: define quantas unidades de uma opção ela quer (0 tira). O número muda na tela na
+// hora; totais e valores continuam vindo do banco (recarrega quando a fila esvazia).
+export function useCarrinhoTroca(token: string | undefined) {
+  const qc = useQueryClient()
+  const chave = ["troca-publica", token]
+  return useMutation({
+    mutationKey: ["troca-carrinho", token],
+    scope: { id: `troca-carrinho-${token}` },
+    mutationFn: async ({ itemId, opcaoId, qtd }: { itemId: string; opcaoId: string; qtd: number }) => {
+      const { error } = await supabase.rpc("troca_carrinho", { p_token: token, p_item: itemId, p_opcao: opcaoId, p_qtd: qtd })
       if (error) throw error
     },
-    [...TODAS, ["etiquetar"]],
-  )
+    onMutate: async ({ itemId, opcaoId, qtd }) => {
+      await qc.cancelQueries({ queryKey: chave })
+      const antes = qc.getQueryData<TrocaPublica | null>(chave)
+      qc.setQueryData<TrocaPublica | null>(chave, (old) =>
+        old
+          ? {
+              ...old,
+              pecas: old.pecas.map((p) => {
+                if (p.item_id !== itemId) return p
+                const base = carrinhoDaPeca(p).filter((c) => c.opcao_id !== opcaoId)
+                const carrinho = qtd > 0 ? [...base, { opcao_id: opcaoId, qtd }] : base
+                return { ...p, carrinho, unidades: carrinho.reduce((n, c) => n + c.qtd, 0), escolha_tipo: carrinho.length > 0 ? ("opcao" as const) : null }
+              }),
+            }
+          : old,
+      )
+      return { antes }
+    },
+    onError: (e, _a, ctx) => {
+      if (ctx) qc.setQueryData(chave, ctx.antes)
+      toast.error(msgBanco(e))
+    },
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: ["troca-carrinho", token] }) <= 1) qc.invalidateQueries({ queryKey: chave })
+    },
+  })
+}
+
+// Carrinho de uma peça na página da cliente. Banco antigo (sem carrinho): a opção escolhida vale a quantidade da peça.
+export function carrinhoDaPeca(p: TrocaPublica["pecas"][number]): { opcao_id: string; qtd: number }[] {
+  if (p.carrinho) return p.carrinho
+  return p.escolha_tipo === "opcao" && p.escolha_opcao_id ? [{ opcao_id: p.escolha_opcao_id, qtd: p.qtd }] : []
 }
 
 export type PecasDoPedido = { pedidoId: string; numero: string; cliente: string | null; itens: Item[] }

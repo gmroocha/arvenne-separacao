@@ -27,7 +27,7 @@ export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: st
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
-          {p.acerto_pendente && <SeloAcerto />}
+          {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
         </div>
       </Link>
     </MenuContexto>

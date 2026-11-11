@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import type { Etiqueta } from "@/lib/etiquetas"
 
-type Props = { etiquetas: Etiqueta[]; aoPronta: () => void }
+type Props = { etiquetas: Etiqueta[]; aoPronta: () => void; aoErro: (mensagem: string) => void }
 
 // Código de barras em SVG (Code 128) que ocupa a largura útil da etiqueta.
 async function desenhar(svg: SVGSVGElement, sku: string) {
@@ -18,15 +18,19 @@ async function desenhar(svg: SVGSVGElement, sku: string) {
 
 // Folha só para impressão: uma etiqueta de 50 x 30 mm por página. Fica escondida na tela (ver src/index.css).
 // Quando todos os códigos estão desenhados, chama aoPronta (a hora de abrir o diálogo de impressão).
-export default function FolhaEtiquetas({ etiquetas, aoPronta }: Props) {
+export default function FolhaEtiquetas({ etiquetas, aoPronta, aoErro }: Props) {
   const raiz = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let vivo = true
     const svgs = Array.from(raiz.current?.querySelectorAll<SVGSVGElement>("svg[data-sku]") ?? [])
-    Promise.all(svgs.map((s) => desenhar(s, s.dataset.sku ?? ""))).then(() => {
-      if (vivo) aoPronta()
-    })
+    Promise.all(svgs.map((s) => desenhar(s, s.dataset.sku ?? "")))
+      .then(() => {
+        if (vivo) aoPronta()
+      })
+      .catch((e) => {
+        if (vivo) aoErro(`Não foi possível desenhar o código de barras: ${e instanceof Error ? e.message : "código inválido"}`)
+      })
     return () => {
       vivo = false
     }

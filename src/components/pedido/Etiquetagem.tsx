@@ -6,21 +6,21 @@ import type { Item } from "@/lib/tipos"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir: () => void }
 
-// Etiquetagem peça por peça: algumas já vêm etiquetadas do fornecedor ("Já tinha etiqueta").
+// Etiquetagem peça por peça: imprime, cola no saquinho e marca "Etiquetada" (sempre à mão).
 export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
   const achadas = pedido.pedido_itens.filter((i) => i.status === "encontrado")
   const aEtiquetar = achadas.filter((i) => !i.etiquetado_em)
   const feitas = achadas.filter((i) => i.etiquetado_em)
   const { zebra, imprimindo, dialogo, imprimir, imprimirTeste } = useImprimirEtiquetas()
 
-  // Uma etiqueta por unidade. `marcar` = pergunta "Saiu tudo certo?" no fim; reimpressão não pergunta.
-  const grupoDe = (itens: Item[], marcar: boolean) => {
+  // Uma etiqueta por unidade. Imprimir não marca nada como etiquetada.
+  const grupoDe = (itens: Item[]) => {
     const { etiquetas, itemIds } = etiquetasDe(itens)
-    return [{ numero: pedido.numero, cliente: pedido.cliente_nome, etiquetas, itemIds: marcar ? itemIds : [] }]
+    return [{ numero: pedido.numero, cliente: pedido.cliente_nome, etiquetas, itemIds }]
   }
   const todas = etiquetasDe(aEtiquetar)
   const longos = aEtiquetar.filter((i) => i.sku && !skuCabe(i.sku.trim()))
@@ -29,9 +29,9 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <ProgressoEtapa titulo="Etiquetagem" feitas={feitas.length} total={achadas.length} unidade="peças" />
-        <p className="text-sm text-muted-foreground">Coloque a etiqueta em cada peça. Se já veio etiquetada, marque "Já tinha etiqueta".</p>
+        <p className="text-sm text-muted-foreground">Imprima, cole a etiqueta no saquinho de cada peça e marque "Etiquetada".</p>
         <div className="flex items-center gap-2">
-          <Button className="h-11 min-w-0 flex-1 text-sm sm:flex-none" disabled={todas.etiquetas.length === 0 || imprimindo} onClick={() => imprimir(grupoDe(aEtiquetar, true))}>
+          <Button className="h-11 min-w-0 flex-1 text-sm sm:flex-none" disabled={todas.etiquetas.length === 0 || imprimindo} onClick={() => imprimir(grupoDe(aEtiquetar))}>
             <Printer /> Imprimir etiquetas ({todas.etiquetas.length}){zebra && <span className="font-normal opacity-80"> · na Zebra</span>}
           </Button>
           <MenuAcoes
@@ -66,25 +66,24 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
           <GradePecas>
             {aEtiquetar.map((i) => (
               <TilePeca key={i.id} item={i}>
-                <div className="flex w-full flex-col gap-1.5">
-                <div className="flex items-center gap-1.5">
+                <div className="flex w-full items-center gap-1.5">
                   <Button
                     className="h-10 min-w-0 flex-1 text-sm"
                     onClick={() => acao(i, { etiquetado_em: new Date().toISOString(), etiqueta_previa: false })}
                   >
                     <Tag /> Etiquetada
                   </Button>
-                  <MenuPeca
-                    itens={[{ rotulo: "Imprimir esta etiqueta", icone: Printer, desabilitado: !i.sku, aoClicar: () => imprimir(grupoDe([i], true)) }]}
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  className="h-10 w-full text-sm"
-                  onClick={() => acao(i, { etiquetado_em: new Date().toISOString(), etiqueta_previa: true })}
-                >
-                  Já tinha etiqueta
-                </Button>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="size-10 shrink-0"
+                    aria-label={`Imprimir etiqueta de ${i.sku ?? i.nome}`}
+                    title="Imprimir esta etiqueta"
+                    disabled={!i.sku || imprimindo}
+                    onClick={() => imprimir(grupoDe([i]))}
+                  >
+                    <Printer />
+                  </Button>
                 </div>
               </TilePeca>
             ))}
@@ -96,7 +95,7 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
         titulo="Etiquetadas"
         itens={feitas}
         aoDesfazer={(i) => acao(i, { etiquetado_em: null, etiqueta_previa: false })}
-        aoReimprimir={(i) => imprimir(grupoDe([i], false))}
+        aoReimprimir={(i) => imprimir(grupoDe([i]))}
         nota={(i) => (i.etiqueta_previa ? "já tinha etiqueta" : null)}
       />
 

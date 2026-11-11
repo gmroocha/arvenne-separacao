@@ -59,9 +59,12 @@ export default function Romaneio() {
               <li key={n} className="flex gap-3 rounded-xl border bg-card p-3">
                 <Foto url={fotoTamanho(i.foto_url, 600)} alt={i.nome} ampliar className="size-28 shrink-0" />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="text-base font-medium leading-snug">{i.nome}</div>
+                  {i.sku?.trim() ? (
+                    <div className="break-words font-mono text-base font-semibold leading-snug">{i.sku.trim()}</div>
+                  ) : (
+                    <div className="text-base font-medium leading-snug">{i.nome}</div>
+                  )}
                   {i.variante && <div className="text-sm text-muted-foreground">{i.variante}</div>}
-                  {i.sku && <div className="font-mono text-xs text-muted-foreground">{i.sku}</div>}
                   <div className="mt-auto pt-1 text-sm tabular-nums">
                     Qtd {i.qtd}
                     {i.preco != null && <span className="font-medium"> × {reais(i.preco)}</span>}

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
-import { useAcerto, useMarcarAcerto } from "@/lib/api"
+import { useAcerto, useMarcarAcerto, useMarcarDevolvido } from "@/lib/api"
 import { quando, reais } from "@/lib/formato"
 import { COR_SELO } from "@/lib/selo"
 import type { AcertoPeca } from "@/lib/tipos"
@@ -21,12 +21,24 @@ function Linha({ rotulo, children, forte }: { rotulo: string; children: React.Re
 const sinal = (d: number) => (d > 0 ? `+${reais(d)}` : d < 0 ? `−${reais(-d)}` : reais(0))
 
 function LinhaTroca({ p }: { p: AcertoPeca }) {
+  // Todas as peças novas; banco antigo só tem `depois` (a primeira).
+  const novas = p.depois_lista && p.depois_lista.length > 0 ? p.depois_lista : p.depois ? [{ ...p.depois, qtd: 0 }] : []
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
       <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
         <span className="font-mono font-semibold">{p.antes.sku ?? p.antes.nome}</span>
         <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className={p.depois ? "font-mono font-semibold" : "text-muted-foreground"}>{p.depois ? (p.depois.sku ?? p.depois.nome) : "crédito"}</span>
+        {novas.length === 0 ? (
+          <span className="text-muted-foreground">crédito</span>
+        ) : (
+          novas.map((n, k) => (
+            <span key={k} className="font-mono font-semibold">
+              {n.qtd > 1 ? `${n.qtd}× ` : ""}
+              {n.sku ?? n.nome}
+              {k < novas.length - 1 ? " +" : ""}
+            </span>
+          ))
+        )}
       </span>
       <span className="shrink-0 tabular-nums">{sinal(p.diferenca)}</span>
     </div>
@@ -35,10 +47,30 @@ function LinhaTroca({ p }: { p: AcertoPeca }) {
 
 // Acerto de dinheiro depois da troca de peças: quanto pagou, cada troca, o saldo e se já foi acertado.
 // Todos os valores vêm da view v_pedido_acerto.
-export default function AcertoTroca({ pedidoId }: { pedidoId: string }) {
+// Peças tiradas depois do pagamento: dinheiro a devolver à cliente, mesmo sem troca.
+function ADevolver({ pedidoId, valor }: { pedidoId: string; valor: number }) {
+  const devolvido = useMarcarDevolvido()
+  return (
+    <Card size="sm" className="bg-amber-500/5 ring-amber-500/20">
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <HandCoins className="size-4" />
+          <span>A devolver</span>
+          <span className="tabular-nums">{reais(valor)}</span>
+        </div>
+        <Button className="h-10 text-sm" disabled={devolvido.isPending} onClick={() => devolvido.mutate({ pedidoId })}>
+          {devolvido.isPending ? <Spinner /> : <Check />} Devolvido
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: string; aDevolver?: number | null }) {
   const { data: a } = useAcerto(pedidoId)
   const marcar = useMarcarAcerto()
-  if (!a || a.pecas.length === 0) return null
+  const devolver = aDevolver != null && aDevolver > 0 ? <ADevolver pedidoId={pedidoId} valor={aDevolver} /> : null
+  if (!a || a.pecas.length === 0) return devolver
 
   const trocaId = a.troca_id
   const pendente = a.acerto_status === "pendente"
@@ -46,6 +78,8 @@ export default function AcertoTroca({ pedidoId }: { pedidoId: string }) {
   const ajustar = (status: "recebido" | "credito_registrado" | "pendente") => trocaId && marcar.mutate({ trocaId, status })
 
   return (
+    <>
+    {devolver}
     <Card size="sm" className={pendente ? "bg-amber-500/5 ring-amber-500/20" : undefined}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
@@ -74,6 +108,7 @@ export default function AcertoTroca({ pedidoId }: { pedidoId: string }) {
           {a.pecas.map((p) => (
             <LinhaTroca key={p.troca_peca_id} p={p} />
           ))}
+          {(a.coberto ?? 0) > 0 && <Linha rotulo="A loja cobriu">−{reais(a.coberto ?? 0)}</Linha>}
           <Separator className="my-1" />
           <Linha rotulo="Novo total">{reais(a.novo_total)}</Linha>
           <Linha rotulo={a.saldo > 0 ? "Saldo a cobrar" : a.saldo < 0 ? "Saldo a favor da cliente" : "Saldo"} forte>
@@ -108,5 +143,6 @@ export default function AcertoTroca({ pedidoId }: { pedidoId: string }) {
         )}
       </CardContent>
     </Card>
+    </>
   )
 }

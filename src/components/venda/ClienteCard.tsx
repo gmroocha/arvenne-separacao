@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { Check, Search, TriangleAlert, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -63,6 +63,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
   const [mostrar, setMostrar] = useState(Boolean(form.cliente_nome || form.cliente_telefone))
   const [salvando, setSalvando] = useState(false)
   const [buscandoCep, setBuscandoCep] = useState(false)
+  const cepAtual = useRef(form.entrega_cep)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
   const [situacao, setSituacao] = useState<string | null>(null)
   const termo = useDebounce(busca.trim(), 300)
@@ -76,11 +77,13 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
 
   async function mudarCep(valor: string) {
     const cep = mascaraCep(valor)
+    cepAtual.current = cep
     aoMudar({ entrega_cep: cep })
-    if (cep.replace(/\D/g, "").length !== 8) return
+    if (cep.replace(/\D/g, "").length !== 8) return void setBuscandoCep(false)
     setBuscandoCep(true)
     try {
       const r = await buscarCep(cep)
+      if (cepAtual.current !== cep) return // a pessoa já mudou o CEP: ignora a resposta antiga
       if (r)
         aoMudar({
           entrega_logradouro: r.logradouro ?? "",
@@ -90,9 +93,9 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
         })
       else toast.error("CEP não encontrado")
     } catch {
-      toast.error("Não foi possível consultar o CEP")
+      if (cepAtual.current === cep) toast.error("Não foi possível consultar o CEP")
     } finally {
-      setBuscandoCep(false)
+      if (cepAtual.current === cep) setBuscandoCep(false)
     }
   }
 

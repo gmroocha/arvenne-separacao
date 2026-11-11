@@ -1,10 +1,20 @@
+// Todas as datas e horas do app são de São Paulo, qualquer que seja o fuso do aparelho.
+const FUSO = "America/Sao_Paulo"
+
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 export const reais = (v: number | null | undefined) => (v == null ? "—" : moeda.format(v))
 
-const dataHora = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" })
+const dataHora = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: FUSO })
 export const quando = (iso: string) => dataHora.format(new Date(iso))
 
-const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" })
+const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO })
+
+// Dia (aaaa-mm-dd) em São Paulo, para comparar "hoje" sem depender do fuso do aparelho.
+const diaSP = new Intl.DateTimeFormat("en-CA", { timeZone: FUSO, year: "numeric", month: "2-digit", day: "2-digit" })
+const diaNumero = (d: Date) => {
+  const [a, m, dia] = diaSP.format(d).split("-").map(Number)
+  return Date.UTC(a, m - 1, dia) / 86400000
+}
 
 export const digitos = (t: string | null | undefined) => (t ?? "").replace(/\D/g, "")
 
@@ -103,10 +113,8 @@ export function formatarPrazo(prazo: string | null, horasUteis: number | null, a
     const texto = h < 1 ? "atrasado" : h < 48 ? `atrasado ${h} h` : `atrasado ${Math.floor(h / 24)} d`
     return { texto, atrasado: true, uteis: null, corridos: null }
   }
-  const hoje = new Date(agora)
-  const mesmoDia = alvo.toDateString() === hoje.toDateString()
-  const meiaNoite = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-  const corridos = Math.round((meiaNoite(alvo) - meiaNoite(hoje)) / 86400000)
+  const corridos = diaNumero(alvo) - diaNumero(new Date(agora))
+  const mesmoDia = corridos === 0
   if (mesmoDia) return { texto: `vence hoje ${hora.format(alvo)}`, atrasado: false, uteis: horasUteis, corridos }
   const rotuloCorridos = `${corridos} ${corridos === 1 ? "dia corrido" : "dias corridos"}`
   const texto =
@@ -115,3 +123,6 @@ export function formatarPrazo(prazo: string | null, horasUteis: number | null, a
       : `vence ${quando(prazo)} · ${rotuloCorridos}`
   return { texto, atrasado: false, uteis: horasUteis, corridos }
 }
+
+// Texto de campo de dinheiro: "1.234,50" (pt-BR, sempre 2 casas, sem o R$). Só formatação.
+export const reaisTexto = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })

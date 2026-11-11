@@ -14,6 +14,7 @@ const CAMPOS = `
   sku
   title
   price
+  inventoryPolicy
   image { url }
   product { legacyResourceId title status featuredMedia { preview { image { url } } } }
 `;
@@ -23,6 +24,7 @@ type Variante = {
   sku: string | null;
   title: string;
   price: string;
+  inventoryPolicy: string;
   image: { url: string } | null;
   product: {
     legacyResourceId: string;
@@ -40,6 +42,8 @@ function linha(v: Variante, agora: string) {
     produto: v.product.title,
     variante: v.title === "Default Title" ? null : v.title,
     preco: Number(v.price),
+    // CONTINUE = a Shopify deixa vender sem estoque; DENY = não vende
+    vende_sem_estoque: v.inventoryPolicy === "CONTINUE",
     foto_url: v.image?.url ?? v.product.featuredMedia?.preview?.image?.url ?? null,
     status: v.product.status,
     atualizado_em: agora,
@@ -82,25 +86,63 @@ Deno.serve(async (req) => {
     }
 
     const completo = !desde;
-    const filtro = desde ? `updated_at:>='${desde.replace(/'/g, "")}'` : null;
-    let cursor: string | null = null;
+    const dataDesde = desde ? desde.replace(/'/g, "") : null;
+    // Variantes alteradas desde a data. A Shopify só marca a variante como alterada quando ela mesma muda:
+    // mudar o título, a foto ou o status do produto altera o produto, não a variante. Por isso o incremental
+    // também consulta os produtos alterados e regrava todas as variantes deles.
+    const filtros: { consulta: string; produtos: boolean }[] = completo
+      ? [{ consulta: "", produtos: false }]
+      : [
+        { consulta: `updated_at:>='${dataDesde}'`, produtos: false },
+        { consulta: `updated_at:>='${dataDesde}'`, produtos: true },
+      ];
     let total = 0;
-    do {
-      const data: { productVariants: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: Variante[] } } =
-        await consulta(
-          `query($cursor: String, $q: String) {
-             productVariants(first: 100, after: $cursor, query: $q) {
-               pageInfo { hasNextPage endCursor }
-               nodes { ${CAMPOS} }
-             }
-           }`,
-          { cursor, q: filtro },
-        );
-      const linhas = data.productVariants.nodes.map((n) => linha(n, agora));
-      await gravar(linhas);
-      total += linhas.length;
-      cursor = data.productVariants.pageInfo.hasNextPage ? data.productVariants.pageInfo.endCursor : null;
-    } while (cursor);
+    for (const f of filtros) {
+      let cursor: string | null = null;
+      do {
+        let variantes: Variante[];
+        let pagina: { hasNextPage: boolean; endCursor: string | null };
+        if (f.produtos) {
+          const data: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: { variants: { nodes: Omit<Variante, "product">[] }; legacyResourceId: string; title: string; status: string; featuredMedia: Variante["product"]["featuredMedia"] }[] } } =
+            await consulta(
+              `query($cursor: String, $q: String) {
+                 products(first: 25, after: $cursor, query: $q) {
+                   pageInfo { hasNextPage endCursor }
+                   nodes {
+                     legacyResourceId title status featuredMedia { preview { image { url } } }
+                     variants(first: 100) { nodes { legacyResourceId sku title price inventoryPolicy image { url } } }
+                   }
+                 }
+               }`,
+              { cursor, q: f.consulta },
+            );
+          variantes = data.products.nodes.flatMap((p) =>
+            p.variants.nodes.map((v) => ({
+              ...v,
+              product: { legacyResourceId: p.legacyResourceId, title: p.title, status: p.status, featuredMedia: p.featuredMedia },
+            }))
+          );
+          pagina = data.products.pageInfo;
+        } else {
+          const data: { productVariants: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: Variante[] } } =
+            await consulta(
+              `query($cursor: String, $q: String) {
+                 productVariants(first: 100, after: $cursor, query: $q) {
+                   pageInfo { hasNextPage endCursor }
+                   nodes { ${CAMPOS} }
+                 }
+               }`,
+              { cursor, q: f.consulta || null },
+            );
+          variantes = data.productVariants.nodes;
+          pagina = data.productVariants.pageInfo;
+        }
+        const linhas = variantes.map((n) => linha(n, agora));
+        await gravar(linhas);
+        total += linhas.length;
+        cursor = pagina.hasNextPage ? pagina.endCursor : null;
+      } while (cursor);
+    }
 
     // Sincronização completa e sem erro: o que não foi tocado não existe mais na Shopify.
     let removidas = 0;

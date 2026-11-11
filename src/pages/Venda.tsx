@@ -7,7 +7,7 @@ import ClienteCard from "@/components/venda/ClienteCard"
 import PagoDialog, { type DadosPagamento } from "@/components/venda/PagoDialog"
 import PecasVenda from "@/components/venda/PecasVenda"
 import ResumoVenda from "@/components/venda/ResumoVenda"
-import { camposDe, formDe, type FormVenda } from "@/components/venda/form"
+import { camposDe, dinheiroInvalido, formDe, type FormVenda } from "@/components/venda/form"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -48,6 +48,8 @@ function useAutosave(pedidoId: string, form: FormVenda) {
   const { mutateAsync } = mutacao // estável entre renders
   const gravar = useCallback(
     async (extra?: CamposPedido) => {
+      const invalidos = dinheiroInvalido(ref.current)
+      if (invalidos.length) toast.warning(`Valor de ${invalidos.join(" e ")} não entendido: não foi salvo`, { id: "dinheiro-invalido" })
       const atuais = camposDe(ref.current) as Record<string, unknown>
       const mudados = Object.fromEntries(Object.entries(atuais).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(salvo.current[k])))
       if (!extra && !Object.keys(mudados).length) return setEstado("salvo")
@@ -99,6 +101,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
   const { estado, gravar } = useAutosave(pedido.id, form)
   const [resumoAberto, setResumoAberto] = useState(false)
   const [pagando, setPagando] = useState(false)
+  const [pagto, setPagto] = useState<{ total: number; forma: string }>({ total: pedido.total, forma: pedido.forma_pagamento ?? "Pix" })
   const [perdendo, setPerdendo] = useState(false)
   const [enviando, setEnviando] = useState(false)
 
@@ -174,14 +177,29 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
     return null
   }
 
-  function pedirPagamento() {
+  // Grava a forma, recarrega o pedido e devolve o total que o banco calculou para ela.
+  async function totalComForma(forma: string): Promise<number | null> {
+    await gravar({ forma_pagamento: forma })
+    await qc.refetchQueries({ queryKey: ["pedido", pedido.id] })
+    return qc.getQueryData<PedidoDetalhe>(["pedido", pedido.id])?.total ?? null
+  }
+
+  async function pedirPagamento() {
     const problema = problemaDasPecas()
     if (problema) {
       toast.warning(problema)
       return
     }
     setResumoAberto(false)
-    setPagando(true)
+    try {
+      // Grava o que ainda está na fila de digitação e a forma escolhida, para o total vir do banco.
+      const forma = pedido.forma_pagamento ?? "Pix"
+      const total = (await totalComForma(forma)) ?? pedido.total
+      setPagto({ total, forma })
+      setPagando(true)
+    } catch {
+      // o erro já foi avisado por gravar()
+    }
   }
 
   async function confirmarPagamento(d: DadosPagamento) {
@@ -223,7 +241,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         void enviar()
       }}
       aoCopiar={copiar}
-      aoPago={pedirPagamento}
+      aoPago={() => void pedirPagamento()}
       aoPerdida={() => {
         setResumoAberto(false)
         setPerdendo(true)
@@ -287,7 +305,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         </DrawerContent>
       </Drawer>
 
-      <PagoDialog aberto={pagando} aoMudar={setPagando} total={pedido.total} formaInicial={pedido.forma_pagamento} aoConfirmar={confirmarPagamento} />
+      <PagoDialog aberto={pagando} aoMudar={setPagando} total={pagto.total} formaInicial={pagto.forma} aoMudarForma={totalComForma} aoConfirmar={confirmarPagamento} />
 
       <Dialog open={perdendo} onOpenChange={setPerdendo}>
         <DialogContent>
@@ -319,12 +337,17 @@ export default function Venda() {
         <Skeleton className="h-40 w-full" />
       </div>
     )
-  if (error || !data)
+  if (!data)
     return (
       <Alert variant="destructive">
-        <AlertDescription>Venda não encontrada.</AlertDescription>
+        <AlertDescription>{error ? "Não foi possível carregar a venda. Tente de novo." : "Venda não encontrada."}</AlertDescription>
       </Alert>
     )
   if (data.fase !== "venda") return <Navigate to={`/pedidos/${data.id}`} replace />
-  return <Editor key={data.id} pedido={data} />
+  return (
+    <>
+      {error && <p className="mb-2 text-xs text-muted-foreground">Sem conexão com o servidor: mostrando o último dado carregado.</p>}
+      <Editor key={data.id} pedido={data} />
+    </>
+  )
 }

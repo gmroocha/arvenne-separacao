@@ -9,7 +9,7 @@ import { registrarBipagem, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
 import { sons } from "@/lib/sons"
 import type { ResultadoBipagem } from "@/lib/tipos"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir: () => void }
 type Aviso = { tipo: ResultadoBipagem; texto: string }
@@ -76,8 +76,13 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
     const doCodigo = itens.filter((i) => normalizar(i.sku) === codigo)
     const alvo = doCodigo.find((i) => i.qtd_bipada < i.qtd)
     if (alvo) {
-      acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: agora() }, codigo)
-      tocar("ok")
+      // O som vem do resultado do banco: se outra leitura já completou a peça, avisa em vez de soar "ok".
+      void Promise.resolve(acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: agora() }, codigo)).then((r) => {
+        if (r === "excedente") {
+          tocar("aviso")
+          mostrar({ tipo: "excedente", texto: `${codigo} já foi bipado por completo.` })
+        } else if (r === "ok") tocar("ok")
+      })
       setAviso(null)
       setUltimaId(alvo.id)
       setPiscando(alvo.id)
@@ -194,13 +199,24 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
                       </Badge>
                     }
                   >
-                    <MenuPeca
-                      rotulo="Ajustar contagem"
-                      itens={[
-                        { rotulo: "Contar 1", icone: Plus, aoClicar: () => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() }) },
-                        { rotulo: "Tirar 1", icone: Minus, desabilitado: i.qtd_bipada <= 0, aoClicar: () => acao(i, { qtd_bipada: i.qtd_bipada - 1 }) },
-                      ]}
-                    />
+                    {/* Contagem à mão (peça sem código legível): os dois botões direto, sem menu. */}
+                    <div className="flex w-full items-center gap-1.5">
+                      <Button
+                        variant="secondary"
+                        className="h-10 min-w-0 flex-1 px-2 text-sm"
+                        disabled={i.qtd_bipada <= 0}
+                        onClick={() => acao(i, { qtd_bipada: i.qtd_bipada - 1 }, undefined, -1)}
+                      >
+                        <Minus /> Tirar 1
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="h-10 min-w-0 flex-1 px-2 text-sm"
+                        onClick={() => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() }, undefined, 1)}
+                      >
+                        <Plus /> Contar 1
+                      </Button>
+                    </div>
                   </TilePeca>
                 ))}
               </GradePecas>
@@ -211,7 +227,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
             titulo="Bipadas"
             itens={completas}
             rotuloDesfazer="Tirar 1"
-            aoDesfazer={(i) => acao(i, { qtd_bipada: Math.max(0, i.qtd_bipada - 1) })}
+            aoDesfazer={(i) => void acao(i, { qtd_bipada: Math.max(0, i.qtd_bipada - 1) }, undefined, -1)}
             nota={(i) => `${Math.min(i.qtd_bipada, i.qtd)}/${i.qtd} bipadas`}
           />
         </>

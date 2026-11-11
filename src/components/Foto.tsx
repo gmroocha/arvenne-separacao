@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Gem } from "lucide-react"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+import { fotoTamanho } from "@/lib/foto"
 import { cn } from "@/lib/utils"
 
 type Props = { url: string | null; alt?: string; ampliar?: boolean; className?: string }
@@ -30,10 +31,11 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
         {quadro}
       </button>
       <Dialog open={aberta} onOpenChange={setAberta}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogTitle className="sr-only">{alt || "Foto da peça"}</DialogTitle>
           <DialogDescription className="sr-only">Foto ampliada</DialogDescription>
-          <img draggable={false} src={url} alt={alt} className="max-h-[80svh] w-full rounded-md object-contain" />
+          {/* Ampliada: pede a foto grande à Shopify (a miniatura vem com width pequeno). */}
+          <img draggable={false} src={fotoTamanho(url, 1200) ?? url} alt={alt} className="max-h-[85svh] w-full rounded-md object-contain" />
         </DialogContent>
       </Dialog>
     </>

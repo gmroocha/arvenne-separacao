@@ -18,6 +18,7 @@ type Props = {
   aberto: boolean
   aoMudar: (aberto: boolean) => void
   aoAdicionar: (itens: NovoItem[]) => void
+  comPreco?: boolean // só a venda mostra preço na busca
 }
 
 // Peças escolhidas: muda a quantidade ou tira antes de salvar.
@@ -59,7 +60,7 @@ function ListaCarrinho({
   )
 }
 
-export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar }: Props) {
+export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar, comPreco }: Props) {
   const celular = useIsMobile()
   const [carrinho, setCarrinho] = useState<Carrinho>([])
   const [verCarrinho, setVerCarrinho] = useState(false)
@@ -89,7 +90,7 @@ export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar }: Props) 
     else fechar()
   }
 
-  const abas = aberto && <BuscaPecas aoEscolher={tocar} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} selecionada={(item) => carrinho.some((x) => igual(x, item))} />
+  const abas = aberto && <BuscaPecas comPreco={comPreco} aoEscolher={tocar} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} selecionada={(item) => carrinho.some((x) => igual(x, item))} />
   const lista = <ListaCarrinho carrinho={carrinho} aoMudarQtd={mudarQtd} aoRemover={remover} />
 
   return (
