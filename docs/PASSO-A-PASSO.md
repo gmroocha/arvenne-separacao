@@ -96,7 +96,7 @@ Pode ficar para outro dia: o app já funciona sem isso, só os pedidos da loja n
    ```
    npx supabase login
    npx supabase link --project-ref CODIGO
-   npx supabase functions deploy shopify-sync shopify-produtos --use-api
+   npx supabase functions deploy shopify-sync --use-api
    ```
    `CODIGO` é a parte do meio da Project URL (`https://CODIGO.supabase.co`). O `link` pede a senha do
    banco da Parte 2. O `login` abre o navegador.

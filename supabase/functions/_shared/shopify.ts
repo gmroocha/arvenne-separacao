@@ -16,6 +16,7 @@ async function tokenAdmin(): Promise<string> {
   const res = await fetch(`https://${DOMAIN}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(20_000),
     body: JSON.stringify({
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
@@ -36,11 +37,12 @@ async function tokenAdmin(): Promise<string> {
   return access_token;
 }
 
-export async function shopify<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+async function chamar<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch(`https://${DOMAIN}/admin/api/${VERSION}/graphql.json`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": await tokenAdmin() },
     body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(20_000),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.errors) {
@@ -53,3 +55,20 @@ export function urlAdminPedido(id: string | number): string {
   const loja = DOMAIN.replace(".myshopify.com", "");
   return `https://admin.shopify.com/store/${loja}/orders/${id}`;
 }
+
+const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// A Admin API limita o custo por segundo; no THROTTLED espera e tenta de novo.
+export async function consulta<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  for (let tentativa = 0; tentativa < 6; tentativa++) {
+    try {
+      return await chamar<T>(query, variables);
+    } catch (e) {
+      if (!String((e as Error).message).includes("THROTTLED") || tentativa === 5) throw e;
+      await espera(1500 * 2 ** tentativa);
+    }
+  }
+  throw new Error("Shopify: limite de consultas persistente");
+}
+
+export { consulta as shopify };

@@ -695,9 +695,14 @@ export function useBuscaClientes(termo: string) {
 
 export function useSincronizarShopify() {
   return useAcao(
-    () => chamarFuncao<{ importados: number }>("shopify-sync", {}),
+    () => chamarFuncao<{ importados: number; erros?: { numero: string; erro: string }[] }>("shopify-sync", {}),
     TODAS,
-    (r) => toast.success(r.importados ? `${r.importados} pedidos novos` : "Nenhum pedido novo"),
+    (r) => {
+      toast.success(r.importados ? `${r.importados} pedidos novos` : "Nenhum pedido novo")
+      if (r.erros?.length) {
+        toast.warning(`${r.erros.length} pedido(s) com erro: ${r.erros.map((e) => `${e.numero} (${e.erro})`).join("; ")}`)
+      }
+    },
   )
 }
 

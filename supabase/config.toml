@@ -2,6 +2,3 @@
 # então o gateway não precisa exigir JWT.
 [functions.shopify-sync]
 verify_jwt = false
-
-[functions.shopify-produtos]
-verify_jwt = false

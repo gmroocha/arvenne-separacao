@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
 import Cabecalho from "@/components/pedido/Cabecalho"
 import DadosCliente from "@/components/pedido/DadosCliente"
@@ -6,7 +7,7 @@ import Etapas from "@/components/pedido/Etapas"
 import DialogEtapa from "@/components/pedido/DialogEtapa"
 import PainelEtapa from "@/components/pedido/PainelEtapa"
 import AdicionarPecas from "@/components/AdicionarPecas"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAcoesItem, useAdicionarItens, useMudarStatus, usePatchPedido, usePedido, type PedidoDetalhe } from "@/lib/api"
@@ -44,6 +45,13 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         pedido={pedido}
         aoVerDados={foco ? () => setVerDados(true) : undefined}
       />
+      {pedido.pedido_eventos.some((e) => e.tipo === "shopify_alterado") && (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200">
+          <TriangleAlert />
+          <AlertTitle>As peças mudaram na Shopify</AlertTitle>
+          <AlertDescription>Confira o pedido na Shopify antes de seguir: as quantidades não batem mais com as peças daqui.</AlertDescription>
+        </Alert>
+      )}
       <Etapas status={pedido.status} eventos={pedido.pedido_eventos} />
       <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
         <PainelEtapa

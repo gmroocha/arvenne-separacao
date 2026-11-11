@@ -252,6 +252,32 @@ test('venda sem peça ou com peça sem preço não entra na expedição', async 
   await db.query("update pedidos set status = 'perdida' where id = $1", [w.id])
 })
 
+const payload = (extra = {}, qtd = 2) => ({
+  shopify_order_id: '777001', numero: 'ARV-T1', cliente_nome: 'Cliente', valor_total: '100',
+  valor_pago: '100', pedido_em: '2026-11-09T10:00:00Z', pago_em: '2026-11-09T10:00:00Z',
+  entrega_cep: '01001000', entrega_logradouro: 'Rua A', frete_cobrado: '0', desconto_codigos: [],
+  itens: [{ shopify_variant_id: '55', sku: 'AN-1', nome: 'Anel', qtd, preco: '50' }], ...extra,
+})
+const importar = async p => (await one('select importar_pedido_shopify($1::jsonb) as novo', [JSON.stringify(p)])).novo
+
+test('importação: segunda chamada completa número, cidade e UF vazios', async () => {
+  assert.equal(await importar(payload()), true)
+  assert.equal(await importar(payload({ entrega_numero: '123', entrega_cidade: 'São Paulo', entrega_uf: 'SP' })), false)
+  const p = await one("select entrega_numero, entrega_cidade, entrega_uf from pedidos where shopify_order_id = 777001")
+  assert.deepEqual(p, { entrega_numero: '123', entrega_cidade: 'São Paulo', entrega_uf: 'SP' })
+})
+
+test('importação: mudança de quantidade na Shopify gera um único evento shopify_alterado', async () => {
+  await importar(payload())
+  await importar(payload())
+  const conta = async () => (await one("select count(*)::int n from pedido_eventos e join pedidos p on p.id = e.pedido_id where p.shopify_order_id = 777001 and e.tipo = 'shopify_alterado'")).n
+  assert.equal(await conta(), 0)
+  await importar(payload({}, 1))
+  assert.equal(await conta(), 1)
+  await importar(payload({}, 1))
+  assert.equal(await conta(), 1)
+})
+
 await preparar()
 let falhas = 0
 try {

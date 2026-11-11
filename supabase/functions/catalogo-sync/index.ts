@@ -7,9 +7,7 @@
 // A Shopify é a fonte; o Supabase guarda uma cópia para a busca ser instantânea.
 
 import { admin, cors, exigirEquipe, json } from "../_shared/http.ts";
-import { shopify } from "../_shared/shopify.ts";
-
-const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import { consulta } from "../_shared/shopify.ts";
 
 const CAMPOS = `
   legacyResourceId
@@ -33,19 +31,6 @@ type Variante = {
     featuredMedia: { preview: { image: { url: string } | null } | null } | null;
   };
 };
-
-// A Admin API limita o custo por segundo; no THROTTLED espera e tenta de novo.
-async function consulta<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-  for (let tentativa = 0; tentativa < 6; tentativa++) {
-    try {
-      return await shopify<T>(query, variables);
-    } catch (e) {
-      if (!String((e as Error).message).includes("THROTTLED") || tentativa === 5) throw e;
-      await espera(1500 * 2 ** tentativa);
-    }
-  }
-  throw new Error("Shopify: limite de consultas persistente");
-}
 
 function linha(v: Variante, agora: string) {
   return {

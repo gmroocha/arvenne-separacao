@@ -4,7 +4,7 @@
 // despacho (quem decide é importar_pedido_shopify, no banco).
 
 import { admin, cors, exigirEquipe, json } from "../_shared/http.ts";
-import { shopify, urlAdminPedido } from "../_shared/shopify.ts";
+import { consulta as shopify, urlAdminPedido } from "../_shared/shopify.ts";
 
 const QUERY = `
 query Pedidos($cursor: String, $q: String!) {
@@ -36,7 +36,9 @@ query Pedidos($cursor: String, $q: String!) {
       totalDiscountsSet { shopMoney { amount } }
       totalShippingPriceSet { shopMoney { amount } }
       fulfillments(first: 3) { createdAt trackingInfo(first: 3) { number url company } }
-      lineItems(first: 60) {
+      transactions(first: 20) { kind status processedAt }
+      lineItems(first: 250) {
+        pageInfo { hasNextPage }
         nodes {
           sku
           title
@@ -90,7 +92,9 @@ type Pedido = {
   totalDiscountsSet: Dinheiro;
   totalShippingPriceSet: Dinheiro;
   fulfillments: { createdAt: string; trackingInfo: { number: string | null; url: string | null; company: string | null }[] }[];
+  transactions: { kind: string; status: string; processedAt: string | null }[];
   lineItems: {
+    pageInfo: { hasNextPage: boolean };
     nodes: {
       sku: string | null;
       title: string;
@@ -160,6 +164,12 @@ function acharCpf(o: Pedido, locais: CampoLocal[] | undefined): string | null {
   return attr?.value ?? null;
 }
 
+// Data do pagamento: primeira venda/captura que deu certo; sem transação, a data de processamento.
+function pagoEm(o: Pedido): string {
+  const t = o.transactions?.find((x) => (x.kind === "SALE" || x.kind === "CAPTURE") && x.status === "SUCCESS" && x.processedAt);
+  return t?.processedAt ?? o.processedAt ?? o.createdAt;
+}
+
 const PAGOS = new Set(["PAID", "PARTIALLY_REFUNDED"]);
 
 Deno.serve(async (req) => {
@@ -177,6 +187,7 @@ Deno.serve(async (req) => {
     let cursor: string | null = null;
     let lidos = 0;
     let importados = 0;
+    const erros: { numero: string; erro: string }[] = [];
 
     do {
       const data: Resposta = await shopify<Resposta>(QUERY, { cursor, q: `updated_at:>=${desde}` });
@@ -201,6 +212,8 @@ Deno.serve(async (req) => {
       }
 
       for (const o of aImportar) {
+        try {
+        if (o.lineItems.pageInfo.hasNextPage) throw new Error("Pedido com mais de 250 itens: importe à mão.");
         const cancelado = o.cancelledAt !== null;
         const despachado = o.displayFulfillmentStatus === "FULFILLED";
         const locais = cpfs.get(o.legacyResourceId);
@@ -217,7 +230,7 @@ Deno.serve(async (req) => {
             despachado,
             postado_em: envio?.createdAt ?? null,
             pedido_em: o.createdAt,
-            pago_em: o.processedAt ?? o.createdAt,
+            pago_em: pagoEm(o),
             cliente_nome: o.customer?.displayName ?? sa?.name ?? null,
             cliente_telefone: sa?.phone ?? o.customer?.phone ?? o.phone ?? null,
             cliente_email: o.email,
@@ -245,13 +258,16 @@ Deno.serve(async (req) => {
             })),
           },
         });
-        if (error) throw new Error(`Pedido ${o.name}: ${error.message}`);
+        if (error) throw new Error(error.message);
         if (novo) importados++;
+        } catch (e) {
+          erros.push({ numero: o.name, erro: (e as Error).message });
+        }
       }
       cursor = data.orders.pageInfo.hasNextPage ? data.orders.pageInfo.endCursor : null;
     } while (cursor);
 
-    return json({ desde, lidos, importados });
+    return json({ desde, lidos, importados, erros });
   } catch (e) {
     return json({ erro: (e as Error).message }, 500);
   }

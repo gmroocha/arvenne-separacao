@@ -8,7 +8,7 @@
 | Loja Shopify | `brtarc-be.myshopify.com` (site arvennepratas.com.br) |
 | App na Shopify | "Arvenne Separação", criado no Dev Dashboard e **instalado** na loja; escopos `read_orders`, `read_products`, `read_customers`; login por client credentials |
 | Segredos das funções (só os nomes) | `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_IMPORTAR_DESDE` (feitos pelo Gustavo no painel) |
-| Funções Edge publicadas | `shopify-sync`, `catalogo-sync`, `shopify-clientes` (`shopify-produtos` ficou sem uso) |
+| Funções Edge publicadas | `shopify-sync`, `catalogo-sync`, `shopify-clientes` (`shopify-produtos` removida do código; falta despublicar no Supabase) |
 | Repositório | `gmroocha/arvenne-separacao`, branch `main`, tudo enviado |
 | Cloudflare Pages | **ainda não publicado**; o app roda só com `npm run dev` |
 
