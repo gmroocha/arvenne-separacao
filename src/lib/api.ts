@@ -1000,71 +1000,24 @@ export function useEnviarTroca() {
 // removida. Com todas as peças fechadas, a troca fica concluída. Resolvidos os problemas, o pedido volta
 // para "Separação" (igual a useAcoesItem).
 export function useConcluirTroca() {
-  return useAcao(
-    async ({ troca, peca, tipo }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito" }) => {
-      const pedidoId = troca.pedido_id
-      const { data: velho, error: e0 } = await supabase.from("pedido_itens").select("*").eq("id", peca.item_id).single()
-      if (e0) throw e0
-      const item = velho as Item
-      const valor = peca.valores.find((v) => (tipo === "opcao" ? v.opcao_id === peca.escolha_opcao_id : v.tipo === "credito"))
-      let observacao: string
-      if (tipo === "opcao") {
-        const opcao = peca.opcoes.find((o) => o.id === peca.escolha_opcao_id)
-        if (!opcao) throw new Error("A cliente ainda não escolheu uma opção para esta peça")
-        const { data: ult } = await supabase
-          .from("pedido_itens")
-          .select("ordem")
-          .eq("pedido_id", pedidoId)
-          .order("ordem", { ascending: false })
-          .limit(1)
-        const { error } = await supabase.from("pedido_itens").insert({
-          pedido_id: pedidoId,
-          origem: opcao.origem,
-          shopify_variant_id: opcao.shopify_variant_id,
-          peca_clube_id: opcao.peca_clube_id,
-          sku: opcao.sku,
-          nome: opcao.nome,
-          variante: opcao.variante,
-          foto_url: opcao.foto_url,
-          qtd: item.qtd,
-          preco: opcao.preco,
-          ordem: (ult?.[0]?.ordem ?? 0) + 1,
-          observacao: `troca de ${item.sku ?? item.nome}`,
-        })
-        if (error) throw error
-        observacao = `trocada por ${[opcao.sku, opcao.variante].filter(Boolean).join(" · ")}`
-      } else {
-        observacao = `crédito R$ ${(valor?.valor_pago_item ?? 0).toFixed(2).replace(".", ",")}`
-      }
-      const { error: e1 } = await supabase.from("pedido_itens").update({ status: "removido", observacao }).eq("id", peca.item_id)
-      if (e1) throw e1
-      const agora = new Date().toISOString()
-      const { error: e2 } = await supabase
-        .from("troca_pecas")
-        .update({
-          escolha_tipo: tipo,
-          escolha_opcao_id: tipo === "opcao" ? peca.escolha_opcao_id : null,
-          concluida_em: agora,
-          resultado_diferenca: valor?.diferenca ?? null,
-        })
-        .eq("id", peca.id)
-      if (e2) throw e2
-      if (troca.pecas.every((p) => p.id === peca.id || p.concluida_em)) {
-        const { error } = await supabase.from("trocas").update({ status: "concluida", concluida_em: agora }).eq("id", troca.id)
-        if (error) throw error
-      }
-
-      const [{ data: vivos }, { data: ped }] = await Promise.all([
-        supabase.from("pedido_itens").select("status").eq("pedido_id", pedidoId).neq("status", "removido"),
-        supabase.from("pedidos").select("status").eq("id", pedidoId).single(),
-      ])
-      const problemas = (vivos ?? []).some((i) => i.status === "falta" || i.status === "defeito")
-      if (!problemas && (ped?.status === "avisar_cliente" || ped?.status === "aguardando_cliente")) {
-        await atualizarPedido(pedidoId, { status: "separacao" })
-      }
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ troca, peca, tipo }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito" }) => {
+      // Uma transação no banco: repetir após uma falha de rede não duplica a peça.
+      // A escolha esperada evita confirmar uma opção que a cliente acabou de mudar.
+      const { error } = await supabase.rpc("troca_concluir_peca", {
+        p_troca: troca.id,
+        p_peca: peca.id,
+        p_tipo: tipo,
+        p_opcao: peca.escolha_opcao_id,
+        p_escolha_tipo: peca.escolha_tipo,
+      })
+      if (error) throw error
     },
-    TROCAS_TUDO,
-  )
+    // Recarrega também se a cliente mudou a escolha ou se a resposta da rede se perdeu.
+    onSettled: () => Promise.all(TROCAS_TUDO.map((queryKey) => qc.invalidateQueries({ queryKey }))),
+    onError: (e) => toast.error(msg(e)),
+  })
 }
 
 // Página da cliente (sem login).

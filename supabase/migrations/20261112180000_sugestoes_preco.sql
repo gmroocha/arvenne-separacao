@@ -85,8 +85,8 @@ begin
   end if;
 end $$;
 
-revoke all on function public.sugerir_troca(uuid, text, text, numeric, numeric) from public;
-grant execute on function public.sugerir_troca(uuid, text, text, numeric, numeric) to authenticated;
+revoke all on function public.sugerir_troca(uuid, text, text, numeric, text) from public;
+grant execute on function public.sugerir_troca(uuid, text, text, numeric, text) to authenticated;
 
 -- Quanto a cliente pagou pela peça (total da linha e por unidade), para o cabeçalho da troca.
 create or replace function public.troca_valor_pago(p_item uuid)

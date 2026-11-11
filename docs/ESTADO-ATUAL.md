@@ -35,7 +35,9 @@
 ## Aberto agora
 
 1. **Feito em 10/11/2026:** migrations de bairro, feedbacks e eventos aplicadas; `shopify-sync` e `shopify-clientes` republicadas. Falta o Gustavo clicar em Sincronizar para conferir o bairro nos próximos pedidos.
-2. **Ninguém testou as telas novas ponta a ponta.** Roteiro em `docs/PASSO-A-PASSO.md` e abaixo.
+2. **Trocas verificadas localmente:** 10 testes de banco e fluxo público em 390 e 1280 px, com dados
+   fictícios (detalhes abaixo). A esteira completa com pedidos reais ainda precisa do roteiro em
+   `docs/PASSO-A-PASSO.md` e abaixo.
 3. **ARV-1275:** a rua veio sem número claro (`rua fn 27 qd 22 lote 17, casa 1`); a tela Nota e frete pede
    para completar.
 4. **Decisões pendentes do Gustavo:** Carnaval e Corpus Christi não contam como dia útil (está em
@@ -68,5 +70,34 @@ Também no celular (390 px). Sem rolagem horizontal da página.
 `20261110120000_inicio`, `20261110180000_permissoes`, `20261111090000_vendas`,
 `20261111120000_catalogo_site`, `20261111150000_catalogo_status`, `20261111180000_esteira`,
 `20261111210000_bairro_complemento`, `20261112090000_feedbacks`, `20261112091000_eventos_analise`,
-`20261112120000_avisar_cliente`.
-Pendente de aplicar: `20261112150000_trocas` (troca de peça em falta: sugestões, link `/t/:token`, valores).
+`20261112120000_avisar_cliente`, `20261112150000_trocas`, `20261112160000_cnpj`,
+`20261112170000_pix`. Lista confirmada por consulta ao Supabase em 10/11/2026.
+
+Pendentes (confirmadas pelo `db push --remote --dry-run`):
+- `20261112180000_sugestoes_preco`: preços das sugestões com o desconto da cliente. Corrigida a
+  assinatura dos GRANT/REVOKE, que apontava para uma função inexistente e impedia a aplicação.
+  Este arquivo foi corrigido porque ainda **não foi aplicado**; migrations aplicadas foram preservadas.
+- `20261112190000_conclusao_troca`: confirmação atômica por `troca_concluir_peca`, origem correta das
+  peças do site (`shopify` no pedido), desconto preservado durante toda a troca, proteção contra escolha
+  desatualizada e confirmação repetida. Tirar uma opção escolhida volta a pedir resposta; escolhas de
+  peças concluídas não podem ser apagadas.
+
+## Retomada: concluir troca de peças (10/11/2026)
+
+Código pronto localmente, **ainda depende de aplicar as duas migrations acima**. O botão de confirmar
+agora usa a nova função SQL; aplicar antes de publicar o código. Não houve escrita em pedidos reais,
+push ou publicação nesta retomada. A consulta remota encontrou zero peças de troca concluídas.
+
+Validação realizada:
+- `npm run test:trocas`: 10 cenários em PostgreSQL local via PGlite, com as migrations reais, gatilhos,
+  constraints e permissões. Site, Clube, quantidade, crédito, desconto fixo + Pix, confirmação repetida,
+  resposta alterada, falha no meio da transação, acesso público e remoção de opção escolhida.
+- `npm run test:trocas:ui` (requer `npm run dev`): página pública em celular e PC, com respostas de API
+  simuladas; escolha, erro e nova tentativa, crédito, resumo, estado concluído e ausência de rolagem
+  horizontal. Capturas em `capturas/troca-testada-390.png` e `capturas/troca-testada-1280.png`.
+- `npm run build`, `npm run lint` e `git diff --check`: sem erros; permanecem os avisos anteriores de
+  lint e de tamanho do bundle.
+
+**Próxima ação:** obter o “sim” do Gustavo para aplicar as duas migrations no Supabase, conforme
+`CLAUDE.md`. O dry-run já confirmou somente esses dois arquivos. Depois, verificar a lista remota e
+o acesso às funções. O teste com pedidos reais e a publicação do app continuam separados.

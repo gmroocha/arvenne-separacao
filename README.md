@@ -18,6 +18,10 @@ Sem `.env.local` o app mostra a tela "Configure o Supabase". `.env.local` não v
 
 Outros comandos: `npm run build` (tsc + vite), `npm run lint`.
 
+Testes de troca: `npm run test:trocas` valida as migrations e as regras num banco local descartável,
+sem credenciais. Com o app rodando, `npm run test:trocas:ui` testa a página da cliente em celular e PC
+com respostas simuladas, sem alterar o Supabase real.
+
 ## Roteiro de configuração
 
 1. **Supabase**: crie o projeto na conta pessoal (região São Paulo) e rode
