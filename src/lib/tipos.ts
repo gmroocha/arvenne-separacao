@@ -73,6 +73,11 @@ export type Pedido = {
   qtd_bipadas: number
   valor_pecas_com_desconto: number
   frete_diferenca: number | null
+  // Shopify: frete antes do desconto de frete grátis e o desconto de frete (fora do desconto das peças).
+  frete_original: number | null
+  desconto_frete: number | null
+  // Há troca concluída com diferença ainda não acertada (cobrar ou registrar crédito).
+  acerto_pendente: boolean
   pendente_rastreio: boolean
   fotos: string[]
   fase: Fase
@@ -92,6 +97,8 @@ export type Item = {
   foto_url: string | null
   qtd: number
   preco: number | null
+  // Preço unitário que a cliente pagou depois de todos os descontos (Shopify); nulo = preço x fator.
+  preco_pago: number | null
   status: StatusItem
   observacao: string | null
   ordem: number
@@ -262,6 +269,8 @@ export type TrocaPeca = {
   respondida_em: string | null
   concluida_em: string | null
   resultado_diferenca: number | null
+  // null = a cliente escolheu pelo link; 'equipe' = aprovada pela equipe (cliente respondeu no WhatsApp).
+  escolhida_por: "cliente" | "equipe" | null
   created_at: string
   opcoes: TrocaOpcao[]
   valores: TrocaValor[]
@@ -285,9 +294,45 @@ export type Troca = {
   enviada_em: string | null
   respondida_em: string | null
   concluida_em: string | null
+  acerto_status: StatusAcerto | null
+  acerto_em: string | null
+  acerto_por: string | null
   created_at: string
   pecas: TrocaPeca[]
   resumo: TrocaResumo | null
+}
+
+export type StatusAcerto = "pendente" | "recebido" | "credito_registrado" | "sem_diferenca"
+
+// Uma peça trocada dentro de v_pedido_acerto.pecas.
+export type AcertoPeca = {
+  troca_id: string
+  troca_peca_id: string
+  qtd: number
+  tipo: "opcao" | "credito"
+  escolhida_por: "cliente" | "equipe"
+  valor_pago: number | null
+  // positivo = a cliente paga, negativo = crédito
+  diferenca: number
+  concluida_em: string
+  antes: { sku: string | null; nome: string; variante: string | null; foto_url: string | null }
+  depois: { sku: string | null; nome: string; variante: string | null; foto_url: string | null } | null
+}
+
+// Linha de v_pedido_acerto (um pedido com peça trocada). Todo o dinheiro vem pronto do banco.
+export type AcertoPedido = {
+  pedido_id: string
+  valor_pago_original: number
+  valor_pago_pecas_trocadas: number
+  total_a_cobrar: number
+  total_credito: number
+  saldo: number
+  novo_total: number
+  troca_id: string | null
+  acerto_status: StatusAcerto | null
+  acerto_em: string | null
+  acerto_por: string | null
+  pecas: AcertoPeca[]
 }
 
 export type ModoSugestao = "variantes" | "preco"
@@ -317,6 +362,8 @@ export type Sugestao = {
   preco_cliente: number
   diferenca: number
   situacao: "paga_diferenca" | "credito" | "sem_diferenca"
+  // A variante já é peça viva do pedido (só vem com incluirPedido).
+  no_pedido: boolean
 }
 
 // Resposta de troca_publica (página da cliente).
@@ -331,6 +378,12 @@ export type TrocaPublicaPeca = {
   escolha_tipo: EscolhaTroca | null
   escolha_opcao_id: string | null
   concluida: boolean
+  // Aprovada pela equipe (a cliente respondeu no WhatsApp).
+  escolha_equipe: boolean
+  // Diferença da peça já trocada (positivo = a cliente paga, negativo = crédito); nulo até concluir.
+  resultado: number | null
+  // Peça nova escolhida (só quando a escolha foi uma opção).
+  nova: { foto_url: string | null; nome: string; variante: string | null; sku: string | null } | null
   opcoes: {
     id: string
     foto_url: string | null

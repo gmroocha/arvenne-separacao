@@ -30,7 +30,11 @@ query Pedidos($cursor: String, $q: String!) {
       customAttributes { key value }
       paymentGatewayNames
       discountCodes
-      shippingLine { title }
+      shippingLine {
+        title
+        originalPriceSet { shopMoney { amount } }
+        discountedPriceSet { shopMoney { amount } }
+      }
       totalPriceSet { shopMoney { amount } }
       subtotalPriceSet { shopMoney { amount } }
       totalDiscountsSet { shopMoney { amount } }
@@ -46,6 +50,7 @@ query Pedidos($cursor: String, $q: String!) {
           image { url }
           variant { legacyResourceId }
           originalUnitPriceSet { shopMoney { amount } }
+          discountedUnitPriceAfterAllDiscountsSet { shopMoney { amount } }
         }
       }
     }
@@ -95,7 +100,7 @@ type Pedido = {
   customAttributes: { key: string; value: string | null }[];
   paymentGatewayNames: string[];
   discountCodes: string[];
-  shippingLine: { title: string } | null;
+  shippingLine: { title: string; originalPriceSet: Dinheiro; discountedPriceSet: Dinheiro } | null;
   totalPriceSet: Dinheiro;
   subtotalPriceSet: Dinheiro;
   totalDiscountsSet: Dinheiro;
@@ -111,6 +116,7 @@ type Pedido = {
       image: { url: string } | null;
       variant: { legacyResourceId: string } | null;
       originalUnitPriceSet: Dinheiro;
+      discountedUnitPriceAfterAllDiscountsSet: Dinheiro;
     }[];
   };
 };
@@ -176,6 +182,14 @@ function acharCpf(o: Pedido, locais: CampoLocal[] | undefined): string | null {
 function pagoEm(o: Pedido, transacoes: Transacao[] | undefined): string {
   const t = transacoes?.find((x) => (x.kind === "SALE" || x.kind === "CAPTURE") && x.status === "SUCCESS" && x.processedAt);
   return t?.processedAt ?? o.processedAt ?? o.createdAt;
+}
+
+// Desconto que incide nas peças: soma das linhas (preço original) menos o subtotal pago (sem frete).
+// O totalDiscounts da Shopify também soma o frete grátis, por isso não serve aqui.
+function descontoPecas(o: Pedido): string {
+  const linhas = o.lineItems.nodes.reduce(
+    (t, i) => t + i.currentQuantity * Number(i.originalUnitPriceSet.shopMoney.amount), 0);
+  return Math.max(0, linhas - Number(o.subtotalPriceSet.shopMoney.amount)).toFixed(2);
 }
 
 const PAGOS = new Set(["PAID", "PARTIALLY_REFUNDED"]);
@@ -260,9 +274,12 @@ Deno.serve(async (req) => {
             ...enderecoBR(sa),
             valor_total: o.totalPriceSet.shopMoney.amount,
             valor_pago: o.totalPriceSet.shopMoney.amount,
-            desconto_valor: o.totalDiscountsSet.shopMoney.amount,
+            // Desconto só das peças (linhas - subtotal); o frete grátis fica em frete_original/frete_cobrado.
+            desconto_valor: descontoPecas(o),
             desconto_codigos: o.discountCodes,
-            frete_cobrado: o.totalShippingPriceSet.shopMoney.amount,
+            // Frete: o que a Shopify cobraria (original) e o que a cliente pagou (cobrado).
+            frete_original: o.shippingLine?.originalPriceSet.shopMoney.amount ?? null,
+            frete_cobrado: o.shippingLine?.discountedPriceSet.shopMoney.amount ?? o.totalShippingPriceSet.shopMoney.amount,
             frete_titulo: o.shippingLine?.title ?? null,
             forma_pagamento: o.paymentGatewayNames.join(", ") || null,
             rastreio: rastro?.number ?? null,
@@ -277,6 +294,7 @@ Deno.serve(async (req) => {
               foto_url: i.image?.url ?? null,
               qtd: i.currentQuantity,
               preco: i.originalUnitPriceSet.shopMoney.amount,
+              preco_pago: i.discountedUnitPriceAfterAllDiscountsSet.shopMoney.amount,
             })),
           },
         });

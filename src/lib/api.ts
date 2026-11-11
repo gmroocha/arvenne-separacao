@@ -5,7 +5,7 @@ import { supabase, chamarFuncao } from "@/lib/supabase"
 import { etapaCompleta } from "@/lib/etapa"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 export const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 
@@ -762,11 +762,11 @@ export function useTroca(pedidoId: string | undefined) {
 }
 
 // Sugestões de troca. Só consulta quando `ativo` (aba aberta); preços e diferença vêm prontos do banco.
-export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}, ativo = true) {
+export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}, ativo = true, incluirPedido = false) {
   const categoria = filtros.categoria ?? null
   const faixa = modo === "preco" ? (filtros.faixa === undefined ? 0.2 : filtros.faixa) : 0.2
   return useQuery({
-    queryKey: ["sugestoes", itemId, modo, modo === "preco" ? categoria : null, modo === "preco" ? faixa : null],
+    queryKey: ["sugestoes", itemId, modo, modo === "preco" ? categoria : null, modo === "preco" ? faixa : null, incluirPedido],
     enabled: !!itemId && ativo,
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
@@ -777,6 +777,7 @@ export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, fil
         p_categoria: modo === "preco" ? categoria : null,
         p_faixa: faixa,
         p_busca: null,
+        p_incluir_pedido: incluirPedido,
       })
       if (error) throw error
       return (data ?? []) as Sugestao[]
@@ -949,6 +950,49 @@ export function useConcluirTroca() {
     onSettled: () => Promise.all(TROCAS_TUDO.map((queryKey) => qc.invalidateQueries({ queryKey }))),
     onError: (e) => toast.error(msg(e)),
   })
+}
+
+// A equipe aprova a escolha de uma peça (a cliente respondeu no WhatsApp) e a troca já é feita, numa
+// transação só (função troca_aprovar). Funciona em troca em rascunho ou enviada.
+export function useAprovarTroca() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ troca, peca, tipo, opcaoId }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito"; opcaoId?: string | null }) => {
+      const { error } = await supabase.rpc("troca_aprovar", {
+        p_troca: troca.id,
+        p_peca: peca.id,
+        p_tipo: tipo,
+        p_opcao: tipo === "opcao" ? (opcaoId ?? null) : null,
+      })
+      if (error) throw error
+    },
+    onSettled: () => Promise.all([...TROCAS_TUDO, ["acerto"]].map((queryKey) => qc.invalidateQueries({ queryKey }))),
+    onError: (e) => toast.error(msg(e)),
+  })
+}
+
+// Acerto do pedido (v_pedido_acerto): o que foi pago, cada peça trocada, o saldo e o status. Nulo = sem troca feita.
+export function useAcerto(pedidoId: string | undefined) {
+  return useQuery({
+    queryKey: ["acerto", pedidoId],
+    enabled: !!pedidoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_pedido_acerto").select("*").eq("pedido_id", pedidoId!).maybeSingle()
+      if (error) throw error
+      return (data as AcertoPedido | null) ?? null
+    },
+  })
+}
+
+// Marca o acerto de uma troca concluída: 'recebido', 'credito_registrado' ou 'pendente' (desfazer).
+export function useMarcarAcerto() {
+  return useAcao(
+    async ({ trocaId, status }: { trocaId: string; status: "pendente" | "recebido" | "credito_registrado" }) => {
+      const { error } = await supabase.rpc("troca_acerto", { p_troca: trocaId, p_status: status })
+      if (error) throw error
+    },
+    [["acerto"], ["pedido"], ["pedidos"]],
+  )
 }
 
 // Página da cliente (sem login).
