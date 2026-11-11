@@ -36,7 +36,6 @@ query Pedidos($cursor: String, $q: String!) {
       totalDiscountsSet { shopMoney { amount } }
       totalShippingPriceSet { shopMoney { amount } }
       fulfillments(first: 3) { createdAt trackingInfo(first: 3) { number url company } }
-      transactions(first: 20) { kind status processedAt }
       lineItems(first: 250) {
         pageInfo { hasNextPage }
         nodes {
@@ -61,6 +60,16 @@ query Cpf($ids: [ID!]!) {
     ... on Order { legacyResourceId localizedFields(first: 10) { nodes { key value } } }
   }
 }`;
+
+// Transações (para a data real do pagamento) também numa consulta à parte e tolerante.
+const QUERY_PAGO = `
+query Pago($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on Order { legacyResourceId transactions(first: 20) { kind status processedAt } }
+  }
+}`;
+
+type Transacao = { kind: string; status: string; processedAt: string | null };
 
 type Dinheiro = { shopMoney: { amount: string } };
 
@@ -92,7 +101,6 @@ type Pedido = {
   totalDiscountsSet: Dinheiro;
   totalShippingPriceSet: Dinheiro;
   fulfillments: { createdAt: string; trackingInfo: { number: string | null; url: string | null; company: string | null }[] }[];
-  transactions: { kind: string; status: string; processedAt: string | null }[];
   lineItems: {
     pageInfo: { hasNextPage: boolean };
     nodes: {
@@ -165,8 +173,8 @@ function acharCpf(o: Pedido, locais: CampoLocal[] | undefined): string | null {
 }
 
 // Data do pagamento: primeira venda/captura que deu certo; sem transação, a data de processamento.
-function pagoEm(o: Pedido): string {
-  const t = o.transactions?.find((x) => (x.kind === "SALE" || x.kind === "CAPTURE") && x.status === "SUCCESS" && x.processedAt);
+function pagoEm(o: Pedido, transacoes: Transacao[] | undefined): string {
+  const t = transacoes?.find((x) => (x.kind === "SALE" || x.kind === "CAPTURE") && x.status === "SUCCESS" && x.processedAt);
   return t?.processedAt ?? o.processedAt ?? o.createdAt;
 }
 
@@ -211,6 +219,20 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Data do pagamento numa consulta à parte: se falhar, usa processedAt.
+      const pagos = new Map<string, Transacao[]>();
+      if (aImportar.length) {
+        try {
+          const r = await shopify<{ nodes: ({ legacyResourceId: string; transactions: Transacao[] } | null)[] }>(
+            QUERY_PAGO,
+            { ids: aImportar.map((o) => o.id) },
+          );
+          for (const n of r.nodes) if (n) pagos.set(n.legacyResourceId, n.transactions);
+        } catch (e) {
+          console.warn("Transações indisponíveis:", (e as Error).message);
+        }
+      }
+
       for (const o of aImportar) {
         try {
         if (o.lineItems.pageInfo.hasNextPage) throw new Error("Pedido com mais de 250 itens: importe à mão.");
@@ -230,7 +252,7 @@ Deno.serve(async (req) => {
             despachado,
             postado_em: envio?.createdAt ?? null,
             pedido_em: o.createdAt,
-            pago_em: pagoEm(o),
+            pago_em: pagoEm(o, pagos.get(o.legacyResourceId)),
             cliente_nome: o.customer?.displayName ?? sa?.name ?? null,
             cliente_telefone: sa?.phone ?? o.customer?.phone ?? o.phone ?? null,
             cliente_email: o.email,
