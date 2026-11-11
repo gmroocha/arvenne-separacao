@@ -149,10 +149,10 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
         <InputGroup>
           <InputGroupAddon>{carregando ? <Spinner /> : <Search />}</InputGroupAddon>
           <InputGroupInput
+            aria-label="Buscar cliente por telefone, e-mail, nome ou CPF"
             placeholder="Telefone, e-mail, nome ou CPF"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            aria-label="Buscar cliente"
           />
         </InputGroup>
 

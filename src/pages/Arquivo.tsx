@@ -25,6 +25,7 @@ export default function Arquivo() {
           <Search />
         </InputGroupAddon>
         <InputGroupInput
+          aria-label="Buscar por número, cliente ou telefone"
           placeholder="Número, cliente ou telefone"
           value={busca}
           onChange={(e) => {

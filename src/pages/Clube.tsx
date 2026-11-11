@@ -27,7 +27,7 @@ export default function Clube() {
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
-          <InputGroupInput placeholder="Buscar por código ou nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <InputGroupInput aria-label="Buscar peça por código ou nome" placeholder="Buscar por código ou nome" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </InputGroup>
         <div className="flex items-center gap-2">
           <Switch id="inativas" checked={inativas} onCheckedChange={setInativas} />

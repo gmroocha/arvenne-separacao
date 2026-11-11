@@ -232,7 +232,9 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
     { rotulo: "UF", valor: pedido.entrega_uf },
   ]
 
-  const textoSkus = itens.map((i) => `${i.sku ?? i.nome} x${i.qtd}`).join("\n")
+  // Pedido LR: uma linha por código, somando as quantidades.
+  const skusLr = [...itens.reduce((m, i) => m.set(i.sku ?? i.nome, (m.get(i.sku ?? i.nome) ?? 0) + i.qtd), new Map<string, number>())]
+  const textoSkus = skusLr.map(([sku, qtd]) => `${sku} x${qtd}`).join("\n")
   const nf = Boolean(pedido.nf_emitida_em)
   const frete = Boolean(pedido.frete_gerado_em)
   const lr = Boolean(pedido.pedido_fornecedor_em)
@@ -265,8 +267,9 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         </CollapsibleContent>
       </Collapsible>
 
+      <Faltando pedido={pedido} patch={patch} />
+
       <Passo numero={1} icone={<FileText />} titulo="Nota fiscal" feito={nf} feitoEm={pedido.nf_emitida_em} aoDesfazer={() => patch({ nf_emitida_em: null })} textoDesfazer="Desfazer nota emitida">
-        <Faltando pedido={pedido} patch={patch} />
         <div className="flex flex-col">
           {dadosNota.map((d) => (
             <LinhaDado key={d.rotulo} {...d} />
@@ -302,7 +305,6 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
       </Passo>
 
       <Passo numero={2} icone={<Truck />} titulo="Frete" feito={frete} feitoEm={pedido.frete_gerado_em} aoDesfazer={() => patch({ frete_gerado_em: null })} textoDesfazer="Desfazer frete gerado">
-        <Faltando pedido={pedido} patch={patch} />
         <div className="flex flex-col">
           {dadosFrete.map((d) => (
             <LinhaDado key={d.rotulo} {...d} />
@@ -348,10 +350,10 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
 
       <Passo numero={3} icone={<Store />} titulo="Pedido de venda LR (fornecedor)" feito={lr} feitoEm={pedido.pedido_fornecedor_em} aoDesfazer={() => patch({ pedido_fornecedor_em: null })} textoDesfazer="Desfazer pedido LR feito">
         <ul className="flex flex-col gap-1 text-sm">
-          {itens.map((i) => (
-            <li key={i.id} className="flex gap-2 tabular-nums">
-              <span className="w-8 shrink-0 text-right font-semibold">{i.qtd}×</span>
-              <span className="font-mono">{i.sku ?? i.nome}</span>
+          {skusLr.map(([sku, qtd]) => (
+            <li key={sku} className="flex gap-2 tabular-nums">
+              <span className="w-8 shrink-0 text-right font-semibold">{qtd}×</span>
+              <span className="font-mono">{sku}</span>
             </li>
           ))}
         </ul>

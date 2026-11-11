@@ -39,7 +39,7 @@ export default function Vendas() {
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
-          <InputGroupInput placeholder="Número, cliente ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <InputGroupInput aria-label="Buscar por número, cliente ou telefone" placeholder="Número, cliente ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </InputGroup>
         <Button asChild>
           <Link to="/vendas/nova">
@@ -49,7 +49,7 @@ export default function Vendas() {
       </div>
 
       <Tabs value={aba} onValueChange={(v) => setParams(v === "em_aberto" ? {} : { aba: "aguardando" }, { replace: true })}>
-        <TabsList variant="line">
+        <TabsList variant="line" className="max-w-full overflow-x-auto sem-barra justify-start">
           <TabsTrigger value="em_aberto">
             Em aberto <Badge variant="secondary">{da("em_aberto").length}</Badge>
           </TabsTrigger>

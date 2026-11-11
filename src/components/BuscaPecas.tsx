@@ -42,7 +42,7 @@ function Busca({ valor, aoMudar }: { valor: string; aoMudar: (v: string) => void
       <InputGroupAddon>
         <Search />
       </InputGroupAddon>
-      <InputGroupInput placeholder="Buscar por nome ou código" value={valor} onChange={(e) => aoMudar(e.target.value)} />
+      <InputGroupInput aria-label="Buscar peça por nome ou código" placeholder="Buscar por nome ou código" value={valor} onChange={(e) => aoMudar(e.target.value)} />
     </InputGroup>
   )
 }

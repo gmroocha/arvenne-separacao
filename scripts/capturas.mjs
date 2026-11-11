@@ -66,11 +66,13 @@ for (const t of tamanhos) {
     const erros = []
     pag.on("pageerror", (e) => erros.push(e.message))
     await pag.goto(`${base}${rota}`)
-    if (pag.url().includes("/login")) {
+    await pag.waitForLoadState("networkidle")
+    // Sessão guardada vencida ou o app voltou para o login depois de carregar: entra de novo e repete a navegação.
+    if (new URL(pag.url()).pathname.startsWith("/login") && !rota.startsWith("/login")) {
       await entrar(ctx)
       await pag.goto(`${base}${rota}`)
+      await pag.waitForLoadState("networkidle")
     }
-    await pag.waitForLoadState("networkidle")
     for (const texto of cliques) {
       const alvo = pag.getByRole("button", { name: texto }).or(pag.getByRole("tab", { name: texto })).first()
       await alvo.click()

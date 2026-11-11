@@ -184,7 +184,7 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                     nota.mutate({ pedidoId: pedido.id, texto: texto.trim() }, { onSuccess: () => setTexto("") })
                   }}
                 >
-                  <Input placeholder="Adicionar nota" value={texto} onChange={(e) => setTexto(e.target.value)} />
+                  <Input aria-label="Nova nota" placeholder="Adicionar nota" value={texto} onChange={(e) => setTexto(e.target.value)} />
                   <Button type="submit" variant="outline">
                     Adicionar
                   </Button>

@@ -58,7 +58,7 @@ function EstadoTroca({ troca, peca, aoAbrir, wa }: { troca: Troca | undefined; p
       ) : (
         <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Quer falar no WhatsApp</div>
       )}
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
         {peca.escolha_tipo === "opcao" && (
           <Button className="h-10 text-sm" disabled={concluir.isPending} onClick={() => fazer("opcao")}>
             <Check /> Fazer a troca
@@ -140,12 +140,16 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
               {avisar ? <BellRing className={cn("size-4", COR_TITULO.avisar_cliente)} /> : <TriangleAlert className={cn("size-4", aguardando ? COR_TITULO.aguardando_cliente : "text-muted-foreground")} />}
-              {avisar
-                ? "Avise a cliente"
-                : aguardando
-                  ? `Aguardando resposta da cliente · avisada há ${tempoDesde(pedido.status_desde)}`
-                  : "Problemas"}{" "}
-              ({problemas.length})
+              <span className="min-w-0 flex-1">
+                {avisar
+                  ? "Avise a cliente"
+                  : aguardando
+                    ? `Aguardando resposta da cliente · avisada há ${tempoDesde(pedido.status_desde)}`
+                    : "Problemas"}
+              </span>
+              <Badge variant="secondary" className="tabular-nums">
+                {problemas.length}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
@@ -174,7 +178,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                 <EstadoTroca troca={troca} peca={pecaDe(i)} aoAbrir={() => setTrocando(i.id)} wa={wa} />
               </div>
             ))}
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
               {faltas.length > 0 && (
                 <Button variant={emRascunho ? "default" : "secondary"} className="h-10 text-sm" onClick={() => setTrocando(faltas[0].id)}>
                   <ArrowLeftRight /> {emRascunho ? (troca ? "Continuar troca" : "Montar troca") : "Editar troca"}

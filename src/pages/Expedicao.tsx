@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { ChevronRight, PackageOpen, RefreshCw, Search } from "lucide-react"
@@ -85,7 +85,28 @@ function progressoDe(p: Pedido): string | null {
   }
 }
 
+// PC: true quando a esteira ainda tem coluna escondida à direita (mostra um degradê na borda).
+function useMaisADireita() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [mais, setMais] = useState(false)
+  useEffect(() => {
+    const vp = ref.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]")
+    if (!vp) return
+    const medir = () => setMais(vp.scrollLeft + vp.clientWidth < vp.scrollWidth - 4)
+    const ro = new ResizeObserver(medir)
+    ro.observe(vp)
+    if (vp.firstElementChild) ro.observe(vp.firstElementChild)
+    vp.addEventListener("scroll", medir, { passive: true })
+    return () => {
+      ro.disconnect()
+      vp.removeEventListener("scroll", medir)
+    }
+  }, [])
+  return [ref, mais] as const
+}
+
 export default function Expedicao() {
+  const [esteiraRef, maisADireita] = useMaisADireita()
   const [params, setParams] = useSearchParams()
   const etapa = params.get("etapa")
   const soAtrasados = params.get("atrasados") === "1"
@@ -171,22 +192,28 @@ export default function Expedicao() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <InputGroup className="h-11 min-w-48 flex-1 lg:h-8">
+      <div className="flex items-center gap-2">
+        <InputGroup className="h-11 min-w-0 flex-1 lg:h-8">
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
-          <InputGroupInput placeholder="Cliente, número ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <InputGroupInput aria-label="Buscar por cliente, número ou telefone" placeholder="Cliente, número ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </InputGroup>
         <Button
           variant={soAtrasados ? "destructive" : "outline"}
-          className="h-11 lg:h-8"
+          className="h-11 shrink-0 lg:h-8"
           onClick={() => atualizar({ atrasados: soAtrasados ? null : "1" })}
         >
           Atrasados <Badge variant={totalAtrasados ? "destructive" : "secondary"}>{totalAtrasados}</Badge>
         </Button>
-        <Button variant="outline" className="h-11 lg:h-8" onClick={() => sincronizar.mutate(undefined)} disabled={sincronizar.isPending}>
-          {sincronizar.isPending ? <Spinner /> : <RefreshCw />} Sincronizar
+        <Button
+          variant="outline"
+          aria-label="Sincronizar com a Shopify"
+          className="size-11 shrink-0 px-0 lg:h-8 lg:w-auto lg:px-2.5"
+          onClick={() => sincronizar.mutate(undefined)}
+          disabled={sincronizar.isPending}
+        >
+          {sincronizar.isPending ? <Spinner /> : <RefreshCw />} <span className="hidden lg:inline">Sincronizar</span>
         </Button>
       </div>
 
@@ -250,7 +277,8 @@ export default function Expedicao() {
       </div>
 
       {/* PC: quadro com uma coluna por etapa, na ordem da esteira. */}
-      <ScrollArea className="hidden w-full lg:block">
+      <div ref={esteiraRef} className="relative hidden lg:block">
+      <ScrollArea className="w-full">
         <div className="flex w-max items-start gap-1 pb-4">
           {porColuna.map((c, i) => {
             const Icone = ICONE_ETAPA[c.icone]
@@ -320,6 +348,10 @@ export default function Expedicao() {
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+      {maisADireita && (
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent" />
+      )}
+      </div>
     </div>
   )
 }
