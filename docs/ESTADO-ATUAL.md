@@ -75,7 +75,22 @@ Também no celular (390 px). Sem rolagem horizontal da página.
 
 Aplicadas em 11/11/2026 (auditoria de 10/11): `20261112180000_sugestoes_preco`,
 `20261112190000_conclusao_troca`, `20261113090000_valores`, `20261113100000_importacao`,
-`20261113110000_acoes`, `20261113120000_fotos_limite`. Nenhuma pendente.
+`20261113110000_acoes`, `20261113120000_fotos_limite`, `20261113130000_troca_v2`. Nenhuma pendente.
+
+## Troca v2 (11/11/2026)
+
+- Preço pago exato da Shopify por peça (`pedido_itens.preco_pago`, de `discountedUnitPriceAfterAllDiscountsSet`).
+  O "total de descontos" da Shopify somava o frete grátis; agora `desconto_valor` é só das peças,
+  `desconto_frete` e `frete_original` à parte e `frete_cobrado` é o que a cliente pagou.
+- Tela de troca: categoria com maiúscula, chips com "N opções", caixa "Incluir peças que já estão no
+  pedido" (desmarcada), **Aprovar** e **Dar crédito** com confirmação (já troca), resumo a pagar/crédito,
+  "Link para a cliente" (Copiar link / Abrir página).
+- Página `/t/` no estilo do romaneio. Card **Acerto da troca** no pedido (Diferença recebida / Crédito
+  registrado) e selo "Acerto pendente" na Expedição.
+- `shopify-sync` republicada (v6). Falta conferir na tela: confirmação de Aprovar, card de acerto e faixa
+  "Troca confirmada" (nenhuma troca concluída ainda).
+- **Antes de começar de verdade:** `scripts/zerar-testes.sql` apaga pedidos, trocas e clientes de teste
+  (não rodado). Antes, ajustar o segredo `SHOPIFY_IMPORTAR_DESDE`.
 
 ## Auditoria de 10/11/2026: corrigida em 11/11/2026
 
