@@ -8,7 +8,7 @@
 | Loja Shopify | `brtarc-be.myshopify.com` (site arvennepratas.com.br) |
 | App na Shopify | "Arvenne Separação", criado no Dev Dashboard e **instalado** na loja; escopos `read_orders`, `read_products`, `read_customers`; login por client credentials |
 | Segredos das funções (só os nomes) | `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_IMPORTAR_DESDE` (feitos pelo Gustavo no painel) |
-| Funções Edge publicadas | `shopify-sync`, `catalogo-sync`, `shopify-clientes` (`shopify-produtos` removida do código; falta despublicar no Supabase) |
+| Funções Edge publicadas | `shopify-sync`, `catalogo-sync`, `shopify-clientes` (`shopify-produtos` removida do código; nunca esteve publicada). Republicadas em 11/11/2026: `shopify-sync` v5, `catalogo-sync` v3, `shopify-clientes` v5 |
 | Repositório | `gmroocha/arvenne-separacao`, branch `main`, tudo enviado |
 | Cloudflare Pages | **ainda não publicado**; o app roda só com `npm run dev` |
 
@@ -73,14 +73,22 @@ Também no celular (390 px). Sem rolagem horizontal da página.
 `20261112120000_avisar_cliente`, `20261112150000_trocas`, `20261112160000_cnpj`,
 `20261112170000_pix`. Lista confirmada por consulta ao Supabase em 10/11/2026.
 
-Pendentes (confirmadas pelo `db push --remote --dry-run`):
-- `20261112180000_sugestoes_preco`: preços das sugestões com o desconto da cliente. Corrigida a
-  assinatura dos GRANT/REVOKE, que apontava para uma função inexistente e impedia a aplicação.
-  Este arquivo foi corrigido porque ainda **não foi aplicado**; migrations aplicadas foram preservadas.
-- `20261112190000_conclusao_troca`: confirmação atômica por `troca_concluir_peca`, origem correta das
-  peças do site (`shopify` no pedido), desconto preservado durante toda a troca, proteção contra escolha
-  desatualizada e confirmação repetida. Tirar uma opção escolhida volta a pedir resposta; escolhas de
-  peças concluídas não podem ser apagadas.
+Aplicadas em 11/11/2026 (auditoria de 10/11): `20261112180000_sugestoes_preco`,
+`20261112190000_conclusao_troca`, `20261113090000_valores`, `20261113100000_importacao`,
+`20261113110000_acoes`, `20261113120000_fotos_limite`. Nenhuma pendente.
+
+## Auditoria de 10/11/2026: corrigida em 11/11/2026
+
+Relatório em `docs/AUDITORIA-2026-11-10.md`. Feito: total certo depois de troca; `lerNumero` e telefone
++55; valores nunca negativos; venda sem peça/preço não vira pedido; CPF/CEP/telefone só dígitos;
+sincronização completa número/cidade/UF, erros por pedido, repetição e tempo máximo, data do pagamento
+pela transação, aviso "peças mudaram na Shopify"; reiniciar, trocas, adicionar peças e bipar em
+transação no banco; autosave da venda em fila; esteira só avança 1 etapa; app com pacote inicial de
+302 kB (era 1 MB), fonte única, consultas por status, tempo real por pedido, fotos até 2 MB;
+ErrorBoundary; ajustes visuais. W0002 e W0004 (testes) apagados. Testes: `npm run test:banco` (25).
+
+Ainda aberto: conferir a tela Nota e frete (sem pedido nessa etapa para fotografar); no painel do
+Supabase, conferir que o cadastro público está desligado (Authentication → Sign In / Providers).
 
 ## Retomada: concluir troca de peças (10/11/2026)
 

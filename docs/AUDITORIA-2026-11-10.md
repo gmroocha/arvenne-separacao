@@ -1,7 +1,7 @@
 # Auditoria completa: 10/11/2026
 
 Continuação da varredura que o Codex começou (ele parou por limite de uso antes de escrever o plano).
-**Nada foi corrigido.** Este arquivo lista o que foi encontrado e como corrigir depois.
+**Status: corrigido em 11/11/2026** (ver `docs/ESTADO-ATUAL.md`). O texto abaixo é o relatório original; `tests/trocas.test.mjs` agora é `tests/banco.test.mjs`.
 
 Como foi feito: leitura do código (front, funções Edge, migrations), `npm run build`, `npm run lint`,
 `npm run test:trocas` (10/10 passam), testes num banco descartável local (PGlite, com as migrations
