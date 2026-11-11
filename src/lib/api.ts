@@ -1022,3 +1022,49 @@ export function useEscolherTroca(token: string | undefined) {
     onError: (e) => toast.error(msg(e)),
   })
 }
+
+// Marca várias peças como etiquetadas de uma vez (depois de imprimir e a pessoa confirmar "Saiu tudo certo?").
+export function useMarcarEtiquetadas() {
+  return useAcao(
+    async ({ ids }: { ids: string[] }) => {
+      if (ids.length === 0) return
+      const { error } = await supabase
+        .from("pedido_itens")
+        .update({ etiquetado_em: new Date().toISOString(), etiqueta_previa: false })
+        .in("id", ids)
+      if (error) throw error
+    },
+    [...TODAS, ["etiquetar"]],
+  )
+}
+
+export type PecasDoPedido = { pedidoId: string; numero: string; cliente: string | null; itens: Item[] }
+
+// Peças encontradas e ainda sem etiqueta, de todos os pedidos em Etiquetagem (botão "Imprimir todas" da Expedição).
+export function usePecasParaEtiquetar() {
+  return useQuery({
+    queryKey: ["etiquetar"],
+    refetchInterval: intervaloListas,
+    queryFn: async () => {
+      const { data: pedidos, error } = await supabase
+        .from("v_pedidos")
+        .select("id,numero,cliente_nome,prazo")
+        .eq("status", "etiquetagem")
+        .order("prazo", { ascending: true, nullsFirst: false })
+        .limit(300)
+      if (error) throw error
+      if (!pedidos || pedidos.length === 0) return [] as PecasDoPedido[]
+      const { data: itens, error: e2 } = await supabase
+        .from("pedido_itens")
+        .select("*")
+        .in("pedido_id", pedidos.map((p) => p.id))
+        .eq("status", "encontrado")
+        .is("etiquetado_em", null)
+        .order("ordem")
+      if (e2) throw e2
+      return pedidos
+        .map((p) => ({ pedidoId: p.id as string, numero: p.numero as string, cliente: (p.cliente_nome as string | null) ?? null, itens: (itens as Item[]).filter((i) => i.pedido_id === p.id) }))
+        .filter((p) => p.itens.length > 0) as PecasDoPedido[]
+    },
+  })
+}

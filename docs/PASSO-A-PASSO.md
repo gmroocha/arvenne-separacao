@@ -138,3 +138,25 @@ instantânea. O app precisa do escopo `read_products` (já está na Parte 5).
 - **Atualização:** botão "Atualizar catálogo" (completo, também remove o que saiu da loja) e,
   depois, agendamento (`catalogo-sync` com `{ "desde": "..." }` a cada poucos minutos e uma completa por dia).
 - Publicar: `npx supabase functions deploy catalogo-sync --use-api`, depois dos segredos da Shopify.
+
+## Impressora Zebra (etiquetas 50 x 30 mm)
+
+Faça isto uma vez, no computador do Windows ligado na Zebra ZD220 por USB.
+
+1. **Driver.** Instale o driver da Zebra (ZDesigner ZD220). Em Configurações → Impressoras, abra a
+   "ZDesigner ZD220" → Preferências de impressão → tamanho **50 x 30 mm**, orientação retrato.
+2. **Zebra Browser Print (gratuito).** Baixe no site da Zebra (zebra.com, procure "Zebra Browser Print"),
+   instale e deixe aberto (ele fica perto do relógio). É ele que deixa o app mandar as etiquetas direto,
+   sem janela de impressão.
+3. **Primeira impressão.** O Browser Print pergunta se pode aceitar o endereço do app: aceite.
+4. **App publicado (https).** Abra uma vez `https://localhost:9101/ssl_support` no Chrome e aceite o
+   certificado. Depois volte ao app.
+5. **Testar.** Em Etiquetagem, abra o menu "…" ao lado de "Imprimir etiquetas" e escolha
+   "Imprimir etiqueta de teste". Leia o código com o leitor da Bipagem e confira o tamanho.
+
+Quando o Browser Print responde, o botão mostra "na Zebra". Sem ele, o botão abre a janela de impressão do
+Chrome: escolha a ZD220 uma vez (o Chrome lembra), sem margens e sem cabeçalho.
+
+Depois de imprimir, o app pergunta "Saiu tudo certo?". Se sim, marca as peças como etiquetadas.
+Em Expedição, "Imprimir todas" imprime os pedidos que estão em Etiquetagem, com uma etiqueta separadora
+entre um pedido e outro.

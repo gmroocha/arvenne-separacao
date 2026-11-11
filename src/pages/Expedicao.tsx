@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
-import { ChevronRight, PackageOpen, RefreshCw, Search } from "lucide-react"
+import { ChevronRight, PackageOpen, Printer, RefreshCw, Search } from "lucide-react"
 import CardPedido from "@/components/CardPedido"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,9 @@ import FaixaRolavel from "@/components/FaixaRolavel"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { useMudarStatus, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
+import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
+import { etiquetasDe } from "@/lib/etiquetas"
+import { useMudarStatus, usePecasParaEtiquetar, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
 import { digitos } from "@/lib/formato"
 import { ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
@@ -114,6 +116,16 @@ export default function Expedicao() {
   const { data, isLoading } = usePedidosFase("expedicao")
   const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
+  const paraEtiquetar = usePecasParaEtiquetar()
+  const { zebra, imprimindo, dialogo, imprimir } = useImprimirEtiquetas()
+  // Um grupo por pedido em Etiquetagem; o lote ganha uma etiqueta separadora entre os pedidos.
+  const gruposEtiquetas = (paraEtiquetar.data ?? []).map((p) => ({ numero: p.numero, cliente: p.cliente, ...etiquetasDe(p.itens) }))
+  const totalEtiquetas = gruposEtiquetas.reduce((n, g) => n + g.etiquetas.length, 0)
+  const botaoImprimirTodas = (
+    <Button variant="secondary" className="h-10 w-full text-sm lg:h-8" disabled={imprimindo} onClick={() => imprimir(gruposEtiquetas)}>
+      <Printer /> Imprimir todas ({totalEtiquetas}){zebra && <span className="font-normal opacity-80"> · na Zebra</span>}
+    </Button>
+  )
   const agora = useAgora()
   const mudarStatus = useMudarStatus()
   const [arrastando, setArrastando] = useState<Pedido | null>(null)
@@ -269,6 +281,7 @@ export default function Expedicao() {
           vazio
         ) : (
           <div className="flex flex-col gap-2">
+            {selecionada === "etiquetagem" && !busca.trim() && totalEtiquetas > 0 && botaoImprimirTodas}
             {listaCelular.map((p) => (
               <CardPedido key={p.id} p={p} progresso={progressoDe(p)} />
             ))}
@@ -316,6 +329,7 @@ export default function Expedicao() {
                       {c.pedidos.length}
                     </Badge>
                   </header>
+                  {c.id === "etiquetagem" && totalEtiquetas > 0 && botaoImprimirTodas}
                   {isLoading ? (
                     <Skeleton className="h-24 w-full" />
                   ) : c.pedidos.length === 0 ? (
@@ -352,6 +366,7 @@ export default function Expedicao() {
         <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent" />
       )}
       </div>
+      {dialogo}
     </div>
   )
 }

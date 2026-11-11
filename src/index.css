@@ -170,3 +170,77 @@
 .sem-barra::-webkit-scrollbar {
   display: none;
 }
+
+/* Etiquetas da Zebra ZD220 (50 x 30 mm): a folha existe só durante a impressão pelo navegador. */
+#folha-etiquetas {
+  display: none;
+}
+@media print {
+  @page {
+    size: 50mm 30mm;
+    margin: 0;
+  }
+  html.imprimindo-etiquetas,
+  html.imprimindo-etiquetas body {
+    width: 50mm;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+  html.imprimindo-etiquetas body > *:not(#folha-etiquetas) {
+    display: none !important;
+  }
+  html.imprimindo-etiquetas #folha-etiquetas {
+    display: block;
+  }
+  #folha-etiquetas .etiqueta {
+    box-sizing: border-box;
+    width: 50mm;
+    height: 30mm;
+    padding: 3mm 3mm 0;
+    overflow: hidden;
+    color: #000;
+    background: #fff;
+    font-family: "Inter Tight Variable", sans-serif;
+    font-weight: 600;
+    break-after: page;
+    page-break-after: always;
+  }
+  #folha-etiquetas .etiqueta:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  #folha-etiquetas .etiqueta-sku {
+    height: 5mm;
+    line-height: 5mm;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  #folha-etiquetas .etiqueta-barras {
+    display: block;
+    width: 44mm;
+    height: 15mm;
+    margin-top: 2mm;
+  }
+  #folha-etiquetas .etiqueta-separador {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  #folha-etiquetas .etiqueta-faixa {
+    height: 2mm;
+    background: #000;
+  }
+  #folha-etiquetas .etiqueta-titulo {
+    padding: 0 3mm;
+    font-size: 20pt;
+    line-height: 1;
+  }
+  #folha-etiquetas .etiqueta-subtitulo {
+    padding: 0 3mm;
+    font-size: 9pt;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+}

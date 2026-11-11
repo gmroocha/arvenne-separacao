@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { Check, ChevronDown, MoreHorizontal } from "lucide-react"
+import { Check, ChevronDown, MoreHorizontal, Printer } from "lucide-react"
 import Foto from "@/components/Foto"
 import MenuAcoes, { type ItemAcao } from "@/components/MenuAcoes"
 import { Badge } from "@/components/ui/badge"
@@ -100,12 +100,13 @@ type FaixaProps = {
   itens: Item[]
   rotuloDesfazer?: string
   aoDesfazer: (item: Item) => void
+  aoReimprimir?: (item: Item) => void
   nota?: (item: Item) => string | null
   abertaInicial?: boolean
 }
 
 // Faixa recolhível das peças já feitas: miniaturas pequenas com Desfazer.
-export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesfazer, nota, abertaInicial = true }: FaixaProps) {
+export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesfazer, aoReimprimir, nota, abertaInicial = true }: FaixaProps) {
   const [aberta, setAberta] = useState(abertaInicial)
   if (itens.length === 0) return null
   return (
@@ -138,6 +139,11 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
                 {[i.variante, nota?.(i)].filter(Boolean).join(" · ")}
               </div>
             </div>
+            {aoReimprimir && (
+              <Button variant="ghost" aria-label="Reimprimir" className="h-11 shrink-0 px-3" onClick={() => aoReimprimir(i)}>
+                <Printer /> <span className="hidden sm:inline">Reimprimir</span>
+              </Button>
+            )}
             <Button variant="ghost" className="h-11 shrink-0 px-3" onClick={() => aoDesfazer(i)}>
               {rotuloDesfazer}
             </Button>
