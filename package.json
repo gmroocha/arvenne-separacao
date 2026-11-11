@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "capturas": "node scripts/capturas.mjs",
-    "test:trocas": "node tests/trocas.test.mjs",
+    "test:banco": "node tests/banco.test.mjs",
+    "test:trocas": "npm run test:banco",
     "test:trocas:ui": "node tests/trocas-ui.mjs"
   },
   "dependencies": {

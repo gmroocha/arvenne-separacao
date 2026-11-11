@@ -38,8 +38,11 @@ export function mascaraDocumento(t: string | null | undefined): string {
     .replace(/(\d{4})(\d)/, "$1-$2")
 }
 
+// Tira o 55 (Brasil) de telefones colados com +55: 12 ou 13 dígitos começando em 55.
 export function mascaraTelefone(t: string): string {
-  const d = digitos(t).slice(0, 11)
+  let d = digitos(t)
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) d = d.slice(2)
+  d = d.slice(0, 11)
   if (d.length <= 2) return d
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
@@ -51,10 +54,33 @@ export function mascaraCep(t: string): string {
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d
 }
 
-// "10,50" ou "10.5" -> 10.5; vazio -> null.
+// Aceita "10,50", "10.50", "1.234,56", "1,234.56" e "1234". Um separador só: 1-2 dígitos depois
+// é decimal, 3 é milhar. Vazio, texto, negativo e infinito -> null.
 export function lerNumero(t: string): number | null {
-  const n = Number(t.replace(/\./g, "").replace(",", "."))
-  return t.trim() === "" || Number.isNaN(n) ? null : n
+  const x = t.trim().replace(/^R\$\s*/, "").replace(/\s/g, "")
+  if (!/^\d[\d.,]*$/.test(x)) return null
+  const ultimoPonto = x.lastIndexOf(".")
+  const ultimaVirgula = x.lastIndexOf(",")
+  const ultimo = Math.max(ultimoPonto, ultimaVirgula)
+  let inteiro = x
+  let decimal = ""
+  if (ultimo >= 0) {
+    const depois = x.slice(ultimo + 1)
+    const sep = x[ultimo]
+    const outro = sep === "." ? "," : "."
+    const repetido = x.split(sep).length > 2
+    // Separador único com 3 dígitos depois (ou repetido) é milhar; senão é decimal.
+    const milhar = repetido || (!x.includes(outro) && depois.length === 3)
+    if (!milhar) {
+      if (depois.length > 2 || depois.length === 0) return null
+      inteiro = x.slice(0, ultimo)
+      decimal = depois
+    }
+  }
+  inteiro = inteiro.replace(/[.,]/g, "")
+  if (inteiro === "") return null
+  const n = Number(decimal ? `${inteiro}.${decimal}` : inteiro)
+  return Number.isFinite(n) && n >= 0 ? n : null
 }
 
 export const numeroParaTexto = (n: number | null | undefined) =>

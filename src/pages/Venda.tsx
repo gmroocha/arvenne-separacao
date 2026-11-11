@@ -137,7 +137,30 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
     )
   }
 
+  // Avisa antes de abrir o pagamento; o banco também recusa venda sem peça ou sem preço.
+  function problemaDasPecas(): string | null {
+    const vivas = pedido.pedido_itens.filter((i) => i.status !== "removido")
+    if (vivas.length === 0) return "Adicione as peças antes de marcar como pago"
+    if (vivas.some((i) => i.preco == null)) return "Há peça sem preço: informe o preço de todas antes de marcar como pago"
+    return null
+  }
+
+  function pedirPagamento() {
+    const problema = problemaDasPecas()
+    if (problema) {
+      toast.warning(problema)
+      return
+    }
+    setResumoAberto(false)
+    setPagando(true)
+  }
+
   async function confirmarPagamento(d: DadosPagamento) {
+    const problema = problemaDasPecas()
+    if (problema) {
+      toast.warning(problema)
+      return
+    }
     try {
       const id = await garantirCliente()
       await gravar({ cliente_id: id, forma_pagamento: d.forma, valor_pago: d.valor, pago_em: d.pagoEm, status: "novo" })
@@ -171,10 +194,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         void enviar()
       }}
       aoCopiar={copiar}
-      aoPago={() => {
-        setResumoAberto(false)
-        setPagando(true)
-      }}
+      aoPago={pedirPagamento}
       aoPerdida={() => {
         setResumoAberto(false)
         setPerdendo(true)

@@ -23,9 +23,13 @@ async function preparar() {
   }
 }
 
-async function fixture({ quantidade = 1, desconto = 20, pix = false, origem = 'site' } = {}) {
-  const pedido = await one(`insert into pedidos (origem, status, cliente_nome, desconto_tipo, desconto_valor, forma_pagamento)
-    values ('whatsapp', 'aguardando_cliente', 'Cliente Teste', 'valor', $1, $2) returning *`, [desconto, pix ? 'Pix' : 'Cartão'])
+async function fixture({ quantidade = 1, desconto = 20, pix = false, origem = 'site', tipoDesconto = 'valor', shopify = false } = {}) {
+  const pedido = shopify
+    // Pedido da Shopify: 2 x 50 = 100 de peças, a Shopify cobrou 80 (desconto de 20 já aplicado).
+    ? await one(`insert into pedidos (origem, status, cliente_nome, valor_total, shopify_order_id)
+        values ('shopify', 'aguardando_cliente', 'Cliente Teste', $1, 9001) returning *`, [80 * quantidade])
+    : await one(`insert into pedidos (origem, status, cliente_nome, desconto_tipo, desconto_valor, forma_pagamento)
+        values ('whatsapp', 'aguardando_cliente', 'Cliente Teste', $1, $2, $3) returning *`, [tipoDesconto, desconto, pix ? 'Pix' : 'Cartão'])
   const itens = []
   for (let n = 0; n < quantidade; n++) {
     itens.push(await one(`insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, status, ordem)
@@ -179,6 +183,73 @@ test('remover a opção escolhida pede nova resposta e preserva escolhas já con
   await escolher(g); await concluir(g)
   await recusa(() => db.query('delete from troca_opcoes where id = $1', [g.opcoes[0].id]), /já concluída/)
   assert.equal((await publica(g)).resumo.diferenca, 40)
+})
+
+// Total do pedido depois da troca = total antes + diferença anunciada à cliente.
+async function totalFecha(f, concluirTudo) {
+  const antes = Number((await one('select total from v_pedidos where id = $1', [f.pedido.id])).total)
+  const anunciado = (await publica(f)).resumo.diferenca
+  await concluirTudo()
+  const depois = Number((await one('select total from v_pedidos where id = $1', [f.pedido.id])).total)
+  assert.equal(Number((depois - antes).toFixed(2)), Number(anunciado))
+  return { antes, depois, anunciado }
+}
+
+test('total depois da troca: desconto fixo', async () => {
+  const f = await fixture()
+  await escolher(f)
+  const r = await totalFecha(f, () => concluir(f))
+  assert.deepEqual([r.antes, r.depois], [80, 120])
+})
+
+test('total depois da troca: desconto fixo + Pix, opção e crédito', async () => {
+  const f = await fixture({ quantidade: 2, desconto: 20, pix: true })
+  await escolher(f, 0); await escolher(f, 1, 'credito')
+  const r = await totalFecha(f, async () => { await concluir(f, 0); await concluir(f, 1, 'credito') })
+  assert.deepEqual([r.antes, r.depois], [160, 120])
+})
+
+test('total depois da troca: desconto percentual', async () => {
+  const f = await fixture({ desconto: 10, tipoDesconto: 'percentual' })
+  await escolher(f)
+  await totalFecha(f, () => concluir(f))
+})
+
+test('total depois da troca: crédito sem substituição', async () => {
+  const f = await fixture()
+  await escolher(f, 0, 'credito')
+  const r = await totalFecha(f, () => concluir(f, 0, 'credito'))
+  assert.equal(r.depois, 0)
+})
+
+test('total depois da troca: pedido da Shopify soma a diferença', async () => {
+  const f = await fixture({ shopify: true, desconto: 0 })
+  await escolher(f)
+  const r = await totalFecha(f, () => concluir(f))
+  // Sem desconto registrado na Shopify o fator é 1: a peça de 100 vira 150 (+50).
+  assert.equal(r.antes, 80)
+  assert.equal(r.depois, 130)
+})
+
+test('valores negativos são recusados', async () => {
+  const f = await fixture()
+  await recusa(() => db.query('update pedido_itens set preco = -10 where id = $1', [f.itens[0].id]), /nao_negativo/)
+  for (const col of ['desconto_valor', 'frete_cobrado', 'frete_custo', 'valor_pago'])
+    await recusa(() => db.query(`update pedidos set ${col} = -1 where id = $1`, [f.pedido.id]), /nao_negativo/)
+  await recusa(() => db.query('update troca_opcoes set preco = -1 where id = $1', [f.opcoes[0].id]), /nao_negativo/)
+})
+
+test('venda sem peça ou com peça sem preço não entra na expedição', async () => {
+  const v = await one("insert into pedidos (origem, status, cliente_nome) values ('whatsapp', 'aguardando_pagamento', 'Cliente') returning *")
+  await recusa(() => db.query("update pedidos set status = 'novo' where id = $1", [v.id]), /nenhuma peça/)
+  const item = await one("insert into pedido_itens (pedido_id, origem, nome, qtd, ordem) values ($1, 'avulso', 'Colar', 1, 0) returning *", [v.id])
+  await recusa(() => db.query("update pedidos set status = 'novo' where id = $1", [v.id]), /sem preço/)
+  await db.query('update pedido_itens set preco = 30 where id = $1', [item.id])
+  await db.query("update pedidos set status = 'novo' where id = $1", [v.id])
+  assert.equal((await one('select status from pedidos where id = $1', [v.id])).status, 'novo')
+  // Perder a venda continua possível, mesmo sem peça.
+  const w = await one("insert into pedidos (origem, status) values ('whatsapp', 'em_aberto') returning *")
+  await db.query("update pedidos set status = 'perdida' where id = $1", [w.id])
 })
 
 await preparar()

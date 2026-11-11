@@ -1,5 +1,5 @@
 import { Banknote, CircleEllipsis, CreditCard, Link2, QrCode } from "lucide-react"
-import { lerNumero, mascaraCep, mascaraDocumento, mascaraTelefone, numeroParaTexto } from "@/lib/formato"
+import { digitos, lerNumero, mascaraCep, mascaraDocumento, mascaraTelefone, numeroParaTexto } from "@/lib/formato"
 import type { CamposPedido } from "@/lib/api"
 import type { DescontoTipo, FreteTipo, FretePagoPor, Pedido } from "@/lib/tipos"
 
@@ -61,12 +61,12 @@ export function camposDe(f: FormVenda): CamposPedido {
   return {
     cliente_id: f.cliente_id,
     cliente_nome: t(f.cliente_nome),
-    cliente_cpf: t(f.cliente_cpf),
+    cliente_cpf: t(digitos(f.cliente_cpf)),
     cliente_razao_social: t(f.cliente_razao_social),
     cliente_ie: t(f.cliente_ie),
     cliente_email: t(f.cliente_email),
-    cliente_telefone: t(mascaraTelefone(f.cliente_telefone)),
-    entrega_cep: t(f.entrega_cep),
+    cliente_telefone: t(digitos(mascaraTelefone(f.cliente_telefone))),
+    entrega_cep: t(digitos(f.entrega_cep)),
     entrega_logradouro: t(f.entrega_logradouro),
     entrega_numero: t(f.entrega_numero),
     entrega_complemento: t(f.entrega_complemento),
