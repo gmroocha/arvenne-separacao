@@ -66,7 +66,7 @@ export default function Troca() {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 overflow-x-hidden px-4 pt-3 pb-12">
       <header className="flex justify-center pt-3">
-        <Logo className="h-8" />
+        <Logo className="h-10" />
       </header>
       {isLoading ? (
         <div className="flex flex-col gap-4" role="status" aria-label="Carregando">

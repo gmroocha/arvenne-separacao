@@ -2,7 +2,6 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
 import Foto from "@/components/Foto"
-import { copiar as copiarTexto } from "@/lib/copiar"
 import { COR_SELO } from "@/lib/selo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Separator } from "@/components/ui/separator"
-import { useConcluirTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useConcluirTroca, useEnviarTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { etapaCompleta } from "@/lib/etapa"
 import { fotoTamanho } from "@/lib/foto"
@@ -129,11 +129,31 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const faltas = problemas
   const emRascunho = !troca || troca.status === "rascunho"
 
+  const enviar = useEnviarTroca()
+  const naTroca = faltas.filter((i) => pecaDe(i))
+  const linkTroca = troca ? `${window.location.origin}/t/${troca.token}` : ""
+  // Todas as peças ativas precisam de pelo menos uma opção para a cliente ver a troca.
+  const trocaPronta = !!troca && naTroca.length > 0 && naTroca.length === faltas.length && naTroca.every((i) => (pecaDe(i)?.opcoes.length ?? 0) > 0)
+
   // Mensagem para a cliente: com troca montada leva o link; sem troca, aviso simples.
   const textoCliente = () => {
-    const naTroca = faltas.filter((i) => pecaDe(i))
-    if (!troca || troca.status === "rascunho" || naTroca.length === 0) return mensagemFaltaSimples(pedido, itens)
-    return mensagemTroca(pedido, naTroca, `${window.location.origin}/t/${troca.token}`, troca.resumo ? reais(troca.resumo.total_pago) : null)
+    if (!troca || naTroca.length === 0 || !trocaPronta) return mensagemFaltaSimples(pedido, itens)
+    return mensagemTroca(pedido, naTroca, linkTroca)
+  }
+
+  // Copiar link/mensagem com troca pronta: a página da cliente só abre troca enviada, então marca como enviada.
+  async function copiarComTroca(texto: string, aviso: string) {
+    // O copiar começa antes do await, ainda no toque (o navegador exige).
+    const copia = navigator.clipboard.writeText(texto).then(() => true, () => false)
+    if (troca && trocaPronta && troca.status === "rascunho") {
+      try {
+        await enviar.mutateAsync({ troca })
+      } catch {
+        return
+      }
+    }
+    if (await copia) toast.success(aviso)
+    else toast.error("Não foi possível copiar")
   }
 
   const marcar = (item: Item, status: Item["status"], observacao?: string | null) =>
@@ -215,7 +235,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-muted-foreground">Falar com a cliente</span>
               <ButtonGroup className="w-full sm:w-fit">
-                <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarTexto(textoCliente(), "Mensagem copiada")}>
+                <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarComTroca(textoCliente(), "Mensagem copiada")}>
                   <Copy /> Copiar mensagem
                 </Button>
                 {wa && (
@@ -225,11 +245,21 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     </a>
                   </Button>
                 )}
-                {troca && !emRascunho && (
-                  <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarTexto(`${window.location.origin}/t/${troca.token}`, "Link copiado")}>
-                    <Link2 /> Copiar link
-                  </Button>
-                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex min-w-0 flex-1 sm:flex-none" tabIndex={trocaPronta ? -1 : 0}>
+                      <Button
+                        variant="outline"
+                        disabled={!trocaPronta || enviar.isPending}
+                        className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block"
+                        onClick={() => copiarComTroca(linkTroca, "Link copiado")}
+                      >
+                        <Link2 /> Copiar link
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!trocaPronta && <TooltipContent>Monte as opções da troca primeiro</TooltipContent>}
+                </Tooltip>
               </ButtonGroup>
             </div>
           </CardContent>

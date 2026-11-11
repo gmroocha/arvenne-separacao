@@ -422,8 +422,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const bloqueado = !todasComOpcao || enviando
 
   const link = troca ? `${window.location.origin}/t/${troca.token}` : ""
-  const credito = troca?.resumo ? reais(troca.resumo.total_pago) : null
-  const texto = troca ? mensagemTroca(pedido, ativos, link, credito) : ""
+  const texto = troca ? mensagemTroca(pedido, ativos, link) : ""
   const wa = linkWhatsApp(pedido.cliente_telefone, texto)
 
   async function copiar() {

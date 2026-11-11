@@ -27,7 +27,7 @@ export default function Romaneio() {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 px-4 pb-12 pt-3">
       <header className="flex justify-center pt-3">
-        <Logo className="h-8" />
+        <Logo className="h-10" />
       </header>
       {isLoading ? (
         <div className="flex flex-col gap-3">
