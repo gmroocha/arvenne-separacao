@@ -77,6 +77,17 @@ Aplicadas em 11/11/2026 (auditoria de 10/11): `20261112180000_sugestoes_preco`,
 `20261112190000_conclusao_troca`, `20261113090000_valores`, `20261113100000_importacao`,
 `20261113110000_acoes`, `20261113120000_fotos_limite`, `20261113130000_troca_v2`. Nenhuma pendente.
 
+## Etiquetas na Zebra ZD220 (11/11/2026)
+
+- Etiqueta 50×30 mm igual à atual ("SKU: X" + Code 128 do SKU), uma por unidade. Etapa Etiquetagem:
+  "Imprimir etiquetas (N)", por peça, reimprimir e etiqueta de teste. Expedição: "Imprimir todas (N)" dos
+  pedidos em Etiquetagem, com etiqueta separadora por pedido. Depois: "Saiu tudo certo?" marca como etiquetadas.
+- Dois caminhos: Zebra Browser Print (ZPL direto, sem diálogo) quando o programa responde; senão, diálogo
+  do Chrome com página 50×30 mm. Guia em `docs/PASSO-A-PASSO.md` ("Impressora Zebra").
+- **Falta testar na impressora real** (acentos e "·" do separador com `^CI28`).
+- Troca: mensagem genérica com o link no fim; "Copiar link" sempre em "Falar com a cliente"; logo
+  Arvenne Pratas (do `c0e8de1`) menor nas páginas da cliente.
+
 ## Troca v2 (11/11/2026)
 
 - Preço pago exato da Shopify por peça (`pedido_itens.preco_pago`, de `discountedUnitPriceAfterAllDiscountsSet`).
