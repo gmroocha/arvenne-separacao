@@ -316,6 +316,8 @@ dependendo do “sim” específico. Reproduções foram executadas falhando ant
 | V05 | `6410f01` | Reajuste do desconto fixo exclui adicionais da base original; Cartão/Pix e cobertura conferidos. |
 | V06 | `327bd79` | Atalho Trocar usa uma transação com acerto, repetição segura e rollback; acréscimo direto é restrito à venda aberta; testes SQL e celular/PC. |
 | V09 | `242de71` | Edge separa total atual de recebido líquido, preservando recebido/reembolsado/saldo no bruto; quatro casos simulados sem chamar a Shopify. |
+| V14 | `1191d8c` | Banco exige trabalho anterior, documentos, embalagem/postagem e acerto; menu lê a mesma decisão pronta. Testes incluem inserção direta e passagem por cada etapa. |
+| V16 | `665438d` | Restaurar peça ou desfazer trabalho/documento retorna à primeira etapa necessária; preserva trabalho das outras peças, bloqueia reabertura em arquivados e reavalia uma vez por pedido em alterações em lote. |
 
 Para V09 foi usado `netPaymentSet`, definido como recebido menos reembolsado na
 [referência oficial da versão 2026-01](https://shopify.dev/docs/api/admin-graphql/2026-01/objects/Order#field-Order.fields.netPaymentSet).
@@ -323,10 +325,10 @@ Campo ausente gera erro por pedido e não grava um pagamento presumido. É uma c
 a versão publicada ainda não mudou. Totais legados das vendas somadas sem retrato continuam sinalizados
 pelo vigia; a migration não inventa uma fotografia antiga.
 
-Até este ponto, **10 dos 36 problemas têm correção local, incluindo 9 dos 13 altos**.
-Permanecem altos V03, V04, V08 e V14. Os problemas médios/baixos ainda abertos seguem nas tabelas
-originais; V20, V27 e V35 têm apenas as proteções parciais da Fase 2. As cinco reproduções ainda
-esperadas em `conhecidos.test.mjs` são V04, V08, V11, V14 e V28.
+Até este ponto, **12 dos 36 problemas têm correção local, incluindo 10 dos 13 altos**.
+Permanecem altos V03, V04 e V08. Os problemas médios/baixos ainda abertos seguem nas tabelas
+originais; V20, V27 e V35 têm apenas as proteções parciais da Fase 2. As quatro reproduções ainda
+esperadas em `conhecidos.test.mjs` são V04, V08, V11 e V28.
 
 ## Referências técnicas consultadas
 

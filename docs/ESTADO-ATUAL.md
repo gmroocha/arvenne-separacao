@@ -20,8 +20,8 @@ migrations até `20261116090000` no Supabase. Não houve push, deploy nem escrit
 - Dry-run listou somente essas duas migrations. Consulta remota somente leitura encontrou zero linhas
   violando as três novas restrições. Aplicação continua dependendo de autorização específica.
 
-Correções locais da Fase 3: V01, V02, V05, V06, V07, V09, V15 e V17, com testes. Junto de V31/V32,
-são 10 problemas corrigidos no código local (9 altos); faltam os altos V03/V04/V08/V14.
+Correções locais da Fase 3: V01, V02, V05, V06, V07, V09, V14, V15, V16 e V17, com testes. Junto de V31/V32,
+são 12 problemas corrigidos no código local (10 altos); faltam os altos V03/V04/V08.
 Os commits e limites estão em `VISTORIA.md`. A Edge `shopify-sync` também mudou só localmente.
 
 Próxima ação: concluir os problemas altos com regressões locais, depois repetir a verificação completa
