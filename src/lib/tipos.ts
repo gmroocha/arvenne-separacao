@@ -99,6 +99,10 @@ export type Pedido = {
   partes?: ParteSomada[]
   somar_em?: string | null
   somada_em?: string | null
+  // Pagamento do pedido + das vendas somadas (soma feita no banco). Nulo se nada foi pago.
+  total_pago?: number | null
+  // Venda somada: número do pedido principal ("Somada a ARV-1274").
+  somada_a_numero?: string | null
   // Reembolso pendente de peças tiradas ("cliente desistiu") depois do pagamento. Ausente em bancos sem a coluna.
   a_devolver?: number | null
   pendente_rastreio: boolean

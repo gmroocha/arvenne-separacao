@@ -272,7 +272,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
             </Link>
           </Button>
           <h2 className="font-heading text-xl font-semibold">#{pedido.numero.replace(/^#/, "")}</h2>
-          <StatusBadge status={pedido.status} />
+          <StatusBadge status={pedido.status} somadaA={pedido.somada_a_numero} />
         </div>
         <span className="text-xs text-muted-foreground" aria-live="polite">
           {estado === "salvo" ? "Salvo" : estado === "erro" ? "Não salvou" : "Salvando…"}

@@ -13,6 +13,9 @@
 | Cloudflare Pages | **ainda não publicado**; o app roda só com `npm run dev` |
 
 ## Venda somada a um pedido (12/11/2026, migration APLICADA no Supabase)
+- **12/11/2026, migration `20261116090000_total_pago_somada.sql` (aplicada):** `v_pedidos` ganhou `total_pago`
+  (pagamento do pedido + das vendas somadas, somado no banco) e `somada_a_numero`. Detalhe do pedido e Nota
+  e frete mostram "Total pago"; lista, Arquivo e Venda mostram o selo "Somada a ARV-1274".
 
 - **Fluxo:** a cliente quer mais peças num pedido que ainda não saiu. Cria-se uma **venda** e toca em
   "Somar a um pedido" (busca por número ou cliente entre os pedidos da expedição). A venda copia cliente e

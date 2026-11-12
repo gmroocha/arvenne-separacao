@@ -35,7 +35,7 @@ export default function LinhaPedido({ p }: { p: Pedido }) {
         <ItemActions className="w-full flex-wrap sm:w-auto">
           {p.fase === "expedicao" && (
             <>
-              <StatusBadge status={p.status} />
+              <StatusBadge status={p.status} somadaA={p.somada_a_numero} />
               <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
               {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
             </>
@@ -43,7 +43,7 @@ export default function LinhaPedido({ p }: { p: Pedido }) {
           {p.fase === "venda" && <span className="text-xs text-muted-foreground">há {tempoDesde(p.status_desde)}</span>}
           {p.fase === "arquivo" && (
             <>
-              <StatusBadge status={p.status} />
+              <StatusBadge status={p.status} somadaA={p.somada_a_numero} />
               <OrigemBadge origem={p.origem} />
               <span className="text-xs text-muted-foreground">{quando(p.status_desde)}</span>
             </>

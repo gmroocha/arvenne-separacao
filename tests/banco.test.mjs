@@ -1243,6 +1243,9 @@ test('somar_venda: peças vão para o principal como adicionais, venda vira soma
   assert.equal(dep.partes.length, 1)
   assert.deepEqual([dep.partes[0].numero, dep.partes[0].forma_pagamento, num(dep.partes[0].valor_pago), num(dep.partes[0].somada_valor), dep.partes[0].qtd_pecas], [venda.numero ?? w.numero, 'Cartão', 40, 45, 2])
   assert.equal(dep.partes[0].id, w.id)
+  // total pago = pagamento do principal + o da venda; a venda sabe o número do principal
+  assert.equal(num(dep.total_pago), num(Number(p.valor_pago ?? 0) + 40))
+  assert.equal((await one('select somada_a_numero from v_pedidos where id = $1', [w.id])).somada_a_numero, p.numero)
   assert.equal(i1.id, itens[1].id)
   // eventos nos dois pedidos
   assert.equal((await one("select count(*)::int n from pedido_eventos where tipo = 'venda_somada' and pedido_id = any($1)", [[p.id, w.id]])).n, 2)

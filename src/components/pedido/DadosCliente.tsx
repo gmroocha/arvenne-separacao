@@ -176,6 +176,11 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                     {textoPagamento(p.forma_pagamento, p.valor_pago, p.pago_em)}
                   </Linha>
                 ))}
+                {pedido.total_pago != null && (
+                  <Linha rotulo="Total pago">
+                    <strong>{reais(pedido.total_pago)}</strong>
+                  </Linha>
+                )}
               </div>
             )}
 
