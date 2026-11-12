@@ -16,11 +16,21 @@ export function lerLinkCarrinho(link: string): LinkCarrinho | null {
   }
   const m = texto.match(/\/cart\/(\d+:\d+(?:,\d+:\d+)*)/)
   if (!m) return null
-  return {
-    tipo: "itens",
-    itens: m[1].split(",").map((par) => {
-      const [variantId, qtd] = par.split(":")
-      return { variantId, qtd: Number(qtd) || 1 }
-    }),
+  const itens = juntarLidos(m[1].split(",").map((par) => {
+    const [variantId, qtd] = par.split(":")
+    return { variantId, qtd: Number(qtd) }
+  }))
+  return itens.length ? { tipo: "itens", itens } : null
+}
+
+// Variante repetida soma as quantidades (123:1,123:2 = 3 unidades); quantidade 0 ou inválida sai.
+export function juntarLidos(lidos: LidoCarrinho[]): LidoCarrinho[] {
+  const soma = new Map<string, number>()
+  for (const l of lidos) {
+    const qtd = Math.trunc(Number(l.qtd))
+    if (!Number.isFinite(qtd) || qtd <= 0) continue
+    const id = String(l.variantId)
+    soma.set(id, (soma.get(id) ?? 0) + qtd)
   }
+  return [...soma].map(([variantId, qtd]) => ({ variantId, qtd }))
 }

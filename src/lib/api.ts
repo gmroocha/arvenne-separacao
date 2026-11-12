@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import type { Database } from "@/lib/banco"
 import { etapaCompleta } from "@/lib/etapa"
-import { lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
+import { juntarLidos, lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
@@ -276,7 +276,8 @@ export async function buscarVariantes(variantIds: string[]) {
 // catálogo); "faltando" são as variantes que o catálogo ainda não conhece.
 export type CarrinhoLido = { itens: NovoItem[]; faltando: string[]; lidos: LidoCarrinho[] }
 
-export async function variantesDoCarrinho(lidos: LidoCarrinho[]): Promise<CarrinhoLido> {
+export async function variantesDoCarrinho(entrada: LidoCarrinho[]): Promise<CarrinhoLido> {
+  const lidos = juntarLidos(entrada)
   const { variantes, faltando } = await buscarVariantes(lidos.map((l) => l.variantId))
   const itens = variantes.map((v) => itemDoSite(v, lidos.find((l) => String(l.variantId) === String(v.shopify_variant_id))?.qtd ?? 1))
   return { itens, faltando, lidos }
