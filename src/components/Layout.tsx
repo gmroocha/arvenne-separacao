@@ -6,6 +6,7 @@ import FeedbackDialog from "@/components/FeedbackDialog"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import AppSidebar from "@/components/AppSidebar"
+import AvisoVistoria from "@/components/AvisoVistoria"
 import { useTempoReal } from "@/lib/tempoReal"
 
 function titulo(caminho: string) {
@@ -38,6 +39,7 @@ export default function Layout() {
           </Button>
         </header>
         <div className={`mx-auto w-full flex-1 p-3 sm:p-4 ${pathname === "/" ? "" : "max-w-5xl"}`}>
+          <AvisoVistoria />
           <Outlet />
         </div>
         <FeedbackDialog aberto={feedback} aoMudar={setFeedback} pagina={pathname} />
