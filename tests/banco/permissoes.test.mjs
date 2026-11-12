@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { test } from 'vitest'
+import { expect, test } from 'vitest'
 import { db, one } from './suporte.mjs'
 import { fixture, escolher, concluir, publica, recusa, zero, preco, cobrir, carrinho } from './fixtures.mjs'
 
@@ -79,4 +79,11 @@ test('carrinho: anon só usa troca_carrinho, troca_escolher e troca_publica', as
   await db.exec('set local role authenticated')
   await recusa(() => db.query('delete from troca_escolhas'), /permission denied/)
   await recusa(() => db.query('insert into troca_escolhas (troca_peca_id, opcao_id, qtd) values ($1, $2, 1)', [f.pecas[0].id, f.opcoes[0].id]), /permission denied/)
+})
+
+test('conferência somente leitura executa as funções da v_pedidos; anon continua sem acesso', async () => {
+  for (const f of ['public.prazo_envio(timestamptz)','public.horas_uteis(timestamptz,timestamptz)','public.regras_etapas(jsonb)','public.saldo_financeiro(uuid)']) {
+    const r=await one('select has_function_privilege($1,$2,$3) leitura, has_function_privilege($4,$2,$3) anon',['supabase_read_only_user',f,'execute','anon'])
+    expect([f,r.leitura,r.anon]).toEqual([f,true,false])
+  }
 })

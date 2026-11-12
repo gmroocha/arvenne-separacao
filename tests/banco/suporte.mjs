@@ -7,7 +7,7 @@ export const one = async (sql, args = []) => (await db.query(sql, args)).rows[0]
 export async function criarBanco({ ate, antesDe, prepararAntes } = {}) {
   const banco = new PGlite()
   // Só infraestrutura é simulada. Regras, RLS, funções e gatilhos vêm dos arquivos reais.
-  await banco.exec(`create role anon; create role authenticated; create role service_role;
+  await banco.exec(`create role anon; create role authenticated; create role service_role; create role supabase_read_only_user;
     create schema storage;
     create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
     create table storage.objects (id uuid primary key, bucket_id text);
