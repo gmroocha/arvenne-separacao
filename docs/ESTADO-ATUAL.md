@@ -7,25 +7,23 @@ Após a continuação autorizada, a Fase 2 foi preparada e testada **localmente*
 Os registros históricos abaixo não indicam o estado atual de aplicação: a Fase 1 confirmou as 27
 migrations até `20261116090000` no Supabase. Não houve push, deploy nem escrita remota nesta etapa.
 
-- `npm test` passa tipos, lint (oito avisos anteriores), 41 testes de unidade, 84 de banco, 10 de tela
-  e build. Nove reproduções abertas são falhas esperadas e não contam como correções.
-- Tipos oficiais do Supabase já usados pelo cliente e pelos tipos principais do app, com complemento
-  gerado para SQL ainda local. Instruções em [`TESTES.md`](TESTES.md).
-- Migrations locais: `20261117090000_protecoes_integridade` e `20261117100000_vigia_diario`.
-  A primeira impede bipagem excessiva, vínculo adicional incoerente e opção de outra peça; endurece
-  funções. A segunda agenda inspeção diária às 03h de São Paulo e guarda os avisos sem mudar pedidos.
-- Alerta discreto pronto no app, com capturas escuras em celular e PC. Antes da migration, fica oculto.
-- Simulador bloqueia também Edge/Storage e renovação de login; testes usam dados fictícios em memória.
-- Workflow GitHub Actions preparado, ainda sem envio ao GitHub. Precisa do “sim” específico para envio.
-- Dry-run listou somente essas duas migrations. Consulta remota somente leitura encontrou zero linhas
-  violando as três novas restrições. Aplicação continua dependendo de autorização específica.
+- `npm test` passa tudo: tipos, lint (oito avisos antigos), 69 de unidade, 134 de banco, telas e build.
+  Uma reprodução aberta (V28) é falha esperada.
+- Tipos oficiais do Supabase usados no app, com complemento gerado para o SQL ainda local.
+  Instruções em [`TESTES.md`](TESTES.md).
+- **20 dos 36 problemas corrigidos localmente, incluindo os 13 altos.** Lista e commits em `VISTORIA.md`.
+- Workflow GitHub Actions preparado; os commits ainda não foram enviados ao GitHub.
 
-Correções locais da Fase 3: V01, V02, V05, V06, V07, V09, V14, V15, V16 e V17, com testes. Junto de V31/V32,
-são 12 problemas corrigidos no código local (10 altos); faltam os altos V03/V04/V08.
-Os commits e limites estão em `VISTORIA.md`. A Edge `shopify-sync` também mudou só localmente.
+**Nada foi aplicado no Supabase.** Pendentes de aplicação, na ordem:
+1. 14 migrations (`20261117090000_protecoes_integridade` até `20261118200000_devolucao_adicionais`).
+   O dry-run de 12/11/2026 listou exatamente essas. As travas de etapa só agem quando o status muda;
+   pedidos já incoerentes (ARV-1272, ARV-1275, ARV-1277...) não são alterados nem consertados sozinhos.
+2. Republicar a Edge `shopify-sync` (V09: grava o recebido líquido, não o total atual).
+3. `git push` (liga o GitHub Actions).
 
-Próxima ação: concluir os problemas altos com regressões locais, depois repetir a verificação completa
-e o dry-run. Corrigir código não autoriza reconstruir pagamentos ou pedidos reais já incoerentes.
+Próxima ação: Gustavo dar o "sim" para os três passos acima; depois conferir no app os pedidos com
+venda somada e troca. Em seguida, corrigir os médios abertos. Corrigir código não autoriza reconstruir
+pagamentos ou pedidos reais já incoerentes: isso é feito um a um, com o Gustavo.
 
 ## Onde as coisas estão
 

@@ -318,6 +318,11 @@ dependendo do “sim” específico. Reproduções foram executadas falhando ant
 | V09 | `242de71` | Edge separa total atual de recebido líquido, preservando recebido/reembolsado/saldo no bruto; quatro casos simulados sem chamar a Shopify. |
 | V14 | `1191d8c` | Banco exige trabalho anterior, documentos, embalagem/postagem e acerto; menu lê a mesma decisão pronta. Testes incluem inserção direta e passagem por cada etapa. |
 | V16 | `665438d` | Restaurar peça ou desfazer trabalho/documento retorna à primeira etapa necessária; preserva trabalho das outras peças, bloqueia reabertura em arquivados e reavalia uma vez por pedido em alterações em lote. |
+| V03/V11 | `e4102f5` | Cada parte (pedido e vendas somadas) conserva sua base e recebe só as próprias diferenças de troca; valor exato por linha e rateio por acumulados evitam perder centavos. |
+| V08 | `6fc1c51` | Recebimento, crédito e estorno de acerto viram movimentos imutáveis em `movimentos_financeiros`; `total_pago` e devoluções usam esses movimentos sem contar duas vezes. |
+| V04 | `0521746` | Retirar adicional paga reduz o pacote e reserva devolução só do que foi recebido; saldo do acerto é reconciliado quando peças ou pagamento mudam. |
+| V30 | `abb1d0a` | Valor em reais malformado (`10,,50`, `1.2.3`) é recusado em vez de virar outro número. |
+| V21 | `f8449f6` | Variante repetida no link do carrinho soma as quantidades; quantidade zero sai. |
 
 Para V09 foi usado `netPaymentSet`, definido como recebido menos reembolsado na
 [referência oficial da versão 2026-01](https://shopify.dev/docs/api/admin-graphql/2026-01/objects/Order#field-Order.fields.netPaymentSet).
@@ -325,10 +330,13 @@ Campo ausente gera erro por pedido e não grava um pagamento presumido. É uma c
 a versão publicada ainda não mudou. Totais legados das vendas somadas sem retrato continuam sinalizados
 pelo vigia; a migration não inventa uma fotografia antiga.
 
-Até este ponto, **12 dos 36 problemas têm correção local, incluindo 10 dos 13 altos**.
-Permanecem altos V03, V04 e V08. Os problemas médios/baixos ainda abertos seguem nas tabelas
-originais; V20, V27 e V35 têm apenas as proteções parciais da Fase 2. As quatro reproduções ainda
-esperadas em `conhecidos.test.mjs` são V04, V08, V11 e V28.
+Até este ponto, **20 dos 36 problemas têm correção local, incluindo os 13 altos** (V01–V09, V11,
+V14–V17, V21, V30, V31, V32). V20, V27 e V35 têm apenas as proteções parciais da Fase 2. A única
+reprodução ainda esperada em `conhecidos.test.mjs` é V28. Abertos: V10, V12, V13, V18, V19, V22–V29,
+V33, V34 e V36 (médios/baixos).
+
+**Nada disso está no Supabase ainda.** O dry-run de 12/11/2026 10h30 lista 14 migrations pendentes
+(`20261117090000` até `20261118200000`), e a Edge `shopify-sync` (V09) precisa ser republicada.
 
 ## Referências técnicas consultadas
 
