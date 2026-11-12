@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { db, one } from './suporte.mjs'
 
-export async function fixture({ quantidade = 1, desconto = 20, pix = false, origem = 'site', tipoDesconto = 'valor', shopify = false } = {}) {
+export async function fixture({ quantidade = 1, desconto = 20, pix = false, origem = 'site', tipoDesconto = 'valor', shopify = false, precoOriginal = 50, qtdOriginal = 2 } = {}) {
   const pedido = shopify
     // Pedido da Shopify: 2 x 50 = 100 de peças, a Shopify cobrou 80 (desconto de 20 já aplicado).
     ? await one(`insert into pedidos (origem, status, cliente_nome, valor_total, shopify_order_id)
@@ -12,7 +12,7 @@ export async function fixture({ quantidade = 1, desconto = 20, pix = false, orig
   const itens = []
   for (let n = 0; n < quantidade; n++) {
     itens.push(await one(`insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, status, ordem)
-      values ($1, 'shopify', 'Anel original', $2, 2, 50, 'falta', $3) returning *`, [pedido.id, `ORIGINAL-${n}`, n]))
+      values ($1, 'shopify', 'Anel original', $2, $4, $5, 'falta', $3) returning *`, [pedido.id, `ORIGINAL-${n}`, n, qtdOriginal, precoOriginal]))
   }
   await db.exec('set local role authenticated')
   const troca = await one('insert into trocas (pedido_id) values ($1) returning *', [pedido.id])

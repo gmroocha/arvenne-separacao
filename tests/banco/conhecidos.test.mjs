@@ -18,15 +18,6 @@ test.fails("V08: diferença recebida entra no total pago", async () => {
   await one("select troca_acerto($1,'recebido')", [f.troca.id])
   expect(num((await one("select total_pago from v_pedidos where id=$1", [f.pedido.id])).total_pago)).toBe(150)
 })
-test.fails("V11: opção e carrinho anunciam o mesmo valor para várias unidades", async () => {
-  const f = await fixture({ desconto: 10, tipoDesconto: "percentual" })
-  await db.query("update pedido_itens set qtd=3,preco=1 where id=$1", [f.itens[0].id])
-  await db.query("update troca_opcoes set preco=0.05 where id=$1", [f.opcoes[0].id])
-  await escolher(f)
-  const v = await one("select valor_opcao from v_troca_valores where opcao_id=$1", [f.opcoes[0].id])
-  const c = await one("select valor_escolhido from v_troca_carrinho where troca_peca_id=$1", [f.pecas[0].id])
-  expect(num(v.valor_opcao)).toBe(num(c.valor_escolhido))
-})
 test.fails("V28: valor de opção concluída não pode reescrever o histórico", async () => {
   const f = await fixture()
   await escolher(f); await concluir(f)

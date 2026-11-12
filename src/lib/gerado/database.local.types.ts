@@ -4,6 +4,105 @@ import type { Database as Remoto, Json } from './database.types'
 
 type Adicoes = {
   Tables: {
+    pedido_itens: {
+      Row: {
+        id: string
+        pedido_id: string
+        origem: string
+        shopify_variant_id: number | null
+        peca_clube_id: string | null
+        sku: string | null
+        nome: string
+        variante: string | null
+        foto_url: string | null
+        qtd: number
+        preco: number | null
+        status: string
+        observacao: string | null
+        ordem: number
+        created_at: string
+        updated_at: string
+        conferido_em: string | null
+        etiquetado_em: string | null
+        etiqueta_previa: boolean
+        qtd_bipada: number
+        bipado_em: string | null
+        preco_pago: number | null
+        shopify_line_id: string | null
+        removido_em: string | null
+        devolvido_em: string | null
+        reembolsado_shopify_em: string | null
+        adicional: boolean
+        venda_origem_id: string | null
+        valor_pago_linha: number | null
+        troca_peca_origem_id: string | null
+      }
+      Insert: {
+        id?: string
+        pedido_id: string
+        origem: string
+        shopify_variant_id?: number | null
+        peca_clube_id?: string | null
+        sku?: string | null
+        nome: string
+        variante?: string | null
+        foto_url?: string | null
+        qtd?: number
+        preco?: number | null
+        status?: string
+        observacao?: string | null
+        ordem?: number
+        created_at?: string
+        updated_at?: string
+        conferido_em?: string | null
+        etiquetado_em?: string | null
+        etiqueta_previa?: boolean
+        qtd_bipada?: number
+        bipado_em?: string | null
+        preco_pago?: number | null
+        shopify_line_id?: string | null
+        removido_em?: string | null
+        devolvido_em?: string | null
+        reembolsado_shopify_em?: string | null
+        adicional?: boolean
+        venda_origem_id?: string | null
+        valor_pago_linha?: number | null
+        troca_peca_origem_id?: string | null
+      }
+      Update: {
+        id?: string
+        pedido_id?: string
+        origem?: string
+        shopify_variant_id?: number | null
+        peca_clube_id?: string | null
+        sku?: string | null
+        nome?: string
+        variante?: string | null
+        foto_url?: string | null
+        qtd?: number
+        preco?: number | null
+        status?: string
+        observacao?: string | null
+        ordem?: number
+        created_at?: string
+        updated_at?: string
+        conferido_em?: string | null
+        etiquetado_em?: string | null
+        etiqueta_previa?: boolean
+        qtd_bipada?: number
+        bipado_em?: string | null
+        preco_pago?: number | null
+        shopify_line_id?: string | null
+        removido_em?: string | null
+        devolvido_em?: string | null
+        reembolsado_shopify_em?: string | null
+        adicional?: boolean
+        venda_origem_id?: string | null
+        valor_pago_linha?: number | null
+        troca_peca_origem_id?: string | null
+      }
+      Relationships: []
+    }
     pedidos: {
       Row: {
         id: string
@@ -65,6 +164,7 @@ type Adicoes = {
         somada_em: string | null
         somada_valor: number | null
         somada_retrato: Json | null
+        financeiro_retrato: Json | null
       }
       Insert: {
         id?: string
@@ -126,6 +226,7 @@ type Adicoes = {
         somada_em?: string | null
         somada_valor?: number | null
         somada_retrato?: Json | null
+        financeiro_retrato?: Json | null
       }
       Update: {
         id?: string
@@ -187,6 +288,7 @@ type Adicoes = {
         somada_em?: string | null
         somada_valor?: number | null
         somada_retrato?: Json | null
+        financeiro_retrato?: Json | null
       }
       Relationships: []
     }
@@ -213,6 +315,37 @@ type Adicoes = {
     }
   }
   Views: {
+    v_cobertura_troca_peca: {
+      Row: {
+        troca_peca_id: string | null
+        troca_id: string | null
+        pedido_id: string | null
+        venda_origem_id: string | null
+        coberto: number | null
+      }
+      Relationships: []
+    }
+    v_item_liquido: {
+      Row: {
+        id: string | null
+        pedido_id: string | null
+        venda_origem_id: string | null
+        valor_antes_cobertura: number | null
+        coberto: number | null
+        valor_liquido: number | null
+      }
+      Relationships: []
+    }
+    v_parte_somada: {
+      Row: {
+        venda_id: string | null
+        pedido_id: string | null
+        valor_atual: number | null
+        valor_retirado: number | null
+        coberto: number | null
+      }
+      Relationships: []
+    }
     v_pedidos: {
       Row: {
         id: string | null
@@ -315,12 +448,15 @@ type Adicoes = {
     }
   }
   Functions: {
+    fechar_financeiro: { Args: { p_pedido: string | null }; Returns: undefined | null }
     listar_inconsistencias: { Args: Record<PropertyKey, never>; Returns: { pedido_id: string | null; numero: string | null; regra: string | null; detalhe: string | null }[] }
     reavaliar_etapa: { Args: { p_pedido: string | null }; Returns: undefined | null }
     registrar_vistoria: { Args: Record<PropertyKey, never>; Returns: number | null }
     regras_etapas: { Args: { p: Json | null }; Returns: Json | null }
     substituir_item: { Args: { p_item: string | null; p_itens: Json | null }; Returns: string | null }
     tg_documento_reaberto: { Args: Record<PropertyKey, never>; Returns: string | null }
+    tg_fechar_financeiro: { Args: Record<PropertyKey, never>; Returns: string | null }
+    tg_financeiro_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_retrato_somada_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_trabalho_reaberto: { Args: Record<PropertyKey, never>; Returns: string | null }
     troca_saldo_liquido: { Args: { p_troca: string | null }; Returns: number | null }

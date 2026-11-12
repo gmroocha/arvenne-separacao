@@ -305,3 +305,32 @@ test.each([[75,0,50],[75,10,40],[75,50,0],[75,100,0],[25,100,-50]])('V07: acerto
     assert.equal((await one('select acerto_em from trocas where id=$1',[f.troca.id])).acerto_em, null)
   }
 })
+
+
+test('V11: quantidade e centavos fecham em opção, carrinho, sugestão e conclusão', async () => {
+  const f=await fixture({desconto:10,tipoDesconto:'percentual',qtdOriginal:3,precoOriginal:1})
+  await preco(f,0,0.05)
+  await db.exec('reset role')
+  await db.query("insert into catalogo_site(variant_id,produto_id,produto,sku,preco,status) values (123,123,'Anel cinco centavos','CINCO',0.05,'ACTIVE')")
+  await db.exec('set local role authenticated')
+  await escolher(f)
+  const v=await one('select valor_opcao,diferenca from v_troca_valores where opcao_id=$1',[f.opcoes[0].id])
+  const c=await one('select valor_escolhido from v_troca_carrinho where troca_peca_id=$1',[f.pecas[0].id])
+  const s=await one("select diferenca from sugerir_troca($1,'valor',null,null)",[f.itens[0].id])
+  assert.equal(num(v.valor_opcao),0.15)
+  assert.equal(num(c.valor_escolhido),0.15)
+  assert.equal(num(s.diferenca),num(v.diferenca))
+  await concluir(f)
+  const p=await one('select total,subtotal,desconto,desconto_pix from v_pedidos where id=$1',[f.pedido.id])
+  assert.equal(num(p.total),0.15)
+  assert.equal(num(p.subtotal)-num(p.desconto)-num(p.desconto_pix),num(p.total))
+})
+
+test('V11: meio centavo é arredondado sem perder precisão na divisão do desconto', async () => {
+  const f=await fixture({desconto:0.01,qtdOriginal:1,precoOriginal:0.06})
+  await preco(f,0,0.03)
+  await escolher(f)
+  assert.equal(num((await one('select valor_opcao from v_troca_valores where opcao_id=$1',[f.opcoes[0].id])).valor_opcao),0.03)
+  await concluir(f)
+  assert.equal(num((await one('select total from v_pedidos where id=$1',[f.pedido.id])).total),0.03)
+})

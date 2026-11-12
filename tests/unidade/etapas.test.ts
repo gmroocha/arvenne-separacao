@@ -8,7 +8,7 @@ const peca = (campos: Partial<Item> = {}): Item => ({
   shopify_variant_id: null, peca_clube_id: null, foto_url: null, qtd: 2, preco: 50, preco_pago: null,
   status: "encontrado", observacao: null, ordem: 1, conferido_em: null, etiquetado_em: null,
   etiqueta_previa: false, qtd_bipada: 0, bipado_em: null, removido_em: null, devolvido_em: null,
-  reembolsado_shopify_em: null, shopify_line_id: null, adicional: false, venda_origem_id: null,
+  reembolsado_shopify_em: null, shopify_line_id: null, adicional: false, venda_origem_id: null, valor_pago_linha: null, troca_peca_origem_id: null,
   created_at: "2026-11-12T12:00:00Z", updated_at: "2026-11-12T12:00:00Z", ...campos,
 })
 

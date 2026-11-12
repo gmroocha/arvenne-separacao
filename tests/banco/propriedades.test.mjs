@@ -39,8 +39,7 @@ test("propriedade: troca comum sem desconto conserva total + diferença líquida
     async (antigo, novo, qtd, cobertura) => {
       await db.exec("savepoint propriedade")
       try {
-        const f = await fixture({ desconto: 0 })
-        await db.query("update pedido_itens set preco=$1,qtd=$2 where id=$3", [antigo / 100, qtd, f.itens[0].id])
+        const f = await fixture({ desconto: 0, precoOriginal: antigo / 100, qtdOriginal: qtd })
         await db.query("update troca_opcoes set preco=$1 where id=$2", [novo / 100, f.opcoes[0].id])
         await db.query("update trocas set cobrir_ate=$1 where id=$2", [cobertura / 100, f.troca.id])
         const antes = await one("select total from v_pedidos where id=$1", [f.pedido.id])
@@ -52,4 +51,33 @@ test("propriedade: troca comum sem desconto conserva total + diferença líquida
       } finally { await db.exec("rollback to savepoint propriedade") }
     },
   ), { ...opcoes, numRuns: 40 })
+})
+
+test('propriedade: troca com desconto, Pix e cobertura conserva centavos anunciados', async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.integer({min:1,max:20_000}),fc.integer({min:0,max:30_000}),fc.integer({min:1,max:6}),
+    fc.integer({min:0,max:70}),fc.boolean(),fc.boolean(),fc.integer({min:0,max:5_000}),
+    async (original,novo,qtd,desc,percentual,pix,cobertura) => {
+      await db.exec('savepoint propriedade')
+      try {
+        const sub=BigInt(original*qtd)
+        const desconto=percentual?arredondar(sub*BigInt(desc)):BigInt(desc)
+        const d=desconto>sub?sub:desconto
+        const pixBruto=pix?arredondar(sub*10n):0n
+        const pago=sub-d-(pixBruto>sub-d?sub-d:pixBruto)
+        const novoUnit=(BigInt(novo)*pago*2n+sub)/(sub*2n)
+        const novaCompra=novoUnit*BigInt(qtd)
+        const dif=novaCompra-pago
+        const coberto=dif>0n?(dif<BigInt(cobertura)?dif:BigInt(cobertura)):0n
+        const f=await fixture({desconto:percentual?desc:desc/100,tipoDesconto:percentual?'percentual':'valor',pix,precoOriginal:original/100,qtdOriginal:qtd})
+        await db.query('update troca_opcoes set preco=$1 where id=$2',[novo/100,f.opcoes[0].id])
+        await db.query('update trocas set cobrir_ate=$1 where id=$2',[cobertura/100,f.troca.id])
+        await escolher(f)
+        const anunciado=await one('select diferenca_total from v_troca_resumo where troca_id=$1',[f.troca.id])
+        expect(centavos(anunciado.diferenca_total)).toBe(Number(dif-coberto))
+        await concluir(f)
+        expect(centavos((await one('select total from v_pedidos where id=$1',[f.pedido.id])).total)).toBe(Number(novaCompra-coberto))
+      } finally {await db.exec('rollback to savepoint propriedade')}
+    },
+  ),{...opcoes,numRuns:60})
 })
