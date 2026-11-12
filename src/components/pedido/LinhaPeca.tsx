@@ -8,11 +8,12 @@ type Props = {
   saindo?: boolean
   entrando?: boolean
   esmaecida?: boolean
+  semNome?: boolean
   children?: ReactNode // botões à direita
 }
 
 // Linha de peça da separação: usa a linha comum (compacta = foto pequena; padrão = foto grande, variante em destaque).
-export default function LinhaPeca({ item, compacta, saindo, entrando, esmaecida, children }: Props) {
+export default function LinhaPeca({ item, compacta, saindo, entrando, esmaecida, semNome, children }: Props) {
   return (
     <LinhaPecaComum
       item={item}
@@ -22,6 +23,7 @@ export default function LinhaPeca({ item, compacta, saindo, entrando, esmaecida,
       saindo={saindo}
       entrando={entrando}
       esmaecida={esmaecida}
+      semNome={semNome}
     >
       {children}
     </LinhaPecaComum>

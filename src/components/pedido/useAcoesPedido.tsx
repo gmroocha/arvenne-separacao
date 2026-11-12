@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { useNavigate } from "react-router"
-import { ExternalLink, FolderOpen, RotateCcw, UserRound, XCircle } from "lucide-react"
+import { ClipboardList, ExternalLink, FolderOpen, RotateCcw, XCircle } from "lucide-react"
 import type { GrupoAcoes } from "@/components/MenuAcoes"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -28,7 +28,7 @@ export function useAcoesPedido(pedido: Pick<Pedido, "id" | "status" | "fase" | "
     {
       itens: [
         ...(opcoes.abrir ? [{ rotulo: "Abrir pedido", icone: FolderOpen, aoClicar: () => navegar(`/pedidos/${pedido.id}`) }] : []),
-        ...(opcoes.aoVerDados ? [{ rotulo: "Ver dados do pedido", icone: UserRound, aoClicar: opcoes.aoVerDados }] : []),
+        ...(opcoes.aoVerDados ? [{ rotulo: "Ver dados do pedido", icone: ClipboardList, aoClicar: opcoes.aoVerDados }] : []),
       ],
     },
     {

@@ -28,6 +28,7 @@ type Props = {
   extra?: ReactNode // linha extra embaixo dos textos
   children?: ReactNode // ações à direita
   semBorda?: boolean
+  semNome?: boolean // só código (SKU) e variante: para listas onde o nome do produto só polui
   className?: string
 }
 
@@ -35,7 +36,7 @@ const FOTO = { sm: "size-10", md: "size-14", lg: "size-20" } as const
 const PX = { sm: 200, md: 200, lg: 300 } as const
 
 // Linha de peça padrão do app: foto, código (SKU, o destaque), variante e nome, com quantidade e origem.
-export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, entrando, saindo, inicio, extra, children, semBorda, className }: Props) {
+export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, entrando, saindo, inicio, extra, children, semBorda, semNome, className }: Props) {
   const qtd = item.qtd ?? 1
   return (
     <div
@@ -56,7 +57,7 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
         {item.variante && (
           <div className={cn(destaque ? "text-base leading-tight font-medium" : "text-sm", !esmaecida && "text-foreground", riscada && "line-through")}>{item.variante}</div>
         )}
-        <div className={cn("truncate text-xs text-muted-foreground", riscada && "line-through")}>{item.nome}</div>
+        {!semNome && <div className={cn("truncate text-xs text-muted-foreground", riscada && "line-through")}>{item.nome}</div>}
         {item.observacao && <div className="text-xs text-muted-foreground">{item.observacao}</div>}
         {(qtd > 1 || item.origem === "clube") && (
           <div className="mt-1 flex gap-1">

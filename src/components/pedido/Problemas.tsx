@@ -46,7 +46,7 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
         <div className="flex min-w-0 flex-col gap-2">
           <div className="text-sm font-medium text-success">Cliente escolheu</div>
           {lista.map(({ opcao: o, qtd }) => (
-            <LinhaPecaComum key={o.id} item={{ ...o, qtd }} tamanho="sm" semBorda />
+            <LinhaPecaComum key={o.id} item={{ ...o, qtd }} tamanho="sm" semBorda semNome />
           ))}
         </div>
       ) : peca.escolha_tipo === "credito" ? (
@@ -60,9 +60,12 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
             <Check /> Fazer a troca
           </Button>
         )}
-        <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} size="bloco" disabled={concluir.isPending} onClick={() => setConfirmar("credito")}>
-          <HandCoins /> Dar crédito
-        </Button>
+        {/* Ela escolheu uma peça: a ação é fazer a troca. Mudar para crédito fica em "Editar troca". */}
+        {peca.escolha_tipo !== "opcao" && (
+          <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} size="bloco" disabled={concluir.isPending} onClick={() => setConfirmar("credito")}>
+            <HandCoins /> Dar crédito
+          </Button>
+        )}
         {peca.escolha_tipo === "whatsapp" && (
           <>
             <Button variant="secondary" size="bloco" onClick={aoAbrir}>
@@ -168,7 +171,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
           <CardContent className="flex flex-col gap-3">
             {problemas.map((i) => (
               <div key={i.id} className="flex flex-col gap-2">
-                <LinhaPeca item={i} compacta>
+                <LinhaPeca item={i} compacta semNome>
                   <Badge variant={avisar ? "destructive" : aguardando ? "warning" : "secondary"} size="lg">
                     <PackageX />
                     {i.qtd > 1 ? `Faltam ${i.qtd}` : "Em falta"}
