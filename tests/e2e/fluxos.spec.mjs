@@ -87,6 +87,8 @@ test("V06/V08: atalho Trocar cria diferença e o recebimento atualiza o saldo", 
   await sim.banco.query(`insert into catalogo_site(variant_id,produto_id,sku,produto,preco,status)
     select n,n,'CAT-'||n,case when n=1 then 'Nova de teste' else 'Outra peça '||n end,150,'ACTIVE'
     from generate_series(1,20) n`)
+  // Catálogo em dia (V23): sem isso o app dispararia a sincronização automática, que a barreira bloqueia.
+  await sim.banco.query("insert into catalogo_sincronizacao(modo,iniciado_em) values ('completo',now())")
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await page.getByRole("button", { name: "Mais opções", exact: true }).click()
   await page.getByText("Trocar", { exact: true }).click()
