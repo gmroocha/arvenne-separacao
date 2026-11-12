@@ -3,39 +3,33 @@
 // Uso: npm run simular -- <rota> '<json com campos do pedido a trocar>' <nome> ["botão > outro botão"] [texto para rolar até]
 // Ex.: npm run simular -- /pedidos/<id> '{"status":"faturamento"}' frete   (precisa do npm run dev e de um npm run capturas antes, para a sessão)
 import { chromium } from "@playwright/test"
+import { mkdirSync, readFileSync } from "node:fs"
+import { instalarRedeSemGravacao } from "./simulacao/rede.mjs"
 const [rota, sobrescrever, nome, clicar, rolarAte] = process.argv.slice(2)
 const extra = JSON.parse(sobrescrever || "{}")
 // Opcional: SIM_ITENS='{"status":"pendente"}' troca campos das peças (pedido_itens) na resposta. Nada grava.
 const extraItens = JSON.parse(process.env.SIM_ITENS || "{}")
 const base = "http://localhost:5173"
+const env = Object.fromEntries(readFileSync(".env.local", "utf8").split("\n").flatMap((linha) => {
+  const m = linha.match(/^([A-Z0-9_]+)=(.*)$/)
+  return m ? [[m[1], m[2].trim().replace(/^["']|["']$/g, "")]] : []
+}))
+mkdirSync("capturas", { recursive: true })
 const nav = await chromium.launch()
+try {
 for (const t of [{ n: "celular", w: 390, h: 844 }, { n: "pc", w: 1280, h: 900 }]) {
-  const ctx = await nav.newContext({ viewport: { width: t.w, height: t.h }, deviceScaleFactor: 2, storageState: ".playwright/sessao.json", colorScheme: "dark" })
-  await ctx.route("**/rest/v1/**", async (route) => {
-    const req = route.request()
+  const ctx = await nav.newContext({ viewport: { width: t.w, height: t.h }, deviceScaleFactor: 2, storageState: ".playwright/sessao.json", colorScheme: "dark", serviceWorkers: "block" })
+  await instalarRedeSemGravacao(ctx, { baseUrl: base, supabaseUrl: env.VITE_SUPABASE_URL, transformar: async (req, body) => {
     const url = req.url()
-    // RPCs só de leitura (sugestões, valor pago, categorias) passam; qualquer outra gravação é bloqueada.
-    if (req.method() === "POST" && /\/rpc\/(sugerir_troca|troca_valor_pago|categorias_catalogo|troca_publica|romaneio_publico)(\?|$)/.test(url)) return route.continue()
-    if (req.method() !== "GET" && req.method() !== "HEAD") return route.fulfill({ status: 200, json: null }) // nada grava
     if (url.includes("/v_pedidos")) {
-      const r = await route.fetch()
-      const texto = await r.text()
-      if (!texto) return route.fulfill({ response: r })
-      let body = JSON.parse(texto)
       const mudar = (o) => ({ ...o, ...extra })
-      body = Array.isArray(body) ? body.map(mudar) : mudar(body)
-      return route.fulfill({ response: r, json: body })
+      return Array.isArray(body) ? body.map(mudar) : body ? mudar(body) : body
     }
     if (url.includes("/pedido_itens") && Object.keys(extraItens).length) {
-      const r = await route.fetch()
-      const texto = await r.text()
-      if (!texto) return route.fulfill({ response: r })
-      const body = JSON.parse(texto)
-      return route.fulfill({ response: r, json: Array.isArray(body) ? body.map((o) => ({ ...o, ...extraItens })) : { ...body, ...extraItens } })
+      return Array.isArray(body) ? body.map((o) => ({ ...o, ...extraItens })) : body ? { ...body, ...extraItens } : body
     }
-    return route.continue()
-  })
-  await ctx.routeWebSocket(/realtime/, () => {})
+    return body
+  } })
   const pag = await ctx.newPage()
   await pag.goto(base + rota)
   await pag.waitForLoadState("networkidle").catch(() => {})
@@ -58,5 +52,5 @@ for (const t of [{ n: "celular", w: 390, h: 844 }, { n: "pc", w: 1280, h: 900 }]
   await pag.screenshot({ path: `capturas/sim-${nome}-${t.n}.png`, fullPage: !clicar })
   await ctx.close()
 }
-await nav.close()
+} finally { await nav.close() }
 console.log("ok")

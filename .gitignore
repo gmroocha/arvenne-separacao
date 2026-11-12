@@ -27,3 +27,5 @@ dist-ssr
 # testes visuais
 capturas/
 .playwright/
+test-results/
+playwright-report/

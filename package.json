@@ -9,9 +9,17 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "capturas": "node scripts/capturas.mjs",
+    "test": "npm run tipos:conferir && npm run test:rapido && npm run test:banco && npm run test:e2e && npm run build",
+    "test:rapido": "npm run typecheck && npm run lint && vitest run --project unidade",
+    "typecheck": "tsc -b && tsc -p tsconfig.testes.json --noEmit",
     "test:banco": "vitest run --project banco",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest --project unidade",
+    "tipos:gerar": "node scripts/gerar-tipos.mjs",
+    "tipos:local": "node scripts/tipos-pendentes.mjs",
+    "tipos:conferir": "node scripts/tipos-pendentes.mjs --check",
     "test:trocas": "npm run test:banco",
-    "test:trocas:ui": "node tests/trocas-ui.mjs",
+    "test:trocas:ui": "playwright test --grep 'cliente escolhe troca'",
     "simular": "node scripts/simular.mjs"
   },
   "dependencies": {
@@ -40,11 +48,11 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "fast-check": "^4.10.2",
     "oxlint": "^1.90.0",
     "tailwindcss": "^4.3.5",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
-    "vitest": "^5.1.0",
-    "fast-check": "^4.10.2"
+    "vitest": "^5.1.0"
   }
 }
