@@ -7,23 +7,23 @@ Após a continuação autorizada, a Fase 2 foi preparada e testada **localmente*
 Os registros históricos abaixo não indicam o estado atual de aplicação: a Fase 1 confirmou as 27
 migrations até `20261116090000` no Supabase. Não houve push, deploy nem escrita remota nesta etapa.
 
-- `npm test` passa tudo: tipos, lint (oito avisos antigos), 69 de unidade, 134 de banco, telas e build.
+- `npm test` passa tudo: tipos, lint (oito avisos antigos), 69 de unidade, 136 de banco, 14 de tela e build.
   Uma reprodução aberta (V28) é falha esperada.
-- Tipos oficiais do Supabase usados no app, com complemento gerado para o SQL ainda local.
-  Instruções em [`TESTES.md`](TESTES.md).
-- **20 dos 36 problemas corrigidos localmente, incluindo os 13 altos.** Lista e commits em `VISTORIA.md`.
-- Workflow GitHub Actions preparado; os commits ainda não foram enviados ao GitHub.
+- **20 dos 36 problemas corrigidos, incluindo os 13 altos.** Lista e commits em `VISTORIA.md`.
+- Teste de conservação do dinheiro (`tests/banco/conservacao.test.mjs`): sequências aleatórias de venda
+  somada, troca, crédito, cobertura, Pix, retirada, falta, recebimento, estorno e devolução, em pedidos do
+  WhatsApp e da Shopify. Achou e protegeu mais um furo (segunda troca apagava diferença não recebida).
 
-**Nada foi aplicado no Supabase.** Pendentes de aplicação, na ordem:
-1. 14 migrations (`20261117090000_protecoes_integridade` até `20261118200000_devolucao_adicionais`).
-   O dry-run de 12/11/2026 listou exatamente essas. As travas de etapa só agem quando o status muda;
-   pedidos já incoerentes (ARV-1272, ARV-1275, ARV-1277...) não são alterados nem consertados sozinhos.
-2. Republicar a Edge `shopify-sync` (V09: grava o recebido líquido, não o total atual).
-3. `git push` (liga o GitHub Actions).
+**Aplicado em 12/11/2026 (com o "sim" do Gustavo):** 15 migrations, de `20261117090000_protecoes_integridade`
+até `20261118210000_acerto_saldo_aberto`; vigia diário agendado (`arvenne-vistoria-diaria`, 06h UTC);
+Edge `shopify-sync` republicada (V09); tipos regenerados (`baseAplicada` = `20261118210000`); commits
+enviados ao GitHub (liga o GitHub Actions). Advisors de segurança: sumiram os avisos de `search_path`
+e os gatilhos executáveis por `anon`; restam os intencionais e a proteção de senha vazada (painel).
 
-Próxima ação: Gustavo dar o "sim" para os três passos acima; depois conferir no app os pedidos com
-venda somada e troca. Em seguida, corrigir os médios abertos. Corrigir código não autoriza reconstruir
-pagamentos ou pedidos reais já incoerentes: isso é feito um a um, com o Gustavo.
+Os pedidos atuais são de teste e o Gustavo vai zerar o app depois; não reconstruir os incoerentes.
+
+Próxima ação: Gustavo abrir o app e conferir um pedido com troca e um com venda somada; depois
+corrigir os médios abertos (V10, V12, V13, V18, V19, V22–V29, V33, V34, V36).
 
 ## Onde as coisas estão
 

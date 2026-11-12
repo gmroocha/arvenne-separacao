@@ -335,8 +335,11 @@ V14–V17, V21, V30, V31, V32). V20, V27 e V35 têm apenas as proteções parcia
 reprodução ainda esperada em `conhecidos.test.mjs` é V28. Abertos: V10, V12, V13, V18, V19, V22–V29,
 V33, V34 e V36 (médios/baixos).
 
-**Nada disso está no Supabase ainda.** O dry-run de 12/11/2026 10h30 lista 14 migrations pendentes
-(`20261117090000` até `20261118200000`), e a Edge `shopify-sync` (V09) precisa ser republicada.
+Teste de conservação (`414d8e8`) achou mais um furo, corrigido em `04cb606`: com duas trocas seguidas,
+a diferença ainda não recebida da primeira sumia quando a segunda não tinha diferença.
+
+**Aplicado no Supabase em 12/11/2026**, com o "sim" do Gustavo: 15 migrations (`20261117090000` até
+`20261118210000`) e a Edge `shopify-sync` (V09).
 
 ## Referências técnicas consultadas
 
