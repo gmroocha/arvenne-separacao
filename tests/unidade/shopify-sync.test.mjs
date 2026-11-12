@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, test, vi } from "vitest"
 
-const sim = vi.hoisted(() => ({ pedido: null, gravados: [], consultas: [], handler: null }))
+const sim = vi.hoisted(() => ({ pedido: null, gravados: [], consultas: [], handler: null, descontos: [], falharDescontos: false }))
 vi.mock("../../supabase/functions/_shared/http.ts", () => ({
   admin: () => ({
     from: () => ({ select: () => ({ in: async () => ({ data: [{ shopify_order_id: 777 }], error: null }) }) }),
@@ -14,6 +14,10 @@ vi.mock("../../supabase/functions/_shared/shopify.ts", () => ({
   consulta: async (query) => {
     sim.consultas.push(query)
     if (query.includes("query Pedidos")) return { orders: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [sim.pedido] } }
+    if (query.includes("discountApplications")) {
+      if (sim.falharDescontos) throw new Error("Campo indisponível nesta versão da API")
+      return { nodes: sim.descontos }
+    }
     return { nodes: [] }
   },
 }))
@@ -80,4 +84,24 @@ test("V10: valor exato por linha fecha com o subtotal da Shopify", async () => {
   expect(valoresExatosDasLinhas({ currentSubtotalPriceSet: money("150.00"), lineItems: { nodes: l } }, l, false)).toBeNull()
   // Importação parcial (só o que falta enviar) não fecha com o subtotal do pedido inteiro.
   expect(valoresExatosDasLinhas(ped, l, true)).toBeNull()
+})
+
+// Motivo dos descontos: consulta à parte, juntada ao pedido bruto; se falhar, o pedido entra mesmo assim.
+test("descontos da Shopify entram no pedido bruto; falha na consulta não impede a importação", async () => {
+  const aplicacoes = [{ __typename: "DiscountCodeApplication", code: "BEMVINDA10", allocationMethod: "ACROSS", targetType: "LINE_ITEM", value: { __typename: "PricingPercentageValue", percentage: 10 } }]
+  sim.pedido = pedido(); sim.gravados = []; sim.consultas = []
+  sim.descontos = [{ legacyResourceId: "777", discountApplications: { nodes: aplicacoes } }]
+  let r = await (await sim.handler(new Request("https://edge.ficticia.test", { method: "POST" }))).json()
+  expect(r.erros).toEqual([])
+  const consulta = sim.consultas.find((q) => q.includes("discountApplications"))
+  expect(consulta).toContain("PricingPercentageValue")
+  expect(consulta).toContain("DiscountCodeApplication")
+  expect(sim.gravados[0].shopify_bruto.discountApplications).toEqual(aplicacoes)
+
+  sim.gravados = []; sim.falharDescontos = true
+  r = await (await sim.handler(new Request("https://edge.ficticia.test", { method: "POST" }))).json()
+  sim.falharDescontos = false; sim.descontos = []
+  expect(r.erros).toEqual([])
+  expect(sim.gravados).toHaveLength(1)
+  expect("discountApplications" in sim.gravados[0].shopify_bruto).toBe(false)
 })

@@ -106,6 +106,31 @@ query Cpf($ids: [ID!]!) {
   }
 }`;
 
+// Descontos aplicados (cupom, automático, manual, script; percentual ou valor), também à parte e tolerante:
+// se a consulta falhar, o pedido entra sem o motivo do desconto. O banco normaliza (pedidos.descontos).
+const QUERY_DESCONTOS = `
+query Descontos($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on Order {
+      legacyResourceId
+      discountApplications(first: 10) {
+        nodes {
+          __typename
+          allocationMethod
+          targetType
+          value { __typename ... on PricingPercentageValue { percentage } ... on MoneyV2 { amount } }
+          ... on DiscountCodeApplication { code }
+          ... on AutomaticDiscountApplication { title }
+          ... on ManualDiscountApplication { title description }
+          ... on ScriptDiscountApplication { title }
+        }
+      }
+    }
+  }
+}`;
+
+type AplicacaoDesconto = Record<string, unknown>;
+
 // Transações (para a data real do pagamento) também numa consulta à parte e tolerante.
 const QUERY_PAGO = `
 query Pago($ids: [ID!]!) {
@@ -293,6 +318,20 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Descontos numa consulta à parte: se falhar, segue sem eles (o banco mantém o que já sabia).
+      const descontos = new Map<string, AplicacaoDesconto[]>();
+      if (aImportar.length) {
+        try {
+          const r = await shopify<{ nodes: ({ legacyResourceId: string; discountApplications: { nodes: AplicacaoDesconto[] } } | null)[] }>(
+            QUERY_DESCONTOS,
+            { ids: aImportar.map((o) => o.id) },
+          );
+          for (const n of r.nodes) if (n?.discountApplications) descontos.set(n.legacyResourceId, n.discountApplications.nodes);
+        } catch (e) {
+          console.warn("Descontos indisponíveis:", (e as Error).message);
+        }
+      }
+
       // Data do pagamento numa consulta à parte: se falhar, usa processedAt (marcada como estimada).
       const pagos = new Map<string, Transacao[]>();
       if (aImportar.length) {
@@ -365,7 +404,11 @@ Deno.serve(async (req) => {
             rastreio: rastro?.number ?? null,
             rastreio_url: rastro?.url ?? null,
             shopify_url: urlAdminPedido(o.legacyResourceId),
-            shopify_bruto: { ...o, localizedFields: locais ?? null },
+            shopify_bruto: {
+              ...o,
+              localizedFields: locais ?? null,
+              ...(descontos.has(o.legacyResourceId) ? { discountApplications: descontos.get(o.legacyResourceId) } : {}),
+            },
             itens: linhas.map((i, n) => ({
               shopify_line_id: i.id.split("/").pop(),
               shopify_variant_id: i.variant?.legacyResourceId ?? null,
