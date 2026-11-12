@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "react-router"
 import { Check, CircleCheck, HandCoins, MessageCircle, PackageX, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
 import Foto from "@/components/Foto"
@@ -256,6 +256,130 @@ function Resumo({ data, respondidas }: { data: TrocaPublica; respondidas: number
   )
 }
 
+// Diferença final (vem pronta do banco). Amarelo: ela paga a mais. Verde: vira crédito para ela.
+function corDiferenca(dif: number) {
+  return dif > 0 ? "text-warning" : dif < 0 ? "text-success" : "text-foreground"
+}
+function legendaDiferenca(dif: number, alguma: boolean) {
+  if (!alguma) return "escolha as peças"
+  return dif > 0 ? "você paga a mais" : dif < 0 ? "fica de crédito para você" : "sem diferença"
+}
+const valorDiferenca = (dif: number) => `${dif > 0 ? "+ " : dif < 0 ? "− " : ""}${reais(Math.abs(dif))}`
+
+// Barra fixa no rodapé: diferença e "Concluir". Compacta enquanto ela rola as peças; no fim da página
+// cresce, mostra o detalhe da cobertura da loja e o botão inteiro. Verde só com todas as peças escolhidas.
+function BarraConcluir({ data, respondidas, total, noFim, ocupado, aoConcluir }: {
+  data: TrocaPublica; respondidas: number; total: number; noFim: boolean; ocupado: boolean; aoConcluir: () => void
+}) {
+  const dif = data.resumo.diferenca
+  const coberto = data.resumo.coberto ?? 0
+  const bruta = data.resumo.diferenca_bruta ?? dif + coberto
+  const tudo = total > 0 && respondidas === total
+  const faltam = total - respondidas
+  const botao = (
+    <Button
+      type="button"
+      size="xl"
+      variant={tudo ? "default" : "secondary"}
+      className={cn(
+        "transition-all duration-300",
+        noFim ? "w-full" : "shrink-0",
+        tudo && "bg-success text-success-foreground hover:bg-success/90",
+      )}
+      disabled={!tudo || ocupado}
+      onClick={aoConcluir}
+    >
+      {tudo && <Check />}
+      {tudo ? (noFim ? "Concluir minhas escolhas" : "Concluir") : faltam === 1 ? "Falta 1 peça" : `Faltam ${faltam} peças`}
+    </Button>
+  )
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
+      <div className={cn("mx-auto flex max-w-md flex-col px-4 transition-all duration-300", noFim ? "gap-3 py-4" : "gap-0 py-2.5")}>
+        {noFim && respondidas > 0 && coberto > 0 && (
+          <div className="flex flex-col gap-1 animate-in fade-in duration-300">
+            <LinhaValor rotulo="Diferença das peças" valor={`+ ${reais(bruta)}`} />
+            <LinhaValor rotulo="A loja cobre" valor={`− ${reais(coberto)}`} />
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-col" role="status" aria-label="Diferença">
+            <span className="text-xs text-muted-foreground">Diferença</span>
+            <span className={cn("font-semibold tabular-nums transition-all duration-300", noFim ? "text-2xl" : "text-lg leading-tight", respondidas > 0 ? corDiferenca(dif) : "text-muted-foreground")}>
+              {valorDiferenca(respondidas > 0 ? dif : 0)}
+            </span>
+            <span className="text-xs text-muted-foreground">{legendaDiferenca(dif, respondidas > 0)}</span>
+          </div>
+          {!noFim && botao}
+        </div>
+        {noFim && botao}
+      </div>
+    </div>
+  )
+}
+
+// Tela depois de "Concluir": a mensagem é o foco; o resumo fica discreto embaixo.
+function Concluida({ data, pecas, cliente, aoMudar }: { data: TrocaPublica; pecas: Peca[]; cliente: string | undefined; aoMudar: () => void }) {
+  const dif = data.resumo.diferenca
+  return (
+    <section aria-label="Escolhas concluídas" className="flex flex-col items-center gap-8 pt-8 text-center animate-in fade-in slide-in-from-bottom-3 duration-500">
+      <div className="flex flex-col items-center gap-5">
+        <span className="flex size-16 items-center justify-center rounded-full bg-success/15 ring-8 ring-success/5">
+          <Check className="size-8 text-success" strokeWidth={2.5} />
+        </span>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold text-balance">Pronto! Recebemos suas escolhas.</h1>
+          <p className="text-base text-balance text-muted-foreground">
+            {cliente ? `Obrigada, ${cliente}. ` : ""}Agora é com a gente: vamos separar suas peças e te avisar pelo WhatsApp.
+          </p>
+        </div>
+      </div>
+
+      <dl className="w-full divide-y border-y text-left text-sm">
+        {pecas.map((p) => {
+          const cart = carrinhoDaPeca(p)
+          return (
+            <div key={p.item_id} className="flex items-start justify-between gap-4 py-3">
+              <dt className="min-w-0 text-muted-foreground">
+                No lugar de <span className="font-mono text-foreground">{titulo(p)}</span>
+              </dt>
+              <dd className="flex shrink-0 flex-col items-end text-right font-medium">
+                {p.escolha_tipo === "credito" ? (
+                  <span className="text-success">Crédito {reais(p.valor_pago)}</span>
+                ) : (
+                  cart.map((c) => {
+                    const o = p.opcoes.find((x) => x.id === c.opcao_id)
+                    return (
+                      <span key={c.opcao_id} className="font-mono">
+                        {c.qtd > 1 ? `${c.qtd}× ` : ""}
+                        {o ? titulo(o) : "Peça escolhida"}
+                      </span>
+                    )
+                  })
+                )}
+              </dd>
+            </div>
+          )
+        })}
+        <div className="flex items-baseline justify-between gap-4 py-3">
+          <dt className="text-muted-foreground">Diferença</dt>
+          <dd className="flex flex-col items-end">
+            <span className={cn("text-xl font-semibold tabular-nums", corDiferenca(dif))}>{valorDiferenca(dif)}</span>
+            <span className="text-xs text-muted-foreground">{legendaDiferenca(dif, true)}</span>
+          </dd>
+        </div>
+      </dl>
+
+      <div className="flex flex-col items-center gap-1">
+        <Button type="button" variant="ghost" size="xl" onClick={aoMudar}>
+          Mudar minhas escolhas
+        </Button>
+        <p className="text-xs text-muted-foreground">Pedido {data.numero.replace(/^#/, "")}</p>
+      </div>
+    </section>
+  )
+}
+
 // Página pública (sem login): a cliente escolhe a troca de cada peça em falta.
 // Cada toque já grava a escolha daquela peça (não perde nada se ela sair). No fim, "Concluir minhas escolhas"
 // mostra a confirmação, para ela saber que terminou; mudar qualquer escolha depois pede concluir de novo.
@@ -277,10 +401,20 @@ export default function Troca() {
   const total = data?.resumo.pecas_total ?? pecas.length
   const respondidas = pecas.filter((p) => p.escolha_tipo).length
   const tudo = total > 0 && respondidas === total
-  const assinatura = useMemo(() => assinaturaEscolhas(pecas), [pecas])
+  const assinatura = useMemo(() => assinaturaEscolhas(data?.pecas ?? []), [data?.pecas])
   const [concluidaEm, setConcluidaEm] = useState<string | null>(() => lerConclusao(token))
   // Finalizou: todas escolhidas e confirmadas com o botão, sem mudar nada depois.
   const finalizada = tudo && !concluida && concluidaEm === assinatura
+  // Sentinela no fim da página: a barra cresce quando ela chega ao final das peças.
+  const fimRef = useRef<HTMLDivElement>(null)
+  const [noFim, setNoFim] = useState(false)
+  useEffect(() => {
+    const alvo = fimRef.current
+    if (!alvo || typeof IntersectionObserver === "undefined") return
+    const obs = new IntersectionObserver(([e]) => setNoFim(e.isIntersecting), { rootMargin: "0px 0px -40px 0px" })
+    obs.observe(alvo)
+    return () => obs.disconnect()
+  }, [data, finalizada, concluida])
   const concluir = (sim: boolean) => {
     const valor = sim ? assinatura : null
     gravarConclusao(token, valor)
@@ -320,10 +454,12 @@ export default function Troca() {
         </Empty>
       ) : (
         <>
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold">{cliente ? `Olá, ${cliente}! 🤍` : "Olá! 🤍"}</h1>
-            <p className="text-sm text-muted-foreground">Pedido {data.numero.replace(/^#/, "")}</p>
-          </div>
+          {!finalizada && (
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl font-semibold">{cliente ? `Olá, ${cliente}! 🤍` : "Olá! 🤍"}</h1>
+              <p className="text-sm text-muted-foreground">Pedido {data.numero.replace(/^#/, "")}</p>
+            </div>
+          )}
 
           {!finalizada && <p className="text-base">
             {total === 1 ? "Uma peça do seu pedido ficou" : `${total} peças do seu pedido ficaram`} sem estoque. Escolha uma troca ou crédito para{" "}
@@ -334,43 +470,7 @@ export default function Troca() {
             <p className="text-sm text-muted-foreground">A loja cobre até {reais(data.resumo.cobrir_ate ?? 0)} da diferença 🤍</p>
           )}
 
-          {finalizada && (
-            <section aria-label="Escolhas concluídas" className="flex flex-col gap-4 rounded-xl border border-success/40 bg-success/10 p-4">
-              <div className="flex items-center gap-2.5">
-                <CircleCheck className="size-7 shrink-0 text-success" />
-                <h2 className="text-xl font-semibold">Pronto! Recebemos suas escolhas.</h2>
-              </div>
-              <p className="text-base">Agora é com a gente: vamos separar as peças e te avisar pelo WhatsApp.</p>
-              <ul className="flex flex-col gap-2 text-sm">
-                {pecas.map((p) => {
-                  const cart = carrinhoDaPeca(p)
-                  return (
-                    <li key={p.item_id} className="flex flex-col">
-                      <span className="text-muted-foreground">No lugar de {titulo(p)}{p.variante ? ` · ${p.variante}` : ""}:</span>
-                      {p.escolha_tipo === "credito" ? (
-                        <span className="font-medium">Crédito de {reais(p.valor_pago)}</span>
-                      ) : (
-                        cart.map((c) => {
-                          const o = p.opcoes.find((x) => x.id === c.opcao_id)
-                          return (
-                            <span key={c.opcao_id} className="font-medium">
-                              {c.qtd > 1 ? `${c.qtd}× ` : ""}
-                              {o ? titulo(o) : "Peça escolhida"}
-                              {o?.variante ? ` · ${o.variante}` : ""}
-                            </span>
-                          )
-                        })
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-              <Resumo data={data} respondidas={respondidas} />
-              <Button type="button" size="xl" variant="outline" className="w-full" onClick={() => concluir(false)}>
-                Mudar minhas escolhas
-              </Button>
-            </section>
-          )}
+          {finalizada && <Concluida data={data} pecas={pecas} cliente={cliente} aoMudar={() => concluir(false)} />}
 
           {!finalizada && pecas.map((p, n) => {
             const feita = concluida || p.concluida
@@ -404,7 +504,7 @@ export default function Troca() {
                     Ficou sem estoque
                   </div>
                   <div className="flex gap-3">
-                    <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-20 shrink-0" />
+                    <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-28 shrink-0" />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-mono text-base leading-snug font-semibold text-foreground">{titulo(p)}</div>
@@ -481,54 +581,44 @@ export default function Troca() {
                         </ul>
                       </>
                     )}
-                    <Button
-                      type="button"
-                      variant={p.escolha_tipo === "credito" ? "default" : "outline"}
-                      size="xl"
-                      className="w-full"
-                      aria-pressed={p.escolha_tipo === "credito"}
-                      disabled={escolher.isPending}
-                      onClick={() => {
-                        if (p.escolha_tipo !== "credito") escolha(p.item_id, "credito", null)
-                      }}
-                    >
-                      {gravando === `${p.item_id}:credito` ? <Spinner /> : p.escolha_tipo === "credito" ? <Check /> : <HandCoins />}
-                      {p.escolha_tipo === "credito" ? "Crédito escolhido" : "Prefiro crédito"} de {reais(p.valor_pago)}
-                    </Button>
+                    {p.escolha_tipo === "credito" ? (
+                      // Já escolhido: aparece como estado (sem cara de botão). Para trocar, basta tocar numa peça acima.
+                      <div role="status" className="flex items-center gap-3 rounded-xl border border-success/40 bg-success/10 px-4 py-3 animate-in fade-in duration-300">
+                        <CircleCheck className="size-5 shrink-0 text-success" />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="font-semibold text-success">Crédito de {reais(p.valor_pago)} escolhido</span>
+                          {p.opcoes.length > 0 && <span className="text-xs text-muted-foreground">Prefere uma peça? É só tocar em "Quero esta".</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xl"
+                        className="w-full"
+                        aria-pressed={false}
+                        disabled={escolher.isPending}
+                        onClick={() => escolha(p.item_id, "credito", null)}
+                      >
+                        {gravando === `${p.item_id}:credito` ? <Spinner /> : <HandCoins />}
+                        Prefiro crédito de {reais(p.valor_pago)}
+                      </Button>
+                    )}
                   </div>
                 )}
               </section>
             )
           })}
 
-          {!finalizada && <Separator />}
-          {!finalizada && <Resumo data={data} respondidas={respondidas} />}
-
-          {!concluida && !finalizada && (
-            <div className="flex flex-col gap-2" aria-label="Suas escolhas">
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">Suas escolhas</span>
-                <span className="font-medium tabular-nums">
-                  {respondidas} de {total}
-                </span>
-              </div>
-              <Progress value={total ? (respondidas / total) * 100 : 0} className="h-1.5" />
-            </div>
+          {concluida && (
+            <>
+              <Separator />
+              <Resumo data={data} respondidas={respondidas} />
+            </>
           )}
 
           {!concluida && !finalizada && (
-            <p className="text-sm text-muted-foreground">
-              {tudo
-                ? "Tudo escolhido! Confira e toque em Concluir para finalizar."
-                : "Cada toque já fica salvo. Se mudar de ideia, é só escolher outra opção."}
-            </p>
-          )}
-
-          {tudo && !concluida && !finalizada && (
-            <Button type="button" size="xl" className="w-full" disabled={escolher.isPending || carrinho.isPending} onClick={() => concluir(true)}>
-              <Check />
-              Concluir minhas escolhas
-            </Button>
+            <p className="text-sm text-muted-foreground">Cada toque já fica salvo. Se mudar de ideia, é só escolher outra opção.</p>
           )}
 
           {linkWa && (
@@ -538,6 +628,20 @@ export default function Troca() {
                 Falar no WhatsApp
               </a>
             </Button>
+          )}
+          {!concluida && !finalizada && (
+            <>
+              {/* Espaço para a barra fixa não cobrir o fim da página. */}
+              <div ref={fimRef} className="h-44" aria-hidden />
+              <BarraConcluir
+                data={data}
+                respondidas={respondidas}
+                total={total}
+                noFim={noFim}
+                ocupado={escolher.isPending || carrinho.isPending}
+                aoConcluir={() => concluir(true)}
+              />
+            </>
           )}
         </>
       )}
