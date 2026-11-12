@@ -8,6 +8,12 @@ describe("entrada de valores e contatos", () => {
     ["R$ 1.234,56", 1234.56], ["1.234", 1234], ["0", 0], ["", null], ["-10", null], ["Infinity", null],
   ])("converte %s", (entrada, esperado) => { expect(lerNumero(entrada)).toBe(esperado) })
 
+  // V30: texto malformado era aceito como outro valor (10,,50 virava 1050).
+  test.each(["10,,50", "1.2.3", "1,2,3", "12.34.5", "1.234.5", "1,234,5", "1.23,4.5", "10,", ",5", "1234.567"])(
+    "V30: recusa %s em vez de inventar valor", (entrada) => { expect(lerNumero(entrada)).toBeNull() })
+  test.each([["1.234.567,89", 1234567.89], ["1,234,567", 1234567], ["0,5", 0.5], ["1234,5", 1234.5]])(
+    "V30: aceita %s", (entrada, esperado) => { expect(lerNumero(entrada)).toBe(esperado) })
+
   test("qualquer valor em centavos volta do formato brasileiro sem mudar", () => {
     fc.assert(fc.property(fc.integer({ min: 0, max: 10_000_000 }), (centavos) => {
       expect(lerNumero(numeroParaTexto(centavos / 100))).toBe(centavos / 100)

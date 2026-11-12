@@ -68,29 +68,13 @@ export function mascaraCep(t: string): string {
 // é decimal, 3 é milhar. Vazio, texto, negativo e infinito -> null.
 export function lerNumero(t: string): number | null {
   const x = t.trim().replace(/^R\$\s*/, "").replace(/\s/g, "")
-  if (!/^\d[\d.,]*$/.test(x)) return null
-  const ultimoPonto = x.lastIndexOf(".")
-  const ultimaVirgula = x.lastIndexOf(",")
-  const ultimo = Math.max(ultimoPonto, ultimaVirgula)
-  let inteiro = x
-  let decimal = ""
-  if (ultimo >= 0) {
-    const depois = x.slice(ultimo + 1)
-    const sep = x[ultimo]
-    const outro = sep === "." ? "," : "."
-    const repetido = x.split(sep).length > 2
-    // Separador único com 3 dígitos depois (ou repetido) é milhar; senão é decimal.
-    const milhar = repetido || (!x.includes(outro) && depois.length === 3)
-    if (!milhar) {
-      if (depois.length > 2 || depois.length === 0) return null
-      inteiro = x.slice(0, ultimo)
-      decimal = depois
-    }
-  }
-  inteiro = inteiro.replace(/[.,]/g, "")
-  if (inteiro === "") return null
-  const n = Number(decimal ? `${inteiro}.${decimal}` : inteiro)
-  return Number.isFinite(n) && n >= 0 ? n : null
+  // Só formatos inteiros: milhar em grupos de 3 (1.234,56 ou 1,234.56) ou número simples (1234,5).
+  // Qualquer outra mistura ("10,,50", "1.2.3") é recusada em vez de virar outro valor.
+  let m = x.match(/^(\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?$/) ?? x.match(/^(\d{1,3}(?:,\d{3})+)(?:\.(\d{1,2}))?$/)
+  if (!m) m = x.match(/^(\d+)(?:[.,](\d{1,2}))?$/)
+  if (!m) return null
+  const n = Number(`${m[1].replace(/[.,]/g, "")}.${m[2] ?? "0"}`)
+  return Number.isFinite(n) ? n : null
 }
 
 export const numeroParaTexto = (n: number | null | undefined) =>
