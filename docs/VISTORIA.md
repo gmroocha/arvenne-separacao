@@ -274,7 +274,31 @@ V21/V30 também foram chamados diretamente nas funções TypeScript, sem navegad
    Hoje `ESTADO-ATUAL.md` contém registros históricos contraditórios sobre migrations/publicações;
    as 27 migrations conferidas remotamente são a referência desta vistoria.
 
-**Ponto de parada solicitado: entregar esta vistoria e aguardar a revisão antes da Fase 2.**
+**Ponto de parada da Fase 1 cumprido. O Gustavo pediu para continuar; Fase 2 local entregue abaixo.**
+
+## Continuação — Fase 2 local, sem aplicação remota
+
+| Commit | Entrega |
+| --- | --- |
+| `d3a569f` | Preserva os 74 testes, organiza por assunto, acrescenta propriedades e nove reproduções abertas. |
+| `957791b` | Usa tipos oficiais do Supabase no cliente e nos registros principais; gera complemento para migrations locais. |
+| `834d065` | Prepara três restrições, endurecimento de funções e vigia diário com aviso discreto. |
+| `f368891` | Fecha a barreira do simulador, substitui teste de tela desatualizado e prepara npm test/GitHub Actions. |
+
+Validação: `npm test` passou tipos, lint (os oito avisos anteriores), 41 testes unitários,
+84 SQL aprovados e 10 de tela, além do build. Outros nove SQL são reproduções de bugs abertos com
+falha esperada; não estão resolvidos. As propriedades geram 80 pedidos e 40 trocas em cada execução.
+
+V31 (simulador) e V32 (teste de tela desatualizado) corrigidos localmente em `f368891`.
+V20 (bipagem), V27 (opção de outra peça) e V35 (segurança) receberam proteções parciais em `834d065`;
+isso não encerra seus demais caminhos nem os aplica no Supabase. Os outros problemas seguem abertos.
+
+Migrations pendentes: `20261117090000_protecoes_integridade.sql` e `20261117100000_vigia_diario.sql`.
+O dry-run listou exatamente essas duas. Consulta remota somente leitura encontrou **zero violações**
+das três restrições propostas; não houve alteração de pedidos. O cron foi simulado nos testes;
+seu funcionamento no relógio real depende de aplicação autorizada e conferência do histórico de jobs.
+Capturas: `capturas/vigia-celular.png` e `capturas/vigia-pc.png`, escuras, dados fictícios.
+Guia de manutenção: [`TESTES.md`](TESTES.md). A Fase 3 começou pelos problemas financeiros altos.
 
 ## Referências técnicas consultadas
 

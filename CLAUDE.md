@@ -36,6 +36,13 @@ chave certa via `core.sshCommand` já configurado neste repositório.
   app, com o Gustavo logado, e confira o resultado no banco.
 - **A interface não calcula dinheiro:** totais, prazo e contagens vêm da view `v_pedidos` e de funções SQL.
 - Prazo de envio: 48 h úteis a partir do pagamento (tabela `feriados`).
+- **Todo bug corrigido ganha um teste que falha antes da correção e passa depois**, no mesmo commit.
+  Os IDs vêm de `docs/VISTORIA.md`. Nunca marque uma falha nova como esperada para aprovar a suíte.
+  As reproduções já abertas em `tests/banco/conhecidos.test.mjs` usam `test.fails`: remova `.fails`
+  quando corrigir a causa; aprovação inesperada também deve falhar. Não tratá-las como bugs resolvidos.
+- Testes automáticos usam banco em memória e credenciais fictícias. Não acionar Edge, Storage, login,
+  impressora ou escrita remota para validar código. O simulador compartilha a barreira
+  `scripts/simulacao/rede.mjs`; nunca trocar uma recusa por `route.continue()` genérico.
 
 ## Como o Gustavo gosta de trabalhar
 
@@ -59,7 +66,13 @@ npm run dev      # servidor local (usa .env.local, ignorado pelo git)
 npm run build    # tsc + vite
 npm run capturas -- / /pedidos/<id>   # prints em 390 e 1280 px na pasta capturas/ (precisa do npm run dev e de E2E_EMAIL/E2E_SENHA no .env.local)
 npm run lint     # oxlint (restam avisos antigos em src/components/ui e use-mobile)
+npm run test:rapido # tipos, lint e unidade; uso diário
+npm test         # tipos locais, verificação rápida, banco, celular/PC e build; sem dados reais
+npm run tipos:local # atualiza o complemento gerado das migrations ainda não aplicadas
+npm run tipos:gerar # introspecção do Supabase remoto; não aplica migrations
 git push         # a chave SSH já está no repositório
 ```
 
 Commits em português, no estilo dos existentes, terminando com a linha de coautoria que o ambiente indicar.
+
+Veja [`docs/TESTES.md`](docs/TESTES.md) para preparar o Chromium e adicionar testes.

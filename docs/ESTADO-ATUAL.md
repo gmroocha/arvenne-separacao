@@ -1,4 +1,27 @@
-# Estado atual (atualizado em 11/11/2026)
+# Estado atual (atualizado em 12/11/2026)
+
+## Vistoria e proteções automáticas — referência atual
+
+A vistoria está em [`VISTORIA.md`](VISTORIA.md): 36 problemas (13 altos, 21 médios, 2 baixos).
+Após a continuação autorizada, a Fase 2 foi preparada e testada **localmente**; Fase 3 em andamento.
+Os registros históricos abaixo não indicam o estado atual de aplicação: a Fase 1 confirmou as 27
+migrations até `20261116090000` no Supabase. Não houve push, deploy nem escrita remota nesta etapa.
+
+- `npm test` passa tipos, lint (oito avisos anteriores), 41 testes de unidade, 84 de banco, 10 de tela
+  e build. Nove reproduções abertas são falhas esperadas e não contam como correções.
+- Tipos oficiais do Supabase já usados pelo cliente e pelos tipos principais do app, com complemento
+  gerado para SQL ainda local. Instruções em [`TESTES.md`](TESTES.md).
+- Migrations locais: `20261117090000_protecoes_integridade` e `20261117100000_vigia_diario`.
+  A primeira impede bipagem excessiva, vínculo adicional incoerente e opção de outra peça; endurece
+  funções. A segunda agenda inspeção diária às 03h de São Paulo e guarda os avisos sem mudar pedidos.
+- Alerta discreto pronto no app, com capturas escuras em celular e PC. Antes da migration, fica oculto.
+- Simulador bloqueia também Edge/Storage e renovação de login; testes usam dados fictícios em memória.
+- Workflow GitHub Actions preparado, ainda sem envio ao GitHub. Precisa do “sim” específico para envio.
+- Dry-run listou somente essas duas migrations. Consulta remota somente leitura encontrou zero linhas
+  violando as três novas restrições. Aplicação continua dependendo de autorização específica.
+
+Próxima ação: corrigir os problemas altos com regressões locais, depois repetir a verificação completa
+e o dry-run. Corrigir código não autoriza reconstruir pagamentos ou pedidos reais já incoerentes.
 
 ## Onde as coisas estão
 
