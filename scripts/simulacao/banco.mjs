@@ -8,7 +8,7 @@ const headers = { "access-control-allow-origin": "*", "access-control-expose-hea
 
 // Pequeno adaptador PostgREST só para testes: operações usam as migrations e o PostgreSQL em memória.
 // Não há cálculo financeiro copiado para o simulador, conexão remota ou credencial real.
-export async function criarSimulacao({ status = "novo", troca = false, aviso = false } = {}) {
+export async function criarSimulacao({ status = "novo", troca = false, aviso = false, somada = false } = {}) {
   const banco = await criarBanco()
   const one = async (sql, args = []) => (await banco.query(sql, args)).rows[0]
   const agora = new Date().toISOString()
@@ -18,7 +18,14 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
   [troca ? "aguardando_cliente" : status, status === "em_aberto" ? null : 100, status === "em_aberto" ? null : agora, troca ? 20 : 0])
   const i = await one(`insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,status)
     values ($1,'avulso','Anel de teste','AN-1',2,50,$2) returning *`, [p.id, troca ? "falta" : "pendente"])
-  let t
+  let t, vendaSomada
+  if (somada) {
+    vendaSomada = await one(`insert into pedidos(origem,status,cliente_nome,somar_em,desconto_tipo,desconto_valor)
+      values ('whatsapp','em_aberto','Cliente de teste',$1,'valor',10) returning *`, [p.id])
+    await banco.query(`insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,ordem)
+      values ($1,'avulso','Brinco somado','BR-2',2,25,1),($1,'avulso','Colar somado','CO-1',1,20,2)`, [vendaSomada.id])
+    await one("select somar_venda($1,'Cartão',60)", [vendaSomada.id])
+  }
   if (troca) {
     t = await one("insert into trocas(pedido_id) values ($1) returning *", [p.id])
     const tp = await one("insert into troca_pecas(troca_id,item_id) values ($1,$2) returning *", [t.id, i.id])
@@ -144,7 +151,7 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     }
   }
   return {
-    pedido: p, item: i, troca: t, banco, one, requisicoes, bloqueadas,
+    pedido: p, item: i, troca: t, vendaSomada, banco, one, requisicoes, bloqueadas,
     falharProximaEscolha: () => { falharEscolha = true },
     fechar: () => banco.close(),
     async instalar(context, baseUrl, { logado = true } = {}) {

@@ -112,7 +112,7 @@ test('somar_venda: Pix da venda entra no valor somado e o principal da Shopify m
   assert.deepEqual((await db.query('select round(preco_pago,2) num_pago from pedido_itens where pedido_id = $1 order by ordem', [p.id])).rows.map(r => num(r.num_pago)), [45, 24, 16])
 })
 
-test('romaneio_publico: venda somada aponta o principal e o principal lista as adicionais à parte', async () => {
+test('V01: romaneio da venda somada preserva a compra e aponta o principal', async () => {
   const { p, w } = await somaFixture()
   await one("select somar_venda($1, 'Cartão', 45, now())", [w.id])
   const rp = (await one('select romaneio_publico($1) d', [(await one('select token_publico from pedidos where id = $1', [p.id])).token_publico])).d
@@ -120,7 +120,17 @@ test('romaneio_publico: venda somada aponta o principal e o principal lista as a
   assert.equal(rp.adicionais.length, 2)
   assert.deepEqual([num(rp.total), num(rp.valor_somado), num(rp.total_geral)], [90, 45, 135])
   const rw = (await one('select romaneio_publico($1) d', [(await one('select token_publico from pedidos where id = $1', [w.id])).token_publico])).d
-  assert.deepEqual([rw.somada_a, rw.status, rw.itens.length], ['ARV-1', 'somada', 0])
+  assert.deepEqual([rw.somada_a, rw.status, rw.itens.length], ['ARV-1', 'somada', 2])
+  assert.deepEqual([rw.subtotal, rw.desconto, rw.total, rw.total_geral], [50, 5, 45, 45])
+  assert.deepEqual(rw.itens.map(i => i.sku), ['BR', 'CO'])
+  const origem = await one('select total,total_geral,subtotal,qtd_pecas from v_pedidos where id=$1', [w.id])
+  assert.deepEqual([num(origem.total),num(origem.total_geral),num(origem.subtotal),origem.qtd_pecas], [45,45,50,2])
+  await db.query("update pedido_itens set sku='PEÇA-ALTERADA',preco=999 where venda_origem_id=$1", [w.id])
+  const depois = (await one('select romaneio_publico($1) d', [w.token_publico])).d
+  assert.deepEqual(depois, rw)
+  await recusa(() => db.query('update pedidos set somada_retrato=null where id=$1', [w.id]), /histórico/)
+  assert.equal(Object.hasOwn(rw,'cliente_cpf'), false)
+  assert.equal(Object.hasOwn(rw,'cliente_email'), false)
 })
 
 

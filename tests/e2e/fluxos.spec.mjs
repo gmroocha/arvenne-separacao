@@ -6,7 +6,7 @@ let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
 async function iniciar(context, baseURL, opcoes) {
   sim = await criarSimulacao(opcoes)
-  await sim.instalar(context, baseURL, { logado: !opcoes?.troca })
+  await sim.instalar(context, baseURL, { logado: !opcoes?.troca && !opcoes?.somada })
   return sim
 }
 async function semQuebra(page) {
@@ -69,6 +69,20 @@ test("cliente escolhe troca, recupera falha e muda para crédito", async ({ page
   expect((await sim.one("select escolha_tipo from troca_pecas where troca_id=$1", [sim.troca.id])).escolha_tipo).toBe("credito")
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
+})
+
+test("V01: cliente continua vendo a compra no romaneio da venda somada", async ({ page, context, baseURL }, info) => {
+  await iniciar(context, baseURL, { somada: true })
+  await page.goto(`/r/${sim.vendaSomada.token_publico}`)
+  await expect(page.getByText("Brinco somado", { exact: true })).toBeVisible()
+  await expect(page.getByText("Colar somado", { exact: true })).toBeVisible()
+  await expect(page.getByText(/Estas peças foram somadas ao pedido/)).toBeVisible()
+  await expect(page.getByText(/60,00/, { exact: false })).toBeVisible()
+  expect(Number((await sim.one("select total_geral from v_pedidos where id=$1", [sim.pedido.id])).total_geral)).toBe(160)
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/romaneio-somada-${info.project.name}.png`, fullPage: true, animations: "disabled" })
 })
 
 test("vigia avisa sem alterar o pedido e mostra o detalhe", async ({ page, context, baseURL }, info) => {
