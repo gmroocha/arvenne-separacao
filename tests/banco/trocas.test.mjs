@@ -467,3 +467,16 @@ test('V06: falha após criar a troca desfaz opções, status e novas peças', as
   await db.exec('set local role anon')
   await recusa(() => one("select substituir_item($1,'[]')",[i.id]), /permission denied/)
 })
+
+test('V29: cada mudança do carrinho da troca fica no histórico com as quantidades', async () => {
+  const f = await fixture()
+  const b = await opcaoB(f)
+  await carrinho(f, 0, f.opcoes[0].id, 2)
+  await carrinho(f, 0, f.opcoes[0].id, 1)
+  await carrinho(f, 0, b.id, 1)
+  const ev = (await db.query("select de, para, texto from pedido_eventos where pedido_id = $1 and tipo = 'troca_carrinho' order by created_at, id", [f.pedido.id])).rows
+  const textos = ev.map((e) => e.texto)
+  assert.ok(textos.includes('ORIGINAL-0 → NOVO: 0 → 2'), textos.join(' | '))
+  assert.ok(textos.includes('ORIGINAL-0 → NOVO: 2 → 1'), textos.join(' | '))
+  assert.ok(textos.includes('ORIGINAL-0 → NOVO-B: 0 → 1'), textos.join(' | '))
+})

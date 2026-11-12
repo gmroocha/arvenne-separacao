@@ -23,6 +23,9 @@ const ROTULO_EVENTO: Record<string, string> = {
   embalado: "Embalado", desembalado: "Embalagem desfeita", postado: "Postado", desfeito_postagem: "Postagem desfeita",
   pago: "Pagamento registrado", rastreio_enviado: "Rastreio enviado à cliente", reiniciado: "Reiniciado",
   devolvido: "Valor devolvido à cliente", devolvido_desfeito: "Devolução desfeita", shopify_alerta: "Aviso da Shopify",
+  troca_enviada: "Troca enviada à cliente", troca_respondida: "Cliente respondeu a troca", troca_concluida: "Troca concluída",
+  troca_acerto: "Acerto da troca", troca_carrinho: "Carrinho da troca", venda_somada: "Venda somada",
+  shopify_alterado: "Peças alteradas na Shopify",
 }
 
 function descreverEvento(e: Evento) {
