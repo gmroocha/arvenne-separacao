@@ -103,3 +103,27 @@ test('V08: incoerência antiga não autoriza receber ou devolver dinheiro pelo s
   await recusa(()=>one('select marcar_devolvido($1)',[f.pedido.id]),/incoerentes/)
   assert.equal((await one('select count(*)::int n from movimentos_financeiros where pedido_id=$1',[f.pedido.id])).n,0)
 })
+
+test('segunda troca sem diferença não apaga a diferença ainda não recebida da primeira', async () => {
+  const p=await one("insert into pedidos(origem,status,cliente_nome,forma_pagamento,valor_pago,pago_em) values ('whatsapp','separacao','C','Cartão',100,now()) returning id")
+  const i=await one("insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco) values ($1,'clube','Anel','A',1,100) returning id",[p.id])
+  await db.exec('set local role authenticated')
+  const trocar=async (item,preco)=>{
+    await db.query("update pedido_itens set status='falta' where id=$1",[item])
+    const t=await one('insert into trocas(pedido_id) values ($1) returning id',[p.id])
+    const tp=await one('insert into troca_pecas(troca_id,item_id) values ($1,$2) returning id',[t.id,item])
+    const o=await one("insert into troca_opcoes(troca_peca_id,origem,nome,sku,preco) values ($1,'clube','Nova','NOVA',$2) returning id",[tp.id,preco])
+    await db.query("update trocas set status='enviada' where id=$1",[t.id])
+    await one("select troca_aprovar($1,$2,'opcao',$3)",[t.id,tp.id,o.id])
+    return t.id
+  }
+  await trocar(i.id,150)
+  const nova=await one("select id from pedido_itens where pedido_id=$1 and status='pendente'",[p.id])
+  const t2=await trocar(nova.id,150)
+  const v=await one('select total_geral,total_pago,acerto_pendente from v_pedidos where id=$1',[p.id])
+  assert.deepEqual([num(v.total_geral),num(v.total_pago),v.acerto_pendente],[150,100,true])
+  const alvo=await one('select acerto_troca_id from pedidos where id=$1',[p.id])
+  assert.equal(alvo.acerto_troca_id,t2)
+  await one("select troca_acerto($1,'recebido')",[t2])
+  assert.equal(num((await one('select total_pago from v_pedidos where id=$1',[p.id])).total_pago),150)
+})
