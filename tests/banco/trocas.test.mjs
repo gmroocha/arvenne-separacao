@@ -422,3 +422,18 @@ test('troca: peça que saiu da falta some da página e do resumo, e volta igual 
   assert.equal(dados.pecas[1].opcoes.length, 1)
   assert.equal(num((await resumo()).total_pago), num(antes.total_pago))
 })
+
+
+test.each(['pendente','encontrado','removido'])('V15: peça inativa %s não impede responder nem concluir a troca', async (status) => {
+  for (const viaCarrinho of [false,true]) {
+    const f=await fixture({ quantidade: 2 })
+    await db.query('update pedido_itens set status=$1 where id=$2',[status,f.itens[1].id])
+    if (viaCarrinho) await carrinho(f,0,f.opcoes[0].id,1)
+    else await escolher(f)
+    assert.equal((await one('select status from trocas where id=$1',[f.troca.id])).status,'respondida')
+    await concluir(f)
+    assert.equal((await one('select status from trocas where id=$1',[f.troca.id])).status,'concluida')
+    assert.equal((await one('select concluida_em from troca_pecas where id=$1',[f.pecas[1].id])).concluida_em,null)
+    assert.equal((await one('select count(*)::int n from troca_pecas where troca_id=$1',[f.troca.id])).n,2)
+  }
+})

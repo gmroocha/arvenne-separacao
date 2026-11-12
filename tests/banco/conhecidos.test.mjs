@@ -32,12 +32,6 @@ test.fails("V14: banco impede envio com peça pendente", async () => {
   await db.query("update pedido_itens set status='pendente' where pedido_id=$1", [p.id])
   await recusa(() => db.query("update pedidos set status='enviado' where id=$1", [p.id]), /etapa|pendente|separad/i)
 })
-test.fails("V15: peça que deixou de faltar não impede encerrar a troca", async () => {
-  const f = await fixture({ quantidade: 2 })
-  await db.query("update pedido_itens set status='pendente' where id=$1", [f.itens[1].id])
-  await escolher(f); await concluir(f)
-  expect((await one("select status from trocas where id=$1", [f.troca.id])).status).toBe("concluida")
-})
 test.fails("V28: valor de opção concluída não pode reescrever o histórico", async () => {
   const f = await fixture()
   await escolher(f); await concluir(f)
