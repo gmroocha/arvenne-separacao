@@ -12,7 +12,10 @@ import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
 import type { AcertoPedido, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
-export const msg = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
+const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
+// Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
+export const msg = (e: unknown) =>
+  /statement timeout/i.test(msgCrua(e)) ? "O banco demorou para responder e nada foi gravado. Tente de novo." : msgCrua(e)
 
 // Banco ainda sem a migration de uma função/tabela nova: mensagem clara em vez do erro cru.
 const semFuncao = (e: unknown) => /could not find the function|could not find the table|does not exist|schema cache|relationship/i.test(`${msg(e)} ${(e as { details?: string })?.details ?? ""}`)
@@ -425,10 +428,20 @@ function aplicarNoCache(qc: QueryClient, id: string, mudar: (p: PedidoDetalhe) =
 }
 
 // Muda a etapa do pedido. A tela atualiza antes do banco responder; se falhar, volta ao que era.
+// Espera as gravações de peça deste pedido terminarem. Sem isso, "Ir para a próxima etapa" chegava ao
+// banco antes das últimas peças marcadas (a fila grava uma por vez) e o banco recusava a etapa.
+export async function esperarFilaDoPedido(qc: QueryClient, pedidoId: string, limiteMs = 60_000) {
+  const fim = Date.now() + limiteMs
+  while (qc.isMutating({ mutationKey: ["item", pedidoId] }) > 0 && Date.now() < fim) {
+    await new Promise((r) => setTimeout(r, 100))
+  }
+}
+
 export function useMudarStatus() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ pedidoId, para, campos }: { pedidoId: string; para: StatusPedido; campos?: CamposPedido; silencioso?: boolean }) => {
+      await esperarFilaDoPedido(qc, pedidoId)
       const { error } = await supabase.from("pedidos").update({ status: para, ...campos }).eq("id", pedidoId)
       if (error) throw error
     },
@@ -552,7 +565,10 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
         if (error) throw error
         return null
       }
-      const { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
+      // Gravar o mesmo campo de novo não muda nada: se o banco estourou o tempo (57014), tenta mais uma vez
+      // antes de desfazer na tela. Bipagem e +1/-1 acima somam e por isso não repetem.
+      let { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
+      if (error?.code === "57014") ({ error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId))
       if (error) throw error
       return null
     },
