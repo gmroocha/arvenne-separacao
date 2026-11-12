@@ -101,6 +101,8 @@ test('somar_venda: Pix da venda entra no valor somado e o principal da Shopify m
   assert.equal(num((await one('select somada_valor from pedidos where id = $1', [w.id])).somada_valor), 40)
   const dep = await one('select total, subtotal, desconto, valor_somado, total_geral, valor_pecas_com_desconto from v_pedidos where id = $1', [p.id])
   assert.deepEqual([num(dep.total), num(dep.subtotal), num(dep.desconto), num(dep.valor_somado), num(dep.total_geral), num(dep.valor_pecas_com_desconto)], [90, 100, 10, 40, 130, 90])
+  // V13: o frete declara o pacote inteiro (pedido + venda somada).
+  assert.equal(num((await one('select valor_pecas_pacote from v_pedidos where id = $1', [p.id])).valor_pecas_pacote), 130)
   // O importador da Shopify ignora as adicionais (preço pago e checagem de alteração).
   await db.exec('reset role')
   await db.query("update pedido_itens set origem = 'shopify' where pedido_id = $1 and adicional", [p.id])
