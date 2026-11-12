@@ -80,6 +80,27 @@ export type Database = {
           },
         ]
       }
+      catalogo_sincronizacao: {
+        Row: {
+          concluido_em: string
+          iniciado_em: string
+          modo: string
+          variantes: number
+        }
+        Insert: {
+          concluido_em?: string
+          iniciado_em: string
+          modo: string
+          variantes?: number
+        }
+        Update: {
+          concluido_em?: string
+          iniciado_em?: string
+          modo?: string
+          variantes?: number
+        }
+        Relationships: []
+      }
       catalogo_site: {
         Row: {
           atualizado_em: string
@@ -1452,6 +1473,7 @@ export type Database = {
           valor_pago: number | null
           valor_pago_somado: number | null
           valor_pecas_com_desconto: number | null
+          valor_pecas_pacote: number | null
           valor_removido: number | null
           valor_somado: number | null
           valor_total: number | null
@@ -1706,6 +1728,7 @@ export type Database = {
       enviar_troca: { Args: { p_troca: string }; Returns: undefined }
       fator_pedido: { Args: { p_pedido: string }; Returns: number }
       fechar_financeiro: { Args: { p_pedido: string }; Returns: undefined }
+      feriados_ate: { Args: never; Returns: string }
       garantir_troca: {
         Args: { p_itens: string[]; p_pedido: string }
         Returns: string
@@ -1729,6 +1752,7 @@ export type Database = {
         Args: { p_item: string; p_qtd: number; p_status?: string }
         Returns: string
       }
+      pascoa: { Args: { p_ano: number }; Returns: string }
       prazo_envio: { Args: { pago: string }; Returns: string }
       reavaliar_etapa: { Args: { p_pedido: string }; Returns: undefined }
       reconciliar_acertos: {
@@ -1849,6 +1873,15 @@ export type Database = {
         }[]
       }
       usuario_atual_email: { Args: never; Returns: string }
+      valor_linha_shopify: {
+        Args: {
+          i: Database["public"]["Tables"]["pedido_itens"]["Row"]
+          p_linha: string
+          p_qtd: number
+          p_valor: number
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

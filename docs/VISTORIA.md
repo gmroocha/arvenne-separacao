@@ -330,16 +330,35 @@ Campo ausente gera erro por pedido e não grava um pagamento presumido. É uma c
 a versão publicada ainda não mudou. Totais legados das vendas somadas sem retrato continuam sinalizados
 pelo vigia; a migration não inventa uma fotografia antiga.
 
-Até este ponto, **20 dos 36 problemas têm correção local, incluindo os 13 altos** (V01–V09, V11,
-V14–V17, V21, V30, V31, V32). V20, V27 e V35 têm apenas as proteções parciais da Fase 2. A única
-reprodução ainda esperada em `conhecidos.test.mjs` é V28. Abertos: V10, V12, V13, V18, V19, V22–V29,
-V33, V34 e V36 (médios/baixos).
+| V10 | `7a098da` | Edge manda o valor exato de cada linha (resíduo de centavos distribuído); banco grava na importação e completa nas sincronizações, só em peça viva, inteira e sem troca. |
+| V12 | `4d17e37` | Nota mostra o desconto Pix (com e sem vendas somadas). |
+| V13 | `d72d85a` | `valor_pecas_pacote` na `v_pedidos`: frete declara pedido + vendas somadas. |
+| V18 | `944609c` | Pedido todo convertido em crédito explica como encerrar (acerto + cancelar); banco permite. |
+| V19 | `357cff7` | Romaneio de pedido cancelado mostra "Pedido cancelado", não "Pagamento confirmado". |
+| V20 | `5e29917` | `bipar` confere o SKU e exige peça separada; Contar 1 também. |
+| V22 | `560baf6` | `/cart/c/` é recusado na hora com explicação, em vez de erro 400 na função. |
+| V23/V24/V26 | `9f59a43` | Marcador `catalogo_sincronizacao`; variante apagada sai do cache; arquivada vai a "faltando"; incremental pagina variantes. |
+| V25 | `7baa36e` | Sincronização da Shopify continua de onde parou (até 4 partes) e avisa se faltou. |
+| V27 | `97c5f6f` | Auxiliar do carrinho recusa troca encerrada e opção de outra peça. |
+| V28 | `89fa5ee` | Opção de peça concluída não muda nem recebe opção nova. |
+| V29 | `6da5554` | Cada mudança do carrinho da troca vira evento `troca_carrinho` no histórico. |
+| V33 | `50972a8` | Clube com "Carregar mais". |
+| V34 | `67c3f18` | Busca de vendas/expedição feita no banco, além dos 300 da lista. |
+| V36 | `1f96f9a` | Feriados até 2040 (móveis pela Páscoa) e vigia avisa com um ano de antecedência. |
 
 Teste de conservação (`414d8e8`) achou mais um furo, corrigido em `04cb606`: com duas trocas seguidas,
 a diferença ainda não recebida da primeira sumia quando a segunda não tinha diferença.
 
-**Aplicado no Supabase em 12/11/2026**, com o "sim" do Gustavo: 15 migrations (`20261117090000` até
-`20261118210000`) e a Edge `shopify-sync` (V09).
+**Resultado: 35 dos 36 problemas corrigidos, mais o furo achado pelo teste de conservação.** Resta só
+parte de V35, que é configuração do painel: ligar a proteção contra senhas vazadas (Authentication →
+Passwords; pode exigir plano pago) e confirmar que o cadastro público está desligado. Os avisos
+restantes dos advisors são as funções públicas intencionais (romaneio e troca da cliente).
+
+**Aplicado no Supabase em 12/11/2026**, com o "sim" do Gustavo: migrations `20261117090000` até
+`20261119180000` e as Edges `shopify-sync` e `catalogo-sync`. Pedidos antigos de teste continuam com
+avisos do vigia (o Gustavo vai zerar o app). Os centavos de ARV-1273/1276/1277 se acertam no próximo
+"Sincronizar". Conferência somente leitura pelo CLI agora roda a `v_pedidos` e o vigia
+(`listar_inconsistencias()`).
 
 ## Referências técnicas consultadas
 

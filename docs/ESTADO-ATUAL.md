@@ -7,23 +7,26 @@ Após a continuação autorizada, a Fase 2 foi preparada e testada **localmente*
 Os registros históricos abaixo não indicam o estado atual de aplicação: a Fase 1 confirmou as 27
 migrations até `20261116090000` no Supabase. Não houve push, deploy nem escrita remota nesta etapa.
 
-- `npm test` passa tudo: tipos, lint (oito avisos antigos), 69 de unidade, 136 de banco, 14 de tela e build.
-  Uma reprodução aberta (V28) é falha esperada.
-- **20 dos 36 problemas corrigidos, incluindo os 13 altos.** Lista e commits em `VISTORIA.md`.
+- `npm test` passa tudo: tipos, lint (oito avisos antigos), 82 de unidade, 148 de banco, 18 de tela e build.
+- **35 dos 36 problemas da vistoria corrigidos e aplicados**, mais um furo achado pelo teste de conservação.
+  Lista e commits em `VISTORIA.md`. Falta só configuração do painel (V35, abaixo).
 - Teste de conservação do dinheiro (`tests/banco/conservacao.test.mjs`): sequências aleatórias de venda
   somada, troca, crédito, cobertura, Pix, retirada, falta, recebimento, estorno e devolução, em pedidos do
-  WhatsApp e da Shopify. Achou e protegeu mais um furo (segunda troca apagava diferença não recebida).
+  WhatsApp e da Shopify; confere que nada fica negativo e que, acertado tudo, pago = total do pacote.
+- Conferência pelo CLI em modo somente leitura agora lê a `v_pedidos` e roda o vigia
+  (`select * from listar_inconsistencias()`), sem poder gravar.
 
-**Aplicado em 12/11/2026 (com o "sim" do Gustavo):** 15 migrations, de `20261117090000_protecoes_integridade`
-até `20261118210000_acerto_saldo_aberto`; vigia diário agendado (`arvenne-vistoria-diaria`, 06h UTC);
-Edge `shopify-sync` republicada (V09); tipos regenerados (`baseAplicada` = `20261118210000`); commits
-enviados ao GitHub (liga o GitHub Actions). Advisors de segurança: sumiram os avisos de `search_path`
-e os gatilhos executáveis por `anon`; restam os intencionais e a proteção de senha vazada (painel).
+**Aplicado em 12/11/2026 (com o "sim" do Gustavo):** migrations `20261117090000` até `20261119180000`;
+Edges `shopify-sync` e `catalogo-sync`; vigia diário agendado (`arvenne-vistoria-diaria`, 06h UTC);
+tipos regenerados (`baseAplicada` = `20261119180000`); commits no GitHub.
+Conferido com dados reais (sem gravar): W0007 abre com venda somada, desconto Pix na nota e frete com o
+valor do pacote inteiro (R$ 732,62).
 
-Os pedidos atuais são de teste e o Gustavo vai zerar o app depois; não reconstruir os incoerentes.
+Pedidos atuais são de teste e o Gustavo vai zerar o app; os avisos do vigia sobre eles são esperados.
 
-Próxima ação: Gustavo abrir o app e conferir um pedido com troca e um com venda somada; depois
-corrigir os médios abertos (V10, V12, V13, V18, V19, V22–V29, V33, V34, V36).
+Próxima ação (Gustavo, no painel do Supabase): Authentication → ligar a proteção contra senhas vazadas
+(se o plano permitir) e confirmar que o cadastro público está desligado. Depois do reset, clicar em
+"Atualizar catálogo" uma vez (cria o marcador novo do catálogo) e "Sincronizar".
 
 ## Onde as coisas estão
 

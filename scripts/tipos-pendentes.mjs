@@ -3,7 +3,7 @@ import { criarBanco } from "../tests/banco/suporte.mjs"
 
 // Supabase gen types representa o remoto. Este complemento vem da introspecção das migrations
 // ainda locais, para conferir o código ANTES da autorização de aplicar no remoto. Não escrever à mão.
-const baseAplicada = "20261118210000"
+const baseAplicada = "20261119180000"
 const tipo = (sql) => {
   const t = sql.replace(/^public\./, "")
   if (t.endsWith("[]")) return `(${tipo(t.slice(0, -2))})[]`

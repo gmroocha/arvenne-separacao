@@ -82,7 +82,7 @@ test('carrinho: anon só usa troca_carrinho, troca_escolher e troca_publica', as
 })
 
 test('conferência somente leitura executa as funções da v_pedidos; anon continua sem acesso', async () => {
-  for (const f of ['public.prazo_envio(timestamptz)','public.horas_uteis(timestamptz,timestamptz)','public.regras_etapas(jsonb)','public.saldo_financeiro(uuid)']) {
+  for (const f of ['public.prazo_envio(timestamptz)','public.horas_uteis(timestamptz,timestamptz)','public.regras_etapas(jsonb)','public.saldo_financeiro(uuid)','public.listar_inconsistencias()','public.feriados_ate()']) {
     const r=await one('select has_function_privilege($1,$2,$3) leitura, has_function_privilege($4,$2,$3) anon',['supabase_read_only_user',f,'execute','anon'])
     expect([f,r.leitura,r.anon]).toEqual([f,true,false])
   }
