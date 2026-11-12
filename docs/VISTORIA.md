@@ -360,6 +360,25 @@ avisos do vigia (o Gustavo vai zerar o app). Os centavos de ARV-1273/1276/1277 s
 "Sincronizar". Conferência somente leitura pelo CLI agora roda a `v_pedidos` e o vigia
 (`listar_inconsistencias()`).
 
+## Achados do teste da troca no ARV-1273 (V37 a V39, 12/11/2026)
+
+O Gustavo testou a troca no ARV-1273 e mandou prints. Três problemas novos, corrigidos **localmente** na migration
+`20261120090000_trocas_visiveis.sql` (ainda não aplicada no Supabase; só entra com o "sim" dele). Cada um tem
+teste que falhava antes e passa depois (`tests/banco/trocas_visiveis.test.mjs`, `tests/unidade/etapas.test.ts`,
+`tests/unidade/trocaTexto.test.ts` e o fluxo de tela V37 em `tests/e2e/fluxos.spec.mjs`).
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V37 | Alta | Falta marcada na Conferência (ou Etiquetagem, Bipagem...) mandava o pedido para "avisar cliente", que a esteira contava como Separação: o pedido "voltava" para a Separação e a Conferência ficava bloqueada. Ao resolver, ia sempre para a Separação, sem lembrar de onde veio. | Coluna `pedidos.etapa_antes_desvio` gravada por gatilho ao entrar no desvio (mantida entre avisar e aguardar, limpa ao sair; desvios já existentes são preenchidos pelo histórico). Função `sair_do_desvio` leva o pedido à etapa de origem quando não sobra peça pendente/em falta e a etapa ainda vale; senão à Separação. `troca_concluir_peca` usa a função (crédito volta à origem; peça nova entra pendente e vai à Separação). O app mostra a etapa de origem como atual, com o selo do desvio, e o cartão "Avise a cliente" aparece nela. Mover por "Mover para…" continua indo para onde a pessoa escolheu. |
+| V38 | Média | O dinheiro no banco estava certo (a cobertura da loja não mudava o total), mas a tela dizia "Cliente paga +R$ 0,68" no painel de opções, na escolha da cliente, na confirmação e na peça resolvida, porque usava a diferença bruta. Nos dados do pedido a cobertura ficava escondida dentro do "Desconto". | `v_troca_valores`, `v_troca_carrinho` e `sugerir_troca` ganharam `coberto_previsto` e `cliente_paga_previsto`; `troca_painel` traz `coberto` e `cliente_paga` das peças resolvidas; `v_pedidos` ganhou `desconto_sem_cobertura` (o desconto sem a cobertura) e `desconto_percentual`. Os rótulos viram "Arvenne cobre R$ X" e/ou "Cliente paga R$ Y". "Cobrir tudo" grava `cobrir_ate = 99999999.99` e os textos dizem "A loja cobre a diferença". Invariante testada: subtotal − desconto sem cobertura − cobertura − Pix + frete = total (WhatsApp e Shopify). |
+| V39 | Média | Abrir a troca era lento: ler a troca, depois três views, depois `garantir_troca` e ler tudo de novo (várias viagens em série até os EUA), e a tela inteira ficava em "Montando a troca…". | Função `troca_painel` devolve tudo numa viagem (`useTroca` a usa, com o caminho antigo como reserva). Com a troca já lida, o diálogo abre na hora; só a peça que ainda não tem `troca_peca` mostra "preparando" enquanto o `garantir_troca` roda. |
+
+Também ficaram prontos, para as telas do próximo bloco: a view `v_pedido_alteracoes` (trocas, créditos, peças tiradas
+pela cliente e quantidades reduzidas depois do pagamento, com quem fez, coberto, a devolver e devolvido) e o hook
+`useAlteracoes`; e `pedidos.descontos` (motivo dos descontos da Shopify: cupom, automático, manual, script; percentual
+ou valor), preenchido por gatilho a partir de `discountApplications`, que a função `shopify-sync` passou a buscar numa
+consulta à parte e tolerante (se falhar, o pedido entra sem o motivo).
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na
