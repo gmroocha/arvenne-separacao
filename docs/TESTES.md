@@ -58,7 +58,7 @@ As capturas do vigia ficam em `capturas/vigia-{celular,pc}.png`, no escuro.
 
 `npm run tipos:gerar` usa `supabase gen types --remote` para introspecção, sem aplicar SQL.
 O resultado oficial fica em `src/lib/gerado/database.types.ts`. `npm run tipos:local` gera o complemento
-`database.local.types.ts` a partir da diferença entre as migrations aplicadas até `20261119180000`
+`database.local.types.ts` a partir da diferença entre as migrations aplicadas até `20261119190000`
 e as locais. `tipos:conferir` verifica esse complemento sem escrever; não precisa de rede.
 Nunca edite os arquivos gerados à mão. Ao atualizar a base remota, regenere o oficial, ajuste a referência
 `baseAplicada` em `scripts/tipos-pendentes.mjs`, regenere o complemento e rode `npm test`.
