@@ -34,6 +34,7 @@ test('V08: retirar substituta após receber a diferença devolve apenas o que fo
   assert.equal(num((await one('select a_devolver from v_pedidos where id=$1',[f.pedido.id])).a_devolver),150)
   await one('select marcar_devolvido($1)',[f.pedido.id])
   assert.equal(num((await one('select total_pago from v_pedidos where id=$1',[f.pedido.id])).total_pago),0)
+  await recusa(()=>one("select troca_acerto($1,'pendente')",[f.troca.id]),/já foi devolvido/)
   await one('select marcar_devolvido($1,true)',[f.pedido.id])
   const p=await one('select total_pago,a_devolver from v_pedidos where id=$1',[f.pedido.id])
   assert.deepEqual([num(p.total_pago),num(p.a_devolver)],[150,150])

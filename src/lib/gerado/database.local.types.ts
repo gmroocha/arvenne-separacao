@@ -579,6 +579,8 @@ type Adicoes = {
     tg_financeiro_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_movimento_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_retrato_somada_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
+    tg_saldo_itens_alterado: { Args: Record<PropertyKey, never>; Returns: string | null }
+    tg_saldo_pagamento_alterado: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_trabalho_reaberto: { Args: Record<PropertyKey, never>; Returns: string | null }
     troca_saldo_liquido: { Args: { p_troca: string | null }; Returns: number | null }
   }

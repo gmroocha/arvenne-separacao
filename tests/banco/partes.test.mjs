@@ -95,3 +95,45 @@ test('base financeira é imutável e só o banco pode iniciar o retrato', async 
   await recusa(() => one(`insert into pedidos(origem,status,financeiro_retrato)
     values ('whatsapp','em_aberto','{"mercadorias":999}') returning id`),/operação autorizada/)
 })
+
+test.each([['Cartão',45,27],['Pix',40,24]])('V04: retirar adicional devolve uma vez o valor líquido da venda (%s)', async (forma,pago,devolver) => {
+  const {p,w,i1}=await somaFixture()
+  await one('select somar_venda($1,$2,$3)',[w.id,forma,pago])
+  await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where id=$1",[i1.id])
+  const v=await one('select a_devolver,total_geral from v_pedidos where id=$1',[p.id])
+  assert.equal(num(v.a_devolver),devolver)
+  assert.equal(num(v.total_geral),90+pago-devolver)
+  await one('select marcar_devolvido($1)',[p.id])
+  await one('select marcar_devolvido($1)',[p.id])
+  const depois=await one('select a_devolver,total_pago,total_geral from v_pedidos where id=$1',[p.id])
+  assert.equal(num(depois.a_devolver),0)
+  assert.equal(num(depois.total_pago),num(depois.total_geral))
+  assert.equal((await one("select count(*)::int n from movimentos_financeiros where pedido_id=$1 and tipo='devolucao'",[p.id])).n,1)
+})
+
+test.each([[false,80],[true,110]])('V04: retirada da substituta com cobertura devolve apenas recebido (recebido %s)', async (recebido,devolver) => {
+  const f=await adicional({cobertura:10})
+  await one("select troca_aprovar($1,$2,'opcao',$3)",[f.t.id,f.tp.id,f.o.id])
+  if (recebido) await one("select troca_acerto($1,'recebido')",[f.t.id])
+  await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where pedido_id=$1 and sku='NOVA' and status='pendente'",[f.p.id])
+  const v=await one('select a_devolver,total_geral from v_pedidos where id=$1',[f.p.id])
+  assert.equal(num(v.total_geral),90)
+  assert.equal(num(v.a_devolver),devolver)
+  if (!recebido) assert.equal((await one('select acerto_status from trocas where id=$1',[f.t.id])).acerto_status,'sem_diferenca')
+  await one('select marcar_devolvido($1)',[f.p.id])
+  assert.equal(num((await one('select total_pago from v_pedidos where id=$1',[f.p.id])).total_pago),90)
+})
+
+test('V04: retirada parcial compensa a diferença não recebida antes de calcular devolução', async () => {
+  const f=await adicional({cobertura:10})
+  await one("select troca_aprovar($1,$2,'opcao',$3)",[f.t.id,f.tp.id,f.o.id])
+  const i=await one("select id from pedido_itens where pedido_id=$1 and sku='NOVA' and status='pendente'",[f.p.id])
+  const n=(await one('select marcar_falta($1,1) as id',[i.id])).id
+  await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where id=$1",[n])
+  const p=await one('select a_devolver,total_geral from v_pedidos where id=$1',[f.p.id])
+  assert.equal(num(p.total_geral),145)
+  assert.equal(num(p.a_devolver),25) // Retirada líquida 55 abate os 30 ainda não recebidos.
+  await one('select marcar_devolvido($1)',[f.p.id])
+  assert.equal(num((await one('select total_pago from v_pedidos where id=$1',[f.p.id])).total_pago),145)
+  await recusa(()=>one("select troca_acerto($1,'recebido')",[f.t.id]),/não tem acerto/)
+})
