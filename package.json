@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "capturas": "node scripts/capturas.mjs",
-    "test:banco": "node tests/banco.test.mjs",
+    "test:banco": "vitest run --project banco",
     "test:trocas": "npm run test:banco",
     "test:trocas:ui": "node tests/trocas-ui.mjs",
     "simular": "node scripts/simular.mjs"
@@ -43,6 +43,8 @@
     "oxlint": "^1.90.0",
     "tailwindcss": "^4.3.5",
     "typescript": "~7.0.2",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0",
+    "fast-check": "^4.10.2"
   }
 }
