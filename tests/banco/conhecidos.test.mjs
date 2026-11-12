@@ -11,12 +11,6 @@ test.fails("V04: retirar adicional paga gera devolução", async () => {
   await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where id=$1", [i1.id])
   expect(num((await one("select a_devolver from v_pedidos where id=$1", [p.id])).a_devolver)).toBe(27)
 })
-test.fails("V07: cobertura integral encerra o acerto com saldo zero", async () => {
-  const f = await fixture({ desconto: 0 })
-  await db.query("update trocas set cobrir_ate=50 where id=$1", [f.troca.id])
-  await escolher(f); await concluir(f)
-  expect((await one("select acerto_status from trocas where id=$1", [f.troca.id])).acerto_status).toBe("sem_diferenca")
-})
 test.fails("V08: diferença recebida entra no total pago", async () => {
   const f = await fixture({ desconto: 0 })
   await db.query("update pedidos set valor_pago=100 where id=$1", [f.pedido.id])

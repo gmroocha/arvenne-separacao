@@ -227,6 +227,7 @@ type Adicoes = {
     listar_inconsistencias: { Args: Record<PropertyKey, never>; Returns: { pedido_id: string | null; numero: string | null; regra: string | null; detalhe: string | null }[] }
     registrar_vistoria: { Args: Record<PropertyKey, never>; Returns: number | null }
     tg_retrato_somada_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
+    troca_saldo_liquido: { Args: { p_troca: string | null }; Returns: number | null }
   }
 }
 

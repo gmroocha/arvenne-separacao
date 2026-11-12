@@ -282,3 +282,24 @@ test('carrinho: concluir fecha o total também no desconto percentual, na Shopif
   const t = await totalFecha(c, () => concluir(c))
   assert.equal(t.anunciado, 5)
 })
+
+
+test.each([[75,0,50],[75,10,40],[75,50,0],[75,100,0],[25,100,-50]])('V07: acerto e evento usam saldo líquido (preço %s, cobertura %s)', async (valor, cobertura, saldo) => {
+  const f = await fixture({ desconto: 0 })
+  await preco(f,0,valor)
+  await cobrir(f,cobertura)
+  await escolher(f); await concluir(f)
+  assert.equal(num((await one('select troca_saldo_liquido($1) saldo',[f.troca.id])).saldo), saldo)
+  assert.equal((await one('select acerto_status from trocas where id=$1',[f.troca.id])).acerto_status, saldo===0 ? 'sem_diferenca' : 'pendente')
+  if (saldo===0) {
+    await recusa(() => one("select troca_acerto($1,'recebido')",[f.troca.id]), /não tem acerto/)
+    assert.equal((await one('select acerto_pendente from v_pedidos where id=$1',[f.pedido.id])).acerto_pendente, false)
+  } else {
+    const status = saldo>0 ? 'recebido' : 'credito_registrado'
+    await one('select troca_acerto($1,$2)',[f.troca.id,status])
+    const e=await one("select texto from pedido_eventos where pedido_id=$1 and tipo='troca_acerto' and para=$2 order by created_at desc limit 1",[f.pedido.id,status])
+    assert.match(e.texto, new RegExp(Math.abs(saldo).toFixed(2).replace('.',',')))
+    await one("select troca_acerto($1,'pendente')",[f.troca.id])
+    assert.equal((await one('select acerto_em from trocas where id=$1',[f.troca.id])).acerto_em, null)
+  }
+})
