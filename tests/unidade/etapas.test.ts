@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { avisoSemPecas, etapaCompleta, separarAdicionais } from "@/lib/etapa"
 import { destinoAoConcluir, ETAPAS, FASE_DE, proximaEtapa, STATUS_DA_FASE } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 
@@ -41,4 +41,10 @@ test("bipagem conta todas as unidades; nenhuma peça viva não é etapa feita", 
 test("as adicionais continuam na lista ao separar os grupos", () => {
   const a = peca(), b = peca({ id: "ad", adicional: true, venda_origem_id: "venda" })
   expect(separarAdicionais([a, b])).toEqual({ normais: [a], adicionais: [b] })
+})
+
+test("V18: pedido todo convertido em crédito explica como encerrar", () => {
+  expect(avisoSemPecas([])).toBe("Este pedido ainda não tem peças.")
+  expect(avisoSemPecas([{ status: "removido" }, { status: "removido" }])).toMatch(/cancele o pedido/)
+  expect(avisoSemPecas([{ status: "removido" }, { status: "encontrado" }])).toBe("Nenhuma peça pendente.")
 })

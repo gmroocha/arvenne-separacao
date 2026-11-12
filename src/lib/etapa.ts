@@ -31,3 +31,12 @@ export function etapaCompleta(status: StatusPedido, itens: Item[]): boolean {
 
 // Etapas de foco (só as peças do pedido, sem valores nem dados de contato).
 export const ETAPAS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem"]
+
+// V18: pedido sem nenhuma peça viva (tudo virou crédito ou foi retirado) não tem como concluir a separação.
+// A tela explica o caminho em vez de mostrar só "nenhuma peça pendente".
+export function avisoSemPecas(itens: Pick<Item, "status">[]): string {
+  if (itens.length === 0) return "Este pedido ainda não tem peças."
+  if (itens.every((i) => i.status === "removido"))
+    return "Nenhuma peça para enviar: todas viraram crédito ou foram retiradas. Resolva o acerto e cancele o pedido no menu de etapas."
+  return "Nenhuma peça pendente."
+}

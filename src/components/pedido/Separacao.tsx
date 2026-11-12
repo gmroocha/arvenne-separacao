@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useMarcarFalta, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
-import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { avisoSemPecas, etapaCompleta, separarAdicionais } from "@/lib/etapa"
 import { quando, reais } from "@/lib/formato"
 import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
@@ -122,7 +122,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
           A encontrar
         </TituloSecao>
         {pendentes.length === 0 ? (
-          <Vazio>{itens.length === 0 ? "Este pedido ainda não tem peças." : "Nenhuma peça pendente."}</Vazio>
+          <Vazio>{avisoSemPecas(itens)}</Vazio>
         ) : (
           <>
             {blocos.length > 0 && <GradePecas>{blocos.map(bloco)}</GradePecas>}

@@ -245,3 +245,18 @@ test.each([['nf_emitida_em','faturamento'],['embalado_em','embalagem']])('V16: d
   assert.equal(depois.status,destino)
   assert.ok(depois.frete_gerado_em); assert.ok(depois.pedido_fornecedor_em)
 })
+
+test('V18: pedido todo convertido em crédito pode ser encerrado como cancelado depois do acerto', async () => {
+  const p=await one("insert into pedidos(origem,status,cliente_nome,forma_pagamento,valor_pago,pago_em) values ('whatsapp','separacao','C','Cartão',100,now()) returning id")
+  const i=await one("insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,status) values ($1,'clube','Anel','A',1,100,'falta') returning id",[p.id])
+  await db.exec('set local role authenticated')
+  const t=await one('insert into trocas(pedido_id) values ($1) returning id',[p.id])
+  const tp=await one('insert into troca_pecas(troca_id,item_id) values ($1,$2) returning id',[t.id,i.id])
+  await db.query("update trocas set status='enviada' where id=$1",[t.id])
+  await one("select troca_aprovar($1,$2,'credito',null)",[t.id,tp.id])
+  await one("select troca_acerto($1,'credito_registrado')",[t.id])
+  const v=await one('select etapas_permitidas e,total_geral,total_pago from v_pedidos where id=$1',[p.id])
+  assert.equal(v.e.cancelado,null)
+  assert.deepEqual([Number(v.total_geral),Number(v.total_pago)],[0,0])
+  await db.query("update pedidos set status='cancelado' where id=$1",[p.id])
+})
