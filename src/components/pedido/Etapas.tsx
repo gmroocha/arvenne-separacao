@@ -72,7 +72,8 @@ export default function Etapas({ status, eventos, vista, aoVer }: Props) {
                 key={p.id}
                 className={cn(
                   "h-1.5 flex-1 rounded-full",
-                  i <= atual ? "bg-primary" : "bg-muted",
+                  // Verde nas etapas concluídas dá a sensação de progresso; a atual fica em destaque.
+                  i < atual ? "bg-success" : i === atual ? "bg-primary" : "bg-muted",
                   i === vistaIdx && vistaIdx !== atual && "outline-2 outline-offset-1 outline-primary",
                 )}
               />
@@ -100,20 +101,15 @@ export default function Etapas({ status, eventos, vista, aoVer }: Props) {
                     vendo && "border-primary bg-primary text-primary-foreground",
                     // Contorno suave + fundo tingido: o contorno branco de 1 px serrilhava no modo escuro.
                     !vendo && ehAtual && "border-primary/35 bg-primary/10 text-foreground hover:bg-primary/15",
-                    !vendo && feita && "bg-background text-foreground hover:bg-muted",
+                    !vendo && feita && "border-success/40 bg-success/10 text-success hover:bg-success/15",
                     !vendo && !feita && !ehAtual && "bg-muted text-muted-foreground hover:bg-muted/70",
                   )}
                 >
                   {feita ? <Check className="size-4" /> : <Icone className="size-4" />}
                   {p.nome}
-                  {ehAtual && (
-                    <>
-                      <span aria-hidden className={cn("size-1.5 rounded-full", vendo ? "bg-primary-foreground" : "bg-primary")} />
-                      <span className="sr-only">(etapa atual)</span>
-                    </>
-                  )}
+                  {ehAtual && <span className="sr-only">(etapa atual)</span>}
                 </button>
-                {i < PASSOS.length - 1 && <span className={cn("h-px w-4", i < atual ? "bg-primary" : "bg-border")} />}
+                {i < PASSOS.length - 1 && <span className={cn("h-px w-4", i < atual ? "bg-success" : "bg-border")} />}
               </li>
             )
           })}

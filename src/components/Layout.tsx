@@ -39,7 +39,8 @@ export default function Layout() {
           </Button>
         </header>
         <div className={`mx-auto w-full flex-1 p-3 sm:p-4 ${pathname === "/" ? "" : "max-w-5xl"}`}>
-          <AvisoVistoria />
+          {/* Dentro de um pedido ou venda o foco é o trabalho: o aviso do vigia fica só nas listas. */}
+          {!/^\/(pedidos|vendas)\/./.test(pathname) && <AvisoVistoria />}
           <Outlet />
         </div>
         <FeedbackDialog aberto={feedback} aoMudar={setFeedback} pagina={pathname} />

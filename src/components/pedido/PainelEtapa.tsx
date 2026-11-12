@@ -61,7 +61,7 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
   return (
     <div className="flex flex-col gap-4">
       {somenteVer && (
-        <Alert>
+        <Alert className="sm:items-center sm:*:[svg]:translate-y-0">
           <Eye />
           <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>

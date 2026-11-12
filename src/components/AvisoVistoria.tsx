@@ -31,7 +31,7 @@ export default function AvisoVistoria() {
   const avisos = lerAvisosVistoria(data.ocorrencias)
   return (
     <>
-      <Alert variant="warning" className="mb-3">
+      <Alert variant="warning" className="mb-3 items-center *:[svg]:translate-y-0">
         <TriangleAlert />
         <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
           <span>{qtd > 0 ? `Há ${qtd} ${qtd === 1 ? "aviso para conferir nos pedidos" : "avisos para conferir nos pedidos"}.` : "A verificação diária está atrasada."}</span>
