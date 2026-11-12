@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 import { avisoSemPecas, etapaCompleta, separarAdicionais } from "@/lib/etapa"
-import { destinoAoConcluir, ETAPAS, FASE_DE, proximaEtapa, STATUS_DA_FASE } from "@/lib/status"
+import { destinoAoConcluir, ETAPAS, etapaAtual, FASE_DE, PASSOS, passoAtual, proximaEtapa, STATUS_DA_FASE } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 
 const peca = (campos: Partial<Item> = {}): Item => ({
@@ -47,4 +47,23 @@ test("V18: pedido todo convertido em crédito explica como encerrar", () => {
   expect(avisoSemPecas([])).toBe("Este pedido ainda não tem peças.")
   expect(avisoSemPecas([{ status: "removido" }, { status: "removido" }])).toMatch(/cancele o pedido/)
   expect(avisoSemPecas([{ status: "removido" }, { status: "encontrado" }])).toBe("Nenhuma peça pendente.")
+})
+
+// V37: o desvio "avisar/aguardando cliente" mostra a etapa de onde o pedido veio.
+test("V37: pedido em desvio conta como a etapa de origem; sem origem, como Separação", () => {
+  const nome = (p: Parameters<typeof passoAtual>[0]) => PASSOS[passoAtual(p)].id
+  expect(nome({ status: "avisar_cliente", etapa_antes_desvio: "conferencia" })).toBe("conferencia")
+  expect(nome({ status: "aguardando_cliente", etapa_antes_desvio: "etiquetagem" })).toBe("etiquetagem")
+  expect(nome({ status: "avisar_cliente", etapa_antes_desvio: "pronto_envio" })).toBe("pronto_envio")
+  expect(nome({ status: "avisar_cliente", etapa_antes_desvio: null })).toBe("separacao")
+  expect(nome({ status: "aguardando_cliente" })).toBe("separacao")
+  expect(nome({ status: "avisar_cliente", etapa_antes_desvio: "enviado" })).toBe("separacao") // origem inválida
+  expect(nome({ status: "avisar_cliente", etapa_antes_desvio: "lixo" })).toBe("separacao")
+  // Fora do desvio vale o status (e a origem esquecida é ignorada).
+  expect(nome({ status: "bipagem", etapa_antes_desvio: "conferencia" })).toBe("bipagem")
+  expect(nome({ status: "novo" })).toBe("separacao")
+  expect(passoAtual({ status: "cancelado" })).toBe(-1)
+  expect(etapaAtual({ status: "avisar_cliente", etapa_antes_desvio: "conferencia" })).toBe("conferencia")
+  expect(etapaAtual({ status: "aguardando_cliente" })).toBe("separacao")
+  expect(etapaAtual({ status: "faturamento" })).toBe("faturamento")
 })

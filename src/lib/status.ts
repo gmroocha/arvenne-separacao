@@ -82,6 +82,22 @@ export function passoDe(s: StatusPedido): number {
   return PASSOS.findIndex((p) => (p.statuses as readonly StatusPedido[]).includes(s))
 }
 
+// V37: "Avisar/Aguardando cliente" é um desvio da etapa onde a falta apareceu, não da Separação. O banco guarda
+// essa etapa em pedidos.etapa_antes_desvio; a tela trata o pedido em desvio como estando nela (com o selo do
+// desvio). Sem origem gravada (desvio antigo) ou com origem inválida, vale a Separação.
+type ComDesvio = { status: StatusPedido; etapa_antes_desvio?: string | null }
+
+export function etapaAtual(p: ComDesvio): StatusPedido {
+  if (p.status !== "avisar_cliente" && p.status !== "aguardando_cliente") return p.status
+  const origem = PASSOS.find((x) => x.id === p.etapa_antes_desvio && x.id !== "enviado")
+  return (origem?.id ?? "separacao") as StatusPedido
+}
+
+// Índice (em PASSOS) da etapa atual do pedido: o desvio usa a etapa de origem.
+export function passoAtual(p: ComDesvio): number {
+  return passoDe(etapaAtual(p))
+}
+
 // Caminho normal da expedição. Etapas de venda, "avisar_cliente", "aguardando_cliente" e "cancelado" ficam fora.
 const FLUXO: StatusPedido[] = [
   "novo", "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviado",

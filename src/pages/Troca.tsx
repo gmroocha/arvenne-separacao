@@ -18,6 +18,7 @@ import { Toggle } from "@/components/ui/toggle"
 import { carrinhoDaPeca, useCarrinhoTroca, useEscolherTroca, useTrocaPublica } from "@/lib/api"
 import { reais } from "@/lib/formato"
 import { assinaturaEscolhas, gravarConclusao, lerConclusao } from "@/lib/trocaConclusao"
+import { cobreTudo } from "@/lib/trocaTexto"
 import { fotoTamanho } from "@/lib/foto"
 import type { TrocaPublica } from "@/lib/tipos"
 import { chaveModelo, codigoModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
@@ -467,7 +468,9 @@ export default function Troca() {
           </p>}
 
           {(data.resumo.cobrir_ate ?? 0) > 0 && !concluida && !finalizada && (
-            <p className="text-sm text-muted-foreground">A loja cobre até {reais(data.resumo.cobrir_ate ?? 0)} da diferença 🤍</p>
+            <p className="text-sm text-muted-foreground">
+              {cobreTudo(data.resumo.cobrir_ate) ? "A loja cobre a diferença 🤍" : `A loja cobre até ${reais(data.resumo.cobrir_ate ?? 0)} da diferença 🤍`}
+            </p>
           )}
 
           {finalizada && <Concluida data={data} pecas={pecas} cliente={cliente} aoMudar={() => concluir(false)} />}

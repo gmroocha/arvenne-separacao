@@ -127,6 +127,32 @@ test("V06/V08: atalho Trocar cria diferença e o recebimento atualiza o saldo", 
   await semQuebra(page)
 })
 
+test("V37: falta na Conferência mantém o pedido na Conferência e resolver volta para ela", async ({ page, context, baseURL }, info) => {
+  await iniciar(context, baseURL, { status: "novo" })
+  await sim.banco.query("insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,ordem) values ($1,'avulso','Brinco de teste','BR-2',1,30,2)", [sim.pedido.id])
+  await sim.banco.query("update pedido_itens set status='encontrado' where pedido_id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedidos set status='conferencia' where id=$1", [sim.pedido.id])
+  // A falta nasce na Conferência: o banco leva o pedido ao desvio e guarda de onde ele veio.
+  await sim.banco.query("update pedido_itens set status='falta' where id=$1", [sim.item.id])
+  expect(await sim.one("select status,etapa_antes_desvio from pedidos where id=$1", [sim.pedido.id])).toEqual({ status: "avisar_cliente", etapa_antes_desvio: "conferencia" })
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await expect(page.getByText("Avise a cliente", { exact: true })).toBeVisible()
+  // A etapa atual da tela é a Conferência (e não a Separação), com o selo do desvio.
+  if ((page.viewportSize()?.width ?? 0) < 1024) await expect(page.getByRole("button", { name: /Etapa 2 de 8 · Conferência/ })).toBeVisible()
+  else await expect(page.getByRole("listitem").filter({ hasText: "Conferência" }).getByText("(etapa atual)")).toBeAttached()
+  await expect(page.getByRole("heading", { name: /A conferir/ })).toBeVisible()
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/desvio-conferencia-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+  // Resolver a falta (peça removida) devolve o pedido à Conferência, não à Separação.
+  await page.getByRole("button", { name: "Resolver", exact: true }).click()
+  await page.getByText("Remover", { exact: true }).click()
+  await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("conferencia")
+  expect(sim.requisicoes.some((r) => r.path.endsWith("/rpc/sair_do_desvio"))).toBe(true)
+  await expect(page.getByText("Avise a cliente", { exact: true })).toBeHidden()
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
 test("V01: cliente continua vendo a compra no romaneio da venda somada", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL, { somada: true })
   await page.goto(`/r/${sim.vendaSomada.token_publico}`)

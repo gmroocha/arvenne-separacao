@@ -21,7 +21,8 @@ type Props = {
 }
 
 // Confirmação antes de trocar a peça (ou dar crédito), desenhada como "sai ↓ entra": foto e código de cada
-// lado e, embaixo, o que acontece com o dinheiro (valores prontos do banco, pela view v_troca_valores).
+// lado e, embaixo, o que acontece com o dinheiro (valores prontos do banco, pela view v_troca_valores): o que a
+// Arvenne cobre e o que a cliente paga, nunca a diferença bruta como se ela pagasse tudo.
 export default function ConfirmarTroca({ aberto, aoMudar, sai, peca, entra, pendente, aoConfirmar }: Props) {
   const credito = entra.length === 0
   const valor = !peca
@@ -29,7 +30,7 @@ export default function ConfirmarTroca({ aberto, aoMudar, sai, peca, entra, pend
     : credito
       ? `Cliente fica com ${reais(valorPagoPeca(peca))} de crédito`
       : entra.length > 1 || (peca.carrinho?.itens.length ?? 0) > 1
-        ? fraseDiferencaCarrinho(peca.carrinho?.diferenca)
+        ? fraseDiferencaCarrinho(peca.carrinho?.diferenca, peca.carrinho?.coberto_previsto, peca.carrinho?.cliente_paga_previsto)
         : fraseSituacao(valorDaOpcao(peca, entra[0].opcao))
   return (
     <RespDialog

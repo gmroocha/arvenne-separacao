@@ -10,7 +10,7 @@ import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 // Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
@@ -534,19 +534,38 @@ export function usePatchPedido(pedidoId: string) {
   })
 }
 
+// Sai do desvio "avisar/aguardando cliente" (função sair_do_desvio): o banco leva o pedido de volta à etapa de
+// onde ele veio, ou à Separação quando ainda sobra peça pendente, em falta ou com defeito.
+export function useSairDoDesvio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (pedidoId: string) => {
+      await esperarFilaDoPedido(qc, pedidoId)
+      const { error } = await supabase.rpc("sair_do_desvio", { p_pedido: pedidoId })
+      if (error) throw error
+    },
+    onError: (e) => toast.error(msgBanco(e)),
+    onSettled: (_, __, pedidoId) => {
+      if (qc.isMutating({ mutationKey: ["item", pedidoId] }) === 0) qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+      ;[["pedidos"], ["acerto"], ["etiquetar"], ["troca"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
+    },
+  })
+}
+
 const ESTADOS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "conferencia", "etiquetagem", "bipagem"]
 const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa: false, qtd_bipada: 0, bipado_em: null } as const
 
 // Todas as ações numa peça (achei, conferida, etiquetada, bipada, desfazer, falta, defeito...).
 // A peça muda na tela na hora; o banco confirma em seguida, uma gravação por vez por pedido.
 // Efeitos no pedido (nada disso trava o clique):
-//  - falta/defeito leva o pedido a "aguardando cliente";
-//  - resolvidos os problemas, ele volta a "separação";
+//  - falta/defeito leva o pedido a "avisar cliente" (o banco guarda de qual etapa);
+//  - resolvidos os problemas, ele volta à etapa de origem (ou à separação, se sobra peça pendente);
 //  - primeira peça achada tira o pedido de "novo";
 //  - ao completar a etapa, chama aoCompletar (a tela abre o Dialog; quem muda de etapa é a pessoa).
 export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedido) => void) {
   const qc = useQueryClient()
   const mudarStatus = useMudarStatus()
+  const sairDoDesvio = useSairDoDesvio()
   const chave = ["item", pedidoId]
 
   const gravar = useMutation({
@@ -611,8 +630,11 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
       if (problemas && ESTADOS_DE_PECAS.includes(estado)) {
         destino = "avisar_cliente"
         toast.info("Avise a cliente sobre a peça em falta")
-      } else if (!problemas && (estado === "avisar_cliente" || estado === "aguardando_cliente")) destino = "separacao"
-      else if (estado === "novo" && campos.status === "encontrado") destino = "separacao"
+      } else if (!problemas && (estado === "avisar_cliente" || estado === "aguardando_cliente")) {
+        // V37: o banco decide para onde volta (a etapa de origem do desvio, ou a Separação se ainda sobra peça pendente).
+        sairDoDesvio.mutate(pedidoId)
+        estado = atual.etapa_antes_desvio ?? "separacao"
+      } else if (estado === "novo" && campos.status === "encontrado") destino = "separacao"
       if (destino) {
         estado = destino
         mudarStatus.mutate({ pedidoId, para: destino, silencioso: true })
@@ -994,7 +1016,7 @@ export function useResolverFeedback() {
 // ---------------------------------------------------------------------------
 // Trocas de peça em falta: UMA troca por pedido, com várias peças e um link só.
 // ---------------------------------------------------------------------------
-const TROCAS_TUDO = [["troca"], ["pedido"], ["pedidos"], ["repetidas"], ["acerto"], ["etiquetar"]]
+const TROCAS_TUDO = [["troca"], ["alteracoes"], ["pedido"], ["pedidos"], ["repetidas"], ["acerto"], ["etiquetar"]]
 
 // Troca ativa do pedido (rascunho, enviada ou respondida) com peças, opções, valores e resumo.
 // Todo dinheiro (pago, diferença, crédito) vem de v_troca_valores / v_troca_resumo.
@@ -1003,39 +1025,68 @@ export function useTroca(pedidoId: string | undefined) {
     queryKey: ["troca", pedidoId],
     enabled: !!pedidoId,
     queryFn: async (): Promise<Troca | null> => {
-      // Duas chaves ligam troca_pecas e troca_opcoes (a opção e a escolha): nomeia a certa.
-      const consulta = (comEscolhas: boolean) =>
-        supabase
-          .from("trocas")
-          .select(`*, troca_pecas(*, troca_opcoes!troca_opcoes_troca_peca_id_fkey(*)${comEscolhas ? ", troca_escolhas!troca_escolhas_troca_peca_id_fkey(*)" : ""})`)
-          .eq("pedido_id", pedidoId!)
-          .in("status", ["rascunho", "enviada", "respondida"])
-          .maybeSingle()
-      let { data: t, error } = await consulta(true)
-      // Banco sem a migration do carrinho: lê sem as escolhas.
-      if (error && semFuncao(error)) ({ data: t, error } = await consulta(false))
-      if (error) throw error
-      if (!t) return null
-      const [v, r, c] = await Promise.all([
-        supabase.from("v_troca_valores").select("*").eq("troca_id", t.id),
-        supabase.from("v_troca_resumo").select("*").eq("troca_id", t.id).maybeSingle(),
-        supabase.from("v_troca_carrinho").select("*").eq("troca_id", t.id),
-      ])
-      if (v.error) throw v.error
-      if (r.error) throw r.error
-      const valores = v.data as TrocaValor[]
-      const carrinhos = c.error ? [] : (c.data as TrocaCarrinho[])
-      const { troca_pecas, ...troca } = t as unknown as { troca_pecas: (Omit<TrocaPeca, "opcoes" | "valores"> & { troca_opcoes: TrocaOpcao[]; troca_escolhas?: TrocaEscolha[] })[] } & Omit<Troca, "pecas" | "resumo">
-      const pecas: TrocaPeca[] = troca_pecas
-        .map(({ troca_opcoes, troca_escolhas, ...p }) => ({
-          ...p,
-          opcoes: [...troca_opcoes].sort((a, b) => a.ordem - b.ordem),
-          valores: valores.filter((x) => x.troca_peca_id === p.id),
-          escolhas: troca_escolhas ?? [],
-          carrinho: carrinhos.find((x) => x.troca_peca_id === p.id) ?? null,
-        }))
-        .sort((a, b) => a.created_at.localeCompare(b.created_at))
-      return { ...troca, pecas, resumo: (r.data as TrocaResumo | null) ?? null } as Troca
+      // V39: uma viagem só (troca, peças, opções, escolhas, valores, resumo e carrinho juntos).
+      const painel = await supabase.rpc("troca_painel", { p_pedido: pedidoId! })
+      if (!painel.error) return ordenarPecas((painel.data as unknown as Troca | null) ?? null)
+      // Banco ainda sem a função: lê pelo caminho antigo, em várias viagens.
+      if (!semFuncao(painel.error)) throw painel.error
+      return lerTrocaEmPartes(pedidoId!)
+    },
+  })
+}
+
+const ordenarPecas = (t: Troca | null): Troca | null =>
+  t ? { ...t, pecas: [...t.pecas].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((p) => ({ ...p, escolhas: p.escolhas ?? [], carrinho: p.carrinho ?? null })) } : null
+
+async function lerTrocaEmPartes(pedidoId: string): Promise<Troca | null> {
+  // Duas chaves ligam troca_pecas e troca_opcoes (a opção e a escolha): nomeia a certa.
+  const consulta = (comEscolhas: boolean) =>
+    supabase
+      .from("trocas")
+      .select(`*, troca_pecas(*, troca_opcoes!troca_opcoes_troca_peca_id_fkey(*)${comEscolhas ? ", troca_escolhas!troca_escolhas_troca_peca_id_fkey(*)" : ""})`)
+      .eq("pedido_id", pedidoId)
+      .in("status", ["rascunho", "enviada", "respondida"])
+      .maybeSingle()
+  let { data: t, error } = await consulta(true)
+  // Banco sem a migration do carrinho: lê sem as escolhas.
+  if (error && semFuncao(error)) ({ data: t, error } = await consulta(false))
+  if (error) throw error
+  if (!t) return null
+  const [v, r, c] = await Promise.all([
+    supabase.from("v_troca_valores").select("*").eq("troca_id", t.id),
+    supabase.from("v_troca_resumo").select("*").eq("troca_id", t.id).maybeSingle(),
+    supabase.from("v_troca_carrinho").select("*").eq("troca_id", t.id),
+  ])
+  if (v.error) throw v.error
+  if (r.error) throw r.error
+  const valores = v.data as TrocaValor[]
+  const carrinhos = c.error ? [] : (c.data as TrocaCarrinho[])
+  const { troca_pecas, ...troca } = t as unknown as { troca_pecas: (Omit<TrocaPeca, "opcoes" | "valores"> & { troca_opcoes: TrocaOpcao[]; troca_escolhas?: TrocaEscolha[] })[] } & Omit<Troca, "pecas" | "resumo">
+  const pecas: TrocaPeca[] = troca_pecas
+    .map(({ troca_opcoes, troca_escolhas, ...p }) => ({
+      ...p,
+      opcoes: [...troca_opcoes].sort((a, b) => a.ordem - b.ordem),
+      valores: valores.filter((x) => x.troca_peca_id === p.id),
+      escolhas: troca_escolhas ?? [],
+      carrinho: carrinhos.find((x) => x.troca_peca_id === p.id) ?? null,
+    }))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+  return { ...troca, pecas, resumo: (r.data as TrocaResumo | null) ?? null } as Troca
+}
+
+// Alterações do pedido depois do pagamento (trocas, créditos, peças tiradas pela cliente e quantidades
+// reduzidas), com o dinheiro pronto do banco (v_pedido_alteracoes). Só leitura.
+export function useAlteracoes(pedidoId: string | undefined) {
+  return useQuery({
+    queryKey: ["alteracoes", pedidoId],
+    enabled: !!pedidoId,
+    queryFn: async (): Promise<Alteracao[]> => {
+      const { data, error } = await supabase.from("v_pedido_alteracoes").select("*").eq("pedido_id", pedidoId!).order("em", { ascending: false })
+      if (error) {
+        if (semFuncao(error)) return [] // banco ainda sem a view
+        throw error
+      }
+      return data as unknown as Alteracao[]
     },
   })
 }

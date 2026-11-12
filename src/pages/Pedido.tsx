@@ -11,9 +11,9 @@ import AdicionarPecas from "@/components/AdicionarPecas"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAcoesItem, useSubstituirItem, useMudarStatus, usePatchPedido, usePedido, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { useAcoesItem, useSubstituirItem, useMudarStatus, usePatchPedido, usePedido, type PedidoDetalhe } from "@/lib/api"
 import { ETAPAS_DE_PECAS } from "@/lib/etapa"
-import { PASSOS, passoDe, type StatusPedido } from "@/lib/status"
+import { etapaAtual, type StatusPedido } from "@/lib/status"
 import type { Item, NovoItem } from "@/lib/tipos"
 
 function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
@@ -27,27 +27,15 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
     vistaRef.current = vista
   }, [vista])
   // O Dialog de concluir só abre a partir da etapa atual: vendo outra, as ações das peças não o disparam.
-  const acaoBase = useAcoesItem(pedido.id, (e) => {
+  const acao = useAcoesItem(pedido.id, (e) => {
     if (vistaRef.current === null) setConcluida(e)
   })
-  // Falta/defeito marcada na Conferência ou na Etiquetagem leva o pedido a "avisar cliente" (passo da
-  // Separação). A tela fica na etapa onde a pessoa estava, com o cartão da falta em cima e as outras
-  // peças como estavam; antes ela pulava para a Separação, com tudo verde, e parecia que tinha conferido tudo.
-  const [manter, setManter] = useState<StatusPedido | null>(null)
-  const acao: AcaoItem = (item, campos, ...resto) => {
-    const passo = PASSOS[passoDe(pedido.status)]?.id
-    if ((campos.status === "falta" || campos.status === "defeito") && vista === null && passo && passo !== "separacao") {
-      setVista(passo)
-      setManter(passo)
-    }
-    return acaoBase(item, campos, ...resto)
-  }
-  // Mudou a etapa do pedido: volta a mostrar a atual (ajuste durante a renderização, sem efeito).
+  // Mudou a etapa do pedido: volta a mostrar a atual (ajuste durante a renderização, sem efeito). Falta marcada
+  // na Conferência ou na Etiquetagem não muda a etapa que a tela mostra: o desvio guarda a etapa de origem (V37).
   const [statusVisto, setStatusVisto] = useState(pedido.status)
   if (statusVisto !== pedido.status) {
     setStatusVisto(pedido.status)
-    setVista(manter)
-    setManter(null)
+    setVista(null)
   }
   const foco = ETAPAS_DE_PECAS.includes(pedido.status)
   const substituirItem = useSubstituirItem()
@@ -73,7 +61,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           <AlertDescription>Confira o pedido na Shopify antes de seguir: as quantidades não batem mais com as peças daqui.</AlertDescription>
         </Alert>
       )}
-      <Etapas status={pedido.status} eventos={pedido.pedido_eventos} vista={vista} aoVer={setVista} />
+      <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} vista={vista} aoVer={setVista} />
       {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota e frete em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
@@ -83,7 +71,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           aoVoltar={() => setVista(null)}
           acao={acao}
           patch={patch.mutate}
-          aoConcluir={() => setConcluida(pedido.status)}
+          aoConcluir={() => setConcluida(etapaAtual(pedido))}
           aoTrocar={(item) => {
             setTrocando(item)
             setAdicionando(true)

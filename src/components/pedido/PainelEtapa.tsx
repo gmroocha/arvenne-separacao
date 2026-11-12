@@ -3,11 +3,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { ehDesvio } from "@/lib/selo"
-import { NOME_ETAPA, PASSOS, passoDe, type StatusPedido } from "@/lib/status"
+import { NOME_ETAPA, PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 import Bipagem from "./Bipagem"
 import Conferencia from "./Conferencia"
 import Etiquetagem from "./Etiquetagem"
+import Problemas from "./Problemas"
 import { Embalagem, Enviado, Postagem } from "./Fechamento"
 import NotaFrete from "./NotaFrete"
 import Separacao from "./Separacao"
@@ -25,7 +26,7 @@ type Props = {
 // O painel muda conforme a etapa vista. Vendo outra etapa que não a atual, o botão de concluir some
 // (quem decide mudar de etapa é a atual), mas as ações das peças continuam valendo.
 export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoConcluir, aoTrocar }: Props) {
-  const atualIdx = passoDe(pedido.status)
+  const atualIdx = passoAtual(pedido)
   const vistaIdx = vista ? passoDe(vista) : atualIdx
   const somenteVer = vista !== null && vistaIdx !== atualIdx
   const concluir = somenteVer ? undefined : aoConcluir
@@ -58,15 +59,20 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
     }
   }
 
+  // O cartão "Avise a cliente" mora nas etapas de peças. Desvio vindo de uma etapa sem ele (Bipagem, Nota e
+  // frete, Embalagem, Postagem) mostra o cartão aqui em cima, para a falta não ficar escondida.
+  const cartaoDoDesvio = ehDesvio(pedido.status) && !somenteVer && ["bipagem", "faturamento", "embalagem", "pronto_envio"].includes(etapa ?? "")
+
   return (
     <div className="flex flex-col gap-4">
+      {cartaoDoDesvio && <Problemas pedido={pedido} acao={acao} aoTrocar={aoTrocar} />}
       {somenteVer && (
         <Alert className="sm:items-center sm:*:[svg]:translate-y-0">
           <Eye />
           <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>
               {ehDesvio(pedido.status) && vistaIdx > atualIdx
-                ? `Peça em falta: o pedido volta para ${PASSOS[atualIdx].nome} até resolver com a cliente. As outras peças continuam como estão.`
+                ? `Peça em falta: o pedido espera em ${PASSOS[atualIdx].nome} até resolver com a cliente. As outras peças continuam como estão.`
                 : `Você está vendo ${PASSOS[vistaIdx].nome}. O pedido está em ${PASSOS[atualIdx].nome}.`}
             </span>
             <Button size="toque" variant="outline" className="shrink-0" onClick={aoVoltar}>

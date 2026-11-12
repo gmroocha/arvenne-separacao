@@ -22,10 +22,26 @@ export type ParteSomada = {
   qtd_pecas: number
 }
 
+// Um desconto da Shopify já normalizado pelo banco (pedidos.descontos).
+export type DescontoShopify = {
+  tipo: "code" | "automatic" | "manual" | "script"
+  rotulo: string | null
+  codigo: string | null
+  titulo: string | null
+  percentual: number | null
+  valor: number | null
+  alocacao: string | null
+  alvo: string | null
+}
+
 // Uma linha de v_pedidos: colunas de pedidos + o que o banco calcula (a tela só formata).
-export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'status_desde' | 'pedido_em' | 'created_at' | 'token_publico' | 'subtotal' | 'desconto' | 'desconto_pix' | 'frete_na_conta' | 'total' | 'qtd_pecas' | 'qtd_linhas' | 'qtd_encontradas' | 'qtd_problemas' | 'qtd_conferidas' | 'qtd_etiquetadas' | 'qtd_bipadas' | 'valor_pecas_com_desconto' | 'acerto_pendente' | 'pendente_rastreio' | 'troca_coberto' | 'qtd_adicionais' | 'valor_somado' | 'valor_pago_somado' | 'total_geral'>, 'origem' | 'status' | 'fase' | 'fotos' | 'partes' | 'desconto_tipo' | 'frete_tipo' | 'frete_pago_por'> & {
+export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'status_desde' | 'pedido_em' | 'created_at' | 'token_publico' | 'subtotal' | 'desconto' | 'desconto_pix' | 'frete_na_conta' | 'total' | 'qtd_pecas' | 'qtd_linhas' | 'qtd_encontradas' | 'qtd_problemas' | 'qtd_conferidas' | 'qtd_etiquetadas' | 'qtd_bipadas' | 'valor_pecas_com_desconto' | 'acerto_pendente' | 'pendente_rastreio' | 'troca_coberto' | 'qtd_adicionais' | 'valor_somado' | 'valor_pago_somado' | 'total_geral' | 'desconto_sem_cobertura'>, 'origem' | 'status' | 'fase' | 'fotos' | 'partes' | 'desconto_tipo' | 'frete_tipo' | 'frete_pago_por' | 'etapa_antes_desvio' | 'descontos'> & {
   origem: Origem; status: StatusPedido; fase: Fase
   fotos: string[]; partes: ParteSomada[]
+  // V37: etapa de onde veio o desvio "avisar/aguardando cliente" (nula fora do desvio).
+  etapa_antes_desvio: StatusPedido | null
+  // Motivo dos descontos da Shopify (nulo = a sincronização ainda não trouxe).
+  descontos: DescontoShopify[] | null
   desconto_tipo: DescontoTipo | null; frete_tipo: FreteTipo | null; frete_pago_por: FretePagoPor | null
 }
 
@@ -143,6 +159,9 @@ export type TrocaValor = {
   valor_unit?: number
   diferenca: number
   situacao: SituacaoTroca
+  // Previsto da cobertura da loja (só depois da migration 20261120090000): quanto a Arvenne absorve e o que sobra para a cliente.
+  coberto_previsto?: number
+  cliente_paga_previsto?: number
 }
 
 // Uma opção no carrinho que a cliente montou (tabela troca_escolhas).
@@ -160,12 +179,16 @@ export type TrocaCarrinho = {
   // positivo = a cliente paga, negativo = crédito
   diferenca: number
   itens: { opcao_id: string; qtd: number; valor_unit: number; valor: number }[]
+  coberto_previsto?: number
+  cliente_paga_previsto?: number
 }
 
 // Uma peça em falta dentro da troca, com as opções montadas e os valores prontos do banco.
 export type TrocaPeca = Omit<Tables<'troca_pecas'>, 'escolha_tipo' | 'escolhida_por'> & {
   escolha_tipo: EscolhaTroca | null; escolhida_por: 'cliente' | 'equipe' | null
   opcoes: TrocaOpcao[]; valores: TrocaValor[]; escolhas?: TrocaEscolha[]; carrinho?: TrocaCarrinho | null
+  // Peça já resolvida: o que a Arvenne cobriu e o que a cliente paga (de troca_painel; nulos antes de concluir).
+  coberto?: number | null; cliente_paga?: number | null
 }
 
 // Linha de v_troca_resumo: diferenca_total positivo = a cliente paga, negativo = crédito.
@@ -239,6 +262,9 @@ export type Sugestao = {
   situacao: "paga_diferenca" | "credito" | "sem_diferenca"
   // A variante já é peça viva do pedido (só vem com incluirPedido).
   no_pedido: boolean
+  // Previsto da cobertura da loja para esta peça (do banco; faltam antes da migration).
+  coberto_previsto?: number
+  cliente_paga_previsto?: number
   // Marcada como "vender sem estoque" na Shopify (vem do banco; pode faltar até atualizar o catálogo).
   vende_sem_estoque?: boolean | null
 }
@@ -289,4 +315,26 @@ export type TrocaPublica = {
   // diferenca é a líquida (depois do que a loja cobre); cada opção traz a diferença cheia.
   resumo: { total_pago: number; diferenca: number; diferenca_bruta?: number; coberto?: number; cobrir_ate?: number; pecas_total: number; pecas_respondidas: number }
   pecas: TrocaPublicaPeca[]
+}
+
+// Peça de uma alteração do pedido (v_pedido_alteracoes.sai / .entra).
+export type PecaAlteracao = { item_id: string; sku: string | null; nome: string; variante: string | null; foto_url: string | null; qtd: number; valor_pago?: number; valor?: number }
+
+// Linha de v_pedido_alteracoes: troca (opção ou crédito), peça que a cliente tirou ou quantidade reduzida, depois do pagamento.
+export type Alteracao = {
+  id: string
+  pedido_id: string
+  tipo: "troca" | "credito" | "removida" | "quantidade"
+  em: string | null
+  por: string | null
+  escolhida_por: "cliente" | "equipe" | null
+  sai: PecaAlteracao
+  entra: PecaAlteracao[]
+  valor: number
+  diferenca: number
+  coberto_loja: number
+  cliente_paga: number
+  credito: number
+  a_devolver: number | null
+  devolvido_em: string | null
 }

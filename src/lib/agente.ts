@@ -1,5 +1,6 @@
 import { reais } from "@/lib/formato"
 import { NOME_ITEM } from "@/lib/status"
+import { cobreTudo } from "@/lib/trocaTexto"
 import type { Item, Pedido } from "@/lib/tipos"
 
 // Texto para colar no agente que conversa com a cliente sobre peças em falta.
@@ -40,7 +41,7 @@ export function mensagemTroca(pedido: Pedido, itens: Item[], link: string, cobri
   const nome = primeiroNome(pedido)
   const plural = itens.length > 1
   return [
-    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas. Infelizmente ${plural ? "algumas peças" : "uma peça"} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕 Separamos opções para você escolher, com fotos e valores${cobrirAte > 0 ? `. A loja cobre até ${reais(cobrirAte)} da diferença` : ""}, neste link:`,
+    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas. Infelizmente ${plural ? "algumas peças" : "uma peça"} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕 Separamos opções para você escolher, com fotos e valores${cobrirAte > 0 ? (cobreTudo(cobrirAte) ? ". A loja cobre a diferença" : `. A loja cobre até ${reais(cobrirAte)} da diferença`) : ""}, neste link:`,
     link,
     "Qualquer dúvida é só responder aqui.",
   ].join("\n")

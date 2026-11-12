@@ -7,12 +7,14 @@ import SeloStatus from "@/components/SeloStatus"
 import { Button } from "@/components/ui/button"
 import { ehDesvio } from "@/lib/selo"
 import { quando } from "@/lib/formato"
-import { ICONE_ETAPA, PASSOS, passoDe, type StatusPedido } from "@/lib/status"
+import { ICONE_ETAPA, PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
 import type { Evento } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
 type Props = {
   status: StatusPedido
+  // V37: em "avisar/aguardando cliente", a etapa de onde o pedido veio (a etapa atual na linha).
+  etapaAntesDesvio?: StatusPedido | null
   eventos: Evento[]
   vista: StatusPedido | null // etapa que está na tela (null = a atual do pedido)
   aoVer: (vista: StatusPedido | null) => void
@@ -23,8 +25,8 @@ const lista = (nomes: string[]) => (nomes.length > 1 ? `${nomes.slice(0, -1).joi
 // Esteira do pedido: Separação → Conferência → Etiquetagem → Bipagem → Nota e frete → Embalagem →
 // Postagem → Enviado. Tocar numa etapa só muda o que aparece na tela, nunca o status do pedido.
 // Etapa à frente da atual pede aviso (Dialog) antes de abrir.
-export default function Etapas({ status, eventos, vista, aoVer }: Props) {
-  const atual = passoDe(status)
+export default function Etapas({ status, etapaAntesDesvio, eventos, vista, aoVer }: Props) {
+  const atual = passoAtual({ status, etapa_antes_desvio: etapaAntesDesvio })
   const vistaIdx = vista ? passoDe(vista) : atual
   const [bloqueada, setBloqueada] = useState<number | null>(null) // etapa à frente que a pessoa tentou abrir
 

@@ -27,7 +27,7 @@ import { numeroParaTexto, reais } from "@/lib/formato"
 import { chaveModelo, codigoDoModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import { fotoTamanho } from "@/lib/foto"
 import { COR_TEXTO_AVISO } from "@/lib/selo"
-import { listaEscolhida, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
+import { cobreTudo, listaEscolhida, rotuloPagamento, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
 import type { CategoriaCatalogo, Item, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca, ValorPago } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
@@ -69,6 +69,13 @@ const rotuloCategoria = (c: string) => (c ? c.charAt(0).toUpperCase() + c.slice(
 
 // Diferença já calculada no banco (só inverte o sinal para o texto).
 function Diferenca({ s }: { s: Sugestao }) {
+  // A loja cobre (parte da) diferença: o rótulo mostra o que a Arvenne cobre e o que sobra para a cliente.
+  if (s.situacao === "paga_diferenca" && (s.coberto_previsto ?? 0) > 0)
+    return (
+      <span className={cn("text-xs font-medium tabular-nums", (s.cliente_paga_previsto ?? 0) > 0 ? "text-warning" : "text-success")}>
+        {rotuloPagamento({ diferenca: s.diferenca, coberto: s.coberto_previsto, clientePaga: s.cliente_paga_previsto })}
+      </span>
+    )
   if (s.situacao === "paga_diferenca") return <span className="text-xs font-medium text-warning tabular-nums">+{reais(s.diferenca)} a pagar</span>
   if (s.situacao === "credito") return <span className="text-xs font-medium text-success tabular-nums">{reais(-s.diferenca)} de crédito</span>
   return <span className="text-xs text-muted-foreground">mesmo valor</span>
@@ -202,9 +209,15 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
             </span>
             <span className="flex flex-col gap-0.5">
               <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
-              <span className={cn("text-xs leading-none", estado ? "font-medium text-success" : n > 0 ? "text-muted-foreground" : COR_TEXTO_AVISO)}>
-                {estado ?? (n > 0 ? `${n} ${n === 1 ? "opção" : "opções"}` : "sem opção")}
-              </span>
+              {troca && !peca ? (
+                <span className="flex items-center gap-1 text-xs leading-none text-muted-foreground" role="status">
+                  <Spinner className="size-3" /> preparando
+                </span>
+              ) : (
+                <span className={cn("text-xs leading-none", estado ? "font-medium text-success" : n > 0 ? "text-muted-foreground" : COR_TEXTO_AVISO)}>
+                  {estado ?? (n > 0 ? `${n} ${n === 1 ? "opção" : "opções"}` : "sem opção")}
+                </span>
+              )}
             </span>
           </button>
         )
@@ -298,7 +311,7 @@ function FiltroPreco({
 }
 
 // O que a cliente montou no carrinho (troca_escolhas): lista com quantidades, total e diferença (v_troca_carrinho).
-function EscolhaCliente({ item, peca, ocupado, aoAprovar }: { item: Item; peca: TrocaPeca; ocupado: boolean; aoAprovar: () => void }) {
+function EscolhaCliente({ item, peca, ocupado, tudo, aoAprovar }: { item: Item; peca: TrocaPeca; ocupado: boolean; tudo: boolean; aoAprovar: () => void }) {
   const linhas = (peca.escolhas ?? []).flatMap((e) => {
     const o = peca.opcoes.find((x) => x.id === e.opcao_id)
     return o ? [{ o, qtd: e.qtd }] : []
@@ -323,7 +336,7 @@ function EscolhaCliente({ item, peca, ocupado, aoAprovar }: { item: Item; peca: 
           <span className="text-muted-foreground">
             Escolhido {reais(c.valor_escolhido)} de {reais(c.valor_pago_item)}
           </span>
-          <span className="font-medium">{c.diferenca > 0 ? `Cliente paga +${reais(c.diferenca)}` : c.diferenca < 0 ? `Crédito de ${reais(-c.diferenca)}` : "Sem diferença"}</span>
+          <span className="font-medium">{rotuloPagamento({ diferenca: c.diferenca, coberto: c.coberto_previsto, clientePaga: c.cliente_paga_previsto }, tudo)}</span>
         </div>
       )}
       <Button className="h-9 w-full text-sm" disabled={ocupado || !c} onClick={aoAprovar}>
@@ -340,6 +353,7 @@ function PainelOpcoes({
   pedidoItens,
   troca,
   ocupado,
+  tudo,
   aoRemover,
   aoAprovar,
   aoAprovarCarrinho,
@@ -348,6 +362,8 @@ function PainelOpcoes({
   pedidoItens: Item[]
   troca: Troca | undefined
   ocupado: boolean
+  // A loja cobre a diferença inteira ("cobrir tudo").
+  tudo: boolean
   aoRemover: (o: TrocaOpcao) => void
   aoAprovar: (item: Item, peca: TrocaPeca, opcao: TrocaOpcao | null) => void
   aoAprovarCarrinho: (item: Item, peca: TrocaPeca) => void
@@ -361,7 +377,7 @@ function PainelOpcoes({
         return (
           <section key={item.id} className="flex min-w-0 flex-col gap-3" aria-label={item.sku ?? item.nome}>
             {itens.length > 1 && <h4 className="truncate font-mono text-sm font-semibold">{item.sku ?? "sem código"}</h4>}
-            {peca && <EscolhaCliente item={item} peca={peca} ocupado={ocupado} aoAprovar={() => aoAprovarCarrinho(item, peca)} />}
+            {peca && <EscolhaCliente item={item} peca={peca} ocupado={ocupado} tudo={tudo} aoAprovar={() => aoAprovarCarrinho(item, peca)} />}
             {opcoes.length === 0 ? (
               <Vazio className="p-3">Nenhuma opção ainda.</Vazio>
             ) : (
@@ -412,9 +428,7 @@ function PainelOpcoes({
               {novas.length > 0 ? ` → ${novas.join(" + ")}` : nova ? ` → ${nova.sku ?? nova.nome}` : " · crédito"}
             </div>
             {dif != null && (
-              <div className="text-xs text-muted-foreground tabular-nums">
-                {dif > 0 ? `Cliente paga +${reais(dif)}` : dif < 0 ? `Crédito de ${reais(-dif)}` : "Sem diferença"}
-              </div>
+              <div className="text-xs text-muted-foreground tabular-nums">{rotuloPagamento({ diferenca: dif, coberto: p.coberto, clientePaga: p.cliente_paga }, tudo)}</div>
             )}
           </section>
         )
@@ -486,7 +500,9 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   }, [aberto, trocaQ.isSuccess, troca, faltaPeca, criando, criarTroca, chaveItens, pedido.id, itens])
 
   const erroTroca = trocaQ.isError || criar.isError
-  const pronta = !!troca && !faltaPeca
+  // V39: com a troca já lida a tela abre na hora; só a peça que ainda não tem troca_peca espera o garantir_troca.
+  const pronta = !!troca
+  const preparando = (id: string) => !!troca && !troca.pecas.some((p) => p.item_id === id) && !erroTroca
   function tentarDeNovo() {
     if (trocaQ.isError) {
       trocaQ.refetch()
@@ -573,18 +589,12 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       {respondidas > 0 && (
         <div className="flex flex-col gap-1 tabular-nums">
           {coberto > 0 && (
-            <>
-              <div className="flex justify-between gap-3 text-muted-foreground">
-                <span>Diferença</span>
-                <span>+ {reais(bruta)}</span>
-              </div>
-              <div className="flex justify-between gap-3 text-muted-foreground">
-                <span>A loja cobre</span>
-                <span>− {reais(coberto)}</span>
-              </div>
-            </>
+            <div className="flex justify-between gap-3 text-muted-foreground">
+              <span>Diferença</span>
+              <span>+ {reais(bruta)}</span>
+            </div>
           )}
-          <div className="font-semibold">{difTotal > 0 ? `Cliente paga +${reais(difTotal)}` : difTotal < 0 ? `Crédito de ${reais(-difTotal)}` : "Sem diferença"}</div>
+          <div className="font-semibold">{rotuloPagamento({ diferenca: coberto > 0 ? bruta : difTotal, coberto, clientePaga: difTotal > 0 ? difTotal : 0 }, cobreTudo(cobrirAte))}</div>
         </div>
       )}
       {faltamOpcao.length > 0 && <div className="text-xs text-muted-foreground">Falta escolher opções de: {faltamOpcao.map((i) => i.sku ?? i.nome).join(", ")}</div>}
@@ -796,32 +806,40 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         <>
           <ChipsPecas itens={ativos} troca={troca} atualId={item.id} aoEscolher={setItemId} />
           <CabecalhoPeca item={item} pago={pagoQ.data} />
-          <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
-            <TabsList className="w-full">
-              <TabsTrigger value="variantes">Variantes</TabsTrigger>
-              <TabsTrigger value="preco">Preço parecido</TabsTrigger>
-              <TabsTrigger value="buscar">Buscar</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {filtrosPreco}
-          {aba === "buscar" ? (
-            aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} noPedido={jaNoPedido} notaPreco="valor com desconto aparece ao escolher" />
-          ) : (
-            <div className="flex min-w-0 flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Checkbox id="incluir-pedido" checked={incluir} onCheckedChange={(v) => setIncluir(v === true)} />
-                <Label htmlFor="incluir-pedido" className="text-sm font-normal">
-                  Incluir peças que já estão no pedido
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="so-sem-estoque" checked={soSemEstoque} onCheckedChange={(v) => setSoSemEstoque(v === true)} />
-                <Label htmlFor="so-sem-estoque" className="text-sm font-normal">
-                  Incluir apenas peças marcadas como “vender sem estoque”
-                </Label>
-              </div>
-              {grade}
+          {preparando(item.id) ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+              <Spinner /> Preparando esta peça…
             </div>
+          ) : (
+            <>
+              <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="variantes">Variantes</TabsTrigger>
+                  <TabsTrigger value="preco">Preço parecido</TabsTrigger>
+                  <TabsTrigger value="buscar">Buscar</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {filtrosPreco}
+              {aba === "buscar" ? (
+                aberto && <BuscaPecas aoEscolher={(n) => alternar(n, "busca")} selecionada={selecionada} noPedido={jaNoPedido} notaPreco="valor com desconto aparece ao escolher" />
+              ) : (
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="incluir-pedido" checked={incluir} onCheckedChange={(v) => setIncluir(v === true)} />
+                    <Label htmlFor="incluir-pedido" className="text-sm font-normal">
+                      Incluir peças que já estão no pedido
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="so-sem-estoque" checked={soSemEstoque} onCheckedChange={(v) => setSoSemEstoque(v === true)} />
+                    <Label htmlFor="so-sem-estoque" className="text-sm font-normal">
+                      Incluir apenas peças marcadas como “vender sem estoque”
+                    </Label>
+                  </div>
+                  {grade}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -833,6 +851,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       itens={ativos}
       pedidoItens={pedido.pedido_itens}
       troca={troca}
+      tudo={cobreTudo(cobrirAte)}
       ocupado={aprovar.isPending || aprovarCarrinho.isPending}
       aoAprovarCarrinho={(item, peca) => setConf({ item, peca, opcao: null, carrinho: true })}
       aoRemover={(o) => !o.id.startsWith("tmp-") && remover.mutate({ opcaoId: o.id })}
