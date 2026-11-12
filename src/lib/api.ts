@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
+import type { Database } from "@/lib/banco"
 import { etapaCompleta } from "@/lib/etapa"
 import { lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
 import { itemDoSite } from "@/lib/itens"
@@ -161,7 +162,7 @@ export function useRomaneio(token: string | undefined) {
     refetchInterval: 30_000,
     retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("romaneio_publico", { p_token: token })
+      const { data, error } = await supabase.rpc("romaneio_publico", { p_token: token! })
       if (error) return null
       return (data as Romaneio | null) ?? null
     },
@@ -259,7 +260,11 @@ export async function buscarVariantes(variantIds: string[]) {
   const { data, error } = await supabase
     .from("catalogo_site")
     .select("variant_id, sku, produto, variante, preco, foto_url")
-    .in("variant_id", variantIds)
+    .in("variant_id", variantIds.map((id) => {
+      const n = Number(id)
+      if (!Number.isSafeInteger(n) || n < 1) throw new Error("Código de variante inválido")
+      return n
+    }))
   if (error) throw error
   const achadas = (data as LinhaCatalogo[]).map(paraVariante)
   const ids = new Set(achadas.map((v) => String(v.shopify_variant_id)))
@@ -523,13 +528,13 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
     mutationFn: async ({ itemId, campos, codigo, delta }: { itemId: string; campos: ItemPatch; codigo?: string; delta?: number }): Promise<ResultadoBipagem | null> => {
       // Com código (bipagem), o banco soma 1 e registra o histórico: duas leituras seguidas contam as duas.
       if (codigo) {
-        const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId, p_codigo: codigo })
+        const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId!, p_codigo: codigo })
         if (error) throw error
         return data as ResultadoBipagem
       }
       // "Contar 1" / "Tirar 1": o banco soma ou tira 1 (sem sair de 0..qtd), sem depender da tela.
       if (delta) {
-        const { error } = await supabase.rpc("bipar_ajustar", { p_item: itemId, p_delta: delta })
+        const { error } = await supabase.rpc("bipar_ajustar", { p_item: itemId!, p_delta: delta })
         if (error) throw error
         return null
       }
@@ -638,7 +643,7 @@ export function useReiniciar(pedidoId: string) {
 // Leitura do leitor de código: soma 1 na peça (sem passar da quantidade) e grava o histórico em "bipagens",
 // tudo no banco (função bipar). Sem itemId, registra "fora_do_pedido". Devolve o resultado.
 export async function registrarBipagem(pedidoId: string, itemId: string | null, codigo: string): Promise<ResultadoBipagem | null> {
-  const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId, p_codigo: codigo })
+  const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId!, p_codigo: codigo })
   if (error) {
     toast.error(msg(error))
     return null
@@ -812,7 +817,7 @@ export async function salvarCliente(id: string | null, d: DadosCliente): Promise
   }
   if (alvo) {
     // Ao atualizar, campo vazio não apaga o que já está guardado no cadastro.
-    const parcial = Object.fromEntries(Object.entries(linha).filter(([, v]) => v != null && v !== ""))
+    const parcial: Database["public"]["Tables"]["clientes"]["Update"] = Object.fromEntries(Object.entries(linha).filter(([, v]) => v != null && v !== ""))
     const { error } = await supabase.from("clientes").update(parcial).eq("id", alvo)
     if (error) throw error
     return alvo
@@ -1027,7 +1032,7 @@ export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, fil
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const base = {
-        p_item: itemId,
+        p_item: itemId!,
         p_modo: modo,
         p_categoria: modo === "preco" ? categoria : null,
         p_faixa: faixa,
@@ -1076,7 +1081,7 @@ export function useValorPago(itemId: string | undefined) {
     enabled: !!itemId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("troca_valor_pago", { p_item: itemId })
+      const { data, error } = await supabase.rpc("troca_valor_pago", { p_item: itemId! })
       if (error) throw error
       return ((data ?? [])[0] ?? null) as ValorPago | null
     },
@@ -1152,6 +1157,7 @@ export function useOpcaoTroca(pedidoId: string) {
                   ...p.opcoes,
                   {
                     id: `tmp-${opcao.chave}`,
+                    created_at: new Date().toISOString(),
                     troca_peca_id: trocaPecaId,
                     origem: opcao.origem === "clube" ? "clube" : "site",
                     shopify_variant_id: opcao.shopify_variant_id,
@@ -1328,7 +1334,7 @@ export function useTrocaPublica(token: string | undefined) {
     refetchInterval: 30_000,
     retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("troca_publica", { p_token: token })
+      const { data, error } = await supabase.rpc("troca_publica", { p_token: token! })
       if (error) throw error
       return (data as TrocaPublica | null) ?? null
     },
@@ -1340,7 +1346,7 @@ export function useEscolherTroca(token: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ itemId, tipo, opcaoId }: { itemId: string; tipo: EscolhaTroca; opcaoId?: string | null }) => {
-      const { error } = await supabase.rpc("troca_escolher", { p_token: token, p_item: itemId, p_tipo: tipo, p_opcao: opcaoId ?? null })
+      const { error } = await supabase.rpc("troca_escolher", { p_token: token!, p_item: itemId!, p_tipo: tipo, p_opcao: opcaoId ?? null })
       if (error) throw error
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["troca-publica", token] }),
@@ -1357,7 +1363,7 @@ export function useCarrinhoTroca(token: string | undefined) {
     mutationKey: ["troca-carrinho", token],
     scope: { id: `troca-carrinho-${token}` },
     mutationFn: async ({ itemId, opcaoId, qtd }: { itemId: string; opcaoId: string; qtd: number }) => {
-      const { error } = await supabase.rpc("troca_carrinho", { p_token: token, p_item: itemId, p_opcao: opcaoId, p_qtd: qtd })
+      const { error } = await supabase.rpc("troca_carrinho", { p_token: token!, p_item: itemId!, p_opcao: opcaoId, p_qtd: qtd })
       if (error) throw error
     },
     onMutate: async ({ itemId, opcaoId, qtd }) => {
@@ -1413,7 +1419,7 @@ export function usePecasParaEtiquetar() {
       const { data: itens, error: e2 } = await supabase
         .from("pedido_itens")
         .select("*")
-        .in("pedido_id", pedidos.map((p) => p.id))
+        .in("pedido_id", pedidos.map((p) => p.id).filter((id): id is string => id !== null))
         .eq("status", "encontrado")
         .is("etiquetado_em", null)
         .order("ordem")
