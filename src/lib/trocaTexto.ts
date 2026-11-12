@@ -50,3 +50,11 @@ export function listaCarrinho(peca: TrocaPeca): string {
 // Confirmação para vários itens: "Trocar BLR29-S por 2× A + 1× B · cliente paga +R$ 6,58".
 export const fraseCarrinho = (antigo: string, peca: TrocaPeca) =>
   `Trocar ${antigo} por ${listaCarrinho(peca)} · ${fraseDiferencaCarrinho(peca.carrinho?.diferenca)}`
+
+// Carrinho da cliente com a opção completa. Banco antigo: só a opção escolhida, na quantidade da peça.
+export function listaEscolhida(peca: TrocaPeca): { opcao: TrocaOpcao; qtd: number }[] {
+  const itens = peca.carrinho?.itens ?? []
+  if (itens.length > 0) return itens.flatMap((c) => { const opcao = peca.opcoes.find((o) => o.id === c.opcao_id); return opcao ? [{ opcao, qtd: c.qtd }] : [] })
+  const o = peca.opcoes.find((x) => x.id === peca.escolha_opcao_id)
+  return o ? [{ opcao: o, qtd: 0 }] : []
+}

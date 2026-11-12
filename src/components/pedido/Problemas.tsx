@@ -12,21 +12,13 @@ import { useConcluirTroca, useEnviarTroca, useMudarStatus, useTroca, type AcaoIt
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
-import { fraseCarrinho, fraseCredito, fraseTroca } from "@/lib/trocaTexto"
-import type { Item, Troca, TrocaOpcao, TrocaPeca } from "@/lib/tipos"
+import type { Item, Troca, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import ConfirmarTroca from "./ConfirmarTroca"
+import { listaEscolhida } from "@/lib/trocaTexto"
 import LinhaPeca from "./LinhaPeca"
 import { MenuPeca } from "./TilePeca"
 import TrocaDialog from "./TrocaDialog"
-
-// Carrinho da cliente com a opção completa. Banco antigo: só a opção escolhida, na quantidade da peça.
-function listaEscolhida(peca: TrocaPeca): { opcao: TrocaOpcao; qtd: number }[] {
-  const itens = peca.carrinho?.itens ?? []
-  if (itens.length > 0) return itens.flatMap((c) => { const opcao = peca.opcoes.find((o) => o.id === c.opcao_id); return opcao ? [{ opcao, qtd: c.qtd }] : [] })
-  const o = peca.opcoes.find((x) => x.id === peca.escolha_opcao_id)
-  return o ? [{ opcao: o, qtd: 0 }] : []
-}
 
 // Estado da troca de UMA peça em falta: aguardar a cliente ou fechar a escolha dela.
 function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefined; peca: TrocaPeca | undefined; item: Item; aoAbrir: () => void; wa: string | null }) {
@@ -44,20 +36,14 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
       </div>
     )
 
-  const opcao = peca.escolha_tipo === "opcao" ? peca.opcoes.find((o) => o.id === peca.escolha_opcao_id) : undefined
   // Carrinho da cliente: todas as peças que ela escolheu (ou só a opção, em banco antigo).
   const lista = peca.escolha_tipo === "opcao" ? listaEscolhida(peca) : []
   const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, peca, tipo }, { onSuccess: () => setConfirmar(null) })
-  const frase =
-    confirmar === "opcao" && lista.length > 1
-      ? fraseCarrinho(item.sku ?? item.nome, peca)
-      : confirmar === "opcao" && opcao
-        ? fraseTroca(item.sku ?? item.nome, peca, opcao)
-        : fraseCredito(peca)
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-success/10 p-2">
+    // Celular: escolha em cima, botões embaixo lado a lado. PC: escolha à esquerda, botões à direita.
+    <div className="flex flex-col gap-2 rounded-lg bg-success/10 p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       {lista.length > 0 ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <div className="text-sm font-medium text-success">Cliente escolheu</div>
           {lista.map(({ opcao: o, qtd }) => (
             <LinhaPecaComum key={o.id} item={{ ...o, qtd }} tamanho="sm" semBorda />
@@ -68,7 +54,7 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
       ) : (
         <div className="text-sm font-medium text-success">Quer falar no WhatsApp</div>
       )}
-      <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
+      <div className="grid shrink-0 grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap sm:justify-end">
         {peca.escolha_tipo === "opcao" && lista.length > 0 && (
           <Button size="bloco" disabled={concluir.isPending} onClick={() => setConfirmar("opcao")}>
             <Check /> Fazer a troca
@@ -95,8 +81,9 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
       <ConfirmarTroca
         aberto={confirmar != null}
         aoMudar={(a) => !a && setConfirmar(null)}
-        titulo={confirmar === "opcao" ? "Fazer a troca?" : "Dar crédito?"}
-        frase={frase}
+        sai={item}
+        peca={peca}
+        entra={confirmar === "opcao" ? lista : []}
         pendente={concluir.isPending}
         aoConfirmar={() => confirmar && fazer(confirmar)}
       />

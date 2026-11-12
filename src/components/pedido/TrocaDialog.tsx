@@ -6,6 +6,7 @@ import { AreaRolavel } from "@/components/comum/AreaRolavel"
 import CampoReais from "@/components/CampoReais"
 import { BuscaPecas } from "@/components/BuscaPecas"
 import CartaoCatalogo from "@/components/catalogo/CartaoCatalogo"
+import { MarcaCheck } from "@/components/comum/Bolha"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
 import ConfirmarTroca from "@/components/pedido/ConfirmarTroca"
@@ -27,7 +28,7 @@ import { numeroParaTexto, reais } from "@/lib/formato"
 import { chaveModelo, codigoDoModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import { fotoTamanho } from "@/lib/foto"
 import { COR_TEXTO_AVISO } from "@/lib/selo"
-import { fraseCarrinho, fraseCredito, fraseTroca, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
+import { listaEscolhida, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
 import type { CategoriaCatalogo, Item, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca, ValorPago } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
@@ -179,7 +180,14 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
     <div className="sem-barra flex min-w-0 gap-2 overflow-x-auto p-1" role="tablist" aria-label="Peças em falta">
       {itens.map((i) => {
         const atual = i.id === atualId
-        const n = troca?.pecas.find((x) => x.item_id === i.id)?.opcoes.length ?? 0
+        const peca = troca?.pecas.find((x) => x.item_id === i.id)
+        const n = peca?.opcoes.length ?? 0
+        // Já resolvida (trocada/crédito) ou já escolhida pela cliente: mostra no seletor, com o visto.
+        const estado = peca?.concluida_em
+          ? peca.escolha_tipo === "credito" ? "Crédito dado" : "Trocada"
+          : peca?.escolha_tipo === "opcao" ? "Cliente escolheu"
+          : peca?.escolha_tipo === "credito" ? "Quer crédito"
+          : null
         return (
           <button
             key={i.id}
@@ -189,11 +197,14 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
             onClick={() => aoEscolher(i.id)}
             className={cn("flex shrink-0 items-center gap-2 rounded-lg bg-card p-1.5 pr-3 text-left text-xs ring-1 ring-foreground/10 transition-colors", atual && "ring-2 ring-foreground/40")}
           >
-            <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-10" />
+            <span className="relative shrink-0">
+              <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-10" />
+              {estado && <MarcaCheck solida pequena className="absolute -top-1.5 -right-1.5 size-5 [&>svg]:size-3" />}
+            </span>
             <span className="flex flex-col gap-0.5">
               <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
-              <span className={cn("text-xs leading-none", n > 0 ? "text-muted-foreground" : COR_TEXTO_AVISO)}>
-                {n > 0 ? `${n} ${n === 1 ? "opção" : "opções"}` : "sem opção"}
+              <span className={cn("text-xs leading-none", estado ? "font-medium text-success" : n > 0 ? "text-muted-foreground" : COR_TEXTO_AVISO)}>
+                {estado ?? (n > 0 ? `${n} ${n === 1 ? "opção" : "opções"}` : "sem opção")}
               </span>
             </span>
           </button>
@@ -829,7 +840,8 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       aoAprovar={(item, peca, opcao) => setConf({ item, peca, opcao })}
     />
   )
-  const fraseConf = conf ? (conf.carrinho ? fraseCarrinho(conf.item.sku ?? conf.item.nome, conf.peca) : conf.opcao ? fraseTroca(conf.item.sku ?? conf.item.nome, conf.peca, conf.opcao) : fraseCredito(conf.peca)) : ""
+  // O que entra na confirmação: o carrinho todo, uma opção, ou nada (crédito).
+  const entraConf = !conf ? [] : conf.carrinho ? listaEscolhida(conf.peca) : conf.opcao ? [{ opcao: conf.opcao, qtd: 0 }] : []
   function confirmarAprovacao() {
     if (!troca || !conf) return
     const { peca: p, opcao } = conf
@@ -913,8 +925,9 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
     <ConfirmarTroca
       aberto={!!conf}
       aoMudar={(a) => !a && setConf(null)}
-      titulo={conf?.opcao || conf?.carrinho ? "Fazer a troca?" : "Dar crédito?"}
-      frase={fraseConf}
+      sai={conf?.item ?? null}
+      peca={conf?.peca ?? null}
+      entra={entraConf}
       pendente={aprovar.isPending || aprovarCarrinho.isPending}
       aoConfirmar={confirmarAprovacao}
     />
