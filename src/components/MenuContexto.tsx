@@ -23,11 +23,12 @@ export default function MenuContexto({ pedido, children }: { pedido: Pedido; chi
                   <ContextMenuItem
                     key={it.rotulo}
                     variant={it.destrutivo ? "destructive" : undefined}
-                    disabled={it.desabilitado || it.atual}
-                    onSelect={it.aoClicar}
+                    disabled={it.desabilitado}
+                    aria-current={it.atual ? "step" : undefined}
+                    onSelect={it.atual ? undefined : it.aoClicar}
                   >
                     {Icone && <Icone />} {it.rotulo}
-                    {it.atual && <Check className="ml-auto" />}
+                    {it.atual && <Check className="ml-auto text-success" />}
                   </ContextMenuItem>
                 )
               })}

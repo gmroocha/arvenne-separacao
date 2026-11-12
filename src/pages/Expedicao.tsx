@@ -1,12 +1,14 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
-import { ChevronRight, PackageOpen, Printer, RefreshCw, Search } from "lucide-react"
+import { ChevronRight, PackageOpen, Printer, RefreshCw } from "lucide-react"
 import CardPedido from "@/components/CardPedido"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { BolhaContador } from "@/components/comum/Bolha"
+import { CampoBusca } from "@/components/comum/CampoBusca"
+import { Vazio } from "@/components/comum/Vazio"
+import { Toggle } from "@/components/ui/toggle"
 import FaixaRolavel from "@/components/FaixaRolavel"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -57,19 +59,19 @@ function podeSoltar(p: Pedido, c: Coluna) {
   return para < de && !desvio
 }
 
-// Cores suaves dos desvios: vermelho (avisar) e amarelo (aguardando).
+// Cores suaves dos desvios: vermelho (avisar) e amarelo (aguardando). O contador usa a variante do Badge.
 const COR_ALERTA = {
   vermelho: {
     coluna: "bg-destructive/10",
     icone: "text-destructive",
     anel: "border-destructive/40 bg-destructive/10 text-destructive",
-    contador: "bg-destructive text-white",
+    contador: "destructive",
   },
   amarelo: {
-    coluna: "bg-amber-500/10",
-    icone: "text-amber-700 dark:text-amber-300",
-    anel: "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    contador: "bg-amber-500 text-white",
+    coluna: "bg-warning/10",
+    icone: "text-warning",
+    anel: "border-warning/40 bg-warning/15 text-warning",
+    contador: "warning",
   },
 } as const
 
@@ -128,7 +130,7 @@ export default function Expedicao() {
   const gruposEtiquetas = (paraEtiquetar.data ?? []).map((p) => ({ numero: p.numero, cliente: p.cliente, ...etiquetasDe(p.itens) }))
   const totalEtiquetas = gruposEtiquetas.reduce((n, g) => n + g.etiquetas.length, 0)
   const botaoImprimirTodas = (
-    <Button variant="secondary" className="h-10 w-full text-sm lg:h-8" disabled={imprimindo} onClick={() => imprimir(gruposEtiquetas)}>
+    <Button variant="secondary" size="toque" className="w-full" disabled={imprimindo} onClick={() => imprimir(gruposEtiquetas)}>
       <Printer /> Imprimir todas ({totalEtiquetas}){zebra && <span className="font-normal opacity-80"> · na Zebra</span>}
     </Button>
   )
@@ -198,37 +200,26 @@ export default function Expedicao() {
     ? porColuna.flatMap((c) => c.pedidos)
     : (porColuna.find((c) => c.id === selecionada)?.pedidos ?? [])
 
-  const vazio = (
-    <Empty>
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <PackageOpen />
-        </EmptyMedia>
-        <EmptyTitle>Nenhum pedido nesta etapa</EmptyTitle>
-      </EmptyHeader>
-    </Empty>
-  )
+  const vazio = <Vazio icone={PackageOpen} titulo="Nenhum pedido nesta etapa" />
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <InputGroup className="h-11 min-w-0 flex-1 lg:h-8">
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-          <InputGroupInput aria-label="Buscar por cliente, número ou telefone" placeholder="Cliente, número ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
-        </InputGroup>
-        <Button
-          variant={soAtrasados ? "destructive" : "outline"}
-          className="h-11 shrink-0 lg:h-8"
-          onClick={() => atualizar({ atrasados: soAtrasados ? null : "1" })}
+        <CampoBusca className="flex-1 lg:h-8" valor={busca} aoMudar={setBusca} placeholder="Cliente, número ou telefone" />
+        <Toggle
+          variant="outline"
+          size="xl"
+          pressed={soAtrasados}
+          onPressedChange={(on) => atualizar({ atrasados: on ? "1" : null })}
+          className="shrink-0 lg:h-8 data-[state=on]:border-destructive data-[state=on]:bg-destructive/10 data-[state=on]:text-destructive data-[state=on]:hover:bg-destructive/20 data-[state=on]:hover:text-destructive"
         >
           Atrasados <Badge variant={totalAtrasados ? "destructive" : "secondary"}>{totalAtrasados}</Badge>
-        </Button>
+        </Toggle>
         <Button
           variant="outline"
+          size="toque"
           aria-label="Sincronizar com a Shopify"
-          className="size-11 shrink-0 px-0 lg:h-8 lg:w-auto lg:px-2.5"
+          className="w-11 shrink-0 px-0 lg:w-auto lg:px-2.5"
           onClick={() => sincronizar.mutate(undefined)}
           disabled={sincronizar.isPending}
         >
@@ -263,17 +254,22 @@ export default function Expedicao() {
                       )}
                     >
                       <Icone className="size-5" />
-                      <Badge
-                        variant={c.pedidos.length ? "default" : "secondary"}
-                        className={cn(
-                          "absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums",
-                          c.alerta && c.pedidos.length > 0 && COR_ALERTA[c.alerta].contador,
-                        )}
-                      >
-                        {c.pedidos.length}
-                      </Badge>
+                      {c.alerta && c.pedidos.length > 0 ? (
+                        <Badge
+                          variant={COR_ALERTA[c.alerta].contador}
+                          className={cn("absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums", c.alerta === "vermelho" ? "bg-destructive text-background" : "bg-warning text-warning-foreground")}
+                        >
+                          {c.pedidos.length}
+                        </Badge>
+                      ) : c.pedidos.length > 0 ? (
+                        <BolhaContador n={c.pedidos.length} className="absolute -top-1.5 -right-1.5" />
+                      ) : (
+                        <Badge variant="secondary" className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums">
+                          0
+                        </Badge>
+                      )}
                     </span>
-                    <span className={cn("text-[11px] leading-tight", ativa ? "font-semibold" : "text-muted-foreground")}>{c.nome}</span>
+                    <span className={cn("text-xs leading-tight", ativa ? "font-semibold" : "text-muted-foreground")}>{c.nome}</span>
                   </button>
                   {i < porColuna.length - 1 && <span className="mt-[22px] h-px w-3 shrink-0 bg-border" />}
                 </li>
@@ -334,8 +330,8 @@ export default function Expedicao() {
                     <Icone className={cn("size-4", c.alerta ? COR_ALERTA[c.alerta].icone : "text-muted-foreground")} />
                     <span className="truncate">{c.nome}</span>
                     <Badge
-                      variant="secondary"
-                      className={cn("ml-auto tabular-nums", c.alerta && c.pedidos.length > 0 && COR_ALERTA[c.alerta].contador)}
+                      variant={c.alerta && c.pedidos.length > 0 ? COR_ALERTA[c.alerta].contador : "secondary"}
+                      className="ml-auto tabular-nums"
                     >
                       {c.pedidos.length}
                     </Badge>
@@ -344,7 +340,7 @@ export default function Expedicao() {
                   {isLoading ? (
                     <Skeleton className="h-24 w-full" />
                   ) : c.pedidos.length === 0 ? (
-                    <p className="px-1 py-6 text-center text-xs text-muted-foreground">Nenhum pedido</p>
+                    <Vazio className="border-0 py-6 text-xs">Nenhum pedido</Vazio>
                   ) : (
                     c.pedidos.map((p) => (
                       <div

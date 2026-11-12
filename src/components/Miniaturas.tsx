@@ -8,7 +8,7 @@ export default function Miniaturas({ fotos, total, className }: { fotos: string[
     <div className={cn("flex min-w-0 items-center gap-1", className)}>
       <div className="flex flex-wrap items-center gap-1">
         {(fotos.length ? fotos : [null]).map((f, n) => (
-          <Foto key={n} url={f} className="size-9 rounded-md bg-muted ring-1 ring-border" />
+          <Foto key={n} url={f} className="size-9" />
         ))}
       </div>
       {extras > 0 && <span className="text-xs text-muted-foreground tabular-nums">+{extras}</span>}

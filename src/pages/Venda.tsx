@@ -255,7 +255,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="toque" asChild>
             <Link to="/vendas">
               <ArrowLeft /> Vendas
             </Link>
@@ -290,7 +290,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
           </span>
           <span className="text-xl font-semibold tabular-nums">{reais(pedido.total)}</span>
         </div>
-        <Button className="h-11" onClick={() => setResumoAberto(true)}>
+        <Button size="xl" onClick={() => setResumoAberto(true)}>
           Resumo <ChevronUp />
         </Button>
       </div>

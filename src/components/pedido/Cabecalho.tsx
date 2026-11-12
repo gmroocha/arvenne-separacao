@@ -42,7 +42,7 @@ export default function Cabecalho({ pedido, aoVerDados }: Props) {
           titulo="Ações do pedido"
           grupos={grupos}
           gatilho={
-            <Button variant="outline" size="icon" aria-label="Mais ações" className="size-11 shrink-0 sm:size-9">
+            <Button variant="outline" size="icon-toque" aria-label="Mais ações" className="shrink-0">
               <MoreHorizontal />
             </Button>
           }

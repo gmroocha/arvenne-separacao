@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router"
-import { Plus, Receipt, Search } from "lucide-react"
+import { Plus, Receipt } from "lucide-react"
+import { CampoBusca } from "@/components/comum/CampoBusca"
 import LinhaPedido from "@/components/LinhaPedido"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { ItemGroup } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -35,13 +35,8 @@ export default function Vendas() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <InputGroup className="min-w-48 flex-1">
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-          <InputGroupInput aria-label="Buscar por número, cliente ou telefone" placeholder="Número, cliente ou telefone" value={busca} onChange={(e) => setBusca(e.target.value)} />
-        </InputGroup>
-        <Button asChild>
+        <CampoBusca className="min-w-48 flex-1" valor={busca} aoMudar={setBusca} placeholder="Número, cliente ou telefone" />
+        <Button asChild size="toque">
           <Link to="/vendas/nova">
             <Plus /> Nova venda
           </Link>

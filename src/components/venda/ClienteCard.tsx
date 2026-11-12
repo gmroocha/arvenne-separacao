@@ -1,11 +1,13 @@
 import { useRef, useState } from "react"
 import { toast } from "sonner"
-import { Check, Search, TriangleAlert, UserPlus } from "lucide-react"
+import { Check, TriangleAlert, UserPlus } from "lucide-react"
+import { CampoBusca } from "@/components/comum/CampoBusca"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item"
 import { Spinner } from "@/components/ui/spinner"
 import { useBuscaClientes } from "@/lib/api"
 import { digitos, mascaraCep, mascaraDocumento, mascaraTelefone } from "@/lib/formato"
@@ -45,16 +47,14 @@ function parcialDe(c: Achada): Partial<FormVenda> {
 
 function Resultado({ c, aoEscolher }: { c: Achada; aoEscolher: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={aoEscolher}
-      className="flex w-full flex-col items-start rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
-    >
-      <span className={c.nome ? "font-medium" : "font-medium text-muted-foreground"}>{c.nome ?? "Sem nome"}</span>
-      <span className="text-xs text-muted-foreground">
-        {[c.telefone ? mascaraTelefone(c.telefone) : null, c.email].filter(Boolean).join(" · ") || "sem contato"}
-      </span>
-    </button>
+    <Item size="xs" asChild>
+      <button type="button" onClick={aoEscolher} className="text-left">
+        <ItemContent className="gap-0">
+          <ItemTitle className={c.nome ? "" : "text-muted-foreground"}>{c.nome ?? "Sem nome"}</ItemTitle>
+          <ItemDescription>{[c.telefone ? mascaraTelefone(c.telefone) : null, c.email].filter(Boolean).join(" · ") || "sem contato"}</ItemDescription>
+        </ItemContent>
+      </button>
+    </Item>
   )
 }
 
@@ -149,15 +149,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
         <CardTitle>Cliente</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <InputGroup>
-          <InputGroupAddon>{carregando ? <Spinner /> : <Search />}</InputGroupAddon>
-          <InputGroupInput
-            aria-label="Buscar cliente por telefone, e-mail, nome ou CPF"
-            placeholder="Telefone, e-mail, nome ou CPF"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
-        </InputGroup>
+        <CampoBusca valor={busca} aoMudar={setBusca} carregando={carregando} placeholder="Telefone, e-mail, nome ou CPF" />
 
         {termo.length >= 2 && (local.length > 0 || shopify.length > 0 || semResultado) && (
           <div className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg border p-1">
@@ -182,7 +174,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
         )}
 
         {!mostrar ? (
-          <Button variant="outline" className="w-fit" onClick={() => setMostrar(true)}>
+          <Button variant="outline" size="toque" className="w-fit" onClick={() => setMostrar(true)}>
             <UserPlus /> Nova cliente
           </Button>
         ) : (
@@ -215,7 +207,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
               </Field>
             </div>
             {situacao && situacao !== "ATIVA" && (
-              <p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+              <p className="flex items-center gap-2 text-sm text-warning">
                 <TriangleAlert className="size-4 shrink-0" /> Situação cadastral do CNPJ: {situacao.toLowerCase()}
               </p>
             )}

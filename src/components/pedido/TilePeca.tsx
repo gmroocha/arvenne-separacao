@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react"
-import { Check, ChevronDown, MoreHorizontal, Printer } from "lucide-react"
+import { ChevronDown, MoreHorizontal, Printer } from "lucide-react"
+import { MarcaCheck } from "@/components/comum/Bolha"
+import { LinhaPeca } from "@/components/comum/Peca"
 import Foto from "@/components/Foto"
 import MenuAcoes, { type GrupoAcoes, type ItemAcao } from "@/components/MenuAcoes"
 import { Badge } from "@/components/ui/badge"
@@ -26,7 +28,7 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
     <div
       style={{ viewTransitionName: `peca-${item.id}` }}
       className={cn(
-        "flex flex-col gap-2 rounded-xl border bg-card p-2 transition-shadow duration-300",
+        "flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300",
         piscando && "ring-2 ring-primary",
         esmaecida && "bg-muted/40",
       )}
@@ -67,7 +69,7 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
   const total = ordenados.reduce((n, i) => n + i.qtd, 0)
   const variacao = separarTamanho(base.variante).base
   return (
-    <div style={{ viewTransitionName: `peca-${base.id}` }} className="flex flex-col gap-2 rounded-xl border bg-card p-2 transition-shadow duration-300">
+    <div style={{ viewTransitionName: `peca-${base.id}` }} className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300">
       <div className="relative">
         <Foto url={base.foto_url} alt={base.nome} ampliar className="w-full" />
         {base.origem === "clube" && (
@@ -83,10 +85,14 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
         </div>
         {variacao && <div className="text-sm leading-tight font-medium">{variacao}</div>}
         <div className="flex flex-wrap gap-1">
-          {ordenados.map((i) => (
-            <Badge key={i.id} variant="outline" className="h-6 gap-1 px-2 text-sm font-medium tabular-nums">
-              {separarTamanho(i.variante).tamanho}
-              <span className="text-muted-foreground">×{i.qtd}</span>
+          {/* Mesmo tamanho em duas linhas (sobra de uma falta parcial desfeita): um selo só, com a soma. */}
+          {[...ordenados.reduce((m, i) => {
+            const t = separarTamanho(i.variante).tamanho ?? ""
+            return m.set(t, (m.get(t) ?? 0) + i.qtd)
+          }, new Map<string, number>())].map(([t, qtd]) => (
+            <Badge key={t} variant="outline" className="h-6 gap-1 px-2 text-sm font-medium tabular-nums">
+              {t}
+              <span className="text-muted-foreground">×{qtd}</span>
             </Badge>
           ))}
         </div>
@@ -97,11 +103,16 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
   )
 }
 
+// Faixa de instrução sob o código do bloco (ex.: "Separe 2").
+export function InstrucaoTile({ children }: { children: ReactNode }) {
+  return <div className="rounded-lg bg-primary/10 px-2 py-1.5 text-center text-lg font-semibold text-primary tabular-nums">{children}</div>
+}
+
 export function GradePecas({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
 }
 
-// Menu "…" do bloco: quadrado de 40 px sem borda, da mesma altura do botão principal (que é o destaque).
+// Menu "…" do bloco: quadrado sem borda, da mesma altura do botão principal (que é o destaque).
 // itens: uma lista simples; grupos: seções com título (ex.: uma por tamanho no cartão do modelo).
 export function MenuPeca({ itens = [], grupos, rotulo = "Mais opções" }: { itens?: ItemAcao[]; grupos?: GrupoAcoes[]; rotulo?: string }) {
   return (
@@ -109,7 +120,7 @@ export function MenuPeca({ itens = [], grupos, rotulo = "Mais opções" }: { ite
       titulo={rotulo}
       grupos={grupos ?? [{ itens }]}
       gatilho={
-        <Button variant="secondary" size="icon" aria-label={rotulo} className="size-10 shrink-0">
+        <Button variant="secondary" size="icon-bloco" aria-label={rotulo} className="shrink-0">
           <MoreHorizontal />
         </Button>
       }
@@ -131,9 +142,7 @@ export function ProgressoEtapa({ titulo, feitas, total, unidade }: { titulo: str
   )
 }
 
-export function Vazio({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">{children}</p>
-}
+export { Vazio } from "@/components/comum/Vazio"
 
 type FaixaProps = {
   titulo: string
@@ -158,36 +167,24 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
       </CollapsibleTrigger>
       <CollapsibleContent className="grid gap-1.5 pt-1 sm:grid-cols-2">
         {itens.map((i) => (
-          <div
+          <LinhaPeca
             key={i.id}
-            className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-1.5 animate-in fade-in zoom-in-95 duration-300"
+            item={{ ...i, variante: [i.variante, nota?.(i)].filter(Boolean).join(" · ") || null }}
+            tamanho="md"
+            semBorda
+            entrando
+            className="gap-2 rounded-xl bg-success/5 p-2 ring-1 ring-success/30"
+            inicio={<MarcaCheck />}
           >
-            <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
-            <Foto url={i.foto_url} alt={i.nome} ampliar className="size-10 shrink-0" />
-            <div className="min-w-0 flex-1 text-sm leading-tight">
-              <div className="flex items-center gap-1.5 font-mono font-semibold">
-                <span className="truncate">
-                {i.sku ?? "sem código"}
-                </span>
-                {i.qtd > 1 && (
-                  <Badge variant="secondary" className="h-5 shrink-0 px-1.5 font-sans text-xs font-medium tabular-nums">
-                    {i.qtd}×
-                  </Badge>
-                )}
-              </div>
-              <div className="truncate text-xs text-muted-foreground">
-                {[i.variante, nota?.(i)].filter(Boolean).join(" · ")}
-              </div>
-            </div>
             {aoReimprimir && (
-              <Button variant="ghost" aria-label="Reimprimir" className="h-11 shrink-0 px-3" onClick={() => aoReimprimir(i)}>
+              <Button variant="ghost" size="toque" aria-label="Reimprimir" className="shrink-0" onClick={() => aoReimprimir(i)}>
                 <Printer /> <span className="hidden sm:inline">Reimprimir</span>
               </Button>
             )}
-            <Button variant="ghost" className="h-11 shrink-0 px-3" onClick={() => aoDesfazer(i)}>
+            <Button variant="ghost" size="toque" className="shrink-0" onClick={() => aoDesfazer(i)}>
               {rotuloDesfazer}
             </Button>
-          </div>
+          </LinhaPeca>
         ))}
       </CollapsibleContent>
     </Collapsible>

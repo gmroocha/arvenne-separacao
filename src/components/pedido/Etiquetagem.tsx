@@ -1,17 +1,20 @@
-import { MoreHorizontal, Printer, Tag, TriangleAlert } from "lucide-react"
+import { ArrowLeftRight, MoreHorizontal, PackageX, Printer, Tag, Trash2, TriangleAlert } from "lucide-react"
 import MenuAcoes from "@/components/MenuAcoes"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
 import { etiquetasDe, skuCabe } from "@/lib/etiquetas"
 import type { Item } from "@/lib/tipos"
+import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
+import { TituloSecao } from "@/components/comum/TituloSecao"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
-import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
-type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir: () => void }
+type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void; aoConcluir?: () => void }
 
 // Etiquetagem peça por peça: imprime, cola no saquinho e marca "Etiquetada" (sempre à mão).
-export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
+export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Props) {
   const achadas = pedido.pedido_itens.filter((i) => i.status === "encontrado")
   const aEtiquetar = achadas.filter((i) => !i.etiquetado_em)
   const feitas = achadas.filter((i) => i.etiquetado_em)
@@ -31,35 +34,39 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
         <ProgressoEtapa titulo="Etiquetagem" feitas={feitas.length} total={achadas.length} unidade="peças" />
         <p className="text-sm text-muted-foreground">Imprima, cole a etiqueta no saquinho de cada peça e marque "Etiquetada".</p>
         <div className="flex items-center gap-2">
-          <Button className="h-11 min-w-0 flex-1 text-sm sm:flex-none" disabled={todas.etiquetas.length === 0 || imprimindo} onClick={() => imprimir(grupoDe(aEtiquetar))}>
+          <Button size="xl" className="min-w-0 flex-1 sm:flex-none" disabled={todas.etiquetas.length === 0 || imprimindo} onClick={() => imprimir(grupoDe(aEtiquetar))}>
             <Printer /> Imprimir etiquetas ({todas.etiquetas.length}){zebra && <span className="font-normal opacity-80"> · na Zebra</span>}
           </Button>
           <MenuAcoes
             titulo="Etiquetas"
             grupos={[{ itens: [{ rotulo: "Imprimir etiqueta de teste", icone: Printer, aoClicar: () => imprimirTeste() }] }]}
             gatilho={
-              <Button variant="secondary" size="icon" aria-label="Mais opções de impressão" className="size-11 shrink-0">
+              <Button variant="secondary" size="icon-toque" aria-label="Mais opções de impressão" className="shrink-0">
                 <MoreHorizontal />
               </Button>
             }
           />
         </div>
         {todas.semCodigo.length > 0 && (
-          <p className="flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-300">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-            {todas.semCodigo.length === 1 ? "1 peça está sem código (SKU) e não será impressa." : `${todas.semCodigo.length} peças estão sem código (SKU) e não serão impressas.`}
-          </p>
+          <Alert variant="warning">
+            <TriangleAlert />
+            <AlertDescription>
+              {todas.semCodigo.length === 1 ? "1 peça está sem código (SKU) e não será impressa." : `${todas.semCodigo.length} peças estão sem código (SKU) e não serão impressas.`}
+            </AlertDescription>
+          </Alert>
         )}
         {longos.length > 0 && (
-          <p className="flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-300">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-            O código {longos.map((i) => i.sku).join(", ")} é longo demais para a etiqueta e pode não ler. Confira ao imprimir.
-          </p>
+          <Alert variant="warning">
+            <TriangleAlert />
+            <AlertDescription>O código {longos.map((i) => i.sku).join(", ")} é longo demais para a etiqueta e pode não ler. Confira ao imprimir.</AlertDescription>
+          </Alert>
         )}
       </div>
 
       <section className="flex flex-col gap-2" aria-label="A etiquetar">
-        <h3 className="text-sm font-semibold">A etiquetar ({aEtiquetar.length})</h3>
+        <TituloSecao as="h3" contagem={aEtiquetar.length}>
+          A etiquetar
+        </TituloSecao>
         {aEtiquetar.length === 0 ? (
           <Vazio>Nenhuma peça a etiquetar.</Vazio>
         ) : (
@@ -68,22 +75,20 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
               <TilePeca key={i.id} item={i}>
                 <div className="flex w-full items-center gap-1.5">
                   <Button
-                    className="h-10 min-w-0 flex-1 text-sm"
+                    size="bloco"
+                    className="min-w-0 flex-1"
                     onClick={() => acao(i, { etiquetado_em: new Date().toISOString(), etiqueta_previa: false })}
                   >
                     <Tag /> Etiquetada
                   </Button>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="size-10 shrink-0"
-                    aria-label={`Imprimir etiqueta de ${i.sku ?? i.nome}`}
-                    title="Imprimir esta etiqueta"
-                    disabled={!i.sku || imprimindo}
-                    onClick={() => imprimir(grupoDe([i]))}
-                  >
-                    <Printer />
-                  </Button>
+                  <MenuPeca
+                    itens={[
+                      { rotulo: "Imprimir esta etiqueta", icone: Printer, desabilitado: !i.sku || imprimindo, aoClicar: () => imprimir(grupoDe([i])) },
+                      { rotulo: "Falta", icone: PackageX, aoClicar: () => acao(i, { status: "falta" }) },
+                      { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                      { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => acao(i, { status: "removido", observacao: "cliente desistiu" }) },
+                    ]}
+                  />
                 </div>
               </TilePeca>
             ))}
@@ -96,14 +101,15 @@ export default function Etiquetagem({ pedido, acao, aoConcluir }: Props) {
         itens={feitas}
         aoDesfazer={(i) => acao(i, { etiquetado_em: null, etiqueta_previa: false })}
         aoReimprimir={(i) => imprimir(grupoDe([i]))}
-        nota={(i) => (i.etiqueta_previa ? "já tinha etiqueta" : null)}
       />
 
       {dialogo}
 
-      <Button className="h-11 w-full text-base" disabled={!etapaCompleta("etiquetagem", pedido.pedido_itens)} onClick={aoConcluir}>
-        Concluir etiquetagem
-      </Button>
+      {aoConcluir && (
+        <ConcluirEtapa disabled={!etapaCompleta("etiquetagem", pedido.pedido_itens)} onClick={aoConcluir}>
+          Concluir etiquetagem
+        </ConcluirEtapa>
+      )}
     </div>
   )
 }

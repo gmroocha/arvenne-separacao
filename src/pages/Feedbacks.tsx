@@ -58,14 +58,16 @@ export default function Feedbacks() {
                         {f.usuario_email ?? "—"} · {quando(f.created_at)}
                       </span>
                       {destino && (
-                        <Link to={destino} className="w-fit underline underline-offset-2">
-                          {f.pedidos ? `Pedido ${f.pedidos.numero.replace(/^#/, "")}${f.pedidos.cliente_nome ? ` · ${f.pedidos.cliente_nome}` : ""}` : `Tela ${f.pagina}`}
-                        </Link>
+                        <Button asChild variant="link" size="xs" className="h-auto w-fit p-0 text-xs">
+                          <Link to={destino}>
+                            {f.pedidos ? `Pedido ${f.pedidos.numero.replace(/^#/, "")}${f.pedidos.cliente_nome ? ` · ${f.pedidos.cliente_nome}` : ""}` : `Tela ${f.pagina}`}
+                          </Link>
+                        </Button>
                       )}
                     </div>
                     <Button
                       variant="outline"
-                      className="h-11 sm:h-8"
+                      size="toque"
                       disabled={resolver.isPending}
                       onClick={() => resolver.mutate({ id: f.id, resolvido: !f.resolvido_em })}
                     >

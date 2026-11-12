@@ -1,8 +1,12 @@
 import { useState } from "react"
 import { useParams } from "react-router"
-import { Check, CircleCheck, HandCoins, MessageCircle, Minus, PackageX, Plus, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
-import Logo from "@/components/Logo"
+import { Check, CircleCheck, HandCoins, MessageCircle, PackageX, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
 import Foto from "@/components/Foto"
+import { BolhaCheck, BolhaContador, MarcaCheck } from "@/components/comum/Bolha"
+import { LinhaValor } from "@/components/comum/LinhaValor"
+import { PaginaPublica } from "@/components/comum/PaginaPublica"
+import { Quantidade } from "@/components/comum/Quantidade"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -10,6 +14,7 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
+import { Toggle } from "@/components/ui/toggle"
 import { carrinhoDaPeca, useCarrinhoTroca, useEscolherTroca, useTrocaPublica } from "@/lib/api"
 import { reais } from "@/lib/formato"
 import { fotoTamanho } from "@/lib/foto"
@@ -70,19 +75,11 @@ function Preco({ o }: { o: Opcao }) {
   )
 }
 
-// [−] n [+]: botões grandes para o dedo. O número já muda na hora; o banco grava em seguida.
+// [−] n [+]: o número já muda na hora; o banco grava em seguida. Aceita 0 (tirar a peça do carrinho).
 function Passo({ qtd, aoMudar, cheio, rotulo }: { qtd: number; aoMudar: (n: number) => void; cheio: boolean; rotulo: string }) {
   return (
-    <div className="flex items-center gap-3" role="group" aria-label={rotulo}>
-      <Button type="button" variant="outline" size="icon" className="size-10" aria-label={`Tirar uma: ${rotulo}`} disabled={qtd <= 0} onClick={() => aoMudar(qtd - 1)}>
-        <Minus />
-      </Button>
-      <span className="w-8 text-center text-base font-semibold tabular-nums" aria-live="polite">
-        {qtd}
-      </span>
-      <Button type="button" variant="outline" size="icon" className="size-10" aria-label={`Colocar mais uma: ${rotulo}`} disabled={cheio} onClick={() => aoMudar(qtd + 1)}>
-        <Plus />
-      </Button>
+    <div role="group" aria-label={rotulo}>
+      <Quantidade valor={qtd} min={0} max={cheio ? qtd : undefined} aoMudar={aoMudar} rotulo={rotulo} />
     </div>
   )
 }
@@ -101,9 +98,12 @@ type CartaoProps = {
 
 function CartaoOpcao({ o, qtd, vazio, cheio, carregando, ocupado, aoEscolher, aoQtd }: CartaoProps) {
   return (
-    <li className={cn("flex flex-col gap-2.5 rounded-2xl border bg-card p-3", qtd > 0 && "border-emerald-600 ring-1 ring-emerald-600")}>
+    <li className={cn("relative flex flex-col gap-2.5 rounded-xl bg-card p-3 ring-1 ring-foreground/10", qtd > 0 && "bg-success/5 ring-success/40")}>
       <div className="flex gap-3">
-        <Foto url={fotoTamanho(o.foto_url, 300)} alt={o.nome} ampliar className="size-16 shrink-0" />
+        <div className="relative shrink-0">
+          <Foto url={fotoTamanho(o.foto_url, 300)} alt={o.nome} ampliar className="size-16" />
+          {qtd > 0 && <BolhaCheck className="pointer-events-none absolute -top-1.5 -right-1.5 ring-2 ring-card" />}
+        </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="font-mono text-sm leading-snug font-semibold">{titulo(o)}</div>
           {o.variante && <div className="text-xs text-muted-foreground">{o.variante}</div>}
@@ -111,7 +111,7 @@ function CartaoOpcao({ o, qtd, vazio, cheio, carregando, ocupado, aoEscolher, ao
         </div>
       </div>
       {vazio ? (
-        <Button type="button" className="h-10 w-full text-sm" disabled={ocupado} onClick={aoEscolher}>
+        <Button type="button" size="xl" className="w-full" disabled={ocupado} onClick={aoEscolher}>
           {carregando ? <Spinner /> : null}
           Quero esta
         </Button>
@@ -141,9 +141,12 @@ function CartaoModelo({
   const base = marcados[0] ?? grupo[0]
   const modelo = separarTamanho(base.variante).base
   return (
-    <li className={cn("flex flex-col gap-3 rounded-2xl border bg-card p-3", marcados.length > 0 && "border-emerald-600 ring-1 ring-emerald-600")}>
+    <li className={cn("relative flex flex-col gap-3 rounded-xl bg-card p-3 ring-1 ring-foreground/10", marcados.length > 0 && "bg-success/5 ring-success/40")}>
       <div className="flex gap-3">
-        <Foto url={fotoTamanho(base.foto_url, 300)} alt={base.nome} ampliar className="size-16 shrink-0" />
+        <div className="relative shrink-0">
+          <Foto url={fotoTamanho(base.foto_url, 300)} alt={base.nome} ampliar className="size-16" />
+          {marcados.length > 0 && <BolhaCheck className="pointer-events-none absolute -top-1.5 -right-1.5 ring-2 ring-card" />}
+        </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="font-mono text-sm leading-snug font-semibold">{codigoModelo(grupo)}</div>
           {modelo && <div className="text-xs text-muted-foreground">{modelo}</div>}
@@ -158,20 +161,19 @@ function CartaoModelo({
             const n = qtds[o.id] ?? 0
             const tam = separarTamanho(o.variante).tamanho ?? o.variante ?? o.nome
             return (
-              <Button
+              <Toggle
                 key={o.id}
-                type="button"
-                variant={n > 0 ? "default" : "outline"}
+                variant="outline"
+                size="xl"
+                pressed={n > 0}
                 aria-label={n > 0 ? `Tamanho ${tam}, ${n} no carrinho. Toque para colocar mais uma` : `Tamanho ${tam}`}
-                className={cn("relative h-10 min-w-16 px-3 text-sm tabular-nums", n > 0 && "bg-emerald-600 text-white hover:bg-emerald-600/90")}
+                className="relative min-w-16 tabular-nums"
                 disabled={cheio}
-                onClick={() => aoQtd(o.id, n + 1)}
+                onPressedChange={() => aoQtd(o.id, n + 1)}
               >
                 {tam}
-                {n > 0 && (
-                  <span className="absolute -top-2 -right-2 flex size-5 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background tabular-nums">{n}</span>
-                )}
-              </Button>
+                {n > 0 && <BolhaContador n={n} className="absolute -top-2 -right-2 border border-background" />}
+              </Toggle>
             )
           })}
         </div>
@@ -216,29 +218,22 @@ function Resumo({ data, respondidas }: { data: TrocaPublica; respondidas: number
   const bruta = data.resumo.diferenca_bruta ?? dif + coberto
   if (!temValor) return null
   return (
-    <section aria-label="Resumo" className="flex flex-col gap-3 rounded-2xl border bg-card p-4">
+    <section aria-label="Resumo" className="flex flex-col gap-3 rounded-xl border bg-card p-4">
       {concluida && (
         <div className="flex items-center gap-2 text-base font-semibold">
-          <CircleCheck className="size-5 shrink-0 text-emerald-600" /> Troca concluída. Obrigada!
+          <CircleCheck className="size-5 shrink-0 text-success" /> Troca concluída. Obrigada!
         </div>
       )}
       {temValor && coberto > 0 && (
-        <div className="flex flex-col gap-1 text-sm text-muted-foreground tabular-nums">
-          <div className="flex justify-between gap-3">
-            <span>Diferença</span>
-            <span>+ {reais(bruta)}</span>
-          </div>
-          <div className="flex justify-between gap-3">
-            <span>A loja cobre</span>
-            <span>− {reais(coberto)}</span>
-          </div>
+        <div className="flex flex-col gap-1">
+          <LinhaValor rotulo="Diferença" valor={`+ ${reais(bruta)}`} />
+          <LinhaValor rotulo="A loja cobre" valor={`− ${reais(coberto)}`} />
         </div>
       )}
-      {temValor && (
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-base">{dif > 0 ? "Você paga a mais" : dif < 0 ? "Seu crédito" : "Sem diferença a pagar"}</span>
-          {dif !== 0 && <span className="text-2xl font-semibold tabular-nums">{reais(Math.abs(dif))}</span>}
-        </div>
+      {dif !== 0 ? (
+        <LinhaValor total rotulo={dif > 0 ? "Você paga a mais" : "Seu crédito"} valor={reais(Math.abs(dif))} />
+      ) : (
+        <span className="text-base">Sem diferença a pagar</span>
       )}
     </section>
   )
@@ -271,10 +266,7 @@ export default function Troca() {
       : null
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 overflow-x-hidden px-4 pt-3 pb-12">
-      <header className="flex justify-center pt-3">
-        <Logo className="h-10" />
-      </header>
+    <PaginaPublica>
       {isLoading ? (
         <div className="flex flex-col gap-4" role="status" aria-label="Carregando">
           <Skeleton className="h-8 w-48" />
@@ -282,13 +274,13 @@ export default function Troca() {
           <Skeleton className="aspect-square w-full" />
         </div>
       ) : isError ? (
-        <div role="alert" className="flex flex-col items-center gap-3 rounded-xl bg-destructive/10 p-4 text-center text-sm text-destructive">
+        <Alert variant="destructive" className="flex flex-col items-center gap-3 p-4 text-center">
           <TriangleAlert className="size-5" />
-          Não foi possível carregar agora. Verifique a internet e tente de novo.
-          <Button variant="outline" className="h-11 bg-background text-foreground" disabled={isFetching} onClick={() => refetch()}>
+          <AlertDescription className="text-destructive">Não foi possível carregar agora. Verifique a internet e tente de novo.</AlertDescription>
+          <Button variant="outline" size="xl" className="text-foreground" disabled={isFetching} onClick={() => refetch()}>
             {isFetching ? <Spinner /> : <RefreshCw />} Tentar de novo
           </Button>
-        </div>
+        </Alert>
       ) : !data ? (
         <Empty>
           <EmptyHeader>
@@ -326,21 +318,18 @@ export default function Troca() {
                 {n > 0 && <Separator className="mb-3" />}
                 {total > 1 && (
                   <div className="flex items-center gap-2.5">
-                    <span
-                      className={cn(
-                        "flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums",
-                        p.escolha_tipo || feita ? "bg-emerald-600 text-white" : "bg-foreground text-background",
-                      )}
-                    >
-                      {p.escolha_tipo || feita ? <Check className="size-4" /> : n + 1}
-                    </span>
+                    {p.escolha_tipo || feita ? (
+                      <MarcaCheck />
+                    ) : (
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground tabular-nums">{n + 1}</span>
+                    )}
                     <span className="text-lg font-semibold">
                       Peça {n + 1} de {total}
                     </span>
                   </div>
                 )}
                 {/* Peça que faltou */}
-                <div className="flex flex-col gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-3">
+                <Alert variant="destructive" className="flex flex-col gap-2 border-destructive/30 bg-destructive/10 p-3">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-destructive">
                     <PackageX className="size-3.5" />
                     Ficou sem estoque
@@ -348,18 +337,18 @@ export default function Troca() {
                   <div className="flex gap-3">
                     <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-20 shrink-0" />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <div className="font-mono text-base leading-snug font-semibold">{titulo(p)}</div>
+                      <div className="font-mono text-base leading-snug font-semibold text-foreground">{titulo(p)}</div>
                       {p.variante && <div className="text-sm text-muted-foreground">{p.variante}</div>}
                       <div className="mt-auto text-sm text-muted-foreground tabular-nums">Você pagou {reais(p.valor_pago)}</div>
                     </div>
                   </div>
-                </div>
+                </Alert>
 
                 {/* O que ela escolhe no lugar */}
                 {feita ? (
-                  <div className="flex items-start gap-2 rounded-2xl border border-emerald-600/40 bg-emerald-50 p-3 text-sm font-medium text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-50">
-                    <CircleCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
-                    <span className="min-w-0">
+                  <Alert variant="success" className="p-3">
+                    <CircleCheck />
+                    <AlertTitle className="min-w-0">
                       {novas.length > 0 ? (
                         <>
                           Troca confirmada:
@@ -374,9 +363,9 @@ export default function Troca() {
                       ) : (
                         `Troca confirmada: crédito de ${reais(p.valor_pago)}`
                       )}
-                      {p.escolha_equipe && <span className="block text-xs font-normal">Confirmada pela nossa equipe.</span>}
-                    </span>
-                  </div>
+                    </AlertTitle>
+                    {p.escolha_equipe && <AlertDescription className="col-start-2 text-xs">Confirmada pela nossa equipe.</AlertDescription>}
+                  </Alert>
                 ) : (
                   <div className="flex flex-col gap-3 pt-1">
                     <h2 className="text-base font-semibold">{p.opcoes.length > 0 ? "Escolha o que vai no lugar dela" : "Sua opção"}</h2>
@@ -413,10 +402,14 @@ export default function Troca() {
                     )}
                     <Button
                       type="button"
-                      variant="outline"
-                      className={cn("h-10 w-full text-sm", p.escolha_tipo === "credito" && "ring-2 ring-emerald-600")}
-                      disabled={p.escolha_tipo === "credito" || escolher.isPending}
-                      onClick={() => escolha(p.item_id, "credito", null)}
+                      variant={p.escolha_tipo === "credito" ? "default" : "outline"}
+                      size="xl"
+                      className="w-full"
+                      aria-pressed={p.escolha_tipo === "credito"}
+                      disabled={escolher.isPending}
+                      onClick={() => {
+                        if (p.escolha_tipo !== "credito") escolha(p.item_id, "credito", null)
+                      }}
                     >
                       {gravando === `${p.item_id}:credito` ? <Spinner /> : p.escolha_tipo === "credito" ? <Check /> : <HandCoins />}
                       {p.escolha_tipo === "credito" ? "Crédito escolhido" : "Prefiro crédito"} de {reais(p.valor_pago)}
@@ -451,7 +444,7 @@ export default function Troca() {
           )}
 
           {linkWa && (
-            <Button asChild size="lg" variant="outline" className="h-11 w-full text-base">
+            <Button asChild size="xl" variant="outline" className="w-full">
               <a href={linkWa} target="_blank" rel="noopener noreferrer">
                 <MessageCircle />
                 Falar no WhatsApp
@@ -460,6 +453,6 @@ export default function Troca() {
           )}
         </>
       )}
-    </div>
+    </PaginaPublica>
   )
 }

@@ -2,14 +2,17 @@ import { useState } from "react"
 import { Copy, Send, Store, User, Wallet, XCircle } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { Button } from "@/components/ui/button"
+import { FormaPagamento } from "@/components/comum/FormaPagamento"
+import { LinhaValor } from "@/components/comum/LinhaValor"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { reais } from "@/lib/formato"
+import { COR_PAC, COR_SEDEX } from "@/lib/selo"
 import type { DescontoTipo, FreteTipo, FretePagoPor, Pedido } from "@/lib/tipos"
-import { FORMAS_PAGAMENTO, type FormVenda } from "./form"
+import type { FormVenda } from "./form"
 
 type Props = {
   pedido: Pedido
@@ -24,15 +27,6 @@ type Props = {
   prefixo: string
 }
 
-function Linha({ rotulo, children, forte }: { rotulo: string; children: React.ReactNode; forte?: boolean }) {
-  return (
-    <div className={`flex items-baseline justify-between gap-3 text-sm ${forte ? "font-medium" : ""}`}>
-      <span className="text-muted-foreground">{rotulo}</span>
-      <span className="tabular-nums">{children}</span>
-    </div>
-  )
-}
-
 function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; aoMudar: (v: string) => void; rotulo: string }) {
   return (
     <Field>
@@ -43,9 +37,8 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 }
 
 // Conteúdo do resumo: card fixo no PC, gaveta no celular. Os números vêm calculados do banco.
-// Seleção de PAC (laranja) e SEDEX (verde): fundo tingido, borda e texto na cor. Compartilhado com a Nota e frete.
-export const COR_PAC = "data-[state=on]:border-orange-500 data-[state=on]:bg-orange-600/15 data-[state=on]:text-orange-600 data-[state=on]:ring-1 data-[state=on]:ring-orange-500 data-[state=on]:hover:bg-orange-600/20 dark:data-[state=on]:border-orange-500 dark:data-[state=on]:bg-orange-600/15 dark:data-[state=on]:text-orange-300"
-export const COR_SEDEX = "data-[state=on]:border-emerald-600 data-[state=on]:bg-emerald-600/15 data-[state=on]:text-emerald-700 data-[state=on]:ring-1 data-[state=on]:ring-emerald-600 data-[state=on]:hover:bg-emerald-600/20 dark:data-[state=on]:border-emerald-600 dark:data-[state=on]:bg-emerald-600/15 dark:data-[state=on]:text-emerald-300"
+// PAC e SEDEX moram em lib/selo; reexportados para a Nota e frete.
+export { COR_PAC, COR_SEDEX }
 
 export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, aoCopiar, aoPago, aoPerdida, enviando, prefixo }: Props) {
   const p = (s: string) => `${prefixo}-${s}`
@@ -54,38 +47,26 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
   const forma = formaLocal !== undefined ? formaLocal : pedido.forma_pagamento
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Forma de pagamento</span>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          spacing={1}
-          className="flex-wrap"
-          value={forma ?? ""}
-          onValueChange={(v) => {
-            setFormaLocal(v || null)
-            aoForma(v || null)
+      <Field>
+        <FieldLabel>Forma de pagamento</FieldLabel>
+        <FormaPagamento
+          valor={forma}
+          aoMudar={(f) => {
+            setFormaLocal(f)
+            aoForma(f)
           }}
-        >
-          {FORMAS_PAGAMENTO.map((f) => (
-            <ToggleGroupItem key={f.nome} value={f.nome}>
-              <f.icone /> {f.nome}
-            </ToggleGroupItem>
-          ))}
-          {/* Pedido antigo com uma forma que não existe mais na lista (ex.: "Link de pagamento"): continua aparecendo. */}
-          {forma && !FORMAS_PAGAMENTO.some((f) => f.nome === forma) && <ToggleGroupItem value={forma}>{forma}</ToggleGroupItem>}
-        </ToggleGroup>
-      </div>
+        />
+      </Field>
 
       <div className="flex flex-col gap-1.5">
-        <Linha rotulo="Subtotal">{reais(pedido.subtotal)}</Linha>
-        {pedido.desconto > 0 && <Linha rotulo="Desconto">− {reais(pedido.desconto)}</Linha>}
-        {pedido.desconto_pix > 0 && <Linha rotulo="Desconto Pix (10%)">− {reais(pedido.desconto_pix)}</Linha>}
-        {pedido.frete_tipo && <Linha rotulo={`Frete ${pedido.frete_tipo}`}>{reais(pedido.frete_na_conta)}</Linha>}
+        <LinhaValor rotulo="Subtotal" valor={reais(pedido.subtotal)} />
+        {pedido.desconto > 0 && <LinhaValor rotulo="Desconto" valor={`− ${reais(pedido.desconto)}`} />}
+        {pedido.desconto_pix > 0 && <LinhaValor rotulo="Desconto Pix (10%)" valor={`− ${reais(pedido.desconto_pix)}`} />}
+        {pedido.frete_tipo && <LinhaValor rotulo={`Frete ${pedido.frete_tipo}`} valor={reais(pedido.frete_na_conta)} />}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Desconto</span>
+      <Field>
+        <FieldLabel>Desconto</FieldLabel>
         <div className="flex gap-2">
           <ToggleGroup
             type="single"
@@ -116,15 +97,15 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
             </InputGroup>
           )}
         </div>
-      </div>
+      </Field>
 
       <Field>
         <FieldLabel htmlFor={p("cupom")}>Cupom</FieldLabel>
         <Input id={p("cupom")} value={form.cupom} onChange={(e) => aoMudar({ cupom: e.target.value })} />
       </Field>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Frete</span>
+      <Field>
+        <FieldLabel>Frete</FieldLabel>
         <ToggleGroup
           type="single"
           variant="outline"
@@ -145,8 +126,8 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
         </ToggleGroup>
         {form.frete_tipo && (
           <>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Quem paga</span>
+            <Field>
+              <FieldLabel>Quem paga</FieldLabel>
               <ToggleGroup
                 type="single"
                 variant="outline"
@@ -160,32 +141,31 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
                   <Store /> Arvenne
                 </ToggleGroupItem>
               </ToggleGroup>
-            </div>
+            </Field>
             {form.frete_pago_por === "cliente" && (
               <Dinheiro id={p("frete-cobrado")} rotulo="Frete pago pela cliente" valor={form.frete_cobrado} aoMudar={(v) => aoMudar({ frete_cobrado: v })} />
             )}
           </>
         )}
-      </div>
+      </Field>
 
-      <div className="flex items-baseline justify-between border-t pt-3">
-        <span className="text-sm text-muted-foreground">Total</span>
-        <span className="text-3xl font-semibold tabular-nums">{reais(pedido.total)}</span>
+      <div className="border-t pt-3">
+        <LinhaValor total rotulo="Total" valor={reais(pedido.total)} />
       </div>
 
       <div className="flex flex-col gap-2">
-        <Button className="h-11 text-base" onClick={aoEnviar} disabled={enviando}>
+        <Button size="xl" onClick={aoEnviar} disabled={enviando}>
           {enviando ? <Spinner /> : <Send />} Enviar à cliente
         </Button>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="h-11" onClick={aoCopiar}>
+          <Button variant="outline" size="xl" onClick={aoCopiar}>
             <Copy /> Copiar link
           </Button>
-          <Button variant="outline" className="h-11" onClick={aoPago}>
+          <Button variant="outline" size="xl" onClick={aoPago}>
             <Wallet /> Marcar como pago
           </Button>
         </div>
-        <Button variant="ghost" className="text-muted-foreground" onClick={aoPerdida}>
+        <Button variant="ghost" size="toque" className="text-muted-foreground" onClick={aoPerdida}>
           <XCircle /> Marcar como perdida
         </Button>
       </div>

@@ -1,12 +1,14 @@
 import { ArrowLeftRight, Check, PackageX, Trash2 } from "lucide-react"
+import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
+import { TituloSecao } from "@/components/comum/TituloSecao"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
 import type { Item } from "@/lib/tipos"
 import AvisoConferencia from "./AvisoConferencia"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, InstrucaoTile, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
-type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void; aoConcluir: () => void }
+type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void; aoConcluir?: () => void }
 
 // Pega o saquinho do modelo, separa a quantidade certa e confere defeitos (peça com problema vai como falta).
 export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Props) {
@@ -22,7 +24,9 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
       </div>
 
       <section className="flex flex-col gap-2" aria-label="A conferir">
-        <h3 className="text-sm font-semibold">A conferir ({aConferir.length})</h3>
+        <TituloSecao as="h3" contagem={aConferir.length}>
+          A conferir
+        </TituloSecao>
         {aConferir.length === 0 ? (
           <Vazio>Nenhuma peça a conferir.</Vazio>
         ) : (
@@ -31,13 +35,9 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
               <TilePeca
                 key={i.id}
                 item={i}
-                instrucao={
-                  <div className="rounded-lg bg-primary/10 px-2 py-1.5 text-center text-lg font-semibold text-primary tabular-nums">
-                    Separe {i.qtd}
-                  </div>
-                }
+instrucao={<InstrucaoTile>Separe {i.qtd}</InstrucaoTile>}
               >
-                <Button className="h-10 flex-1 text-sm" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
+                <Button size="bloco" className="flex-1" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
                   <Check /> Conferida
                 </Button>
                 <MenuPeca
@@ -55,9 +55,11 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
 
       <FaixaFeitas titulo="Conferidas" itens={conferidas} aoDesfazer={(i) => acao(i, { conferido_em: null })} />
 
-      <Button className="h-11 w-full text-base" disabled={!etapaCompleta("conferencia", pedido.pedido_itens)} onClick={aoConcluir}>
-        Concluir conferência
-      </Button>
+      {aoConcluir && (
+        <ConcluirEtapa disabled={!etapaCompleta("conferencia", pedido.pedido_itens)} onClick={aoConcluir}>
+          Concluir conferência
+        </ConcluirEtapa>
+      )}
     </div>
   )
 }

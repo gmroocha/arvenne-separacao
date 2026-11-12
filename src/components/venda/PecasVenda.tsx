@@ -1,12 +1,14 @@
 import { useRef, useState } from "react"
 import { toast } from "sonner"
-import { ClipboardPaste, Minus, Plus, Trash2, TriangleAlert } from "lucide-react"
+import { ClipboardPaste, Plus, Trash2, TriangleAlert } from "lucide-react"
 import AdicionarPecas from "@/components/AdicionarPecas"
 import CampoReais from "@/components/CampoReais"
-import Foto from "@/components/Foto"
+import { LinhaPeca } from "@/components/comum/Peca"
+import { Quantidade } from "@/components/comum/Quantidade"
+import { TituloSecao } from "@/components/comum/TituloSecao"
+import { Vazio } from "@/components/comum/Vazio"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
 import { buscarVariantes, useAcoesItemVenda, useAdicionarItens, useAtualizarCatalogo, type PedidoDetalhe } from "@/lib/api"
@@ -88,57 +90,31 @@ export default function PecasVenda({ pedido }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">
-          Peças <span className="font-normal text-muted-foreground tabular-nums">({pedido.qtd_pecas})</span>
-        </h2>
-      </div>
+      <TituloSecao contagem={pedido.qtd_pecas}>Peças</TituloSecao>
 
-      {itens.length === 0 && (
-        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          Nenhuma peça ainda. Adicione do site ou do Clube.
-        </p>
-      )}
+      {itens.length === 0 && <Vazio>Nenhuma peça ainda. Adicione do site ou do Clube.</Vazio>}
 
       {itens.map((i) => (
-        <div key={i.id} className="flex items-start gap-3 rounded-lg border bg-card p-2">
-          <Foto url={i.foto_url} alt={i.nome} className="size-14 shrink-0" />
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <div>
-              <div className="truncate text-sm font-medium">{i.nome}</div>
-              <div className="truncate text-xs text-muted-foreground">
-                {i.variante}
-                {i.sku && <span className="font-mono"> {i.variante ? "· " : ""}{i.sku}</span>}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+        <LinhaPeca
+          key={i.id}
+          tamanho="md"
+          item={{ foto_url: i.foto_url, nome: i.nome, sku: i.sku, variante: i.variante }}
+          extra={
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <PrecoInput key={`${i.id}-${i.preco}`} item={i} aoSalvar={(preco) => atualizar(i.id, { preco })} />
-              <ButtonGroup>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Diminuir"
-                  disabled={i.qtd <= 1}
-                  onClick={() => atualizar(i.id, { qtd: i.qtd - 1 })}
-                >
-                  <Minus />
-                </Button>
-                <ButtonGroupText className="tabular-nums">{i.qtd}</ButtonGroupText>
-                <Button variant="outline" size="icon" aria-label="Aumentar" onClick={() => atualizar(i.id, { qtd: i.qtd + 1 })}>
-                  <Plus />
-                </Button>
-              </ButtonGroup>
+              <Quantidade valor={i.qtd} aoMudar={(qtd) => atualizar(i.id, { qtd })} />
             </div>
-          </div>
+          }
+        >
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-toque"
             aria-label="Remover peça"
             onClick={() => atualizar(i.id, { status: "removido", observacao: "removida na venda" })}
           >
             <Trash2 />
           </Button>
-        </div>
+        </LinhaPeca>
       ))}
 
       <div className="flex flex-col gap-2">
@@ -156,7 +132,7 @@ export default function PecasVenda({ pedido }: Props) {
             onBlur={() => colado.trim() && void lerCarrinho(colado)}
           />
         </InputGroup>
-        <Button variant="outline" className="w-fit" onClick={() => setAdicionando(true)}>
+        <Button variant="outline" size="toque" className="w-fit" onClick={() => setAdicionando(true)}>
           <Plus /> Adicionar peça
         </Button>
         {faltando.length > 0 && (

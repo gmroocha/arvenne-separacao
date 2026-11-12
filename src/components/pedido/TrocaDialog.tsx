@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
+import { Vazio } from "@/components/comum/Vazio"
 import { Check, ChevronUp, Copy, ExternalLink, HandCoins, Link2, PackageSearch, RefreshCw, TriangleAlert, X } from "lucide-react"
+import { AreaRolavel } from "@/components/comum/AreaRolavel"
 import CampoReais from "@/components/CampoReais"
 import { BuscaPecas } from "@/components/BuscaPecas"
 import CartaoCatalogo from "@/components/catalogo/CartaoCatalogo"
@@ -19,7 +21,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { msg, useAprovarCarrinho, useAprovarTroca, useCategorias, useCobrirTroca, useCriarTroca, useEnviarTroca, useOpcaoTroca, useSugestoes, useTroca, useValorPago, type PedidoDetalhe } from "@/lib/api"
+import { msg, useAprovarCarrinho, useAprovarTroca, useCategorias, useCobrirTroca, useCriarTroca, useEnviarTroca, useAtualizacaoAutomaticaCatalogo, useOpcaoTroca, useSugestoes, useTroca, useValorPago, type PedidoDetalhe } from "@/lib/api"
 import { mensagemTroca } from "@/lib/agente"
 import { numeroParaTexto, reais } from "@/lib/formato"
 import { chaveModelo, codigoDoModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
@@ -67,13 +69,13 @@ const rotuloCategoria = (c: string) => (c ? c.charAt(0).toUpperCase() + c.slice(
 
 // Diferença já calculada no banco (só inverte o sinal para o texto).
 function Diferenca({ s }: { s: Sugestao }) {
-  if (s.situacao === "paga_diferenca") return <span className="text-xs font-medium text-amber-700 tabular-nums dark:text-amber-400">+{reais(s.diferenca)} a pagar</span>
-  if (s.situacao === "credito") return <span className="text-xs font-medium text-emerald-700 tabular-nums dark:text-emerald-400">{reais(-s.diferenca)} de crédito</span>
+  if (s.situacao === "paga_diferenca") return <span className="text-xs font-medium text-warning tabular-nums">+{reais(s.diferenca)} a pagar</span>
+  if (s.situacao === "credito") return <span className="text-xs font-medium text-success tabular-nums">{reais(-s.diferenca)} de crédito</span>
   return <span className="text-xs text-muted-foreground">mesmo valor</span>
 }
 
 // Cartão de uma variante sem tamanho (cor, pedra, mm): uma foto por cartão.
-const SeloNoPedido = <Badge variant="secondary" className="h-5 px-1.5 text-xs">Já no pedido</Badge>
+const SeloNoPedido = <Badge variant="secondary" className="h-5 px-1.5 text-xs">No pedido</Badge>
 
 function CartaoSugestao({ s, marcada, aoTocar }: { s: Sugestao; marcada: boolean; aoTocar: (s: Sugestao) => void }) {
   return (
@@ -90,6 +92,7 @@ function CartaoSugestao({ s, marcada, aoTocar }: { s: Sugestao; marcada: boolean
           <Diferenca s={s} />
         </>
       }
+      acao={{ rotulo: "Oferecer", rotuloMarcado: "Oferecida" }}
       onCard={() => aoTocar(s)}
     />
   )
@@ -184,12 +187,12 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
             role="tab"
             aria-selected={atual}
             onClick={() => aoEscolher(i.id)}
-            className={cn("flex shrink-0 items-center gap-2 rounded-lg border bg-card p-1.5 pr-3 text-left text-xs transition-colors", atual && "border-primary bg-primary/5")}
+            className={cn("flex shrink-0 items-center gap-2 rounded-lg bg-card p-1.5 pr-3 text-left text-xs ring-1 ring-foreground/10 transition-colors", atual && "bg-success/5 ring-success/40")}
           >
             <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-10" />
             <span className="flex flex-col gap-0.5">
               <span className="font-mono font-semibold">{i.sku ?? "sem código"}</span>
-              <span className={cn("text-[11px] leading-none", n > 0 ? "text-muted-foreground" : COR_TEXTO_AVISO)}>
+              <span className={cn("text-xs leading-none", n > 0 ? "text-muted-foreground" : COR_TEXTO_AVISO)}>
                 {n > 0 ? `${n} ${n === 1 ? "opção" : "opções"}` : "sem opção"}
               </span>
             </span>
@@ -270,7 +273,7 @@ function FiltroPreco({
             <ToggleGroupItem
               key={f}
               value={f}
-              className="h-10 flex-1 px-4 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground sm:flex-none"
+              className="h-10 flex-1 px-4 text-sm sm:flex-none"
             >
               {f === "qualquer" ? "Qualquer" : `Até ${f}%`}
             </ToggleGroupItem>
@@ -293,7 +296,7 @@ function EscolhaCliente({ item, peca, ocupado, aoAprovar }: { item: Item; peca: 
   if (peca.concluida_em || linhas.length === 0) return null
   const c = peca.carrinho
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-lg border border-primary/40 bg-primary/5 p-2" aria-label={`Escolha da cliente: ${item.sku ?? item.nome}`}>
+    <div className="flex min-w-0 flex-col gap-2 rounded-lg bg-success/5 p-2 ring-1 ring-success/40" aria-label={`Escolha da cliente: ${item.sku ?? item.nome}`}>
       <div className="text-xs font-semibold">Escolha da cliente</div>
       {linhas.map(({ o, qtd }) => (
         <div key={o.id} className="flex min-w-0 items-center gap-2">
@@ -350,7 +353,7 @@ function PainelOpcoes({
             {itens.length > 1 && <h4 className="truncate font-mono text-sm font-semibold">{item.sku ?? "sem código"}</h4>}
             {peca && <EscolhaCliente item={item} peca={peca} ocupado={ocupado} aoAprovar={() => aoAprovarCarrinho(item, peca)} />}
             {opcoes.length === 0 ? (
-              <p className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">Nenhuma opção ainda.</p>
+              <Vazio className="p-3">Nenhuma opção ainda.</Vazio>
             ) : (
               opcoes.map((o) => (
                 <div key={o.id} className="flex min-w-0 flex-col gap-2 rounded-lg border p-2">
@@ -390,8 +393,8 @@ function PainelOpcoes({
         const nova = p.escolha_tipo === "opcao" ? p.opcoes.find((o) => o.id === p.escolha_opcao_id) : undefined
         const dif = p.resultado_diferenca
         return (
-          <section key={p.id} className="flex min-w-0 flex-col gap-1 rounded-lg bg-emerald-500/10 p-2 text-sm" aria-label="Peça resolvida">
-            <div className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400">
+          <section key={p.id} className="flex min-w-0 flex-col gap-1 rounded-lg bg-success/10 p-2 text-sm" aria-label="Peça resolvida">
+            <div className="flex items-center gap-2 font-medium text-success">
               <Check className="size-4 shrink-0" /> {p.escolhida_por === "equipe" ? "Aprovada" : "Trocada"}
             </div>
             <div className="truncate font-mono font-semibold">
@@ -491,6 +494,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const categoria = item ? (catEscolhida[item.id] ?? (listaCats.some((c) => c.categoria === categoriaPadrao) ? categoriaPadrao : "")) : ""
   // No modo "Preço parecido" espera as categorias chegarem, para não buscar "todas" e depois buscar de novo.
   const ativa = aberto && pronta && aba !== "buscar" && (aba !== "preco" || !categorias.isPending)
+  useAtualizacaoAutomaticaCatalogo(aberto)
   const sug = useSugestoes(item?.id, aba === "preco" ? "preco" : "variantes", { categoria: categoria || null, faixa: FAIXAS[faixa] }, ativa, incluir, soSemEstoque)
 
   const opcoes = peca?.opcoes ?? []
@@ -721,13 +725,13 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         </div>
       )}
       {linhas && linhas.length === 0 && (
-        <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+        <Vazio>
           {filtrando
-            ? "Nenhuma peça marcada como “vender sem estoque” aqui. Desmarque a caixa acima para ver todas. Se nenhuma peça do catálogo aparece marcada, use “Atualizar catálogo” para preencher essa marca."
+            ? "Nenhuma peça marcada como “vender sem estoque” aqui. Desmarque a caixa acima para ver todas."
             : aba === "variantes"
               ? "Este produto não tem outras variantes. Veja \"Preço parecido\" ou \"Buscar\"."
               : "Nenhuma peça nesta faixa. Mude a categoria ou a faixa de preço."}
-        </p>
+        </Vazio>
       )}
       {linhas && linhas.length > 0 && (
         <div className={cn("transition-opacity", sug.isPlaceholderData && "pointer-events-none opacity-50")}>
@@ -776,7 +780,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         </div>
       )}
       {ativos.length === 0 && pronta && (
-        <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Todas as peças desta troca já foram resolvidas.</p>
+        <Vazio>Todas as peças desta troca já foram resolvidas.</Vazio>
       )}
       {pronta && item && (
         <>
@@ -868,12 +872,14 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         <div className="flex min-w-0 flex-col gap-3">
           {conteudo}
           <Collapsible open={verOpcoes} onOpenChange={setVerOpcoes} className="sticky bottom-0 -mx-4 border-t bg-background px-4 pt-3 pb-4">
-            <CollapsibleContent className="max-h-[40svh] overflow-y-auto pb-3">
-              <div className="flex flex-col gap-4">
-                {painel}
-                {resumo}
-                {blocoCobrir}
-              </div>
+            <CollapsibleContent>
+              <AreaRolavel className="max-h-[40svh] pb-3">
+                <div className="flex flex-col gap-4">
+                  {painel}
+                  {resumo}
+                  {blocoCobrir}
+                </div>
+              </AreaRolavel>
             </CollapsibleContent>
             <div className="flex flex-col gap-2 pb-1">
               <CollapsibleTrigger asChild>
@@ -890,12 +896,12 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         <div className="flex min-w-0 flex-col gap-5">
           <div className="grid h-[calc(min(92svh,980px)-13rem)] grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
             {/* A linha divisória é do lado esquerdo: a barra de rolagem fica colada nela e os dois lados têm o mesmo respiro. */}
-            <div className="min-h-0 min-w-0 overflow-y-auto border-r pr-4">{conteudo}</div>
+            <AreaRolavel className="min-w-0 border-r pr-4">{conteudo}</AreaRolavel>
             <div className="flex min-h-0 min-w-0 flex-col gap-4 pl-4">
               <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <PackageSearch className="size-4" /> Opções <span className="font-normal text-muted-foreground">({rotuloOpcoes})</span>
               </h3>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">{painel}</div>
+              <AreaRolavel className="flex-1 p-1">{painel}</AreaRolavel>
               {resumo}
               {blocoCobrir}
             </div>

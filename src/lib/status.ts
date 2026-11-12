@@ -115,10 +115,7 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
     "Pegue o saquinho do modelo e separe a quantidade certa do pedido.",
     "Examine cada peça com calma, de todos os lados.",
   ],
-  etiquetagem: [
-    "Coloque a etiqueta em cada peça.",
-    "Se a peça já veio etiquetada, marque \"Já tinha etiqueta\".",
-  ],
+  etiquetagem: ["Coloque a etiqueta em cada peça."],
   bipagem: [
     "Leia o código de cada peça com o leitor, uma unidade por vez.",
     "Peça com 2 ou mais unidades: bipe uma vez para cada unidade.",

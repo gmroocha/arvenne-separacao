@@ -2,17 +2,19 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert, Truck } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
-import Foto from "@/components/Foto"
+import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
+import { LinhaPeca } from "@/components/comum/Peca"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { COR_PAC, COR_SEDEX } from "@/components/venda/ResumoVenda"
+import { MarcaCheck } from "@/components/comum/Bolha"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { buscarCnpj } from "@/lib/cnpj"
 import { copiar } from "@/lib/copiar"
+import { COR_PAC, COR_SEDEX } from "@/lib/selo"
 import { digitos, mascaraCep, mascaraDocumento, numeroParaTexto, quando, reais } from "@/lib/formato"
 import { cn } from "@/lib/utils"
 import CampoSalvo from "./CampoSalvo"
@@ -21,7 +23,7 @@ const LINK_OLIST = import.meta.env.VITE_URL_OLIST as string | undefined
 const LINK_BLING = import.meta.env.VITE_URL_BLING as string | undefined
 
 type Patch = (campos: CamposPedido) => void
-type Props = { pedido: PedidoDetalhe; patch: Patch; aoConcluir: () => void }
+type Props = { pedido: PedidoDetalhe; patch: Patch; aoConcluir?: () => void }
 
 type Dado = { rotulo: string; valor: string | null }
 
@@ -35,8 +37,8 @@ function LinhaDado({ rotulo, valor }: Dado) {
       </div>
       <Button
         variant="ghost"
-        size="icon"
-        className="size-11 shrink-0 sm:size-8"
+        size="icon-toque"
+        className="shrink-0"
         aria-label={`Copiar ${rotulo}`}
         disabled={!valor}
         onClick={() => valor && copiar(valor, `${rotulo} copiado`)}
@@ -70,7 +72,8 @@ function CopiarTudo({ dados }: { dados: Dado[] }) {
   return (
     <Button
       variant="outline"
-      className="h-11 w-full sm:h-8 sm:w-fit"
+      size="toque"
+      className="w-full sm:w-fit"
       onClick={() => copiar(dados.map((d) => `${d.rotulo}: ${d.valor ?? ""}`).join("\n"), "Dados copiados")}
     >
       <Copy /> Copiar tudo
@@ -94,26 +97,20 @@ function Passo({
   }, [feito])
   return (
     <Collapsible open={aberto} onOpenChange={setAberto}>
-      <Card size="sm" className={cn(feito && "bg-emerald-500/10 ring-emerald-500/40")}>
+      <Card size="sm" tom={feito ? "success" : undefined}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CollapsibleTrigger asChild>
               <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-label={`${titulo}: ${aberto ? "recolher" : "abrir"}`}>
-                <span
-                  className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-                    feito ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {feito ? <Check className="size-4" /> : numero}
-                </span>
+                {feito ? (
+                  <MarcaCheck />
+                ) : (
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground tabular-nums">{numero}</span>
+                )}
                 <span className="flex min-w-0 items-center gap-1.5 [&_svg]:size-4">
                   {icone} <span className="truncate">{titulo}</span>
                 </span>
-                <Badge
-                  variant={feito ? "default" : "outline"}
-                  className={cn("ml-auto shrink-0", feito && "bg-emerald-600 text-white")}
-                >
+                <Badge variant={feito ? "success" : "outline"} className="ml-auto shrink-0">
                   {feito && feitoEm ? quando(feitoEm) : "Pendente"}
                 </Badge>
                 <ChevronDown className={cn("size-4 shrink-0 transition-transform", aberto && "rotate-180")} />
@@ -123,7 +120,7 @@ function Passo({
         </CardHeader>
         {feito && !aberto && (
           <CardContent>
-            <Button variant="ghost" className="h-11 w-fit sm:h-8" onClick={aoDesfazer}>
+            <Button variant="ghost" size="toque" className="w-fit" onClick={aoDesfazer}>
               {textoDesfazer}
             </Button>
           </CardContent>
@@ -182,7 +179,7 @@ function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
     <Card size="sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-          <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" /> Faltam dados do pedido
+          <TriangleAlert className="size-4 text-warning" /> Faltam dados do pedido
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -204,7 +201,7 @@ function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
           <CampoSalvo id="falta-ie" rotulo="Inscrição estadual (opcional)" valor={null} aoSalvar={(v) => v && patch({ cliente_ie: v })} />
         )}
         {situacao && situacao !== "ATIVA" && (
-          <p className="flex items-center gap-2 text-sm text-amber-700 sm:col-span-2 dark:text-amber-400">
+          <p className="flex items-center gap-2 text-sm text-warning sm:col-span-2">
             <TriangleAlert className="size-4 shrink-0" /> Situação cadastral do CNPJ: {situacao.toLowerCase()}
           </p>
         )}
@@ -251,7 +248,7 @@ function ModalidadeFrete({
           </span>
         )}
       </div>
-      {diferente && <span className="text-sm text-amber-700 dark:text-amber-300">Diferente do que a cliente escolheu.</span>}
+      {diferente && <span className="text-sm text-warning">Diferente do que a cliente escolheu.</span>}
     </div>
   )
 }
@@ -312,7 +309,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
     <div className="flex flex-col gap-4">
       <Collapsible open={pecasAbertas} onOpenChange={setPecasAbertas}>
         <CollapsibleTrigger asChild>
-          <Button variant="outline" className="h-11 w-full justify-between sm:h-9">
+          <Button variant="outline" size="xl" className="w-full justify-between lg:h-9 lg:text-sm">
             <span>
               Peças do pedido <span className="text-muted-foreground tabular-nums">({pedido.qtd_pecas})</span>
             </span>
@@ -321,16 +318,9 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         </CollapsibleTrigger>
         <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
           {itens.map((i) => (
-            <div key={i.id} className="flex items-center gap-2 rounded-lg border bg-card p-1.5">
-              <Foto url={i.foto_url} alt={i.nome} ampliar className="size-10 shrink-0" />
-              <div className="min-w-0 flex-1 text-sm leading-tight">
-                <div className="font-mono font-semibold">
-                  {i.qtd}× {i.sku ?? "sem código"}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">{[i.nome, i.variante].filter(Boolean).join(" · ")}</div>
-              </div>
-              <div className="shrink-0 text-sm tabular-nums">{reais(i.preco)}</div>
-            </div>
+            <LinhaPeca key={i.id} item={i} tamanho="sm">
+              <span className="text-sm tabular-nums">{reais(i.preco)}</span>
+            </LinhaPeca>
           ))}
         </CollapsibleContent>
       </Collapsible>
@@ -346,14 +336,14 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         <div className="flex flex-wrap items-center gap-2">
           <CopiarTudo dados={dadosNota} />
           {LINK_BLING && (
-            <Button variant="outline" className="h-11 sm:h-8" asChild>
+            <Button variant="outline" size="toque" asChild>
               <a href={LINK_BLING} target="_blank" rel="noreferrer">
                 <ExternalLink /> Abrir Bling
               </a>
             </Button>
           )}
           {LINK_OLIST && (
-            <Button variant="outline" className="h-11 sm:h-8" asChild>
+            <Button variant="outline" size="toque" asChild>
               <a href={LINK_OLIST} target="_blank" rel="noreferrer">
                 <ExternalLink /> Abrir Olist
               </a>
@@ -362,11 +352,11 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         </div>
         <CampoSalvo id="nf" rotulo="Nº da nota (opcional)" valor={pedido.nf_numero} aoSalvar={(v) => patch({ nf_numero: v })} />
         {nf ? (
-          <Button variant="ghost" className="h-11 w-fit sm:h-8" onClick={() => patch({ nf_emitida_em: null })}>
+          <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ nf_emitida_em: null })}>
             Desfazer nota emitida
           </Button>
         ) : (
-          <Button className="h-11 w-full text-base" onClick={() => patch({ nf_emitida_em: agora() })}>
+          <Button size="xl" className="w-full" onClick={() => patch({ nf_emitida_em: agora() })}>
             <Check /> Nota emitida
           </Button>
         )}
@@ -403,7 +393,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
           <p
             className={cn(
               "rounded-md px-3 py-2 text-sm font-medium tabular-nums",
-              diferenca < 0 ? "bg-amber-500/10 text-amber-800 dark:text-amber-300" : "bg-muted text-foreground",
+              diferenca < 0 ? "bg-warning/10 text-warning" : "bg-muted text-foreground",
             )}
           >
             {diferenca < 0 ? `A Arvenne cobre ${reais(-diferenca)} de frete` : diferenca > 0 ? `Sobrou ${reais(diferenca)} do frete pago` : "Frete empatado: a cliente pagou o custo"}
@@ -417,12 +407,13 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
           aoSalvar={(v) => patch({ rastreio_url: v })}
         />
         {frete ? (
-          <Button variant="ghost" className="h-11 w-fit sm:h-8" onClick={() => patch({ frete_gerado_em: null })}>
+          <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ frete_gerado_em: null })}>
             Desfazer frete gerado
           </Button>
         ) : (
           <Button
-            className="h-11 w-full text-base"
+            size="xl"
+            className="w-full"
             onClick={() => patch({ frete_gerado_em: agora(), ...(!pedido.frete_servico && servico ? { frete_servico: servico } : {}) })}
           >
             <Check /> Frete gerado
@@ -439,7 +430,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
             </li>
           ))}
         </ul>
-        <Button variant="outline" className="h-11 w-full sm:h-8 sm:w-fit" onClick={() => copiar(textoSkus, "SKUs copiados")}>
+        <Button variant="outline" size="toque" className="w-full sm:w-fit" onClick={() => copiar(textoSkus, "SKUs copiados")}>
           <Copy /> Copiar SKUs
         </Button>
         <CampoSalvo
@@ -449,19 +440,21 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
           aoSalvar={(v) => patch({ pedido_fornecedor_numero: v })}
         />
         {lr ? (
-          <Button variant="ghost" className="h-11 w-fit sm:h-8" onClick={() => patch({ pedido_fornecedor_em: null })}>
+          <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ pedido_fornecedor_em: null })}>
             Desfazer pedido LR feito
           </Button>
         ) : (
-          <Button className="h-11 w-full text-base" onClick={() => patch({ pedido_fornecedor_em: agora() })}>
+          <Button size="xl" className="w-full" onClick={() => patch({ pedido_fornecedor_em: agora() })}>
             <Check /> Pedido LR feito
           </Button>
         )}
       </Passo>
 
-      <Button className="h-11 w-full text-base" disabled={!(nf && frete && lr)} onClick={aoConcluir}>
-        Concluir nota e frete
-      </Button>
+      {aoConcluir && (
+        <ConcluirEtapa disabled={!(nf && frete && lr)} onClick={aoConcluir}>
+          Concluir nota e frete
+        </ConcluirEtapa>
+      )}
     </div>
   )
 }

@@ -1,7 +1,8 @@
 import { useState } from "react"
-import { Gem } from "lucide-react"
+import { Gem, X } from "lucide-react"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { fotoTamanho } from "@/lib/foto"
 import { cn } from "@/lib/utils"
 
@@ -31,11 +32,17 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
         {quadro}
       </button>
       <Dialog open={aberta} onOpenChange={setAberta}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent showCloseButton={false} className="w-full max-w-[calc(100%-2rem)] gap-0 rounded-xl border-0 bg-transparent p-0 shadow-none ring-0 sm:max-w-2xl">
           <DialogTitle className="sr-only">{alt || "Foto da peça"}</DialogTitle>
           <DialogDescription className="sr-only">Foto ampliada</DialogDescription>
           {/* Ampliada: pede a foto grande à Shopify (a miniatura vem com width pequeno). */}
-          <img draggable={false} src={fotoTamanho(url, 1200) ?? url} alt={alt} className="max-h-[85svh] w-full rounded-md object-contain" />
+          <img draggable={false} src={fotoTamanho(url, 1200) ?? url} alt={alt} className="mx-auto max-h-[85svh] w-full rounded-xl object-contain" />
+          <DialogClose asChild>
+            <Button size="icon" variant="ghost" className="absolute top-2 right-2 rounded-full bg-background/80 text-foreground shadow backdrop-blur hover:bg-background">
+              <X />
+              <span className="sr-only">Fechar</span>
+            </Button>
+          </DialogClose>
         </DialogContent>
       </Dialog>
     </>

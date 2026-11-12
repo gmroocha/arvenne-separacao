@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { FormaPagamento } from "@/components/comum/FormaPagamento"
 import CampoReais from "@/components/CampoReais"
 import RespDialog from "@/components/RespDialog"
 import { lerNumero, numeroParaTexto } from "@/lib/formato"
-import { FORMAS_PAGAMENTO } from "./form"
 
 export type DadosPagamento = { forma: string; valor: number | null; pagoEm: string }
 
@@ -65,15 +64,7 @@ function Formulario({ total, formaInicial, aoMudarForma, aoConfirmar }: Pick<Pro
     <FieldGroup className="gap-4">
       <Field>
         <FieldLabel>Forma de pagamento</FieldLabel>
-        <ToggleGroup type="single" variant="outline" spacing={1} className="flex-wrap" value={forma} onValueChange={(v) => v && void trocarForma(v)}>
-          {FORMAS_PAGAMENTO.map((f) => (
-            <ToggleGroupItem key={f.nome} value={f.nome}>
-              <f.icone /> {f.nome}
-            </ToggleGroupItem>
-          ))}
-          {/* Pedido antigo com uma forma que não existe mais na lista (ex.: "Link de pagamento"): continua aparecendo. */}
-          {forma && !FORMAS_PAGAMENTO.some((f) => f.nome === forma) && <ToggleGroupItem value={forma}>{forma}</ToggleGroupItem>}
-        </ToggleGroup>
+        <FormaPagamento valor={forma} aoMudar={(f) => f && void trocarForma(f)} />
       </Field>
       <Field>
         <FieldLabel htmlFor="pg-valor">Valor pago</FieldLabel>
@@ -84,7 +75,7 @@ function Formulario({ total, formaInicial, aoMudarForma, aoConfirmar }: Pick<Pro
         <Input id="pg-quando" type="datetime-local" value={quando} onChange={(e) => setQuando(e.target.value)} />
       </Field>
       <Button
-        className="h-11 text-base"
+        size="xl"
         disabled={salvando || calculando || !quando}
         onClick={async () => {
           const lido = lerNumero(valor)

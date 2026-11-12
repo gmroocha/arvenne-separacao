@@ -15,7 +15,7 @@ for (const t of [{ n: "celular", w: 390, h: 844 }, { n: "pc", w: 1280, h: 900 }]
     const req = route.request()
     const url = req.url()
     // RPCs só de leitura (sugestões, valor pago, categorias) passam; qualquer outra gravação é bloqueada.
-    if (req.method() === "POST" && /\/rpc\/(sugerir_troca|troca_valor_pago|categorias_catalogo)(\?|$)/.test(url)) return route.continue()
+    if (req.method() === "POST" && /\/rpc\/(sugerir_troca|troca_valor_pago|categorias_catalogo|troca_publica|romaneio_publico)(\?|$)/.test(url)) return route.continue()
     if (req.method() !== "GET" && req.method() !== "HEAD") return route.fulfill({ status: 200, json: null }) // nada grava
     if (url.includes("/v_pedidos")) {
       const r = await route.fetch()

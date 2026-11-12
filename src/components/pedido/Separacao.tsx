@@ -1,8 +1,10 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, Minus, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
-import Foto from "@/components/Foto"
-import { COR_SELO } from "@/lib/selo"
+import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageX, Plus, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
+import { LinhaPeca as LinhaPecaComum } from "@/components/comum/Peca"
+import { Quantidade } from "@/components/comum/Quantidade"
+import { TituloSecao } from "@/components/comum/TituloSecao"
+import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import RespDialog from "@/components/RespDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,7 +16,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useConcluirTroca, useEnviarTroca, useMarcarFalta, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { etapaCompleta } from "@/lib/etapa"
-import { fotoTamanho } from "@/lib/foto"
 import { linkWhatsApp } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
 import { fraseCarrinho, fraseCredito, fraseTroca } from "@/lib/trocaTexto"
@@ -34,8 +35,6 @@ function listaEscolhida(peca: TrocaPeca): { opcao: TrocaOpcao; qtd: number }[] {
   return o ? [{ opcao: o, qtd: 0 }] : []
 }
 
-const COR_TITULO = { avisar_cliente: "text-destructive", aguardando_cliente: "text-amber-700 dark:text-amber-300" } as const
-
 // Estado da troca de UMA peça em falta: aguardar a cliente ou fechar a escolha dela.
 function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefined; peca: TrocaPeca | undefined; item: Item; aoAbrir: () => void; wa: string | null }) {
   const concluir = useConcluirTroca()
@@ -46,7 +45,7 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
     return (
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>Troca enviada há {tempoDesde(troca.enviada_em ?? troca.created_at)} · aguardando escolha desta peça</span>
-        <Button variant="ghost" size="sm" className="h-8" onClick={aoAbrir}>
+        <Button variant="ghost" size="toque" onClick={aoAbrir}>
           <Send /> Reenviar
         </Button>
       </div>
@@ -63,44 +62,35 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
         ? fraseTroca(item.sku ?? item.nome, peca, opcao)
         : fraseCredito(peca)
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-emerald-500/10 p-2">
+    <div className="flex flex-col gap-2 rounded-lg bg-success/10 p-2">
       {lista.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Cliente escolheu</div>
+          <div className="text-sm font-medium text-success">Cliente escolheu</div>
           {lista.map(({ opcao: o, qtd }) => (
-            <div key={o.id} className="flex items-center gap-2">
-              <Foto url={fotoTamanho(o.foto_url, 200)} alt={o.nome} ampliar className="size-12 shrink-0" />
-              <div className="min-w-0 text-sm">
-                <div className="truncate font-mono font-semibold">
-                  {qtd > 1 && <span className="tabular-nums">{qtd}× </span>}
-                  {o.sku ?? "sem código"}
-                </div>
-                <div className="truncate text-muted-foreground">{o.variante ?? o.nome}</div>
-              </div>
-            </div>
+            <LinhaPecaComum key={o.id} item={{ ...o, qtd }} tamanho="sm" semBorda />
           ))}
         </div>
       ) : peca.escolha_tipo === "credito" ? (
-        <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Prefere crédito</div>
+        <div className="text-sm font-medium text-success">Prefere crédito</div>
       ) : (
-        <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Quer falar no WhatsApp</div>
+        <div className="text-sm font-medium text-success">Quer falar no WhatsApp</div>
       )}
       <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
         {peca.escolha_tipo === "opcao" && lista.length > 0 && (
-          <Button className="h-10 text-sm" disabled={concluir.isPending} onClick={() => setConfirmar("opcao")}>
+          <Button size="bloco" disabled={concluir.isPending} onClick={() => setConfirmar("opcao")}>
             <Check /> Fazer a troca
           </Button>
         )}
-        <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} className="h-10 text-sm" disabled={concluir.isPending} onClick={() => setConfirmar("credito")}>
+        <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} size="bloco" disabled={concluir.isPending} onClick={() => setConfirmar("credito")}>
           <HandCoins /> Dar crédito
         </Button>
         {peca.escolha_tipo === "whatsapp" && (
           <>
-            <Button variant="secondary" className="h-10 text-sm" onClick={aoAbrir}>
+            <Button variant="secondary" size="bloco" onClick={aoAbrir}>
               <ArrowLeftRight /> Editar opções
             </Button>
             {wa && (
-              <Button variant="secondary" className="h-10 text-sm" asChild>
+              <Button variant="secondary" size="bloco" asChild>
                 <a href={wa} target="_blank" rel="noreferrer">
                   <MessageCircle /> WhatsApp da cliente
                 </a>
@@ -126,7 +116,7 @@ type Props = {
   acao: AcaoItem
   aoTrocar: (item: Item) => void
   aoAdicionar: () => void
-  aoConcluir: () => void
+  aoConcluir?: () => void
 }
 
 export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcluir }: Props) {
@@ -226,14 +216,11 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
       {problemas.length > 0 && (
         <Card
           size="sm"
-          className={cn(
-            avisar && "bg-destructive/5 ring-destructive/20",
-            aguardando && "bg-amber-500/5 ring-amber-500/20",
-          )}
+          tom={avisar ? "destructive" : aguardando ? "warning" : undefined}
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              {avisar ? <BellRing className={cn("size-4", COR_TITULO.avisar_cliente)} /> : <TriangleAlert className={cn("size-4", aguardando ? COR_TITULO.aguardando_cliente : "text-muted-foreground")} />}
+              {avisar ? <BellRing className="size-4 text-destructive" /> : <TriangleAlert className={cn("size-4", aguardando ? "text-warning" : "text-muted-foreground")} />}
               <span className="min-w-0 flex-1">
                 {avisar
                   ? "Avise a cliente"
@@ -250,13 +237,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             {problemas.map((i) => (
               <div key={i.id} className="flex flex-col gap-2">
                 <LinhaPeca item={i} compacta>
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      "h-6 border-transparent px-2 text-xs font-medium [&>svg]:size-3.5",
-                      avisar ? COR_SELO.avisar_cliente : aguardando ? COR_SELO.aguardando_cliente : "",
-                    )}
-                  >
+                  <Badge variant={avisar ? "destructive" : aguardando ? "warning" : "secondary"} size="lg">
                     <PackageX />
                     {i.qtd > 1 ? `Faltam ${i.qtd}` : "Em falta"}
                   </Badge>
@@ -274,14 +255,14 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             ))}
             <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap">
               {faltas.length > 0 && (
-                <Button variant={emRascunho ? "default" : "secondary"} className="h-10 text-sm" onClick={() => setTrocando(faltas[0].id)}>
+                <Button variant={emRascunho ? "default" : "secondary"} size="bloco" onClick={() => setTrocando(faltas[0].id)}>
                   <ArrowLeftRight /> {emRascunho ? (troca ? "Continuar troca" : "Montar troca") : "Editar troca"}
                 </Button>
               )}
               {avisar && (
                 <Button
                   variant={faltas.length > 0 ? "secondary" : "default"}
-                  className="h-10 text-sm"
+                  size="bloco"
                   onClick={() => {
                     mudarStatus.mutate({ pedidoId: pedido.id, para: "aguardando_cliente", silencioso: true })
                     toast.success("Aguardando resposta da cliente")
@@ -294,7 +275,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             <Separator />
             <div className="flex flex-col gap-1.5">
               <ButtonGroup className="w-full sm:w-fit">
-                <Button variant="outline" className="h-10 min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarComTroca(textoCliente(), "Mensagem copiada")}>
+                <Button variant="outline" size="bloco" className="min-w-0 flex-1 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block" onClick={() => copiarComTroca(textoCliente(), "Mensagem copiada")}>
                   <Copy /> Copiar mensagem
                 </Button>
                 <Tooltip>
@@ -304,7 +285,8 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                         variant="outline"
                         disabled={!trocaPronta || enviar.isPending}
                         // Dentro do <span> da dica, o grupo não alcança o botão: cantos e borda de junção aqui.
-                        className="h-10 min-w-0 flex-1 rounded-l-none border-l-0 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block"
+                        size="bloco"
+                        className="min-w-0 flex-1 rounded-l-none border-l-0 px-2 text-xs sm:flex-none sm:px-2.5 sm:text-sm [&_svg]:hidden sm:[&_svg]:block"
                         onClick={() => copiarComTroca(linkTroca, "Link copiado")}
                       >
                         <Link2 /> Copiar link
@@ -320,7 +302,9 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
       )}
 
       <section className="flex flex-col gap-2" aria-label="A encontrar">
-        <h3 className="text-sm font-semibold">A encontrar ({pendentes.length})</h3>
+        <TituloSecao as="h3" contagem={pendentes.length}>
+          A encontrar
+        </TituloSecao>
         {pendentes.length === 0 ? (
           <Vazio>{itens.length === 0 ? "Este pedido ainda não tem peças." : "Nenhuma peça pendente."}</Vazio>
         ) : (
@@ -328,7 +312,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             {blocos.map((g) =>
               g.length === 1 ? (
                 <TilePeca key={g[0].id} item={g[0]}>
-                  <Button className="h-10 flex-1 text-sm" onClick={() => acao(g[0], { status: "encontrado" })}>
+                  <Button size="bloco" className="flex-1" onClick={() => acao(g[0], { status: "encontrado" })}>
                     <Check /> Achei
                   </Button>
                   <MenuPeca
@@ -342,7 +326,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
               ) : (
                 <TileModelo key={g[0].id} itens={g}>
                   {/* Uma chamada por tamanho (cada uma grava o seu evento); a etapa só completa na última. */}
-                  <Button className="h-10 flex-1 text-sm" onClick={() => g.forEach((i) => acao(i, { status: "encontrado" }))}>
+                  <Button size="bloco" className="flex-1" onClick={() => g.forEach((i) => acao(i, { status: "encontrado" }))}>
                     <Check /> Achei
                   </Button>
                   {/* Uma seção por tamanho: título "N°16 · 2 un." e as três ações embaixo. */}
@@ -362,7 +346,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
             )}
           </GradePecas>
         )}
-        <Button variant="outline" className="h-11 w-fit sm:h-8" onClick={aoAdicionar}>
+        <Button variant="outline" size="toque" className="w-fit" onClick={aoAdicionar}>
           <Plus /> Adicionar peça
         </Button>
       </section>
@@ -379,7 +363,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           <CollapsibleContent className="flex flex-col gap-1.5 pt-1">
             {removidas.map((i) => (
               <LinhaPeca key={i.id} item={i} compacta esmaecida>
-                <Button variant="ghost" className="h-11" onClick={() => marcar(i, "pendente", null)}>
+                <Button variant="ghost" size="toque" onClick={() => marcar(i, "pendente", null)}>
                   Restaurar
                 </Button>
               </LinhaPeca>
@@ -391,28 +375,15 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
       <RespDialog aberto={!!faltaItem} aoMudar={(a) => !a && setFaltaItem(null)} titulo="Quantas faltam?" descricao={faltaItem ? `${faltaItem.sku ?? faltaItem.nome} · o pedido tem ${faltaItem.qtd}` : undefined}>
         {faltaItem && (
           <div className="flex flex-col gap-5 pt-2">
-            <div className="flex items-center justify-center gap-6">
-              <Button variant="outline" size="icon" className="size-12 rounded-full" aria-label="Menos uma" disabled={faltam <= 1} onClick={() => setFaltam((n) => n - 1)}>
-                <Minus />
-              </Button>
-              <div className="flex w-20 flex-col items-center">
-                <span className="text-4xl leading-none font-semibold tabular-nums" aria-live="polite">
-                  {faltam}
-                </span>
-                <span className="pt-1 text-xs text-muted-foreground">de {faltaItem.qtd}</span>
-              </div>
-              <Button variant="outline" size="icon" className="size-12 rounded-full" aria-label="Mais uma" disabled={faltam >= faltaItem.qtd} onClick={() => setFaltam((n) => n + 1)}>
-                <Plus />
-              </Button>
-            </div>
+            <Quantidade tamanho="grande" valor={faltam} min={1} max={faltaItem.qtd} de={faltaItem.qtd} rotulo="uma" aoMudar={setFaltam} />
             <p className="rounded-lg bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground">
               {faltam >= faltaItem.qtd ? "Todas as unidades vão para a troca." : `${faltaItem.qtd - faltam} ${faltaItem.qtd - faltam === 1 ? "segue" : "seguem"} na separação e ${faltam} ${faltam === 1 ? "vai" : "vão"} para a troca.`}
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" className="h-11 text-sm" onClick={() => confirmarFalta(faltaItem.qtd)}>
+              <Button variant="outline" size="xl" onClick={() => confirmarFalta(faltaItem.qtd)}>
                 Todas ({faltaItem.qtd})
               </Button>
-              <Button className="h-11 text-sm" onClick={() => confirmarFalta(faltam)}>
+              <Button size="xl" onClick={() => confirmarFalta(faltam)}>
                 <Check /> Confirmar {faltam}
               </Button>
             </div>
@@ -431,9 +402,11 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         inicial={trocando ?? undefined}
       />
 
-      <Button className="h-11 w-full text-base" disabled={!etapaCompleta(pedido.status, itens)} onClick={aoConcluir}>
-        Concluir separação
-      </Button>
+      {aoConcluir && (
+        <ConcluirEtapa disabled={!etapaCompleta(pedido.status, itens)} onClick={aoConcluir}>
+          Concluir separação
+        </ConcluirEtapa>
+      )}
     </div>
   )
 }

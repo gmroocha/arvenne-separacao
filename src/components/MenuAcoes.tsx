@@ -52,16 +52,17 @@ export default function MenuAcoes({ grupos, gatilho, titulo = "Ações" }: Props
                       <Button
                         key={it.rotulo}
                         variant={g.estilo ?? "outline"}
-                        disabled={it.desabilitado || it.atual}
+                        disabled={it.desabilitado}
                         aria-current={it.atual ? "step" : undefined}
                         className={cn("h-11 w-full justify-start gap-3 text-base", it.destrutivo && "text-destructive hover:text-destructive")}
                         onClick={() => {
+                          if (it.atual) return setAberto(false)
                           setAberto(false)
                           it.aoClicar()
                         }}
                       >
                         {Icone && <Icone />} {it.rotulo}
-                        {it.atual && <Check className="ml-auto text-primary" />}
+                        {it.atual && <Check className="ml-auto text-success" />}
                       </Button>
                     )
                   })}
@@ -73,30 +74,48 @@ export default function MenuAcoes({ grupos, gatilho, titulo = "Ações" }: Props
       </Drawer>
     )
 
+  // Muitas seções com título (ex.: uma por tamanho): no PC vira grade de 2 colunas, para o menu não
+  // ficar mais alto que a tela e encostar na barra do topo.
+  const emColunas = visiveis.length > 2 && visiveis.every((g) => g.titulo)
+  const item = (it: ItemAcao) => {
+    const Icone = it.icone
+    return (
+      <DropdownMenuItem
+        key={it.rotulo}
+        variant={it.destrutivo ? "destructive" : undefined}
+        disabled={it.desabilitado}
+        aria-current={it.atual ? "step" : undefined}
+        onSelect={it.atual ? (e) => e.preventDefault() : undefined}
+        onClick={it.atual ? undefined : it.aoClicar}
+      >
+        {Icone && <Icone />} {it.rotulo}
+        {it.atual && <Check className="ml-auto text-success" />}
+      </DropdownMenuItem>
+    )
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{gatilho}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-56">
-        {visiveis.map((g, gi) => (
-          <Fragment key={gi}>
-            {gi > 0 && <DropdownMenuSeparator />}
-            {g.titulo && <DropdownMenuLabel>{g.titulo}</DropdownMenuLabel>}
-            {g.itens.map((it) => {
-              const Icone = it.icone
-              return (
-                <DropdownMenuItem
-                  key={it.rotulo}
-                  variant={it.destrutivo ? "destructive" : undefined}
-                  disabled={it.desabilitado || it.atual}
-                  onClick={it.aoClicar}
-                >
-                  {Icone && <Icone />} {it.rotulo}
-                  {it.atual && <Check className="ml-auto" />}
-                </DropdownMenuItem>
-              )
-            })}
-          </Fragment>
-        ))}
+      <DropdownMenuContent
+        align="end"
+        collisionPadding={16}
+        className={cn("min-w-56", emColunas && "grid max-h-[min(70svh,32rem)] w-[26rem] grid-cols-2 gap-1 p-1.5")}
+      >
+        {emColunas
+          ? visiveis.map((g, gi) => (
+              <div key={gi} className="flex flex-col rounded-md bg-muted/30 p-0.5">
+                <DropdownMenuLabel className="text-xs">{g.titulo}</DropdownMenuLabel>
+                {g.itens.map(item)}
+              </div>
+            ))
+          : visiveis.map((g, gi) => (
+              <Fragment key={gi}>
+                {gi > 0 && <DropdownMenuSeparator />}
+                {g.titulo && <DropdownMenuLabel>{g.titulo}</DropdownMenuLabel>}
+                {g.itens.map(item)}
+              </Fragment>
+            ))}
       </DropdownMenuContent>
     </DropdownMenu>
   )

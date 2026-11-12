@@ -1,4 +1,5 @@
 import { Link } from "react-router"
+import { Card } from "@/components/ui/card"
 import Miniaturas from "@/components/Miniaturas"
 import MenuContexto from "@/components/MenuContexto"
 import Prazo from "@/components/pedido/Prazo"
@@ -10,11 +11,8 @@ import type { Pedido } from "@/lib/tipos"
 export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: string | null }) {
   return (
     <MenuContexto pedido={p}>
-      <Link
-        to={`/pedidos/${p.id}`}
-        draggable={false}
-        className="flex flex-col gap-2 rounded-xl bg-card p-3 text-sm ring-1 ring-foreground/10 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
-      >
+      <Card size="sm" className="transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
+        <Link to={`/pedidos/${p.id}`} draggable={false} className="flex flex-col gap-2 px-3 outline-none">
         <div className="flex min-w-0 flex-col">
           <span className="truncate text-base leading-tight font-semibold">{p.cliente_nome ?? "Sem nome"}</span>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -29,7 +27,8 @@ export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: st
           <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
           {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
         </div>
-      </Link>
+        </Link>
+      </Card>
     </MenuContexto>
   )
 }

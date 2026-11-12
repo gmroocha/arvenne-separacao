@@ -1,9 +1,9 @@
 import { useState } from "react"
-import { Archive, Search } from "lucide-react"
+import { Archive } from "lucide-react"
+import { CampoBusca } from "@/components/comum/CampoBusca"
 import LinhaPedido from "@/components/LinhaPedido"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { ItemGroup } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useArquivo } from "@/lib/api"
@@ -20,20 +20,14 @@ export default function Arquivo() {
 
   return (
     <div className="flex flex-col gap-4">
-      <InputGroup>
-        <InputGroupAddon>
-          <Search />
-        </InputGroupAddon>
-        <InputGroupInput
-          aria-label="Buscar por número, cliente ou telefone"
-          placeholder="Número, cliente ou telefone"
-          value={busca}
-          onChange={(e) => {
-            setBusca(e.target.value)
-            setLimite(PASSO)
-          }}
-        />
-      </InputGroup>
+      <CampoBusca
+        valor={busca}
+        aoMudar={(v) => {
+          setBusca(v)
+          setLimite(PASSO)
+        }}
+        placeholder="Número, cliente ou telefone"
+      />
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -57,7 +51,7 @@ export default function Arquivo() {
             ))}
           </ItemGroup>
           {data.length >= limite && (
-            <Button variant="outline" className="w-fit self-center" onClick={() => setLimite(limite + PASSO)}>
+            <Button variant="outline" size="toque" className="w-fit self-center" onClick={() => setLimite(limite + PASSO)}>
               Carregar mais
             </Button>
           )}

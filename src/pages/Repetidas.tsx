@@ -3,6 +3,7 @@ import { ChevronRight, PackageCheck } from "lucide-react"
 import Foto from "@/components/Foto"
 import { Card, CardContent } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRepetidas } from "@/lib/api"
 
@@ -35,7 +36,7 @@ export default function Repetidas() {
             <Card key={r.chave} size="sm">
               <CardContent className="flex flex-col gap-3">
                 <div className="flex gap-3">
-                  <Foto url={r.foto_url} alt={r.nome} ampliar className="size-28 shrink-0 rounded-lg ring-1 ring-border sm:size-32" />
+                  <Foto url={r.foto_url} alt={r.nome} ampliar className="size-28 shrink-0 sm:size-32" />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="font-mono text-lg leading-tight font-semibold break-all">{r.sku ?? "sem código"}</span>
                     {r.variante && <span className="text-base leading-tight font-semibold">{r.variante}</span>}
@@ -46,23 +47,20 @@ export default function Repetidas() {
                     </div>
                   </div>
                 </div>
-                <ul className="flex flex-col divide-y rounded-lg ring-1 ring-border">
+                <ItemGroup className="gap-2">
                   {r.pedidos.map((p) => (
-                    <li key={p.pedido_id}>
-                      <Link
-                        to={`/pedidos/${p.pedido_id}`}
-                        className="flex items-center gap-2 px-3 py-2.5 transition-colors hover:bg-muted/50"
-                      >
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm font-medium">{p.cliente ?? "Sem nome"}</span>
-                          <span className="text-xs text-muted-foreground tabular-nums">{p.numero.replace(/^#/, "")}</span>
-                        </div>
+                    <Item key={p.pedido_id} variant="outline" size="sm" asChild>
+                      <Link to={`/pedidos/${p.pedido_id}`}>
+                        <ItemContent>
+                          <ItemTitle>{p.cliente ?? "Sem nome"}</ItemTitle>
+                          <ItemDescription className="tabular-nums">{p.numero.replace(/^#/, "")}</ItemDescription>
+                        </ItemContent>
                         <span className="text-sm text-muted-foreground tabular-nums">{p.qtd}×</span>
                         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                       </Link>
-                    </li>
+                    </Item>
                   ))}
-                </ul>
+                </ItemGroup>
               </CardContent>
             </Card>
           ))}

@@ -39,6 +39,17 @@ Migrations aplicadas em 11/11/2026: `20261114090000_vistoria`, `20261114100000_t
 **Próxima ação:** Gustavo clicar "Atualizar catálogo" (marca "vender sem estoque") e "Sincronizar";
 conferir uma troca com carrinho e uma falta parcial de ponta a ponta.
 
+## Design system (11/11/2026)
+
+- Cores com significado viram tokens em `src/index.css`: `success` (feito), `warning` (aviso), `destructive`
+  (erro/avisar), `pac`/`sedex` (só no seletor de frete). Nada de `emerald-*`/`amber-*` fora do tema.
+- Selecionado = `primary` em todo lugar: Toggle/ToggleGroup (sólido), cartões com `ring-2 ring-primary` +
+  `BolhaCheck`. Feito = verde suave (`bg-success/10`).
+- Variantes novas: Badge `success|warning` e `size="lg"`, Alert `warning|success`, Card `tom`, Checkbox
+  `variant="success"`, Button `xl|toque|icon-toque|bloco|icon-bloco`, Toggle `xl`.
+- Componentes comuns em `src/components/comum/`: `LinhaPeca`, `Bolha`, `Vazio`, `TituloSecao`,
+  `Quantidade`, `CampoBusca`, `FormaPagamento`, `PaginaPublica`, `LinhaValor`, `ConcluirEtapa`.
+
 ## O que já funciona
 
 - **Vendas (romaneio):** a vendedora monta o pedido do WhatsApp antes do pagamento, com peças (do catálogo

@@ -1,6 +1,9 @@
 import type { ReactNode } from "react"
-import { Check } from "lucide-react"
+import { Check, Plus } from "lucide-react"
 import Foto from "@/components/Foto"
+import { BolhaCheck, BolhaContador } from "@/components/comum/Bolha"
+import { Button } from "@/components/ui/button"
+import { Toggle } from "@/components/ui/toggle"
 import { fotoTamanho } from "@/lib/foto"
 import { cn } from "@/lib/utils"
 
@@ -25,7 +28,7 @@ type Props = {
   nome?: string | null
   // Selos sobre a foto, no canto de cima à esquerda (ex.: "Já no pedido", ×2).
   selo?: ReactNode
-  // Destaque do cartão (peça escolhida): borda, fundo e check na foto.
+  // Destaque do cartão (peça escolhida): anel verde suave e check na foto.
   selecionado?: boolean
   // Preço, diferença etc.
   preco?: ReactNode
@@ -33,6 +36,8 @@ type Props = {
   chips?: ChipCatalogo[]
   onChip?: (id: string) => void
   onCard?: () => void
+  // Botão explícito no pé do cartão sem tamanhos (a foto abre o zoom, então o toque no texto não bastava).
+  acao?: { rotulo: string; rotuloMarcado: string }
   rotuloChips?: string
   // Ações extras no pé do cartão.
   children?: ReactNode
@@ -41,7 +46,7 @@ type Props = {
 
 // Cartão único de catálogo: foto quadrada (com ampliar), código, variante, nome, preço e tamanhos.
 // Só apresenta; quem usa decide o que cada toque faz.
-export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo, selecionado, preco, chips, onChip, onCard, rotuloChips = "Tamanho", children, className }: Props) {
+export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo, selecionado, preco, chips, onChip, onCard, acao, rotuloChips = "Tamanho", children, className }: Props) {
   const comChips = !!chips?.length
   const dados = (
     <>
@@ -51,18 +56,16 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
     </>
   )
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-1.5 text-left transition-colors", selecionado && "border-primary bg-primary/5", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-1.5 rounded-xl bg-card p-1.5 text-left ring-1 ring-foreground/10 transition-colors", selecionado && "bg-success/5 ring-success/40", className)}>
       <div className="relative">
         <Foto ampliar url={fotoTamanho(foto, 300)} alt={alt} className="w-full" />
         {selo && <div className="pointer-events-none absolute top-1.5 left-1.5 flex flex-col items-start gap-1">{selo}</div>}
         {selecionado && (
-          <span className="pointer-events-none absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Check className="size-4" />
-          </span>
+          <BolhaCheck className="pointer-events-none absolute top-1.5 right-1.5" />
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-0.5 pb-0.5">
-        {onCard && !comChips ? (
+        {onCard && !comChips && !acao ? (
           <button type="button" aria-pressed={!!selecionado} onClick={onCard} className="flex min-w-0 flex-col gap-0.5 rounded-sm text-left">
             {dados}
           </button>
@@ -73,28 +76,33 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
         {comChips && (
           <div className="mt-1 grid grid-cols-3 gap-1" role="group" aria-label={rotuloChips}>
             {chips.map((c) => (
-              <button
+              <Toggle
                 key={c.id}
-                type="button"
-                aria-pressed={!!c.selecionado}
+                variant="outline"
+                pressed={!!c.selecionado}
                 disabled={c.desabilitado}
                 title={c.titulo}
-                onClick={() => onChip?.(c.id)}
-                className={cn(
-                  "relative h-9 min-w-0 rounded-md border px-1 text-xs font-medium tabular-nums transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50",
-                  c.tracejado && "border-dashed",
-                  c.selecionado && "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
-                )}
+                onPressedChange={() => onChip?.(c.id)}
+                className={cn("relative h-9 min-w-0 px-1 text-xs tabular-nums", c.tracejado && "border-dashed")}
               >
                 {c.rotulo}
-                {!!c.contagem && c.contagem > 0 && (
-                  <span className="absolute -top-1.5 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-primary bg-background px-1 text-[10px] leading-none font-semibold text-primary">
-                    ×{c.contagem}
-                  </span>
-                )}
-              </button>
+                {!!c.contagem && c.contagem > 0 && <BolhaContador n={c.contagem} className="absolute -top-1.5 -right-1 border border-background" />}
+              </Toggle>
             ))}
           </div>
+        )}
+        {acao && !comChips && (
+          <Button
+            type="button"
+            size="bloco"
+            variant="outline"
+            aria-pressed={!!selecionado}
+            onClick={onCard}
+            className={cn("mt-1 w-full", selecionado && "border-success/60 bg-success/10 text-foreground hover:bg-success/15")}
+          >
+            {selecionado ? <Check className="text-success" /> : <Plus />}
+            {selecionado ? acao.rotuloMarcado : acao.rotulo}
+          </Button>
         )}
         {children && <div className="mt-1">{children}</div>}
       </div>

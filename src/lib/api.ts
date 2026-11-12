@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { flushSync } from "react-dom"
 import { toast } from "sonner"
@@ -233,23 +234,65 @@ export async function buscarVariantes(variantIds: string[]) {
   return { variantes: achadas, faltando: variantIds.filter((id) => !ids.has(String(id))) }
 }
 
-// Quantas variantes o catálogo copiado tem (0 = ainda não foi carregado da Shopify).
-export function useCatalogoTotal() {
+// Quantas variantes o catálogo copiado tem (0 = ainda não foi carregado da Shopify) e quando foi
+// a última alteração gravada nele (max atualizado_em).
+export type CatalogoInfo = { total: number; atualizadoEm: string | null }
+export function useCatalogoInfo() {
   return useQuery({
-    queryKey: ["catalogo-total"],
-    queryFn: async () => {
-      const { count, error } = await supabase.from("catalogo_site").select("variant_id", { count: "exact", head: true })
-      if (error) throw error
-      return count ?? 0
-    },
+    queryKey: ["catalogo-info"],
+    queryFn: lerCatalogoInfo,
   })
+}
+async function lerCatalogoInfo(): Promise<CatalogoInfo> {
+  const [c, u] = await Promise.all([
+    supabase.from("catalogo_site").select("variant_id", { count: "exact", head: true }),
+    supabase.from("catalogo_site").select("atualizado_em").order("atualizado_em", { ascending: false }).limit(1),
+  ])
+  if (c.error) throw c.error
+  if (u.error) throw u.error
+  return { total: c.count ?? 0, atualizadoEm: (u.data?.[0] as { atualizado_em: string } | undefined)?.atualizado_em ?? null }
+}
+// Compatibilidade: só a contagem.
+export function useCatalogoTotal() {
+  const q = useCatalogoInfo()
+  return { ...q, data: q.data?.total }
+}
+
+// Sincroniza o catálogo: incremental (só o que mudou desde a última gravação, menos 10 min de folga) por
+// padrão; completo ({}) só com o catálogo vazio ou quando pedido.
+async function sincronizarCatalogo(completo = false) {
+  const info = await lerCatalogoInfo().catch(() => null)
+  if (completo || !info || info.total < 20 || !info.atualizadoEm) return chamarFuncao<{ variantes: number; removidas?: number }>("catalogo-sync", {})
+  const desde = new Date(new Date(info.atualizadoEm).getTime() - 10 * 60_000).toISOString()
+  return chamarFuncao<{ variantes: number; removidas?: number }>("catalogo-sync", { desde })
 }
 
 export function useAtualizarCatalogo() {
-  return useAcao(
-    () => chamarFuncao<{ variantes: number; removidas?: number }>("catalogo-sync", {}),
-    [["busca-site"], ["catalogo-total"]],
-  )
+  return useAcao((opcoes?: { completo?: boolean }) => sincronizarCatalogo(opcoes?.completo), [["busca-site"], ["catalogo-total"], ["catalogo-info"], ["sugestoes"]])
+}
+
+// Atualização automática em segundo plano: ao abrir uma tela de busca/troca, se o catálogo está parado há mais
+// de 30 min, dispara a sincronização incremental (uma vez por 30 min na sessão). Não bloqueia nada.
+const ATUALIZACAO_VELHA_MS = 30 * 60_000
+let ultimaTentativaCatalogo = 0
+export function useAtualizacaoAutomaticaCatalogo(ativo: boolean) {
+  const qc = useQueryClient()
+  useEffect(() => {
+    if (!ativo) return
+    let vivo = true
+    void (async () => {
+      const info = await lerCatalogoInfo().catch(() => null)
+      if (!vivo || !info || info.total < 20) return // vazio: quem abre a busca carrega o completo
+      const idade = info.atualizadoEm ? Date.now() - new Date(info.atualizadoEm).getTime() : Infinity
+      if (idade < ATUALIZACAO_VELHA_MS || Date.now() - ultimaTentativaCatalogo < ATUALIZACAO_VELHA_MS) return
+      ultimaTentativaCatalogo = Date.now()
+      await sincronizarCatalogo().catch(() => {})
+      for (const k of ["busca-site", "sugestoes", "catalogo-total", "catalogo-info"]) qc.invalidateQueries({ queryKey: [k] })
+    })()
+    return () => {
+      vivo = false
+    }
+  }, [ativo, qc])
 }
 
 function useAcao<A, R = unknown>(fn: (a: A) => Promise<R>, invalidar: unknown[][], aoConcluir?: (r: R, a: A) => void) {
@@ -893,8 +936,7 @@ async function contarMarcados() {
   return r.error ? -1 : (r.count ?? 0)
 }
 
-// Atualização completa do catálogo pedida pela própria tela (filtro "vender sem estoque"): uma só por sessão,
-// mesmo com várias telas pedindo ao mesmo tempo.
+// Carga completa em segundo plano (catálogo sem a marca "vender sem estoque"): uma só por sessão, sem travar a tela.
 let atualizandoCatalogo: Promise<unknown> | null = null
 function atualizarCatalogoUmaVez() {
   atualizandoCatalogo ??= chamarFuncao("catalogo-sync", {})
@@ -902,6 +944,7 @@ function atualizarCatalogoUmaVez() {
 }
 
 export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, filtros: FiltrosSugestao = {}, ativo = true, incluirPedido = false, soSemEstoque = false) {
+  const qc = useQueryClient()
   const categoria = filtros.categoria ?? null
   const faixa = modo === "preco" ? (filtros.faixa === undefined ? 0.2 : filtros.faixa) : 0.2
   return useQuery({
@@ -918,29 +961,37 @@ export function useSugestoes(itemId: string | undefined, modo: ModoSugestao, fil
         p_busca: null,
         p_incluir_pedido: incluirPedido,
       }
-      // Catálogo ainda sem a marca "vender sem estoque" (nunca rodou "Atualizar catálogo" depois da mudança):
-      // filtrar esconderia tudo, então busca sem o filtro e avisa.
-      // Aí o próprio app atualiza o catálogo da loja (uma vez por sessão, com a pessoa logada) e já filtra.
+      // Catálogo ainda sem a marca "vender sem estoque": filtrar esconderia tudo, então busca sem o filtro e avisa.
+      // A carga completa roda em segundo plano (sem travar o clique) e, ao terminar, refaz a consulta já filtrando.
       let usarFiltro = soSemEstoque
       let catalogoSemMarca = false
-      if (soSemEstoque) {
-        if ((await contarMarcados()) === 0) {
-          await atualizarCatalogoUmaVez().catch(() => {})
-          if ((await contarMarcados()) === 0) {
-            usarFiltro = false
-            catalogoSemMarca = true
-          }
-        }
+      if (soSemEstoque && (await contarMarcados()) === 0) {
+        usarFiltro = false
+        catalogoSemMarca = true
+        void atualizarCatalogoUmaVez()
+          .then(() => qc.invalidateQueries({ queryKey: ["sugestoes"] }))
+          .catch(() => {})
       }
-      let r = await supabase.rpc("sugerir_troca", usarFiltro ? { ...base, p_so_sem_estoque: true } : base)
+      const filtrada = supabase.rpc("sugerir_troca", usarFiltro ? { ...base, p_so_sem_estoque: true } : base)
+      // Incluir peças do pedido + só vender sem estoque: o banco combina os dois filtros e esconderia a peça que já
+      // está no pedido sem a marca. Busca também sem o filtro e junta só as que estão no pedido.
+      const extra = usarFiltro && incluirPedido ? supabase.rpc("sugerir_troca", base) : null
+      let [r, rExtra] = await Promise.all([filtrada, extra])
       let filtroIndisponivel = catalogoSemMarca
       // Banco ainda sem a migration do filtro: tenta de novo sem o parâmetro e avisa na tela.
       if (r.error && usarFiltro && /could not find the function|does not exist|p_so_sem_estoque/i.test(`${r.error.message} ${r.error.details ?? ""}`)) {
         filtroIndisponivel = true
         r = await supabase.rpc("sugerir_troca", base)
+        rExtra = null
       }
       if (r.error) throw r.error
-      return { linhas: (r.data ?? []) as Sugestao[], filtroIndisponivel, catalogoSemMarca }
+      let linhas = (r.data ?? []) as Sugestao[]
+      if (rExtra && !rExtra.error) {
+        const ja = new Set(linhas.map((l) => l.variant_id))
+        const dopedido = ((rExtra.data ?? []) as Sugestao[]).filter((l) => l.no_pedido === true && !ja.has(l.variant_id))
+        linhas = [...linhas, ...dopedido]
+      }
+      return { linhas, filtroIndisponivel, catalogoSemMarca }
     },
   })
 }

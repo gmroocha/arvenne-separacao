@@ -1,23 +1,14 @@
 import { useParams } from "react-router"
 import { SearchX } from "lucide-react"
-import Logo from "@/components/Logo"
-import Foto from "@/components/Foto"
+import { LinhaPeca } from "@/components/comum/Peca"
+import { LinhaValor } from "@/components/comum/LinhaValor"
+import { PaginaPublica } from "@/components/comum/PaginaPublica"
 import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRomaneio } from "@/lib/api"
 import { reais } from "@/lib/formato"
-import { fotoTamanho } from "@/lib/foto"
-
-function Linha({ rotulo, children, forte, grande }: { rotulo: string; children: React.ReactNode; forte?: boolean; grande?: boolean }) {
-  return (
-    <div className={`flex items-baseline justify-between gap-3 ${grande ? "text-2xl font-semibold" : forte ? "text-lg font-semibold" : "text-base"}`}>
-      <span className={forte ? "" : "text-muted-foreground"}>{rotulo}</span>
-      <span className="tabular-nums">{children}</span>
-    </div>
-  )
-}
 
 // Página pública (sem login) que a vendedora manda para a cliente. Atualiza sozinha.
 export default function Romaneio() {
@@ -25,10 +16,7 @@ export default function Romaneio() {
   const { data, isLoading } = useRomaneio(token)
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-5 px-4 pb-12 pt-3">
-      <header className="flex justify-center pt-3">
-        <Logo className="h-10" />
-      </header>
+    <PaginaPublica>
       {isLoading ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-8 w-40" />
@@ -48,53 +36,47 @@ export default function Romaneio() {
         <>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold">Pedido {data.numero.replace(/^#/, "")}</h1>
-              {data.fase !== "venda" && data.status !== "perdida" && <Badge variant="secondary">Pagamento confirmado</Badge>}
+              <h1 className="text-2xl font-semibold">Pedido {data.numero.replace(/^#/, "")}</h1>
+              {data.fase !== "venda" && data.status !== "perdida" && <Badge variant="success">Pagamento confirmado</Badge>}
             </div>
             {data.cliente && !data.cliente.includes("@") && <p className="text-base text-muted-foreground">Olá, {data.cliente}</p>}
           </div>
 
           <ul className="flex flex-col gap-3">
             {data.itens.map((i, n) => (
-              <li key={n} className="flex gap-3 rounded-xl border bg-card p-3">
-                <Foto url={fotoTamanho(i.foto_url, 600)} alt={i.nome} ampliar className="size-28 shrink-0" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  {i.sku?.trim() ? (
-                    <div className="break-words font-mono text-base font-semibold leading-snug">{i.sku.trim()}</div>
-                  ) : (
-                    <div className="text-base font-medium leading-snug">{i.nome}</div>
-                  )}
-                  {i.variante && <div className="text-sm text-muted-foreground">{i.variante}</div>}
-                  <div className="mt-auto pt-1 text-sm tabular-nums">
-                    Qtd {i.qtd}
-                    {i.preco != null && <span className="font-medium"> × {reais(i.preco)}</span>}
-                  </div>
-                </div>
+              <li key={n}>
+                <LinhaPeca
+                  tamanho="lg"
+                  item={{ foto_url: i.foto_url, nome: i.nome, sku: i.sku?.trim() || i.nome, variante: i.variante }}
+                  extra={
+                    <div className="pt-1 text-sm tabular-nums">
+                      Qtd {i.qtd}
+                      {i.preco != null && <span className="font-medium"> × {reais(i.preco)}</span>}
+                    </div>
+                  }
+                />
               </li>
             ))}
           </ul>
 
           <Separator />
           <div className="flex flex-col gap-1.5">
-            <Linha rotulo="Subtotal">{reais(data.subtotal)}</Linha>
-            {data.desconto > 0 && (
-              <Linha rotulo={data.cupom ? `Desconto (cupom ${data.cupom})` : "Desconto"}>− {reais(data.desconto)}</Linha>
-            )}
-            {(data.desconto_pix ?? 0) > 0 && <Linha rotulo="Desconto Pix (10%)">− {reais(data.desconto_pix ?? 0)}</Linha>}
+            <LinhaValor rotulo="Subtotal" valor={reais(data.subtotal)} />
+            {data.desconto > 0 && <LinhaValor rotulo={data.cupom ? `Desconto (cupom ${data.cupom})` : "Desconto"} valor={`− ${reais(data.desconto)}`} />}
+            {(data.desconto_pix ?? 0) > 0 && <LinhaValor rotulo="Desconto Pix (10%)" valor={`− ${reais(data.desconto_pix ?? 0)}`} />}
             {data.frete_tipo && (
-              <Linha rotulo={`Frete ${data.frete_tipo === "retirada" ? "(retirada)" : data.frete_tipo}`}>
-                {data.frete_cobrado > 0 ? reais(data.frete_cobrado) : "Grátis"}
-              </Linha>
+              <LinhaValor
+                rotulo={`Frete ${data.frete_tipo === "retirada" ? "(retirada)" : data.frete_tipo}`}
+                valor={data.frete_cobrado > 0 ? reais(data.frete_cobrado) : "Grátis"}
+              />
             )}
             <Separator className="my-1" />
-            <Linha rotulo="Total" forte grande>
-              {reais(data.total)}
-            </Linha>
+            <LinhaValor total rotulo="Total" valor={reais(data.total)} />
           </div>
 
           <p className="text-center text-sm text-muted-foreground">Dúvidas? Responda no WhatsApp.</p>
         </>
       )}
-    </div>
+    </PaginaPublica>
   )
 }

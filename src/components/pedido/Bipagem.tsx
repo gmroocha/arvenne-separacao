@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Check, Minus, Plus, ScanBarcode, TriangleAlert, Volume2, VolumeX } from "lucide-react"
+import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
+import { TituloSecao } from "@/components/comum/TituloSecao"
 import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +13,7 @@ import { sons } from "@/lib/sons"
 import type { ResultadoBipagem } from "@/lib/tipos"
 import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
-type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir: () => void }
+type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir?: () => void }
 type Aviso = { tipo: ResultadoBipagem; texto: string }
 
 const agora = () => new Date().toISOString()
@@ -160,16 +162,16 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
       {ultima && (
         <div
           key={`${ultima.id}-${ultima.qtd_bipada}`}
-          className="flex items-center gap-3 rounded-xl bg-emerald-500/10 p-2 animate-in fade-in zoom-in-95 duration-200"
+          className="flex items-center gap-3 rounded-xl bg-success/5 p-2 ring-1 ring-success/30 animate-in fade-in zoom-in-95 duration-200"
           aria-live="polite"
         >
           <Foto url={ultima.foto_url} alt={ultima.nome} className="size-16 shrink-0" />
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Última leitura</div>
+            <div className="text-xs font-medium text-success">Última leitura</div>
             <div className="font-mono text-base font-semibold break-all">{ultima.sku ?? "sem código"}</div>
             {ultima.variante && <div className="text-sm">{ultima.variante}</div>}
           </div>
-          <Badge className="h-7 bg-emerald-600 px-2.5 text-base text-white tabular-nums">
+          <Badge size="lg" className="h-7 bg-success px-2.5 text-base text-success-foreground tabular-nums">
             <Check /> {Math.min(ultima.qtd_bipada, ultima.qtd)}/{ultima.qtd}
           </Badge>
         </div>
@@ -180,7 +182,9 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
       ) : (
         <>
           <section className="flex flex-col gap-2" aria-label="A bipar">
-            <h3 className="text-sm font-semibold">A bipar ({aBipar.length})</h3>
+            <TituloSecao as="h3" contagem={aBipar.length}>
+              A bipar
+            </TituloSecao>
             {aBipar.length === 0 ? (
               <Vazio>Tudo bipado. Pode concluir a bipagem.</Vazio>
             ) : (
@@ -203,7 +207,8 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
                     <div className="flex w-full items-center gap-1.5">
                       <Button
                         variant="secondary"
-                        className="h-10 min-w-0 flex-1 px-2 text-sm"
+                        size="bloco"
+                        className="min-w-0 flex-1 px-2"
                         disabled={i.qtd_bipada <= 0}
                         onClick={() => acao(i, { qtd_bipada: i.qtd_bipada - 1 }, undefined, -1)}
                       >
@@ -211,7 +216,8 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
                       </Button>
                       <Button
                         variant="secondary"
-                        className="h-10 min-w-0 flex-1 px-2 text-sm"
+                        size="bloco"
+                        className="min-w-0 flex-1 px-2"
                         onClick={() => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() }, undefined, 1)}
                       >
                         <Plus /> Contar 1
@@ -233,9 +239,11 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
         </>
       )}
 
-      <Button className="h-11 w-full text-base" disabled={!etapaCompleta("bipagem", pedido.pedido_itens)} onClick={aoConcluir}>
-        Concluir bipagem
-      </Button>
+      {aoConcluir && (
+        <ConcluirEtapa disabled={!etapaCompleta("bipagem", pedido.pedido_itens)} onClick={aoConcluir}>
+          Concluir bipagem
+        </ConcluirEtapa>
+      )}
     </div>
   )
 }

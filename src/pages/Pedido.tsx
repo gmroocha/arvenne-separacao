@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
@@ -23,7 +23,21 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   const patch = usePatchPedido(pedido.id)
   const [concluida, setConcluida] = useState<StatusPedido | null>(null) // etapa que abriu o Dialog
   const [verDados, setVerDados] = useState(false)
-  const acao = useAcoesItem(pedido.id, setConcluida)
+  const [vista, setVista] = useState<StatusPedido | null>(null) // etapa vista na esteira (null = a atual)
+  const vistaRef = useRef(vista)
+  useEffect(() => {
+    vistaRef.current = vista
+  }, [vista])
+  // O Dialog de concluir só abre a partir da etapa atual: vendo outra, as ações das peças não o disparam.
+  const acao = useAcoesItem(pedido.id, (e) => {
+    if (vistaRef.current === null) setConcluida(e)
+  })
+  // Mudou a etapa do pedido: volta a mostrar a atual (ajuste durante a renderização, sem efeito).
+  const [statusVisto, setStatusVisto] = useState(pedido.status)
+  if (statusVisto !== pedido.status) {
+    setStatusVisto(pedido.status)
+    setVista(null)
+  }
   const foco = ETAPAS_DE_PECAS.includes(pedido.status)
   const adicionarItens = useAdicionarItens()
   const [adicionando, setAdicionando] = useState(false)
@@ -62,18 +76,20 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         aoVerDados={foco ? () => setVerDados(true) : undefined}
       />
       {pedido.pedido_eventos.some((e) => e.tipo === "shopify_alterado") && (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200">
+        <Alert variant="warning">
           <TriangleAlert />
           <AlertTitle>As peças mudaram na Shopify</AlertTitle>
           <AlertDescription>Confira o pedido na Shopify antes de seguir: as quantidades não batem mais com as peças daqui.</AlertDescription>
         </Alert>
       )}
-      <Etapas status={pedido.status} eventos={pedido.pedido_eventos} />
+      <Etapas status={pedido.status} eventos={pedido.pedido_eventos} vista={vista} aoVer={setVista} />
       {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota e frete em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
         <PainelEtapa
           pedido={pedido}
+          vista={vista}
+          aoVoltar={() => setVista(null)}
           acao={acao}
           patch={patch.mutate}
           aoConcluir={() => setConcluida(pedido.status)}
@@ -114,6 +130,9 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           if (!a) setTrocando(null)
         }}
         aoAdicionar={aoAdicionar}
+        jaNoPedido={pedido.pedido_itens
+          .filter((i) => i.status !== "removido")
+          .map((i) => ({ sku: i.sku, shopify_variant_id: i.shopify_variant_id, peca_clube_id: i.peca_clube_id, qtd: i.qtd }))}
       />
     </div>
   )

@@ -51,7 +51,7 @@ function LinhaTroca({ p }: { p: AcertoPeca }) {
 function ADevolver({ pedidoId, valor }: { pedidoId: string; valor: number }) {
   const devolvido = useMarcarDevolvido()
   return (
-    <Card size="sm" className="bg-amber-500/5 ring-amber-500/20">
+    <Card size="sm" tom="warning">
       <CardContent className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <HandCoins className="size-4" />
@@ -80,7 +80,7 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
   return (
     <>
     {devolver}
-    <Card size="sm" className={pendente ? "bg-amber-500/5 ring-amber-500/20" : undefined}>
+    <Card size="sm" tom={pendente ? "warning" : undefined}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <HandCoins className="size-4" />

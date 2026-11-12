@@ -28,7 +28,7 @@ function Formulario({ pagina, aoEnviado }: { pagina: string; aoEnviado: () => vo
         className="min-h-28"
       />
       <Button
-        className="h-11 text-base"
+        size="xl"
         disabled={!texto.trim() || enviar.isPending}
         onClick={() =>
           enviar.mutate({ texto: texto.trim(), pagina, pedido_id: pedidoDaRota(pagina) }, { onSuccess: aoEnviado })
