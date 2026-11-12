@@ -6,6 +6,7 @@ import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
 import type { Item } from "@/lib/tipos"
 import AvisoConferencia from "./AvisoConferencia"
+import Problemas from "./Problemas"
 import { FaixaFeitas, GradePecas, InstrucaoTile, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void; aoConcluir?: () => void }
@@ -23,6 +24,8 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
         <AvisoConferencia />
       </div>
 
+      <Problemas pedido={pedido} acao={acao} aoTrocar={aoTrocar} />
+
       <section className="flex flex-col gap-2" aria-label="A conferir">
         <TituloSecao as="h3" contagem={aConferir.length}>
           A conferir
@@ -35,7 +38,7 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
               <TilePeca
                 key={i.id}
                 item={i}
-instrucao={<InstrucaoTile>Separe {i.qtd}</InstrucaoTile>}
+                instrucao={<InstrucaoTile>Separe {i.qtd}</InstrucaoTile>}
               >
                 <Button size="bloco" className="flex-1" onClick={() => acao(i, { conferido_em: new Date().toISOString() })}>
                   <Check /> Conferida

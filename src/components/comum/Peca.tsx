@@ -34,7 +34,7 @@ type Props = {
 const FOTO = { sm: "size-10", md: "size-14", lg: "size-20" } as const
 const PX = { sm: 200, md: 200, lg: 300 } as const
 
-// Linha de peça padrão do app: foto, código (SKU), variante e nome, com quantidade e origem.
+// Linha de peça padrão do app: foto, código (SKU, o destaque), variante e nome, com quantidade e origem.
 export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, entrando, saindo, inicio, extra, children, semBorda, className }: Props) {
   const qtd = item.qtd ?? 1
   return (
@@ -52,9 +52,9 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
       {inicio}
       <Foto url={fotoTamanho(item.foto_url, PX[tamanho])} alt={item.nome} ampliar className={cn("shrink-0", FOTO[tamanho], esmaecida && "opacity-70")} />
       <div className="min-w-0 flex-1">
-        <div className={cn("truncate font-mono font-semibold", tamanho === "sm" ? "text-xs" : "text-sm", riscada && "line-through")}>{item.sku ?? "sem código"}</div>
+        <div className={cn("truncate font-mono font-semibold", tamanho === "sm" ? "text-sm" : "text-base leading-tight", riscada && "line-through")}>{item.sku ?? "sem código"}</div>
         {item.variante && (
-          <div className={cn("font-medium", destaque ? "text-base leading-tight" : "text-sm", !esmaecida && "text-foreground", riscada && "line-through")}>{item.variante}</div>
+          <div className={cn(destaque ? "text-base leading-tight font-medium" : "text-sm", !esmaecida && "text-foreground", riscada && "line-through")}>{item.variante}</div>
         )}
         <div className={cn("truncate text-xs text-muted-foreground", riscada && "line-through")}>{item.nome}</div>
         {item.observacao && <div className="text-xs text-muted-foreground">{item.observacao}</div>}

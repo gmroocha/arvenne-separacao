@@ -2,6 +2,7 @@ import { Eye } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, CamposPedido, PedidoDetalhe } from "@/lib/api"
+import { ehDesvio } from "@/lib/selo"
 import { NOME_ETAPA, PASSOS, passoDe, type StatusPedido } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 import Bipagem from "./Bipagem"
@@ -65,7 +66,9 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
           <Eye />
           <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Você está vendo {PASSOS[vistaIdx].nome}. O pedido está em {PASSOS[atualIdx].nome}.
+              {ehDesvio(pedido.status) && vistaIdx > atualIdx
+                ? `Peça em falta: o pedido volta para ${PASSOS[atualIdx].nome} até resolver com a cliente. As outras peças continuam como estão.`
+                : `Você está vendo ${PASSOS[vistaIdx].nome}. O pedido está em ${PASSOS[atualIdx].nome}.`}
             </span>
             <Button size="toque" variant="outline" className="shrink-0" onClick={aoVoltar}>
               Voltar para {PASSOS[atualIdx].nome}

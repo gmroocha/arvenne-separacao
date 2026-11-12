@@ -12,9 +12,9 @@ import AdicionarPecas from "@/components/AdicionarPecas"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAcoesItem, useAdicionarItens, useMudarStatus, usePatchPedido, usePedido, type PedidoDetalhe } from "@/lib/api"
+import { useAcoesItem, useAdicionarItens, useMudarStatus, usePatchPedido, usePedido, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { ETAPAS_DE_PECAS } from "@/lib/etapa"
-import { type StatusPedido } from "@/lib/status"
+import { PASSOS, passoDe, type StatusPedido } from "@/lib/status"
 import type { Item, NovoItem } from "@/lib/tipos"
 
 function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
@@ -29,14 +29,27 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
     vistaRef.current = vista
   }, [vista])
   // O Dialog de concluir só abre a partir da etapa atual: vendo outra, as ações das peças não o disparam.
-  const acao = useAcoesItem(pedido.id, (e) => {
+  const acaoBase = useAcoesItem(pedido.id, (e) => {
     if (vistaRef.current === null) setConcluida(e)
   })
+  // Falta/defeito marcada na Conferência ou na Etiquetagem leva o pedido a "avisar cliente" (passo da
+  // Separação). A tela fica na etapa onde a pessoa estava, com o cartão da falta em cima e as outras
+  // peças como estavam; antes ela pulava para a Separação, com tudo verde, e parecia que tinha conferido tudo.
+  const [manter, setManter] = useState<StatusPedido | null>(null)
+  const acao: AcaoItem = (item, campos, ...resto) => {
+    const passo = PASSOS[passoDe(pedido.status)]?.id
+    if ((campos.status === "falta" || campos.status === "defeito") && vista === null && passo && passo !== "separacao") {
+      setVista(passo)
+      setManter(passo)
+    }
+    return acaoBase(item, campos, ...resto)
+  }
   // Mudou a etapa do pedido: volta a mostrar a atual (ajuste durante a renderização, sem efeito).
   const [statusVisto, setStatusVisto] = useState(pedido.status)
   if (statusVisto !== pedido.status) {
     setStatusVisto(pedido.status)
-    setVista(null)
+    setVista(manter)
+    setManter(null)
   }
   const foco = ETAPAS_DE_PECAS.includes(pedido.status)
   const adicionarItens = useAdicionarItens()

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
+import Problemas from "./Problemas"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void; aoConcluir?: () => void }
@@ -62,6 +63,8 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
           </Alert>
         )}
       </div>
+
+      <Problemas pedido={pedido} acao={acao} aoTrocar={aoTrocar} />
 
       <section className="flex flex-col gap-2" aria-label="A etiquetar">
         <TituloSecao as="h3" contagem={aEtiquetar.length}>

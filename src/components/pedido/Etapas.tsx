@@ -98,7 +98,8 @@ export default function Etapas({ status, eventos, vista, aoVer }: Props) {
                   className={cn(
                     "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
                     vendo && "border-primary bg-primary text-primary-foreground",
-                    !vendo && ehAtual && "border-primary text-foreground hover:bg-muted",
+                    // Contorno suave + fundo tingido: o contorno branco de 1 px serrilhava no modo escuro.
+                    !vendo && ehAtual && "border-primary/35 bg-primary/10 text-foreground hover:bg-primary/15",
                     !vendo && feita && "bg-background text-foreground hover:bg-muted",
                     !vendo && !feita && !ehAtual && "bg-muted text-muted-foreground hover:bg-muted/70",
                   )}
