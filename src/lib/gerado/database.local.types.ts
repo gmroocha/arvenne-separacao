@@ -121,6 +121,8 @@ type Adicoes = {
     }
   }
   Functions: {
+    feriados_ate: { Args: Record<PropertyKey, never>; Returns: string | null }
+    pascoa: { Args: { p_ano: number | null }; Returns: string | null }
     tg_troca_escolhas_historico: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_troca_opcoes_historico: { Args: Record<PropertyKey, never>; Returns: string | null }
     valor_linha_shopify: { Args: { i: string | null; p_linha: string | null; p_qtd: number | null; p_valor: number | null }; Returns: number | null }

@@ -87,3 +87,16 @@ test("V28: valor de opção concluída não pode reescrever o histórico", async
   await recusa(() => db.query("insert into troca_opcoes (troca_peca_id, origem, nome, sku, preco) values ($1,'site','X','X',1)", [f.pecas[0].id]), /histórico/)
   expect((await one("select diferenca_total from v_troca_resumo where troca_id=$1", [f.troca.id])).diferenca_total).toBe(antes.diferenca_total)
 })
+test("V36: calendário cobre até 2040 com a mesma regra e o vigia avisa quando estiver acabando", async () => {
+  // Páscoa e feriados móveis batem com os anos já cadastrados à mão.
+  for (const [ano, sexta] of [[2026, "2026-04-03"], [2027, "2027-03-26"], [2028, "2028-04-14"]])
+    expect((await one("select (public.pascoa($1) - 2)::text d", [ano])).d).toBe(sexta)
+  expect((await one("select count(*)::int n from feriados where extract(year from data)=2033")).n).toBe(13)
+  expect((await one("select max(data)::text d from feriados")).d).toBe("2040-12-25")
+  // Pagamento em 29/12/2028 às 15h: 01/01/2029 agora é feriado e o prazo vai para 03/01 (antes: 02/01).
+  expect((await one("select to_char(prazo_envio('2028-12-29 15:00-03') at time zone 'America/Sao_Paulo','YYYY-MM-DD HH24:MI') p")).p).toBe("2029-01-03 15:00")
+  const aviso = async () => (await db.query("select regra from listar_inconsistencias() where regra='calendario_feriados'")).rows.length
+  expect(await aviso()).toBe(0)
+  await db.query("delete from feriados where data > current_date + 200")
+  expect(await aviso()).toBe(1)
+})
