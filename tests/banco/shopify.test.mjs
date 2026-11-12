@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { payload, importar, BACKFILL, pedidoShopifyAntigo, payloadV2, pedidoDe, eventos, prepararEtapa } from './fixtures.mjs'
+import { payload, importar, BACKFILL, pedidoShopifyAntigo, payloadV2, pedidoDe, eventos, prepararEtapa, num } from './fixtures.mjs'
 
 test('importação: segunda chamada completa número, cidade e UF vazios', async () => {
   assert.equal(await importar(payload()), true)
@@ -131,4 +131,35 @@ test('Shopify despachada antes da embalagem só avisa (uma vez), sem mover o ped
   const p = await pedidoDe(888001)
   assert.equal(p.status, 'novo')
   assert.equal(await eventos(p.id, 'shopify_alerta'), 1)
+})
+
+// V10: unitário arredondado (3 x 33,33 = 99,99) não fechava com o total cobrado (100,00).
+test('V10: valor exato da linha fecha a composição com o total da Shopify', async () => {
+  const base = { shopify_order_id: '990010', numero: 'ARV-C1', cliente_nome: 'C', valor_total: '120', valor_pago: '120',
+    pedido_em: '2026-11-09T10:00:00Z', pago_em: '2026-11-09T10:00:00Z', frete_cobrado: '20', desconto_codigos: [] }
+  const linha = (extra = {}) => ({ shopify_line_id: 'L9', shopify_variant_id: '91', sku: 'TRI', nome: 'Trio', qtd: 3, preco: '40', preco_pago: '33.33', ...extra })
+  // Pedido já importado antes da correção (sem valor exato): a próxima sincronização completa.
+  await importar({ ...base, itens: [linha()] })
+  const p = await pedidoDe('990010')
+  const fecha = async () => one('select subtotal, desconto, frete_na_conta, total from v_pedidos where id = $1', [p.id])
+  let v = await fecha()
+  assert.equal(num(Number(v.subtotal) - Number(v.desconto) + Number(v.frete_na_conta)), 119.99)
+  await importar({ ...base, itens: [linha({ valor_pago_linha: '100.00' })] })
+  v = await fecha()
+  assert.equal(num(Number(v.subtotal) - Number(v.desconto) + Number(v.frete_na_conta)), num(v.total))
+  assert.equal(num(v.total), 120)
+  // Linha dividida (falta parcial) não recebe o valor da linha inteira de novo.
+  const i = await one('select id from pedido_itens where pedido_id = $1', [p.id])
+  await one('select marcar_falta($1, 1)', [i.id])
+  await importar({ ...base, itens: [linha({ valor_pago_linha: '100.00' })] })
+  const soma = await one('select sum(valor_pago_linha) v from pedido_itens where pedido_id = $1', [p.id])
+  assert.equal(num(soma.v), 100)
+})
+
+test('V10: pedido novo já entra com o valor exato da linha', async () => {
+  await importar({ shopify_order_id: '990011', numero: 'ARV-C2', cliente_nome: 'C', valor_total: '100', valor_pago: '100',
+    pedido_em: '2026-11-09T10:00:00Z', pago_em: '2026-11-09T10:00:00Z', frete_cobrado: '0', desconto_codigos: [],
+    itens: [{ shopify_line_id: 'L1', shopify_variant_id: '1', sku: 'A', nome: 'A', qtd: 3, preco: '40', preco_pago: '33.33', valor_pago_linha: '100.00' }] })
+  const v = await one("select subtotal, desconto, total from v_pedidos where numero = 'ARV-C2'")
+  assert.deepEqual([num(v.subtotal), num(v.desconto), num(v.total)], [120, 20, 100])
 })

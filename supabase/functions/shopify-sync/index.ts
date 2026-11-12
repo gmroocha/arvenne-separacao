@@ -173,6 +173,34 @@ type Linha = {
   discountedUnitPriceAfterAllDiscountsSet: Dinheiro;
 };
 
+// V10: valor exato pago por linha. O preço unitário com desconto vem arredondado da Shopify, então
+// quantidade x unitário pode diferir alguns centavos do subtotal real do pedido. O resíduo (no máximo
+// meio centavo por unidade) é distribuído explicitamente, um centavo por vez, das linhas com mais
+// unidades para as com menos. Fora desse limite, ou em importação parcial, não arrisca: devolve null
+// e o banco segue com quantidade x unitário.
+export function valoresExatosDasLinhas(o: Pick<Pedido, "currentSubtotalPriceSet" | "lineItems">, linhas: (Linha & { qtd: number })[], parcial: boolean): string[] | null {
+  const sub = o.currentSubtotalPriceSet?.shopMoney.amount;
+  if (parcial || sub == null || !linhas.length) return null;
+  const centavos = (v: string | number) => Math.round(Number(v) * 100);
+  const unit = (i: Linha) => centavos(i.discountedUnitPriceAfterAllDiscountsSet.shopMoney.amount);
+  // Linhas fora da expedição (vale-presente, sem envio) também estão no subtotal da Shopify.
+  const fora = o.lineItems.nodes.filter((i) => i.isGiftCard || !i.requiresShipping)
+    .reduce((t, i) => t + i.currentQuantity * unit(i), 0);
+  const base = linhas.map((i) => i.qtd * unit(i));
+  let resto = centavos(sub) - fora - base.reduce((t, v) => t + v, 0);
+  const unidades = linhas.reduce((t, i) => t + i.qtd, 0);
+  if (Math.abs(resto) > Math.ceil(unidades / 2)) return null;
+  const ordem = linhas.map((i, n) => n).filter((n) => linhas[n].qtd > 0).sort((a, b) => linhas[b].qtd - linhas[a].qtd || a - b);
+  if (!ordem.length) return null;
+  const passo = Math.sign(resto);
+  for (let k = 0; resto !== 0; k++) {
+    const n = ordem[k % ordem.length];
+    if (base[n] + passo >= 0) { base[n] += passo; resto -= passo; }
+    else if (k > ordem.length * 1000) return null;
+  }
+  return base.map((v) => (v / 100).toFixed(2));
+}
+
 type Resposta = {
   orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: Pedido[] };
 };
@@ -299,6 +327,7 @@ Deno.serve(async (req) => {
         // reembolso parcial; o totalDiscounts da Shopify também soma o frete grátis e não serve.
         const desconto = linhas.reduce((t, i) =>
           t + i.qtd * (Number(i.originalUnitPriceSet.shopMoney.amount) - Number(i.discountedUnitPriceAfterAllDiscountsSet.shopMoney.amount)), 0);
+        const valoresLinhas = valoresExatosDasLinhas(o, linhas, novo && parcial);
         const valorAtual = o.currentTotalPriceSet?.shopMoney.amount ?? o.totalPriceSet.shopMoney.amount;
         const recebidoLiquido = o.netPaymentSet?.shopMoney.amount;
         if (recebidoLiquido == null) throw new Error("A Shopify não informou o pagamento líquido deste pedido");
@@ -335,7 +364,7 @@ Deno.serve(async (req) => {
             rastreio_url: rastro?.url ?? null,
             shopify_url: urlAdminPedido(o.legacyResourceId),
             shopify_bruto: { ...o, localizedFields: locais ?? null },
-            itens: linhas.map((i) => ({
+            itens: linhas.map((i, n) => ({
               shopify_line_id: i.id.split("/").pop(),
               shopify_variant_id: i.variant?.legacyResourceId ?? null,
               sku: i.sku,
@@ -345,6 +374,7 @@ Deno.serve(async (req) => {
               qtd: i.qtd,
               preco: i.originalUnitPriceSet.shopMoney.amount,
               preco_pago: i.discountedUnitPriceAfterAllDiscountsSet.shopMoney.amount,
+              valor_pago_linha: valoresLinhas?.[n] ?? null,
             })),
           },
         });

@@ -61,3 +61,23 @@ test("V09: dado financeiro ausente recusa a importação e nunca presume pagamen
   expect(r.erros[0].erro).toContain("pagamento líquido")
   expect(sim.gravados).toEqual([])
 })
+
+// V10: centavos do rateio de desconto. Unitário arredondado x quantidade não fecha com o subtotal real.
+test("V10: valor exato por linha fecha com o subtotal da Shopify", async () => {
+  const { valoresExatosDasLinhas } = await import("../../supabase/functions/shopify-sync/index.ts")
+  const linha = (qtd, unit, extra = {}) => ({ qtd, currentQuantity: qtd, isGiftCard: false, requiresShipping: true,
+    discountedUnitPriceAfterAllDiscountsSet: money(unit), ...extra })
+  // 3 x 33,33 = 99,99, mas a cliente pagou 100,00 por essas peças; 1 x 10,00 = 10,00.
+  const l = [linha(3, "33.33"), linha(1, "10.00")]
+  const vale = linha(1, "50.00", { isGiftCard: true })
+  const ped = { currentSubtotalPriceSet: money("160.00"), lineItems: { nodes: [...l, vale] } }
+  expect(valoresExatosDasLinhas(ped, l, false)).toEqual(["100.00", "10.00"])
+  // Resíduo negativo também se distribui, e a soma é sempre o subtotal sem o vale.
+  const l2 = [linha(2, "12.35"), linha(2, "7.65")]
+  const r = valoresExatosDasLinhas({ currentSubtotalPriceSet: money("39.98"), lineItems: { nodes: l2 } }, l2, false)
+  expect(r.reduce((t, v) => t + Math.round(Number(v) * 100), 0)).toBe(3998)
+  // Diferença grande demais não é centavo de arredondamento: não arrisca.
+  expect(valoresExatosDasLinhas({ currentSubtotalPriceSet: money("150.00"), lineItems: { nodes: l } }, l, false)).toBeNull()
+  // Importação parcial (só o que falta enviar) não fecha com o subtotal do pedido inteiro.
+  expect(valoresExatosDasLinhas(ped, l, true)).toBeNull()
+})

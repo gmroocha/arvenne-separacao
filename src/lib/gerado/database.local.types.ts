@@ -101,7 +101,7 @@ type Adicoes = {
     }
   }
   Functions: {
-
+    valor_linha_shopify: { Args: { i: string | null; p_linha: string | null; p_qtd: number | null; p_valor: number | null }; Returns: number | null }
   }
 }
 
