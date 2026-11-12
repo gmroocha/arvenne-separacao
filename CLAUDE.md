@@ -38,8 +38,8 @@ chave certa via `core.sshCommand` já configurado neste repositório.
 - Prazo de envio: 48 h úteis a partir do pagamento (tabela `feriados`).
 - **Todo bug corrigido ganha um teste que falha antes da correção e passa depois**, no mesmo commit.
   Os IDs vêm de `docs/VISTORIA.md`. Nunca marque uma falha nova como esperada para aprovar a suíte.
-  As reproduções já abertas em `tests/banco/conhecidos.test.mjs` usam `test.fails`: remova `.fails`
-  quando corrigir a causa; aprovação inesperada também deve falhar. Não tratá-las como bugs resolvidos.
+  Bug ainda sem correção pode ficar como `test.fails` (falha esperada) num arquivo de reproduções; ao
+  corrigir, remova `.fails`. Dinheiro: `tests/banco/conservacao.test.mjs` precisa continuar passando.
 - Testes automáticos usam banco em memória e credenciais fictícias. Não acionar Edge, Storage, login,
   impressora ou escrita remota para validar código. O simulador compartilha a barreira
   `scripts/simulacao/rede.mjs`; nunca trocar uma recusa por `route.continue()` genérico.

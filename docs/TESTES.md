@@ -26,10 +26,10 @@ em push/PR assim que os commits forem enviados ao GitHub; não faz deploy.
 | Vigia diário | Lista incoerências, guarda uma fotografia e mostra aviso no app; não altera pedidos. |
 | GitHub Actions | Repete as mesmas verificações sem credenciais e guarda evidências de falha de tela por sete dias. |
 
-Os 74 testes SQL anteriores foram preservados. Na entrega da Fase 2 são 84 testes SQL aprovados,
-41 de unidade e 10 de tela; há também **nove reproduções de bugs ainda abertos** com `test.fails`
-em `conhecidos.test.mjs` (V01, V02, V04, V07, V08, V11, V14, V15 e V28). Não são nove correções nem
-cobertura de todas as combinações de negócio. Se uma delas passar inesperadamente, a suíte falha.
+Todas as reproduções da vistoria viraram travas permanentes (não há mais `test.fails`).
+`conservacao.test.mjs` gera sequências aleatórias de venda somada, troca, crédito, cobertura, Pix,
+retirada, falta, recebimento, estorno e devolução e confere que o dinheiro fecha. Para procurar mais
+fundo: `PROP_SEED=7 PROP_RUNS=500 npx vitest run --project banco tests/banco/conservacao.test.mjs`.
 
 Somente infraestrutura ausente no PGlite é simulada: Storage, Realtime e agendamento `pg_cron`.
 O teste confere o comando e horário cadastrados; executar no relógio do Supabase depende da aplicação

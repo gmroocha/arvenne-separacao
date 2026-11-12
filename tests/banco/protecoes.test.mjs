@@ -79,3 +79,11 @@ test("V20: bipar confere o SKU da peça e recusa peça retirada", async () => {
   await recusa(() => one("select bipar_ajustar($1,1)", [i.id]), /não está separada/)
   expect((await one("select bipar_ajustar($1,-1) r", [i.id])).r).toBe(0)
 })
+test("V28: valor de opção concluída não pode reescrever o histórico", async () => {
+  const f = await fixture()
+  await escolher(f); await concluir(f)
+  const antes = await one("select diferenca_total from v_troca_resumo where troca_id=$1", [f.troca.id])
+  await recusa(() => db.query("update troca_opcoes set preco=100 where id=$1", [f.opcoes[0].id]), /histórico/)
+  await recusa(() => db.query("insert into troca_opcoes (troca_peca_id, origem, nome, sku, preco) values ($1,'site','X','X',1)", [f.pecas[0].id]), /histórico/)
+  expect((await one("select diferenca_total from v_troca_resumo where troca_id=$1", [f.troca.id])).diferenca_total).toBe(antes.diferenca_total)
+})
