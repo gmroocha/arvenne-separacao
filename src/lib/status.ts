@@ -161,3 +161,10 @@ export function tempoDesde(iso: string): string {
   if (h < 24) return `${h} h`
   return `${Math.floor(h / 24)} d`
 }
+
+// Selo do romaneio público. V19: pedido cancelado ou perdido não mostra "Pagamento confirmado".
+export function seloRomaneio(fase: string, status: string): { texto: string; variante: "success" | "secondary" } | null {
+  if (status === "cancelado") return { texto: "Pedido cancelado", variante: "secondary" }
+  if (status === "perdida" || fase === "venda") return null
+  return { texto: "Pagamento confirmado", variante: "success" }
+}

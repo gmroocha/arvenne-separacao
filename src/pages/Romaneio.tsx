@@ -9,11 +9,13 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRomaneio } from "@/lib/api"
 import { reais } from "@/lib/formato"
+import { seloRomaneio } from "@/lib/status"
 
 // Página pública (sem login) que a vendedora manda para a cliente. Atualiza sozinha.
 export default function Romaneio() {
   const { token } = useParams()
   const { data, isLoading } = useRomaneio(token)
+  const selo = data ? seloRomaneio(data.fase, data.status) : null
 
   return (
     <PaginaPublica>
@@ -37,7 +39,7 @@ export default function Romaneio() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-semibold">Pedido {data.numero.replace(/^#/, "")}</h1>
-              {data.fase !== "venda" && data.status !== "perdida" && <Badge variant="success">Pagamento confirmado</Badge>}
+              {selo && <Badge variant={selo.variante}>{selo.texto}</Badge>}
             </div>
             {data.cliente && !data.cliente.includes("@") && <p className="text-base text-muted-foreground">Olá, {data.cliente}</p>}
           </div>
