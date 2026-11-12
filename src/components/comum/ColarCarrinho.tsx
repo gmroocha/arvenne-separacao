@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
 import { useAtualizarCatalogo, useLerCarrinho, type CarrinhoLido } from "@/lib/api"
-import { lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
+import { lerLinkCarrinho, motivoLinkRecusado, type LidoCarrinho } from "@/lib/carrinho"
 import type { NovoItem } from "@/lib/tipos"
 
 type Props = {
@@ -16,7 +16,7 @@ type Props = {
 }
 
 // Campo "Colar carrinho da cliente": aceita o link do site (/cart/ID:QTD,...) e o de checkout
-// (/checkouts/.../recover ou /cart/c/...). Lê sozinho ao colar e avisa as peças que o catálogo ainda não tem.
+// (/checkouts/.../recover). Lê sozinho ao colar e avisa as peças que o catálogo ainda não tem.
 export function ColarCarrinho({ aoLer, className }: Props) {
   const ler = useLerCarrinho()
   const atualizarCatalogo = useAtualizarCatalogo()
@@ -29,7 +29,7 @@ export function ColarCarrinho({ aoLer, className }: Props) {
   async function lerCarrinho(entrada: string | LidoCarrinho[]) {
     if (lendoRef.current) return // já está lendo: evita adicionar duas vezes
     if (typeof entrada === "string" && !lerLinkCarrinho(entrada)) {
-      if (entrada.trim()) toast.error("Não reconheci o link. Cole o link do carrinho (/cart/…) ou o de checkout.")
+      if (entrada.trim()) toast.error(motivoLinkRecusado(entrada))
       return
     }
     lendoRef.current = true

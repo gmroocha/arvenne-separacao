@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { juntarLidos, lerLinkCarrinho } from "@/lib/carrinho"
+import { juntarLidos, lerLinkCarrinho, motivoLinkRecusado } from "@/lib/carrinho"
 
 // V21: variante repetida perdia quantidade e quantidade 0 virava 1.
 test("V21: variante repetida no link soma as quantidades", () => {
@@ -20,4 +20,10 @@ test("V21: leitura da função de checkout também junta repetidas", () => {
 
 test("link compartilhado continua indo para a função Edge", () => {
   expect(lerLinkCarrinho("https://loja.test/70987808856/checkouts/ac/abcdefghijk/recover?key=1")?.tipo).toBe("compartilhado")
+})
+
+test("V22: /cart/c/ não vai para a função Edge e explica o formato aceito", () => {
+  expect(lerLinkCarrinho("https://loja.test/cart/c/abcdefghijk")).toBeNull()
+  expect(motivoLinkRecusado("https://loja.test/cart/c/abcdefghijk")).toMatch(/compartilhado/)
+  expect(motivoLinkRecusado("oi")).toMatch(/Não reconheci/)
 })

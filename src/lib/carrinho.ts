@@ -3,14 +3,16 @@ export type LidoCarrinho = { variantId: string; qtd: number }
 // Dois tipos de link de carrinho da Shopify:
 // - do site (o que as clientes mandam): https://loja.com.br/cart/44012345678:1,44098765432:2?return_to=/checkout
 //   (o próprio link traz as variantes e quantidades);
-// - de checkout: https://loja.com.br/70987808856/checkouts/ac/<token>/recover?key=... (ou /cart/c/<token>):
+// - de checkout: https://loja.com.br/70987808856/checkouts/ac/<token>/recover?key=...:
 //   só a Shopify sabe o conteúdo; a função Edge carrinho-ler procura e devolve as peças.
 // Devolve null se o formato for outro.
 export type LinkCarrinho = { tipo: "itens"; itens: LidoCarrinho[] } | { tipo: "compartilhado"; url: string }
 
 export function lerLinkCarrinho(link: string): LinkCarrinho | null {
   const texto = link.trim()
-  if (/\/cart\/c\/[^/?#\s]+/.test(texto) || /\/checkouts\/(?:[a-z]{1,3}\/)?[A-Za-z0-9_-]{10,}/.test(texto)) {
+  // V22: /cart/c/<token> não é checkout; a função Edge não consegue ler e devolvia erro. Fica de fora.
+  if (/\/cart\/c\/[^/?#\s]+/.test(texto)) return null
+  if (/\/checkouts\/(?:[a-z]{1,3}\/)?[A-Za-z0-9_-]{10,}/.test(texto)) {
     const url = texto.match(/https?:\/\/\S+/)?.[0] ?? texto
     return { tipo: "compartilhado", url }
   }
@@ -33,4 +35,11 @@ export function juntarLidos(lidos: LidoCarrinho[]): LidoCarrinho[] {
     soma.set(id, (soma.get(id) ?? 0) + qtd)
   }
   return [...soma].map(([variantId, qtd]) => ({ variantId, qtd }))
+}
+
+// Mensagem quando o link colado não é lido.
+export function motivoLinkRecusado(link: string): string {
+  if (/\/cart\/c\//.test(link))
+    return "Esse link de carrinho compartilhado (/cart/c/…) não traz as peças. Peça à cliente o link do carrinho (/cart/…) ou o de checkout."
+  return "Não reconheci o link. Cole o link do carrinho (/cart/…) ou o de checkout."
 }
