@@ -122,3 +122,17 @@ test('romaneio_publico: venda somada aponta o principal e o principal lista as a
   const rw = (await one('select romaneio_publico($1) d', [(await one('select token_publico from pedidos where id = $1', [w.id])).token_publico])).d
   assert.deepEqual([rw.somada_a, rw.status, rw.itens.length], ['ARV-1', 'somada', 0])
 })
+
+
+test.each([['Cartão', 'falta'], ['Pix', 'defeito']])('V02: falta parcial adicional conserva dinheiro e origem (%s, %s)', async (forma, status) => {
+  const { p, w, i1 } = await somaFixture()
+  await db.query("update pedido_itens set qtd=3 where id=$1", [i1.id])
+  await one("select somar_venda($1,$2,105)", [w.id, forma])
+  const antes = await one("select total,total_geral,valor_somado,total_pago from v_pedidos where id=$1", [p.id])
+  const original = await one("select preco_pago,venda_origem_id from pedido_itens where id=$1", [i1.id])
+  const n = await one("select marcar_falta($1,1,$2) as id", [i1.id, status])
+  const linha = await one("select adicional,venda_origem_id,preco_pago,status from pedido_itens where id=$1", [n.id])
+  assert.deepEqual(linha, { adicional: true, venda_origem_id: w.id, preco_pago: original.preco_pago, status })
+  assert.deepEqual(await one("select total,total_geral,valor_somado,total_pago from v_pedidos where id=$1", [p.id]), antes)
+  assert.equal((await one("select sum(qtd)::int n from pedido_itens where id=any($1)", [[i1.id,n.id]])).n, 3)
+})

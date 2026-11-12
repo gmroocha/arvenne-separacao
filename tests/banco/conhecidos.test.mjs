@@ -12,16 +12,6 @@ test.fails("V01: venda somada mantém o total e as peças do romaneio de origem"
   expect(r.total).toBe(45)
   expect(r.itens).toHaveLength(2)
 })
-test.fails("V02: falta parcial da adicional conserva o total geral e o vínculo", async () => {
-  const { p, w, i1 } = await somaFixture()
-  await db.query("update pedido_itens set qtd=2 where id=$1", [i1.id])
-  await one("select somar_venda($1,'Cartão',75)", [w.id])
-  const antes = await one("select total_geral from v_pedidos where id=$1", [p.id])
-  const n = await one("select marcar_falta($1,1) as id", [i1.id])
-  const linha = await one("select adicional,venda_origem_id from pedido_itens where id=$1", [n.id])
-  expect(linha).toEqual({ adicional: true, venda_origem_id: w.id })
-  expect(num((await one("select total_geral from v_pedidos where id=$1", [p.id])).total_geral)).toBe(num(antes.total_geral))
-})
 test.fails("V04: retirar adicional paga gera devolução", async () => {
   const { p, w, i1 } = await somaFixture()
   await one("select somar_venda($1,'Cartão',45)", [w.id])
