@@ -50,6 +50,29 @@ function linha(v: Variante, agora: string) {
   };
 }
 
+const CAMPOS_VARIANTE = "legacyResourceId sku title price inventoryPolicy image { url }";
+type Pagina = { hasNextPage: boolean; endCursor: string | null };
+type Produto = {
+  id: string; legacyResourceId: string; title: string; status: string;
+  featuredMedia: Variante["product"]["featuredMedia"];
+  variants: { pageInfo: Pagina; nodes: Omit<Variante, "product">[] };
+};
+
+export async function completarVariantes(p: Produto) {
+  let pagina = p.variants.pageInfo;
+  while (pagina?.hasNextPage) {
+    const data: { product: { variants: { pageInfo: Pagina; nodes: Omit<Variante, "product">[] } } | null } = await consulta(
+      `query($id: ID!, $cursor: String) {
+         product(id: $id) { variants(first: 100, after: $cursor) { pageInfo { hasNextPage endCursor } nodes { ${CAMPOS_VARIANTE} } } }
+       }`,
+      { id: p.id, cursor: pagina.endCursor },
+    );
+    if (!data.product) break;
+    p.variants.nodes.push(...data.product.variants.nodes);
+    pagina = data.product.variants.pageInfo;
+  }
+}
+
 async function gravar(linhas: ReturnType<typeof linha>[]) {
   const db = admin();
   for (let i = 0; i < linhas.length; i += 500) {
@@ -72,6 +95,7 @@ Deno.serve(async (req) => {
 
     if (variantIds?.length) {
       let total = 0;
+      let removidas = 0;
       for (let i = 0; i < variantIds.length; i += 100) {
         const lote = variantIds.slice(i, i + 100).map((id) => `gid://shopify/ProductVariant/${id}`);
         const data = await consulta<{ nodes: (Variante | null)[] }>(
@@ -81,8 +105,17 @@ Deno.serve(async (req) => {
         const linhas = data.nodes.filter((n): n is Variante => !!n?.legacyResourceId).map((n) => linha(n, agora));
         await gravar(linhas);
         total += linhas.length;
+        // V24: a Shopify devolve null para variante que não existe mais (a consulta deu certo; erro da API
+        // cai no catch). Sai do cache para o carrinho não usar preço e foto velhos.
+        const inexistentes = variantIds.slice(i, i + 100).filter((_, n) => data.nodes[n] == null).map(Number)
+          .filter((id) => Number.isSafeInteger(id) && id > 0);
+        if (inexistentes.length) {
+          const { error } = await admin().from("catalogo_site").delete().in("variant_id", inexistentes);
+          if (error) throw new Error(error.message);
+          removidas += inexistentes.length;
+        }
       }
-      return json({ modo: "variantes", variantes: total });
+      return json({ modo: "variantes", variantes: total, removidas });
     }
 
     const completo = !desde;
@@ -103,19 +136,21 @@ Deno.serve(async (req) => {
         let variantes: Variante[];
         let pagina: { hasNextPage: boolean; endCursor: string | null };
         if (f.produtos) {
-          const data: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: { variants: { nodes: Omit<Variante, "product">[] }; legacyResourceId: string; title: string; status: string; featuredMedia: Variante["product"]["featuredMedia"] }[] } } =
+          const data: { products: { pageInfo: Pagina; nodes: Produto[] } } =
             await consulta(
               `query($cursor: String, $q: String) {
                  products(first: 25, after: $cursor, query: $q) {
                    pageInfo { hasNextPage endCursor }
                    nodes {
-                     legacyResourceId title status featuredMedia { preview { image { url } } }
-                     variants(first: 100) { nodes { legacyResourceId sku title price inventoryPolicy image { url } } }
+                     id legacyResourceId title status featuredMedia { preview { image { url } } }
+                     variants(first: 100) { pageInfo { hasNextPage endCursor } nodes { ${CAMPOS_VARIANTE} } }
                    }
                  }
                }`,
               { cursor, q: f.consulta },
             );
+          // V26: produto com mais de 100 variantes: busca as páginas seguintes dessas variantes.
+          for (const p of data.products.nodes) await completarVariantes(p);
           variantes = data.products.nodes.flatMap((p) =>
             p.variants.nodes.map((v) => ({
               ...v,
@@ -151,6 +186,13 @@ Deno.serve(async (req) => {
       if (error) throw new Error(error.message);
       removidas = apagadas?.length ?? 0;
     }
+    // V23: marca até onde o catálogo inteiro está em dia (início desta leitura), só depois de ler todas
+    // as páginas. Leitura avulsa de variantes do carrinho não mexe nesse marcador.
+    const { error: erroMarca } = await admin().from("catalogo_sincronizacao").upsert(
+      { modo: completo ? "completo" : "incremental", iniciado_em: agora, concluido_em: new Date().toISOString(), variantes: total },
+      { onConflict: "modo" },
+    );
+    if (erroMarca) throw new Error(erroMarca.message);
     return json({ modo: completo ? "completo" : "incremental", variantes: total, removidas });
   } catch (e) {
     return json({ erro: (e as Error).message }, 500);

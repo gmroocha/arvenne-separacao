@@ -87,3 +87,11 @@ test('conferência somente leitura executa as funções da v_pedidos; anon conti
     expect([f,r.leitura,r.anon]).toEqual([f,true,false])
   }
 })
+
+test('V23: marcador do catálogo só é lido pela equipe e gravado pela função', async () => {
+  const r=await one(`select has_table_privilege('anon','catalogo_sincronizacao','select') anon,
+    has_table_privilege('authenticated','catalogo_sincronizacao','select') le,
+    has_table_privilege('authenticated','catalogo_sincronizacao','insert') grava,
+    has_table_privilege('service_role','catalogo_sincronizacao','insert') funcao`)
+  expect(r).toEqual({anon:false,le:true,grava:false,funcao:true})
+})

@@ -260,6 +260,8 @@ export async function buscarVariantes(variantIds: string[]) {
   const { data, error } = await supabase
     .from("catalogo_site")
     .select("variant_id, sku, produto, variante, preco, foto_url")
+    // V24: produto arquivado ou rascunho não entra no carrinho; vai para "faltando".
+    .or("status.is.null,status.eq.ACTIVE")
     .in("variant_id", variantIds.map((id) => {
       const n = Number(id)
       if (!Number.isSafeInteger(n) || n < 1) throw new Error("Código de variante inválido")
@@ -315,14 +317,16 @@ export function useCatalogoInfo() {
     queryFn: lerCatalogoInfo,
   })
 }
+// atualizadoEm = início da última sincronização completa/incremental concluída (V23). A leitura avulsa
+// de variantes do carrinho não conta: ela não traz as mudanças dos outros produtos.
 async function lerCatalogoInfo(): Promise<CatalogoInfo> {
-  const [c, u] = await Promise.all([
+  const [c, m] = await Promise.all([
     supabase.from("catalogo_site").select("variant_id", { count: "exact", head: true }),
-    supabase.from("catalogo_site").select("atualizado_em").order("atualizado_em", { ascending: false }).limit(1),
+    supabase.from("catalogo_sincronizacao").select("iniciado_em").order("iniciado_em", { ascending: false }).limit(1),
   ])
   if (c.error) throw c.error
-  if (u.error) throw u.error
-  return { total: c.count ?? 0, atualizadoEm: (u.data?.[0] as { atualizado_em: string } | undefined)?.atualizado_em ?? null }
+  if (m.error) throw m.error
+  return { total: c.count ?? 0, atualizadoEm: m.data?.[0]?.iniciado_em ?? null }
 }
 // Compatibilidade: só a contagem.
 export function useCatalogoTotal() {

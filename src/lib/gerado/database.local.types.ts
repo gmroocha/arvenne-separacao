@@ -4,7 +4,27 @@ import type { Database as Remoto, Json } from './database.types'
 
 type Adicoes = {
   Tables: {
-
+    catalogo_sincronizacao: {
+      Row: {
+        modo: string
+        iniciado_em: string
+        concluido_em: string
+        variantes: number
+      }
+      Insert: {
+        modo: string
+        iniciado_em: string
+        concluido_em?: string
+        variantes?: number
+      }
+      Update: {
+        modo?: string
+        iniciado_em?: string
+        concluido_em?: string
+        variantes?: number
+      }
+      Relationships: []
+    }
   }
   Views: {
     v_pedidos: {
