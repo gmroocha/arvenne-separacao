@@ -7,7 +7,7 @@ Após a continuação autorizada, a Fase 2 foi preparada e testada **localmente*
 Os registros históricos abaixo não indicam o estado atual de aplicação: a Fase 1 confirmou as 27
 migrations até `20261116090000` no Supabase. Não houve push, deploy nem escrita remota nesta etapa.
 
-- `npm test` passa tudo: tipos, lint (oito avisos antigos), 82 de unidade, 148 de banco, 18 de tela e build.
+- `npm test` passa tudo: tipos, lint (oito avisos antigos), 82 de unidade, 146 de banco, 18 de tela e build.
 - **35 dos 36 problemas da vistoria corrigidos e aplicados**, mais um furo achado pelo teste de conservação.
   Lista e commits em `VISTORIA.md`. Falta só configuração do painel (V35, abaixo).
 - Teste de conservação do dinheiro (`tests/banco/conservacao.test.mjs`): sequências aleatórias de venda
