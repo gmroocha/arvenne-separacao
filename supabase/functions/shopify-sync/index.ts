@@ -252,7 +252,9 @@ Deno.serve(async (req) => {
     const limite = Date.now() + 110_000;
 
     const db = admin();
-    let cursor: string | null = null;
+    // V25: chamada de continuação começa da página onde a anterior parou (teto de tempo).
+    const corpo = (await req.json().catch(() => ({}))) as { continuar?: string };
+    let cursor: string | null = typeof corpo.continuar === "string" && corpo.continuar ? corpo.continuar : null;
     let lidos = 0;
     let importados = 0;
     let incompleto = false;
@@ -391,7 +393,7 @@ Deno.serve(async (req) => {
       }
     } while (cursor);
 
-    return json({ desde, lidos, importados, erros, incompleto });
+    return json({ desde, lidos, importados, erros, incompleto, continuar: incompleto ? cursor : null });
   } catch (e) {
     return json({ erro: (e as Error).message }, 500);
   }

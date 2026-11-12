@@ -6,6 +6,7 @@ import { supabase, chamarFuncao } from "@/lib/supabase"
 import type { Database } from "@/lib/banco"
 import { etapaCompleta } from "@/lib/etapa"
 import { juntarLidos, lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
+import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
@@ -879,10 +880,11 @@ export function useBuscaClientes(termo: string) {
 
 export function useSincronizarShopify() {
   return useAcao(
-    () => chamarFuncao<{ importados: number; erros?: { numero: string; erro: string }[] }>("shopify-sync", {}),
+    () => sincronizarEmPartes((corpo) => chamarFuncao<RespostaSync>("shopify-sync", corpo)),
     TODAS,
     (r) => {
       toast.success(r.importados ? `${r.importados} pedidos novos` : "Nenhum pedido novo")
+      if (r.incompleto) toast.warning("A Shopify tem mais pedidos para ler. Clique em Sincronizar de novo para continuar.")
       if (r.erros?.length) {
         toast.warning(`${r.erros.length} pedido(s) com erro: ${r.erros.map((e) => `${e.numero} (${e.erro})`).join("; ")}`)
       }
