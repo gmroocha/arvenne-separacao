@@ -51,11 +51,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bipagens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bipagens_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "pedidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bipagens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
           },
           {
             foreignKeyName: "bipagens_pedido_id_fkey"
@@ -205,6 +219,13 @@ export type Database = {
             foreignKeyName: "feedbacks_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "feedbacks_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
@@ -224,6 +245,106 @@ export type Database = {
           nome?: string
         }
         Relationships: []
+      }
+      movimentos_financeiros: {
+        Row: {
+          detalhes: Json
+          estorna_id: number | null
+          id: number
+          pedido_id: string
+          registrado_em: string
+          tipo: string
+          troca_id: string | null
+          usuario_email: string | null
+          valor: number
+        }
+        Insert: {
+          detalhes?: Json
+          estorna_id?: number | null
+          id?: never
+          pedido_id: string
+          registrado_em?: string
+          tipo: string
+          troca_id?: string | null
+          usuario_email?: string | null
+          valor: number
+        }
+        Update: {
+          detalhes?: Json
+          estorna_id?: number | null
+          id?: never
+          pedido_id?: string
+          registrado_em?: string
+          tipo?: string
+          troca_id?: string | null
+          usuario_email?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentos_financeiros_estorna_id_fkey"
+            columns: ["estorna_id"]
+            isOneToOne: true
+            referencedRelation: "movimentos_financeiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_estorna_id_pedido_id_fkey"
+            columns: ["estorna_id", "pedido_id"]
+            isOneToOne: false
+            referencedRelation: "movimentos_financeiros"
+            referencedColumns: ["id", "pedido_id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "trocas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedido_acerto"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_resumo"
+            referencedColumns: ["troca_id"]
+          },
+        ]
       }
       pecas_clube: {
         Row: {
@@ -301,11 +422,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pedido_eventos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pedido_eventos_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "pedidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_eventos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
           },
           {
             foreignKeyName: "pedido_eventos_pedido_id_fkey"
@@ -343,7 +478,9 @@ export type Database = {
           shopify_variant_id: number | null
           sku: string | null
           status: string
+          troca_peca_origem_id: string | null
           updated_at: string
+          valor_pago_linha: number | null
           variante: string | null
           venda_origem_id: string | null
         }
@@ -373,7 +510,9 @@ export type Database = {
           shopify_variant_id?: number | null
           sku?: string | null
           status?: string
+          troca_peca_origem_id?: string | null
           updated_at?: string
+          valor_pago_linha?: number | null
           variante?: string | null
           venda_origem_id?: string | null
         }
@@ -403,7 +542,9 @@ export type Database = {
           shopify_variant_id?: number | null
           sku?: string | null
           status?: string
+          troca_peca_origem_id?: string | null
           updated_at?: string
+          valor_pago_linha?: number | null
           variante?: string | null
           venda_origem_id?: string | null
         }
@@ -426,8 +567,29 @@ export type Database = {
             foreignKeyName: "pedido_itens_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_troca_peca_origem_id_fkey"
+            columns: ["troca_peca_origem_id"]
+            isOneToOne: false
+            referencedRelation: "troca_pecas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_troca_peca_origem_id_fkey"
+            columns: ["troca_peca_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
           },
           {
             foreignKeyName: "pedido_itens_venda_origem_id_fkey"
@@ -440,6 +602,13 @@ export type Database = {
             foreignKeyName: "pedido_itens_venda_origem_id_fkey"
             columns: ["venda_origem_id"]
             isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
@@ -447,6 +616,7 @@ export type Database = {
       }
       pedidos: {
         Row: {
+          acerto_troca_id: string | null
           carrinho_url: string | null
           cliente_cpf: string | null
           cliente_email: string | null
@@ -470,6 +640,7 @@ export type Database = {
           entrega_logradouro: string | null
           entrega_numero: string | null
           entrega_uf: string | null
+          financeiro_retrato: Json | null
           forma_pagamento: string | null
           frete_cobrado: number | null
           frete_custo: number | null
@@ -497,6 +668,7 @@ export type Database = {
           shopify_order_id: number | null
           shopify_url: string | null
           somada_em: string | null
+          somada_retrato: Json | null
           somada_valor: number | null
           somar_em: string | null
           status: string
@@ -507,6 +679,7 @@ export type Database = {
           valor_total: number | null
         }
         Insert: {
+          acerto_troca_id?: string | null
           carrinho_url?: string | null
           cliente_cpf?: string | null
           cliente_email?: string | null
@@ -530,6 +703,7 @@ export type Database = {
           entrega_logradouro?: string | null
           entrega_numero?: string | null
           entrega_uf?: string | null
+          financeiro_retrato?: Json | null
           forma_pagamento?: string | null
           frete_cobrado?: number | null
           frete_custo?: number | null
@@ -557,6 +731,7 @@ export type Database = {
           shopify_order_id?: number | null
           shopify_url?: string | null
           somada_em?: string | null
+          somada_retrato?: Json | null
           somada_valor?: number | null
           somar_em?: string | null
           status?: string
@@ -567,6 +742,7 @@ export type Database = {
           valor_total?: number | null
         }
         Update: {
+          acerto_troca_id?: string | null
           carrinho_url?: string | null
           cliente_cpf?: string | null
           cliente_email?: string | null
@@ -590,6 +766,7 @@ export type Database = {
           entrega_logradouro?: string | null
           entrega_numero?: string | null
           entrega_uf?: string | null
+          financeiro_retrato?: Json | null
           forma_pagamento?: string | null
           frete_cobrado?: number | null
           frete_custo?: number | null
@@ -617,6 +794,7 @@ export type Database = {
           shopify_order_id?: number | null
           shopify_url?: string | null
           somada_em?: string | null
+          somada_retrato?: Json | null
           somada_valor?: number | null
           somar_em?: string | null
           status?: string
@@ -627,6 +805,34 @@ export type Database = {
           valor_total?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pedidos_acerto_troca_id_fkey"
+            columns: ["acerto_troca_id"]
+            isOneToOne: false
+            referencedRelation: "trocas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_acerto_troca_id_fkey"
+            columns: ["acerto_troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "pedidos_acerto_troca_id_fkey"
+            columns: ["acerto_troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedido_acerto"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "pedidos_acerto_troca_id_fkey"
+            columns: ["acerto_troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_resumo"
+            referencedColumns: ["troca_id"]
+          },
           {
             foreignKeyName: "pedidos_cliente_id_fkey"
             columns: ["cliente_id"]
@@ -640,6 +846,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pedidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["somar_em"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
           },
           {
             foreignKeyName: "pedidos_somar_em_fkey"
@@ -677,6 +890,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "troca_escolhas_opcao_da_peca"
+            columns: ["opcao_id", "troca_peca_id"]
+            isOneToOne: false
+            referencedRelation: "troca_opcoes"
+            referencedColumns: ["id", "troca_peca_id"]
+          },
+          {
             foreignKeyName: "troca_escolhas_opcao_id_fkey"
             columns: ["opcao_id"]
             isOneToOne: false
@@ -689,6 +909,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "troca_pecas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "troca_escolhas_troca_peca_id_fkey"
+            columns: ["troca_peca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
           },
         ]
       }
@@ -746,6 +973,13 @@ export type Database = {
             referencedRelation: "troca_pecas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "troca_opcoes_troca_peca_id_fkey"
+            columns: ["troca_peca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
+          },
         ]
       }
       troca_pecas: {
@@ -801,11 +1035,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "troca_pecas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "troca_pecas_troca_id_fkey"
             columns: ["troca_id"]
             isOneToOne: false
             referencedRelation: "trocas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "troca_pecas_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_id"]
           },
           {
             foreignKeyName: "troca_pecas_troca_id_fkey"
@@ -825,6 +1073,7 @@ export type Database = {
       }
       trocas: {
         Row: {
+          acerto_controle_novo: boolean
           acerto_em: string | null
           acerto_por: string | null
           acerto_status: string | null
@@ -842,6 +1091,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acerto_controle_novo?: boolean
           acerto_em?: string | null
           acerto_por?: string | null
           acerto_status?: string | null
@@ -859,6 +1109,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acerto_controle_novo?: boolean
           acerto_em?: string | null
           acerto_por?: string | null
           acerto_status?: string | null
@@ -887,13 +1138,180 @@ export type Database = {
             foreignKeyName: "trocas_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
         ]
       }
+      vistoria_execucoes: {
+        Row: {
+          executada_em: string
+          id: number
+          ocorrencias: Json
+          qtd_ocorrencias: number
+        }
+        Insert: {
+          executada_em?: string
+          id?: never
+          ocorrencias: Json
+          qtd_ocorrencias: number
+        }
+        Update: {
+          executada_em?: string
+          id?: never
+          ocorrencias?: Json
+          qtd_ocorrencias?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
+      v_cobertura_troca_peca: {
+        Row: {
+          coberto: number | null
+          pedido_id: string | null
+          troca_id: string | null
+          troca_peca_id: string | null
+          venda_origem_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_item_liquido: {
+        Row: {
+          coberto: number | null
+          id: string | null
+          pedido_id: string | null
+          valor_antes_cobertura: number | null
+          valor_liquido: number | null
+          venda_origem_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_parte_somada: {
+        Row: {
+          coberto: number | null
+          pedido_id: string | null
+          valor_atual: number | null
+          valor_retirado: number | null
+          venda_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_pecas_em_varios_pedidos: {
         Row: {
           chave: string | null
@@ -912,6 +1330,7 @@ export type Database = {
           acerto_em: string | null
           acerto_por: string | null
           acerto_status: string | null
+          bloqueio: string | null
           coberto: number | null
           novo_total: number | null
           pecas: Json | null
@@ -919,6 +1338,7 @@ export type Database = {
           saldo: number | null
           total_a_cobrar: number | null
           total_credito: number | null
+          total_pago_atual: number | null
           troca_id: string | null
           valor_pago_original: number | null
           valor_pago_pecas_trocadas: number | null
@@ -930,6 +1350,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pedidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
           },
           {
             foreignKeyName: "trocas_pedido_id_fkey"
@@ -969,6 +1396,7 @@ export type Database = {
           entrega_logradouro: string | null
           entrega_numero: string | null
           entrega_uf: string | null
+          etapas_permitidas: Json | null
           fase: string | null
           forma_pagamento: string | null
           fotos: Json | null
@@ -1047,6 +1475,13 @@ export type Database = {
             foreignKeyName: "pedidos_somar_em_fkey"
             columns: ["somar_em"]
             isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["somar_em"]
+            isOneToOne: false
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
@@ -1076,6 +1511,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pedidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_eventos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
           },
           {
             foreignKeyName: "pedido_eventos_pedido_id_fkey"
@@ -1113,11 +1555,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pedido_eventos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pedido_eventos_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "pedidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_eventos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
           },
           {
             foreignKeyName: "pedido_eventos_pedido_id_fkey"
@@ -1148,6 +1604,13 @@ export type Database = {
             referencedRelation: "troca_pecas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "troca_escolhas_troca_peca_id_fkey"
+            columns: ["troca_peca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
+          },
         ]
       }
       v_troca_resumo: {
@@ -1174,6 +1637,13 @@ export type Database = {
             foreignKeyName: "trocas_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
@@ -1193,6 +1663,15 @@ export type Database = {
           valor_opcao: number | null
           valor_pago_item: number | null
           valor_unit: number | null
+        }
+        Relationships: []
+      }
+      v_vistoria_resumo: {
+        Row: {
+          executada_em: string | null
+          id: number | null
+          ocorrencias: Json | null
+          qtd_ocorrencias: number | null
         }
         Relationships: []
       }
@@ -1226,12 +1705,22 @@ export type Database = {
       }
       enviar_troca: { Args: { p_troca: string }; Returns: undefined }
       fator_pedido: { Args: { p_pedido: string }; Returns: number }
+      fechar_financeiro: { Args: { p_pedido: string }; Returns: undefined }
       garantir_troca: {
         Args: { p_itens: string[]; p_pedido: string }
         Returns: string
       }
       horas_uteis: { Args: { ate: string; de: string }; Returns: number }
       importar_pedido_shopify: { Args: { p: Json }; Returns: boolean }
+      listar_inconsistencias: {
+        Args: never
+        Returns: {
+          detalhe: string
+          numero: string
+          pedido_id: string
+          regra: string
+        }[]
+      }
       marcar_devolvido: {
         Args: { p_desfazer?: boolean; p_pedido: string }
         Returns: undefined
@@ -1241,11 +1730,23 @@ export type Database = {
         Returns: string
       }
       prazo_envio: { Args: { pago: string }; Returns: string }
+      reavaliar_etapa: { Args: { p_pedido: string }; Returns: undefined }
+      reconciliar_acertos: {
+        Args: { p_pedido: string; p_priorizar?: string }
+        Returns: undefined
+      }
+      registrar_movimento_troca: {
+        Args: { p_anterior: string; p_novo: string; p_troca: string }
+        Returns: number
+      }
+      registrar_vistoria: { Args: never; Returns: number }
+      regras_etapas: { Args: { p: Json }; Returns: Json }
       reiniciar_pedido: {
         Args: { p_etapa: string; p_pedido: string; p_tudo: boolean }
         Returns: undefined
       }
       romaneio_publico: { Args: { p_token: string }; Returns: Json }
+      saldo_financeiro: { Args: { p_pedido: string }; Returns: number }
       somar_venda: {
         Args: {
           p_forma: string
@@ -1254,6 +1755,10 @@ export type Database = {
           p_venda: string
         }
         Returns: undefined
+      }
+      substituir_item: {
+        Args: { p_item: string; p_itens: Json }
+        Returns: string
       }
       sugerir_troca: {
         Args: {
@@ -1334,6 +1839,7 @@ export type Database = {
       troca_fator: { Args: { p_item: string }; Returns: number }
       troca_publica: { Args: { p_token: string }; Returns: Json }
       troca_recalcular_escolha: { Args: { p_peca: string }; Returns: undefined }
+      troca_saldo_liquido: { Args: { p_troca: string }; Returns: number }
       troca_valor_pago: {
         Args: { p_item: string }
         Returns: {

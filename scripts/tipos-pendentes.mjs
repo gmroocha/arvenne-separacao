@@ -3,7 +3,7 @@ import { criarBanco } from "../tests/banco/suporte.mjs"
 
 // Supabase gen types representa o remoto. Este complemento vem da introspecção das migrations
 // ainda locais, para conferir o código ANTES da autorização de aplicar no remoto. Não escrever à mão.
-const baseAplicada = "20261116090000"
+const baseAplicada = "20261118210000"
 const tipo = (sql) => {
   const t = sql.replace(/^public\./, "")
   if (t.endsWith("[]")) return `(${tipo(t.slice(0, -2))})[]`
@@ -52,7 +52,9 @@ export async function gerarTiposPendentes() {
     const retorno = f.saidas.length ? `{ ${f.saidas.map((c) => `${c.nome}: ${tipo(c.tipo)} | null`).join("; ")} }[]` : tipo(f.retorno) + (f.proretset ? "[]" : " | null")
     colecoes.Functions.push(`    ${f.nome}: { Args: ${args}; Returns: ${retorno} }`)
   }
-  return `// GERADO por npm run tipos:local a partir das migrations posteriores a ${baseAplicada}.\n// Não editar à mão. O arquivo database.types.ts é gerado pelo Supabase CLI.\nimport type { Database as Remoto, Json } from './database.types'\n\ntype Adicoes = {\n${Object.entries(colecoes).map(([k, v]) => `  ${k}: {\n${v.join("\n")}\n  }`).join("\n")}\n}\n\nexport type Database = Omit<Remoto, 'public'> & {\n  public: Omit<Remoto['public'], keyof Adicoes> & {\n    [K in keyof Adicoes]: Omit<Remoto['public'][K], keyof Adicoes[K]> & Adicoes[K]\n  }\n}\n`
+  const corpo = Object.values(colecoes).flat().join("\n")
+  const importaJson = /\bJson\b/.test(corpo) ? ", Json" : ""
+  return `// GERADO por npm run tipos:local a partir das migrations posteriores a ${baseAplicada}.\n// Não editar à mão. O arquivo database.types.ts é gerado pelo Supabase CLI.\nimport type { Database as Remoto${importaJson} } from './database.types'\n\ntype Adicoes = {\n${Object.entries(colecoes).map(([k, v]) => `  ${k}: {\n${v.join("\n")}\n  }`).join("\n")}\n}\n\nexport type Database = Omit<Remoto, 'public'> & {\n  public: Omit<Remoto['public'], keyof Adicoes> & {\n    [K in keyof Adicoes]: Omit<Remoto['public'][K], keyof Adicoes[K]> & Adicoes[K]\n  }\n}\n`
 }
 
 const destino = "src/lib/gerado/database.local.types.ts"
