@@ -277,7 +277,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         { rotulo: "Parte 1 – pedido: total", valor: reais(pedido.total) },
         ...partes.map((p, n) => ({ rotulo: `Parte ${n + 2} – venda ${p.numero}: ${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`, valor: reais(p.somada_valor) })),
         { rotulo: "Total da nota", valor: reais(pedido.total_geral) },
-        ...(pedido.total_pago != null ? [{ rotulo: "Total pago (pedido + vendas)", valor: reais(pedido.total_pago) }] : []),
+        ...(pedido.total_pago != null ? [{ rotulo: "Pago após acertos", valor: reais(pedido.total_pago) }] : []),
       ]
     : [
         { rotulo: "Valor das peças", valor: reais(pedido.subtotal) },

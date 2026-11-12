@@ -160,7 +160,7 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     }
   }
   return {
-    pedido: p, item: i, troca: t, vendaSomada, banco, one, requisicoes, bloqueadas,
+    pedido: p, item: i, troca: t, vendaSomada, banco, one, requisicoes, bloqueadas, ocioso: () => fila,
     falharProximaEscolha: () => { falharEscolha = true },
     fechar: () => banco.close(),
     async instalar(context, baseUrl, { logado = true } = {}) {

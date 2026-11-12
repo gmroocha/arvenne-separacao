@@ -82,7 +82,7 @@ test("cliente escolhe troca, recupera falha e muda para crédito", async ({ page
   await semQuebra(page)
 })
 
-test("V06: atalho Trocar usa uma operação e cria a diferença a receber", async ({ page, context, baseURL }) => {
+test("V06/V08: atalho Trocar cria diferença e o recebimento atualiza o saldo", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL)
   await sim.banco.query(`insert into catalogo_site(variant_id,produto_id,sku,produto,preco,status)
     select n,n,'CAT-'||n,case when n=1 then 'Nova de teste' else 'Outra peça '||n end,150,'ACTIVE'
@@ -98,6 +98,16 @@ test("V06: atalho Trocar usa uma operação e cria a diferença a receber", asyn
   expect(Number((await sim.one("select saldo from v_pedido_acerto where pedido_id=$1", [sim.pedido.id])).saldo)).toBe(50)
   expect(sim.requisicoes.filter((r) => r.path.endsWith("/rpc/substituir_item"))).toHaveLength(1)
   expect(sim.requisicoes.some((r) => r.path.endsWith("/rpc/adicionar_itens"))).toBe(false)
+  await sim.ocioso()
+  await sim.banco.query("update pedido_itens set status='encontrado',conferido_em=now(),etiquetado_em=now(),qtd_bipada=qtd,bipado_em=now() where pedido_id=$1 and status<>'removido'", [sim.pedido.id])
+  await sim.banco.query("update pedidos set status='faturamento' where id=$1", [sim.pedido.id])
+  await page.reload()
+  await page.getByRole("button", { name: "Diferença recebida", exact: true }).click()
+  await expect.poll(async () => Number((await sim.one("select total_pago from v_pedidos where id=$1", [sim.pedido.id])).total_pago)).toBe(150)
+  await expect(page.getByText("Saldo acertado", { exact: true })).toBeVisible()
+  await page.getByText("Acerto do pedido", { exact: true }).scrollIntoViewIfNeeded()
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/acerto-${info.project.name}.png`, fullPage: true, animations: "disabled" })
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
 })

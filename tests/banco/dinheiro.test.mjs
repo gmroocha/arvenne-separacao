@@ -176,7 +176,7 @@ test('Shopify depois da troca: subtotal - desconto + frete = total, e a contagem
   assert.equal(Number(v.subtotal) - Number(v.desconto) + Number(v.frete_na_conta), Number(v.total))
 })
 
-test('v_pedido_acerto: o saldo é o da mesma troca que aparece no troca_id', async () => {
+test('V08: o último acerto incorpora os créditos anteriores ainda não registrados', async () => {
   const f = await fixture({ quantidade: 2, desconto: 20 })
   // Primeira troca concluída com diferença de pagar; a segunda, de crédito.
   await db.query("update trocas set status = 'rascunho' where id = $1", [f.troca.id])
@@ -188,9 +188,10 @@ test('v_pedido_acerto: o saldo é o da mesma troca que aparece no troca_id', asy
   const p2 = await one('insert into troca_pecas (troca_id, item_id) values ($1, $2) returning *', [t2.id, novo.id])
   await one('select troca_aprovar($1, $2, $3, null)', [t2.id, p2.id, 'credito'])
   const ac = await one('select * from v_pedido_acerto where pedido_id = $1', [f.pedido.id])
-  const saldoDaTroca = Number((await one('select sum(resultado_diferenca) s from troca_pecas where troca_id = $1', [ac.troca_id])).s)
-  assert.equal(Number(ac.saldo), saldoDaTroca)
-  assert.equal(Number(ac.total_a_cobrar) - Number(ac.total_credito), saldoDaTroca)
+  assert.equal(ac.troca_id,t2.id)
+  assert.equal(Number(ac.saldo),-180) // 180 realmente pagos; as duas trocas converteram todo o pedido em crédito.
+  assert.equal(Number(ac.total_a_cobrar) - Number(ac.total_credito),-180)
+  assert.equal((await one('select acerto_status from trocas where id=$1',[f.troca.id])).acerto_status,'sem_diferenca')
 })
 
 test('cobertura parcial, total e crédito: resumo e troca_publica', async () => {

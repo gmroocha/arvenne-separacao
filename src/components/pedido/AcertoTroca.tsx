@@ -75,6 +75,7 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
   const trocaId = a.troca_id
   const pendente = a.acerto_status === "pendente"
   const feito = a.acerto_status === "recebido" || a.acerto_status === "credito_registrado"
+  const bloqueio = a.bloqueio ?? (a.total_pago_atual === undefined ? "Atualize o banco para conferir o saldo final antes de registrar o acerto." : null)
   const ajustar = (status: "recebido" | "credito_registrado" | "pendente") => trocaId && marcar.mutate({ trocaId, status })
 
   return (
@@ -84,7 +85,7 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <HandCoins className="size-4" />
-          <span className="min-w-0 flex-1">Acerto da troca</span>
+          <span className="min-w-0 flex-1">Acerto do pedido</span>
           {pendente && (
             <Badge variant="secondary" className={`h-6 border-transparent px-2 text-xs font-medium ${COR_SELO.aguardando_cliente}`}>
               Pendente
@@ -104,19 +105,21 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
-          <Linha rotulo="Pago antes">{reais(a.valor_pago_original)}</Linha>
+          <Linha rotulo="Pagamento inicial">{reais(a.valor_pago_original)}</Linha>
           {a.pecas.map((p) => (
             <LinhaTroca key={p.troca_peca_id} p={p} />
           ))}
           {(a.coberto ?? 0) > 0 && <Linha rotulo="A loja cobriu">−{reais(a.coberto ?? 0)}</Linha>}
           <Separator className="my-1" />
-          <Linha rotulo="Novo total">{reais(a.novo_total)}</Linha>
-          <Linha rotulo={a.saldo > 0 ? "Saldo a cobrar" : a.saldo < 0 ? "Saldo a favor da cliente" : "Saldo"} forte>
+          <Linha rotulo="Total atual">{reais(a.novo_total)}</Linha>
+          {a.total_pago_atual != null && <Linha rotulo="Pago após acertos">{reais(a.total_pago_atual)}</Linha>}
+          <Linha rotulo={feito ? "Saldo acertado" : a.saldo > 0 ? "Saldo final a cobrar" : a.saldo < 0 ? "Saldo final a favor da cliente" : "Saldo final"} forte>
             {sinal(a.saldo)}
           </Linha>
         </div>
 
-        {pendente && trocaId && (
+        {bloqueio && <p role="status" className="text-sm text-warning">{bloqueio}</p>}
+        {pendente && trocaId && !bloqueio && (
           <div className="flex flex-col gap-2 sm:flex-row">
             {a.saldo > 0 && (
               <Button className="h-10 w-full text-sm sm:w-auto" disabled={marcar.isPending} onClick={() => ajustar("recebido")}>
@@ -136,7 +139,7 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
               Marcado{a.acerto_por ? ` por ${a.acerto_por}` : ""}
               {a.acerto_em ? ` em ${quando(a.acerto_em)}` : ""}
             </span>
-            <Button variant="ghost" size="sm" className="h-8" disabled={marcar.isPending} onClick={() => ajustar("pendente")}>
+            <Button variant="ghost" size="sm" className="h-8" disabled={marcar.isPending || !!bloqueio} onClick={() => ajustar("pendente")}>
               <Undo2 /> Desfazer
             </Button>
           </div>

@@ -14,6 +14,8 @@ export async function fixture({ quantidade = 1, desconto = 20, pix = false, orig
     itens.push(await one(`insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, status, ordem)
       values ($1, 'shopify', 'Anel original', $2, $4, $5, 'falta', $3) returning *`, [pedido.id, `ORIGINAL-${n}`, n, qtdOriginal, precoOriginal]))
   }
+  // A fixture representa uma compra efetivamente paga, antes de iniciar a troca.
+  await db.query('update pedidos set valor_pago=(select total from v_pedidos where id=$1) where id=$1',[pedido.id])
   await db.exec('set local role authenticated')
   const troca = await one('insert into trocas (pedido_id) values ($1) returning *', [pedido.id])
   const pecas = []

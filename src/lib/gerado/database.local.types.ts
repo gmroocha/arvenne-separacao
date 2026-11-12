@@ -4,6 +4,42 @@ import type { Database as Remoto, Json } from './database.types'
 
 type Adicoes = {
   Tables: {
+    movimentos_financeiros: {
+      Row: {
+        id: number
+        pedido_id: string
+        troca_id: string | null
+        tipo: string
+        valor: number
+        estorna_id: number | null
+        detalhes: Json
+        registrado_em: string
+        usuario_email: string | null
+      }
+      Insert: {
+        id?: number
+        pedido_id: string
+        troca_id?: string | null
+        tipo: string
+        valor: number
+        estorna_id?: number | null
+        detalhes?: Json
+        registrado_em?: string
+        usuario_email?: string | null
+      }
+      Update: {
+        id?: number
+        pedido_id?: string
+        troca_id?: string | null
+        tipo?: string
+        valor?: number
+        estorna_id?: number | null
+        detalhes?: Json
+        registrado_em?: string
+        usuario_email?: string | null
+      }
+      Relationships: []
+    }
     pedido_itens: {
       Row: {
         id: string
@@ -165,6 +201,7 @@ type Adicoes = {
         somada_valor: number | null
         somada_retrato: Json | null
         financeiro_retrato: Json | null
+        acerto_troca_id: string | null
       }
       Insert: {
         id?: string
@@ -227,6 +264,7 @@ type Adicoes = {
         somada_valor?: number | null
         somada_retrato?: Json | null
         financeiro_retrato?: Json | null
+        acerto_troca_id?: string | null
       }
       Update: {
         id?: string
@@ -289,6 +327,64 @@ type Adicoes = {
         somada_valor?: number | null
         somada_retrato?: Json | null
         financeiro_retrato?: Json | null
+        acerto_troca_id?: string | null
+      }
+      Relationships: []
+    }
+    trocas: {
+      Row: {
+        id: string
+        pedido_id: string
+        token: string
+        status: string
+        enviada_em: string | null
+        respondida_em: string | null
+        concluida_em: string | null
+        criado_por: string | null
+        created_at: string
+        updated_at: string
+        fator_desconto: number
+        acerto_status: string | null
+        acerto_em: string | null
+        acerto_por: string | null
+        cobrir_ate: number
+        acerto_controle_novo: boolean
+      }
+      Insert: {
+        id?: string
+        pedido_id: string
+        token?: string
+        status?: string
+        enviada_em?: string | null
+        respondida_em?: string | null
+        concluida_em?: string | null
+        criado_por?: string | null
+        created_at?: string
+        updated_at?: string
+        fator_desconto: number
+        acerto_status?: string | null
+        acerto_em?: string | null
+        acerto_por?: string | null
+        cobrir_ate?: number
+        acerto_controle_novo?: boolean
+      }
+      Update: {
+        id?: string
+        pedido_id?: string
+        token?: string
+        status?: string
+        enviada_em?: string | null
+        respondida_em?: string | null
+        concluida_em?: string | null
+        criado_por?: string | null
+        created_at?: string
+        updated_at?: string
+        fator_desconto?: number
+        acerto_status?: string | null
+        acerto_em?: string | null
+        acerto_por?: string | null
+        cobrir_ate?: number
+        acerto_controle_novo?: boolean
       }
       Relationships: []
     }
@@ -343,6 +439,26 @@ type Adicoes = {
         valor_atual: number | null
         valor_retirado: number | null
         coberto: number | null
+      }
+      Relationships: []
+    }
+    v_pedido_acerto: {
+      Row: {
+        pedido_id: string | null
+        valor_pago_original: number | null
+        valor_pago_pecas_trocadas: number | null
+        total_a_cobrar: number | null
+        total_credito: number | null
+        saldo: number | null
+        novo_total: number | null
+        troca_id: string | null
+        acerto_status: string | null
+        acerto_em: string | null
+        acerto_por: string | null
+        pecas: Json | null
+        coberto: number | null
+        total_pago_atual: number | null
+        bloqueio: string | null
       }
       Relationships: []
     }
@@ -451,12 +567,17 @@ type Adicoes = {
     fechar_financeiro: { Args: { p_pedido: string | null }; Returns: undefined | null }
     listar_inconsistencias: { Args: Record<PropertyKey, never>; Returns: { pedido_id: string | null; numero: string | null; regra: string | null; detalhe: string | null }[] }
     reavaliar_etapa: { Args: { p_pedido: string | null }; Returns: undefined | null }
+    reconciliar_acertos: { Args: { p_pedido: string | null; p_priorizar?: string | null }; Returns: undefined | null }
+    registrar_movimento_troca: { Args: { p_troca: string | null; p_anterior: string | null; p_novo: string | null }; Returns: number | null }
     registrar_vistoria: { Args: Record<PropertyKey, never>; Returns: number | null }
     regras_etapas: { Args: { p: Json | null }; Returns: Json | null }
+    saldo_financeiro: { Args: { p_pedido: string | null }; Returns: number | null }
     substituir_item: { Args: { p_item: string | null; p_itens: Json | null }; Returns: string | null }
     tg_documento_reaberto: { Args: Record<PropertyKey, never>; Returns: string | null }
+    tg_estorno_validar: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_fechar_financeiro: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_financeiro_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
+    tg_movimento_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_retrato_somada_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_trabalho_reaberto: { Args: Record<PropertyKey, never>; Returns: string | null }
     troca_saldo_liquido: { Args: { p_troca: string | null }; Returns: number | null }

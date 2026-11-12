@@ -206,21 +206,9 @@ export type AcertoPeca = {
 }
 
 // Linha de v_pedido_acerto (um pedido com peça trocada). Todo o dinheiro vem pronto do banco.
-export type AcertoPedido = {
-  pedido_id: string
-  valor_pago_original: number
-  valor_pago_pecas_trocadas: number
-  total_a_cobrar: number
-  total_credito: number
-  saldo: number
-  coberto?: number
-  novo_total: number
-  troca_id: string | null
-  acerto_status: StatusAcerto | null
-  acerto_em: string | null
-  acerto_por: string | null
-  pecas: AcertoPeca[]
-}
+export type AcertoPedido = Omit<Obrigatorios<Views<'v_pedido_acerto'>,
+  'pedido_id' | 'valor_pago_original' | 'valor_pago_pecas_trocadas' | 'total_a_cobrar' | 'total_credito' | 'saldo' | 'novo_total'>,
+  'pecas' | 'acerto_status'> & { acerto_status: StatusAcerto | null; pecas: AcertoPeca[] }
 
 export type ModoSugestao = "variantes" | "preco"
 

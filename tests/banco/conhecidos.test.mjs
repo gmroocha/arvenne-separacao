@@ -11,13 +11,6 @@ test.fails("V04: retirar adicional paga gera devolução", async () => {
   await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where id=$1", [i1.id])
   expect(num((await one("select a_devolver from v_pedidos where id=$1", [p.id])).a_devolver)).toBe(27)
 })
-test.fails("V08: diferença recebida entra no total pago", async () => {
-  const f = await fixture({ desconto: 0 })
-  await db.query("update pedidos set valor_pago=100 where id=$1", [f.pedido.id])
-  await escolher(f); await concluir(f)
-  await one("select troca_acerto($1,'recebido')", [f.troca.id])
-  expect(num((await one("select total_pago from v_pedidos where id=$1", [f.pedido.id])).total_pago)).toBe(150)
-})
 test.fails("V28: valor de opção concluída não pode reescrever o histórico", async () => {
   const f = await fixture()
   await escolher(f); await concluir(f)

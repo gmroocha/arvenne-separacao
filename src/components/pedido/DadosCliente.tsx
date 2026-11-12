@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useAcerto, useAdicionarNota, useAtualizarPedido, type PedidoDetalhe } from "@/lib/api"
+import { useAdicionarNota, useAtualizarPedido, type PedidoDetalhe } from "@/lib/api"
 import { copiar } from "@/lib/copiar"
 import { digitos, linkWhatsApp, mascaraDocumento, mascaraTelefone, quando, reais } from "@/lib/formato"
 import { NOME_ETAPA, NOME_ITEM, type StatusItem } from "@/lib/status"
@@ -77,7 +77,6 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
   const [texto, setTexto] = useState("")
   const [obs, setObs] = useState(pedido.observacoes ?? "")
   const wa = linkWhatsApp(pedido.cliente_telefone, "")
-  const acerto = useAcerto(pedido.id).data
   const partes = pedido.partes ?? []
   const temEndereco = Boolean(pedido.entrega_logradouro || pedido.entrega_cep)
 
@@ -150,9 +149,6 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                   {reais(pedido.frete_na_conta)}
                 </Linha>
               )}
-              {acerto && acerto.pecas.length > 0 && acerto.acerto_status !== "sem_diferenca" && (
-                <Linha rotulo="Ajuste de troca">{acerto.saldo > 0 ? `+ ${reais(acerto.saldo)}` : acerto.saldo < 0 ? `− ${reais(-acerto.saldo)}` : reais(0)}</Linha>
-              )}
               <Linha rotulo={partes.length ? "Total do pedido" : "Total"}>
                 <strong>{reais(pedido.total)}</strong>
               </Linha>
@@ -177,7 +173,7 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                   </Linha>
                 ))}
                 {pedido.total_pago != null && (
-                  <Linha rotulo="Total pago">
+                  <Linha rotulo="Pago após acertos">
                     <strong>{reais(pedido.total_pago)}</strong>
                   </Linha>
                 )}
@@ -187,7 +183,8 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
             {partes.length === 0 && (pedido.forma_pagamento || pedido.pago_em) && (
               <div className="flex flex-col gap-1.5 border-t pt-3">
                 <Linha rotulo="Pagamento">{pedido.forma_pagamento ?? "—"}</Linha>
-                {pedido.valor_pago != null && <Linha rotulo="Valor pago">{reais(pedido.valor_pago)}</Linha>}
+                {pedido.valor_pago != null && pedido.valor_pago !== pedido.total_pago && <Linha rotulo="Pagamento inicial">{reais(pedido.valor_pago)}</Linha>}
+                <Linha rotulo="Pago após acertos">{pedido.total_pago != null ? reais(pedido.total_pago) : "A conferir"}</Linha>
                 {pedido.pago_em && <Linha rotulo="Pago em">{quando(pedido.pago_em)}</Linha>}
               </div>
             )}
