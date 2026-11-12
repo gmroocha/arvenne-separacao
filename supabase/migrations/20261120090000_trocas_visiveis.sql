@@ -452,9 +452,9 @@ select 'quantidade:' || e.id::text, i.pedido_id, 'quantidade', e.created_at,
   '[]'::jsonb,
   round((e.de::int - e.para::int) * li.valor_antes_cobertura / nullif(i.qtd, 0), 2)::numeric(12,2),
   0::numeric(12,2), 0::numeric(12,2), 0::numeric(12,2), 0::numeric(12,2),
-  (case when i.devolvido_em is null and i.reembolsado_shopify_em is null
-        then round((e.de::int - e.para::int) * li.valor_antes_cobertura / nullif(i.qtd, 0), 2) else 0 end)::numeric(12,2),
-  coalesce(i.devolvido_em, i.reembolsado_shopify_em)
+  -- Quantidade reduzida não entra no "a devolver" da v_pedidos (só "cliente desistiu"): aqui também não.
+  null::numeric(12,2),
+  null::timestamptz
 from public.pedido_eventos e
 join public.pedido_itens i on i.id = e.item_id
 join public.pedidos p on p.id = i.pedido_id

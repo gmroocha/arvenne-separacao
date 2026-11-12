@@ -190,7 +190,8 @@ test('alterações: quantidade reduzida depois do pagamento vira linha própria;
   assert.equal(q.tipo, 'quantidade')
   assert.equal(q.sai.qtd, 3)
   assert.equal(num(q.valor), 150)
-  assert.equal(num(q.a_devolver), 150)
+  // A v_pedidos não conta quantidade reduzida como "a devolver"; a alteração não promete devolução.
+  assert.equal(q.a_devolver, null)
 })
 
 test('alterações: só a equipe lê; anon não', async () => {
