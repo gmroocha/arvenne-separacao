@@ -162,3 +162,15 @@ test("V33: Clube carrega mais peças além das 30 primeiras", async ({ page, con
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
 })
+
+test("V34: busca de vendas acha pedido além dos primeiros da lista", async ({ page, context, baseURL }) => {
+  await iniciar(context, baseURL)
+  await sim.banco.query(`insert into pedidos(origem,status,cliente_nome,numero,pedido_em)
+    select 'whatsapp','em_aberto','Cliente '||n,'W9'||lpad(n::text,3,'0'),now()-n*interval '1 minute' from generate_series(1,301) n`)
+  await page.goto("/vendas")
+  await expect(page.getByRole("link", { name: /#W9001 · Cliente 1 / })).toBeVisible()
+  await expect(page.getByRole("link", { name: /#W9301/ })).toHaveCount(0)
+  await page.getByPlaceholder("Número, cliente ou telefone").fill("W9301")
+  await expect(page.getByRole("link", { name: /#W9301 · Cliente 301/ })).toBeVisible()
+  expect(sim.bloqueadas).toEqual([])
+})

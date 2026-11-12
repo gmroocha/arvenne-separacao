@@ -26,12 +26,25 @@ export type VarianteSite = Omit<NovoItem, "chave" | "origem" | "peca_clube_id" |
 export const LIMITE_LISTA = 300
 
 // Listas de uma fase, lidas de v_pedidos (o banco calcula total, prazo e contagens).
-export function usePedidosFase(fase: "venda" | "expedicao") {
+// Busca por número, cliente ou telefone feita no banco (V34): acha pedidos além dos primeiros da lista.
+export function filtroBuscaPedidos(busca: string): string | null {
+  const t = busca.trim().replace(/[%,()]/g, " ").trim()
+  if (!t) return null
+  const d = t.replace(/\D/g, "")
+  return [`numero.ilike.%${t}%`, `cliente_nome.ilike.%${t}%`, `cliente_telefone.ilike.%${t}%`, d.length >= 3 ? `cliente_telefone.ilike.%${d}%` : null]
+    .filter(Boolean)
+    .join(",")
+}
+
+export function usePedidosFase(fase: "venda" | "expedicao", busca = "") {
+  const filtro = filtroBuscaPedidos(busca)
   return useQuery({
-    queryKey: ["pedidos", fase],
+    queryKey: ["pedidos", fase, filtro ?? ""],
     refetchInterval: intervaloListas,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       let q = supabase.from("v_pedidos").select("*").in("status", STATUS_DA_FASE[fase]).limit(LIMITE_LISTA)
+      if (filtro) q = q.or(filtro)
       q = fase === "expedicao"
         ? q.order("prazo", { ascending: true, nullsFirst: false })
         : q.order("pedido_em", { ascending: false })
@@ -71,15 +84,8 @@ export function useArquivo(busca: string, limite: number) {
         .in("status", STATUS_DA_FASE.arquivo)
         .order("status_desde", { ascending: false })
         .limit(limite)
-      const t = busca.trim().replace(/[%,()]/g, " ")
-      if (t) {
-        const d = t.replace(/\D/g, "")
-        q = q.or(
-          [`numero.ilike.%${t}%`, `cliente_nome.ilike.%${t}%`, `cliente_telefone.ilike.%${t}%`, d.length >= 3 ? `cliente_telefone.ilike.%${d}%` : null]
-            .filter(Boolean)
-            .join(","),
-        )
-      }
+      const filtro = filtroBuscaPedidos(busca)
+      if (filtro) q = q.or(filtro)
       const { data, error } = await q
       if (error) throw error
       return data as Pedido[]

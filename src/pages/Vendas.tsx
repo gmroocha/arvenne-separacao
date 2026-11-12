@@ -9,6 +9,7 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empt
 import { ItemGroup } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useDebounce } from "@/lib/useDebounce"
 import { LIMITE_LISTA, usePedidosFase } from "@/lib/api"
 import { digitos } from "@/lib/formato"
 
@@ -16,7 +17,8 @@ export default function Vendas() {
   const [params, setParams] = useSearchParams()
   const aba = params.get("aba") === "aguardando" ? "aguardando_pagamento" : "em_aberto"
   const [busca, setBusca] = useState("")
-  const { data, isLoading } = usePedidosFase("venda")
+  const termo = useDebounce(busca, 300)
+  const { data, isLoading } = usePedidosFase("venda", termo)
 
   const filtradas = useMemo(() => {
     const t = busca.trim().toLowerCase()

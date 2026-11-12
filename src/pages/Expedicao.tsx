@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
 import { etiquetasDe } from "@/lib/etiquetas"
+import { useDebounce } from "@/lib/useDebounce"
 import { LIMITE_LISTA, useContagens, useMudarStatus, usePecasParaEtiquetar, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
 import { digitos } from "@/lib/formato"
 import { destinoAoConcluir, ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
@@ -120,7 +121,8 @@ export default function Expedicao() {
   const etapa = params.get("etapa")
   const soAtrasados = params.get("atrasados") === "1"
   const [busca, setBusca] = useState("")
-  const { data, isLoading } = usePedidosFase("expedicao")
+  const termo = useDebounce(busca, 300)
+  const { data, isLoading } = usePedidosFase("expedicao", termo)
   const { data: contagens } = useContagens()
   const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
