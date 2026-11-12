@@ -62,3 +62,15 @@ test("agendamento diário aponta para a função de observação, sem credencial
   const j = await one("select schedule,command from cron.job where jobname='arvenne-vistoria-diaria'")
   expect(j).toEqual({ schedule: "0 6 * * *", command: "select public.registrar_vistoria();" })
 })
+
+test("V20: bipar confere o SKU da peça e recusa peça retirada", async () => {
+  const p = await one("insert into pedidos (origem, status, cliente_nome) values ('whatsapp','separacao','C') returning id")
+  const i = await one("insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, status) values ($1,'clube','Anel','an 1',2,10,'encontrado') returning id", [p.id])
+  await db.exec("set local role authenticated")
+  await recusa(() => one("select bipar($1,$2,'OUTRO-SKU')", [p.id, i.id]), /não é o SKU/)
+  expect((await one("select bipar($1,$2,' AN1 ') r", [p.id, i.id])).r).toBe("ok")
+  await db.query("update pedido_itens set status='removido', observacao='cliente desistiu' where id=$1", [i.id])
+  await recusa(() => one("select bipar($1,$2,'AN1')", [p.id, i.id]), /não está separada/)
+  await recusa(() => one("select bipar_ajustar($1,1)", [i.id]), /não está separada/)
+  expect((await one("select bipar_ajustar($1,-1) r", [i.id])).r).toBe(0)
+})
