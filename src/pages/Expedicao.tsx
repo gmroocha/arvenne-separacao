@@ -207,7 +207,7 @@ export default function Expedicao() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <CampoBusca className="flex-1 lg:h-8" valor={busca} aoMudar={setBusca} placeholder="Cliente, número ou telefone" />
+        <CampoBusca className="flex-1 lg:h-8" valor={busca} aoMudar={setBusca} placeholder="Buscar pedido" />
         <Toggle
           variant="outline"
           size="xl"

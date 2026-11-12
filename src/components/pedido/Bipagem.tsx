@@ -174,8 +174,8 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
             spellCheck={false}
             inputMode="text"
             aria-label="Código da peça"
-            placeholder="Leia o código da peça"
-            className="h-16 pl-14 font-mono text-xl uppercase md:text-xl"
+            placeholder="Bipe ou digite o código"
+            className="h-16 pl-14 font-mono text-xl uppercase placeholder:font-sans placeholder:text-base placeholder:normal-case md:text-xl"
             value={valor}
             onChange={(e) => setValor(e.target.value)}
           />

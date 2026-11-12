@@ -33,7 +33,7 @@ export default function Clube() {
             setBusca(v)
             setLimite(PASSO)
           }}
-          placeholder="Buscar por código ou nome"
+          placeholder="Código ou nome"
         />
         <div className="flex items-center gap-2">
           <Switch
