@@ -316,10 +316,13 @@ type Adicoes = {
   }
   Functions: {
     listar_inconsistencias: { Args: Record<PropertyKey, never>; Returns: { pedido_id: string | null; numero: string | null; regra: string | null; detalhe: string | null }[] }
+    reavaliar_etapa: { Args: { p_pedido: string | null }; Returns: undefined | null }
     registrar_vistoria: { Args: Record<PropertyKey, never>; Returns: number | null }
     regras_etapas: { Args: { p: Json | null }; Returns: Json | null }
     substituir_item: { Args: { p_item: string | null; p_itens: Json | null }; Returns: string | null }
+    tg_documento_reaberto: { Args: Record<PropertyKey, never>; Returns: string | null }
     tg_retrato_somada_imutavel: { Args: Record<PropertyKey, never>; Returns: string | null }
+    tg_trabalho_reaberto: { Args: Record<PropertyKey, never>; Returns: string | null }
     troca_saldo_liquido: { Args: { p_troca: string | null }; Returns: number | null }
   }
 }

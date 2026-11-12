@@ -210,3 +210,38 @@ test('V14: inserir diretamente na etapa avançada não contorna os pré-requisit
   await recusa(() => one("insert into pedidos(origem,status) values ('whatsapp','enviado') returning id"),/peças para expedir/)
 })
 
+test.each([
+  ["status='pendente'",'separacao'],
+  ['conferido_em=null','conferencia'],
+  ['etiquetado_em=null','etiquetagem'],
+  ['qtd_bipada=0,bipado_em=null','bipagem'],
+])('V16: reabrir trabalho em %s retorna o pedido para %s', async (campos, destino) => {
+  const p=await pedidoWhats('faturamento')
+  const i=await one("select id from pedido_itens where pedido_id=$1 and sku='A1'",[p.id])
+  await db.exec('set local role authenticated')
+  await db.query(`update pedido_itens set ${campos} where id=$1`,[i.id])
+  assert.equal((await one('select status from pedidos where id=$1',[p.id])).status,destino)
+  const outra=await one("select status,conferido_em,etiquetado_em,qtd_bipada from pedido_itens where pedido_id=$1 and sku='C1'",[p.id])
+  assert.equal(outra.status,'encontrado')
+  assert.ok(outra.conferido_em); assert.ok(outra.etiquetado_em); assert.equal(outra.qtd_bipada,1)
+})
+
+test('V16: restaurar uma removida retorna à separação; pedido enviado recusa reabrir peças', async () => {
+  const p=await pedidoWhats('conferencia')
+  const i=await one("select id from pedido_itens where pedido_id=$1 and sku='A1'",[p.id])
+  await db.exec('set local role authenticated')
+  await db.query("update pedido_itens set status='removido' where id=$1",[i.id])
+  await db.query("update pedido_itens set status='pendente' where id=$1",[i.id])
+  assert.equal((await one('select status from pedidos where id=$1',[p.id])).status,'separacao')
+  const enviado=await pedidoWhats('enviado')
+  await recusa(() => db.query("update pedido_itens set status='pendente' where pedido_id=$1",[enviado.id]),/arquivado|enviado/)
+})
+
+test.each([['nf_emitida_em','faturamento'],['embalado_em','embalagem']])('V16: desfazer %s retorna os documentos para %s', async (campo,destino) => {
+  const p=await pedidoWhats('pronto_envio')
+  await db.exec('set local role authenticated')
+  await db.query(`update pedidos set ${campo}=null where id=$1`,[p.id])
+  const depois=await one('select status,frete_gerado_em,pedido_fornecedor_em from pedidos where id=$1',[p.id])
+  assert.equal(depois.status,destino)
+  assert.ok(depois.frete_gerado_em); assert.ok(depois.pedido_fornecedor_em)
+})

@@ -160,7 +160,7 @@ export const cart = (f, n = 0) => one('select * from v_troca_carrinho where troc
 
 export async function somaFixture({ principal = {}, venda = {} } = {}) {
   const p = await one(`insert into pedidos (origem, status, cliente_nome, desconto_tipo, desconto_valor, forma_pagamento, valor_pago, pago_em, numero)
-    values ($1, $2, 'Nathália', 'valor', 10, 'Cartão', 90, now(), 'ARV-1') returning *`, [principal.origem ?? 'whatsapp', ['conferencia','etiquetagem','bipagem','faturamento','embalagem','pronto_envio','enviado'].includes(principal.status) ? 'novo' : principal.status ?? 'separacao'])
+    values ($1, $2, 'Nathália', 'valor', 10, 'Cartão', 90, now(), 'ARV-1') returning *`, [principal.origem ?? 'whatsapp', principal.status==='perdida' ? 'em_aberto' : ['conferencia','etiquetagem','bipagem','faturamento','embalagem','pronto_envio','enviado','cancelado'].includes(principal.status) ? 'novo' : principal.status ?? 'separacao'])
   await db.query(`insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, ordem, status)
     values ($1, 'clube', 'Anel', 'AN', 2, 50, 1, 'encontrado')`, [p.id])
   if (principal.status && principal.status !== p.status) await prepararEtapa(p.id,principal.status)
