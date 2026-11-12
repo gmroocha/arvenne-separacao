@@ -54,7 +54,7 @@ export default function PecasVenda({ pedido }: Props) {
         <LinhaPeca
           key={i.id}
           tamanho="md"
-          item={{ foto_url: i.foto_url, nome: i.nome, sku: i.sku, variante: i.variante, adicional: i.adicional }}
+          item={{ foto_url: i.foto_url, nome: i.nome, sku: i.sku, variante: i.variante }}
           extra={
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <PrecoInput key={`${i.id}-${i.preco}`} item={i} aoSalvar={(preco) => atualizar(i.id, { preco })} />

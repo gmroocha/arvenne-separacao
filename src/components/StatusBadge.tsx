@@ -7,7 +7,7 @@ import type { Origem } from "@/lib/tipos"
 
 export function StatusBadge({ status }: { status: StatusPedido }) {
   if (ehDesvio(status)) return <SeloStatus status={status} />
-  const variante = status === "enviado" || status === "cancelado" || status === "perdida" ? "outline" : "secondary"
+  const variante = status === "enviado" || status === "cancelado" || status === "perdida" || status === "somada" ? "outline" : "secondary"
   return <Badge variant={variante}>{NOME_ETAPA[status]}</Badge>
 }
 

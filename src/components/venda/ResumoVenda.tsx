@@ -2,7 +2,6 @@ import { useState } from "react"
 import { Copy, Send, Store, User, Wallet, XCircle } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { Button } from "@/components/ui/button"
-import { AdicionaisACobrar } from "@/components/comum/AdicionaisACobrar"
 import { FormaPagamento } from "@/components/comum/FormaPagamento"
 import { LinhaValor } from "@/components/comum/LinhaValor"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -24,7 +23,6 @@ type Props = {
   aoCopiar: () => void
   aoPago: () => void
   aoPerdida: () => void
-  aoRecebido?: (recebidoEm: string | null) => void
   enviando: boolean
   prefixo: string
 }
@@ -42,7 +40,7 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 // PAC e SEDEX moram em lib/selo; reexportados para a Nota e frete.
 export { COR_PAC, COR_SEDEX }
 
-export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, aoCopiar, aoPago, aoPerdida, aoRecebido, enviando, prefixo }: Props) {
+export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, aoCopiar, aoPago, aoPerdida, enviando, prefixo }: Props) {
   const p = (s: string) => `${prefixo}-${s}`
   // A forma muda na hora na tela; o banco grava em seguida (o total com Pix vem dele depois).
   const [formaLocal, setFormaLocal] = useState<string | null | undefined>(undefined)
@@ -64,7 +62,7 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
         <LinhaValor rotulo="Subtotal" valor={reais(pedido.subtotal)} />
         {pedido.desconto > 0 && <LinhaValor rotulo="Desconto" valor={`− ${reais(pedido.desconto)}`} />}
         {pedido.desconto_pix > 0 && <LinhaValor rotulo="Desconto Pix (10%)" valor={`− ${reais(pedido.desconto_pix)}`} />}
-        {pedido.frete_tipo && <LinhaValor rotulo={`Frete ${pedido.frete_tipo}`} valor={reais(pedido.frete_na_conta)} />}
+        {!form.somar_em && pedido.frete_tipo && <LinhaValor rotulo={`Frete ${pedido.frete_tipo}`} valor={reais(pedido.frete_na_conta)} />}
       </div>
 
       <Field>
@@ -106,6 +104,9 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
         <Input id={p("cupom")} value={form.cupom} onChange={(e) => aoMudar({ cupom: e.target.value })} />
       </Field>
 
+      {form.somar_em ? (
+        <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm text-muted-foreground">Sem frete: as peças vão no mesmo pacote do pedido.</p>
+      ) : (
       <Field>
         <FieldLabel>Frete</FieldLabel>
         <ToggleGroup
@@ -150,8 +151,7 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
           </>
         )}
       </Field>
-
-      {aoRecebido && <AdicionaisACobrar pedido={pedido} aoMudar={aoRecebido} />}
+      )}
 
       <div className="border-t pt-3">
         <LinhaValor total rotulo="Total" valor={reais(pedido.total)} />

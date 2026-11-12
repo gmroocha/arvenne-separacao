@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Check, Hash, Minus, Plus, ScanBarcode, TriangleAlert, Volume2, VolumeX } from "lucide-react"
+import { Check, Minus, Plus, ScanBarcode, TriangleAlert, Volume2, VolumeX } from "lucide-react"
 import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import Foto from "@/components/Foto"
@@ -8,12 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { registrarBipagem, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
-import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { etapaCompleta } from "@/lib/etapa"
 import { sons } from "@/lib/sons"
 import type { Item, ResultadoBipagem } from "@/lib/tipos"
-import { useMudarQtdDialogo } from "./QtdDialog"
 import AvisoPendentes from "./AvisoPendentes"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, SecaoAdicionais, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir?: () => void }
 type Aviso = { tipo: ResultadoBipagem; texto: string }
@@ -62,8 +61,6 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
   // As que ainda faltam ficam em cima; as completas descem para "Bipadas", em verde, sem sumir.
   const aBipar = itens.filter((i) => i.qtd_bipada < i.qtd)
   const completas = itens.filter((i) => i.qtd_bipada >= i.qtd)
-  const { normais, adicionais } = separarAdicionais(aBipar)
-  const { pedir: pedirQtd, dialogo: dialogoQtd } = useMudarQtdDialogo(pedido)
   const ultima = itens.find((i) => i.id === ultimaId) ?? null
 
   const tile = (i: Item) => (
@@ -101,7 +98,6 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
                       >
                         <Plus /> 1
                       </Button>
-                      <MenuPeca itens={[{ rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) }]} />
                     </div>
                   </TilePeca>
   )
@@ -233,10 +229,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
             {aBipar.length === 0 ? (
               <Vazio>Tudo bipado. Pode concluir a bipagem.</Vazio>
             ) : (
-<>
-                {normais.length > 0 && <GradePecas>{normais.map(tile)}</GradePecas>}
-                <SecaoAdicionais contagem={adicionais.length}>{adicionais.map(tile)}</SecaoAdicionais>
-              </>
+<GradePecas>{aBipar.map(tile)}</GradePecas>
             )}
           </section>
 
@@ -251,7 +244,6 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
         </>
       )}
 
-      {dialogoQtd}
 
       {aoConcluir && (
         <ConcluirEtapa disabled={!etapaCompleta("bipagem", pedido.pedido_itens)} onClick={aoConcluir}>

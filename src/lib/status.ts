@@ -19,6 +19,7 @@ export const ETAPAS = [
   { id: "enviado", nome: "Enviado" },
   { id: "cancelado", nome: "Cancelado" },
   { id: "perdida", nome: "Perdida" },
+  { id: "somada", nome: "Somada" },
 ] as const
 
 export type StatusPedido = (typeof ETAPAS)[number]["id"]
@@ -44,12 +45,13 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
   enviado: "arquivo",
   cancelado: "arquivo",
   perdida: "arquivo",
+  somada: "arquivo",
 }
 
 // Status de cada fase (para filtrar `status in (...)` no banco, que usa o índice; igual à coluna `fase` de v_pedidos).
 export const STATUS_DA_FASE: Record<Fase, StatusPedido[]> = {
   venda: ["em_aberto", "aguardando_pagamento"],
-  arquivo: ["enviado", "cancelado", "perdida"],
+  arquivo: ["enviado", "cancelado", "perdida", "somada"],
   expedicao: [
     "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
     "embalagem", "pronto_envio",

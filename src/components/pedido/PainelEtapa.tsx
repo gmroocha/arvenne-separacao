@@ -20,12 +20,11 @@ type Props = {
   patch: (campos: CamposPedido) => void
   aoConcluir: () => void
   aoTrocar: (item: Item) => void
-  aoAdicionar: () => void
 }
 
 // O painel muda conforme a etapa vista. Vendo outra etapa que não a atual, o botão de concluir some
 // (quem decide mudar de etapa é a atual), mas as ações das peças continuam valendo.
-export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoConcluir, aoTrocar, aoAdicionar }: Props) {
+export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoConcluir, aoTrocar }: Props) {
   const atualIdx = passoDe(pedido.status)
   const vistaIdx = vista ? passoDe(vista) : atualIdx
   const somenteVer = vista !== null && vistaIdx !== atualIdx
@@ -35,7 +34,7 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
   const painel = () => {
     switch (etapa) {
       case "separacao":
-        return <Separacao pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoAdicionar={aoAdicionar} aoConcluir={concluir} />
+        return <Separacao pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoConcluir={concluir} />
       case "conferencia":
         return <Conferencia pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoConcluir={concluir} />
       case "etiquetagem":

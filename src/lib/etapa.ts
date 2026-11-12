@@ -4,7 +4,7 @@ import type { Item } from "@/lib/tipos"
 // Peças que contam numa etapa: as que ainda estão no pedido.
 export const vivas = (itens: Item[]) => itens.filter((i) => i.status !== "removido")
 
-// Divide a lista em peças do pedido e peças adicionais (entraram depois do pagamento).
+// Divide a lista em peças do pedido e peças adicionais (vieram de uma venda somada). Só a Separação usa.
 export function separarAdicionais(itens: Item[]): { normais: Item[]; adicionais: Item[] } {
   return { normais: itens.filter((i) => !i.adicional), adicionais: itens.filter((i) => i.adicional) }
 }

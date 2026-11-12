@@ -42,6 +42,12 @@ export default function Romaneio() {
             {data.cliente && !data.cliente.includes("@") && <p className="text-base text-muted-foreground">Olá, {data.cliente}</p>}
           </div>
 
+          {data.somada_a && (
+            <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+              Estas peças foram somadas ao pedido {data.somada_a.replace(/^#/, "")} e vão no mesmo pacote.
+            </p>
+          )}
+
           <ul className="flex flex-col gap-3">
             {data.itens.map((i, n) => (
               <li key={n}>
@@ -59,6 +65,24 @@ export default function Romaneio() {
             ))}
           </ul>
 
+          {(data.adicionais?.length ?? 0) > 0 && (
+            <>
+              <Separator />
+              <h2 className="text-sm font-semibold">Peças adicionais</h2>
+              <ul className="flex flex-col gap-3">
+                {data.adicionais!.map((i, n) => (
+                  <li key={n}>
+                    <LinhaPeca
+                      tamanho="lg"
+                      item={{ foto_url: i.foto_url, nome: i.nome, sku: i.sku?.trim() || i.nome, variante: i.variante }}
+                      extra={<div className="pt-1 text-sm tabular-nums">Qtd {i.qtd}</div>}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
           <Separator />
           <div className="flex flex-col gap-1.5">
             <LinhaValor rotulo="Subtotal" valor={reais(data.subtotal)} />
@@ -71,7 +95,14 @@ export default function Romaneio() {
               />
             )}
             <Separator className="my-1" />
-            <LinhaValor total rotulo="Total" valor={reais(data.total)} />
+            <LinhaValor total={!data.valor_somado} rotulo={data.valor_somado ? "Total do pedido" : "Total"} valor={reais(data.total)} />
+            {(data.valor_somado ?? 0) > 0 && (
+              <>
+                <LinhaValor rotulo="Peças adicionais" valor={reais(data.valor_somado)} />
+                <Separator className="my-1" />
+                <LinhaValor total rotulo="Total geral" valor={reais(data.total_geral)} />
+              </>
+            )}
           </div>
 
           <p className="text-center text-sm text-muted-foreground">Dúvidas? Responda no WhatsApp.</p>

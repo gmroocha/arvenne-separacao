@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Hash, MoreHorizontal, PackageX, Printer, Tag, Trash2, TriangleAlert } from "lucide-react"
+import { ArrowLeftRight, MoreHorizontal, PackageX, Printer, Tag, Trash2, TriangleAlert } from "lucide-react"
 import MenuAcoes from "@/components/MenuAcoes"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
 import { etiquetasDe, skuCabe } from "@/lib/etiquetas"
@@ -8,11 +8,10 @@ import { TituloSecao } from "@/components/comum/TituloSecao"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
-import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { etapaCompleta } from "@/lib/etapa"
 import AvisoPendentes from "./AvisoPendentes"
 import Problemas from "./Problemas"
-import { useMudarQtdDialogo } from "./QtdDialog"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, SecaoAdicionais, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void; aoConcluir?: () => void }
 
@@ -28,8 +27,6 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
     const { etiquetas, itemIds } = etiquetasDe(itens)
     return [{ numero: pedido.numero, cliente: pedido.cliente_nome, etiquetas, itemIds }]
   }
-  const { normais, adicionais } = separarAdicionais(aEtiquetar)
-  const { pedir: pedirQtd, dialogo: dialogoQtd } = useMudarQtdDialogo(pedido)
   const tile = (i: Item) => (
               <TilePeca key={i.id} item={i}>
                 <div className="flex w-full items-center gap-1.5">
@@ -45,7 +42,6 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
                       { rotulo: "Imprimir esta etiqueta", icone: Printer, desabilitado: !i.sku || imprimindo, aoClicar: () => imprimir(grupoDe([i])) },
                       { rotulo: "Falta", icone: PackageX, aoClicar: () => acao(i, { status: "falta" }) },
                       { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
-                      { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
                       { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => acao(i, { status: "removido", observacao: "cliente desistiu" }) },
                     ]}
                   />
@@ -100,10 +96,7 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
         {aEtiquetar.length === 0 ? (
           <Vazio>Nenhuma peça a etiquetar.</Vazio>
         ) : (
-          <>
-            {normais.length > 0 && <GradePecas>{normais.map(tile)}</GradePecas>}
-            <SecaoAdicionais contagem={adicionais.length}>{adicionais.map(tile)}</SecaoAdicionais>
-          </>
+          <GradePecas>{aEtiquetar.map(tile)}</GradePecas>
         )}
       </section>
 
@@ -116,7 +109,6 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
       />
 
       {dialogo}
-      {dialogoQtd}
 
       {aoConcluir && (
         <ConcluirEtapa disabled={!etapaCompleta("etiquetagem", pedido.pedido_itens)} onClick={aoConcluir}>

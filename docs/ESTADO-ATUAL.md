@@ -12,7 +12,32 @@
 | Repositório | `gmroocha/arvenne-separacao`, branch `main`, tudo enviado |
 | Cloudflare Pages | **ainda não publicado**; o app roda só com `npm run dev` |
 
-## Peças adicionais, mudar quantidade, link de carrinho e ajustes da troca (11/11/2026, commitado, ainda NÃO no Supabase)
+## Venda somada a um pedido (12/11/2026, migration APLICADA no Supabase)
+
+- **Fluxo:** a cliente quer mais peças num pedido que ainda não saiu. Cria-se uma **venda** e toca em
+  "Somar a um pedido" (busca por número ou cliente entre os pedidos da expedição). A venda copia cliente e
+  endereço do pedido, fica sem frete (mesmo pacote) e mostra a faixa "Vai somar ao pedido X" com "Desfazer".
+  Ao "Marcar como pago", o app chama a função `somar_venda`: a venda vira `somada` (Arquivo; abrir leva ao
+  pedido principal), as peças vivas entram no principal como **adicionais** (com `preco_pago` já com o
+  desconto da venda) e, se o principal já passou da Separação, volta para ela. O dinheiro do principal não
+  muda; `v_pedidos` ganhou `valor_somado`, `valor_pago_somado`, `total_geral`, `partes`, `qtd_adicionais`.
+- **Separação:** depois de "A encontrar" aparece um divisor "Peças adicionais (N)" com um botão (i) que
+  mostra cada venda somada (número, quando foi paga, forma, valor, peças). Valores só ali. Conferência,
+  Etiquetagem e Bipagem listam tudo junto.
+- **Detalhe e Nota e frete:** pagamento em duas partes (pedido e venda) e "Total geral"; a nota sai em
+  "Parte 1 – pedido", "Parte 2 – venda X" e "Total da nota" (tudo vem da view). A página pública da cliente
+  lista as adicionais à parte e a venda somada diz "somada ao pedido X".
+- **Saiu:** botão "Adicionar peça" na Separação (o diálogo continua só para "Trocar"), "Mudar quantidade"
+  (`mudar_qtd`, `QtdDialog`), "a cobrar/Recebido" das adicionais (`AdicionaisACobrar`,
+  `adicionais_recebido_em`) e a regra de `adicionar_itens` marcar adicional. A migration antiga
+  `pecas_adicionais` nunca foi aplicada e foi reescrita como `20261115110000_venda_somada.sql`.
+- **Banco:** colunas `pedido_itens.adicional/venda_origem_id`, `pedidos.somar_em/somada_em/somada_valor`,
+  status `somada`, evento `venda_somada`, `importar_pedido_shopify` e `romaneio_publico` ajustados.
+  `somar_venda` é security definer (só `authenticated` executa) para gravar o evento. Testes: 74.
+- **Função Edge `carrinho-ler`** foi publicada em 11/11/2026 (leitura do link de carrinho).
+- **Falta o teste real** (Gustavo logado): criar venda, somar a um pedido e marcar como paga.
+
+## Link de carrinho e ajustes da troca (11/11/2026; a parte de peças adicionais/mudar quantidade foi substituída pela venda somada acima)
 
 - **Migrations pendentes de push:** `20261115090000_pecas_adicionais.sql` e `20261115100000_troca_pecas_ativas.sql` (conferidas com
   `npx supabase db push --remote --dry-run`; só entra com o "sim" do Gustavo). Cria `pedido_itens.adicional`,

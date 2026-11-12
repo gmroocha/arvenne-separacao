@@ -113,7 +113,6 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           acao={acao}
           patch={patch.mutate}
           aoConcluir={() => setConcluida(pedido.status)}
-          aoAdicionar={() => setAdicionando(true)}
           aoTrocar={(item) => {
             setTrocando(item)
             setAdicionando(true)
@@ -175,6 +174,8 @@ export default function Pedido() {
       </Alert>
     )
   if (data.fase === "venda") return <Navigate to={`/vendas/${data.id}`} replace />
+  // Venda somada: o que importa agora está no pedido principal.
+  if (data.status === "somada" && data.somar_em) return <Navigate to={`/pedidos/${data.somar_em}`} replace />
   return (
     <>
       {error && <p className="mb-2 text-xs text-muted-foreground">Sem conexão com o servidor: mostrando o último dado carregado.</p>}

@@ -3,7 +3,6 @@ import { toast } from "sonner"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert, Truck } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
-import { AdicionaisACobrar } from "@/components/comum/AdicionaisACobrar"
 import { LinhaPeca } from "@/components/comum/Peca"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -268,16 +267,32 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
   const quemPaga = pedido.frete_pago_por === "arvenne" ? "Arvenne paga o frete" : pedido.frete_pago_por === "cliente" ? "Cliente pagou o frete" : null
   const agora = () => new Date().toISOString()
 
+  // Vendas somadas ao pedido: a nota sai em partes (pedido + cada venda) e o total da nota é o geral (da view).
+  const partes = pedido.partes ?? []
+  const valoresNota: Dado[] = partes.length
+    ? [
+        { rotulo: "Parte 1 – pedido: valor das peças", valor: reais(pedido.subtotal) },
+        ...(pedido.desconto > 0 ? [{ rotulo: pedido.cupom ? `Parte 1 – pedido: desconto (${pedido.cupom})` : "Parte 1 – pedido: desconto", valor: reais(pedido.desconto) }] : []),
+        { rotulo: "Parte 1 – pedido: frete cobrado", valor: pedido.frete_cobrado != null ? `${reais(pedido.frete_cobrado)}${quemPaga ? ` (${quemPaga.toLowerCase()})` : ""}` : null },
+        { rotulo: "Parte 1 – pedido: total", valor: reais(pedido.total) },
+        ...partes.map((p, n) => ({ rotulo: `Parte ${n + 2} – venda ${p.numero}: ${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`, valor: reais(p.somada_valor) })),
+        { rotulo: "Total da nota", valor: reais(pedido.total_geral) },
+      ]
+    : [
+        { rotulo: "Valor das peças", valor: reais(pedido.subtotal) },
+        ...(pedido.desconto > 0 ? [{ rotulo: pedido.cupom ? `Desconto (${pedido.cupom})` : "Desconto", valor: reais(pedido.desconto) }] : []),
+        { rotulo: "Frete cobrado", valor: pedido.frete_cobrado != null ? `${reais(pedido.frete_cobrado)}${quemPaga ? ` (${quemPaga.toLowerCase()})` : ""}` : null },
+        { rotulo: "Total", valor: reais(pedido.total) },
+      ]
+  const numeroDaVenda = (id?: string | null) => partes.find((p) => p.id === id)?.numero
+
   const dadosNota: Dado[] = [
     { rotulo: "Nome ou razão social", valor: pedido.cliente_razao_social ?? pedido.cliente_nome },
     { rotulo: "CPF/CNPJ", valor: cpf },
     ...(pedido.cliente_ie ? [{ rotulo: "Inscrição estadual", valor: pedido.cliente_ie }] : []),
     { rotulo: "Endereço", valor: endereco || null },
     { rotulo: "CEP", valor: cep },
-    { rotulo: "Valor das peças", valor: reais(pedido.subtotal) },
-    ...(pedido.desconto > 0 ? [{ rotulo: pedido.cupom ? `Desconto (${pedido.cupom})` : "Desconto", valor: reais(pedido.desconto) }] : []),
-    { rotulo: "Frete cobrado", valor: pedido.frete_cobrado != null ? `${reais(pedido.frete_cobrado)}${quemPaga ? ` (${quemPaga.toLowerCase()})` : ""}` : null },
-    { rotulo: "Total", valor: reais(pedido.total) },
+    ...valoresNota,
   ]
 
   const dadosFrete: Dado[] = [
@@ -320,15 +335,18 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
         <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
           {itens.map((i) => (
             <LinhaPeca key={i.id} item={i} tamanho="sm">
-              <span className="text-sm tabular-nums">{reais(i.preco)}</span>
+              <span className="flex flex-col items-end text-sm tabular-nums">
+                {reais(i.preco)}
+                {i.adicional && numeroDaVenda(i.venda_origem_id) && (
+                  <span className="text-xs text-muted-foreground">Venda {numeroDaVenda(i.venda_origem_id)}</span>
+                )}
+              </span>
             </LinhaPeca>
           ))}
         </CollapsibleContent>
       </Collapsible>
 
       <Faltando pedido={pedido} patch={patch} />
-
-      <AdicionaisACobrar pedido={pedido} aoMudar={(v) => patch({ adicionais_recebido_em: v })} />
 
       <Passo numero={1} icone={<FileText />} titulo="Nota fiscal" feito={nf} feitoEm={pedido.nf_emitida_em} aoDesfazer={() => patch({ nf_emitida_em: null })} textoDesfazer="Desfazer nota emitida">
         <div className="flex flex-col">

@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { Check, ChevronDown, MoreHorizontal, Printer, Undo2 } from "lucide-react"
 import { MarcaCheck } from "@/components/comum/Bolha"
-import { TituloSecao } from "@/components/comum/TituloSecao"
 import { LinhaPeca } from "@/components/comum/Peca"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
@@ -23,19 +22,14 @@ type TileProps = {
   children?: ReactNode // ações, em uma linha: botão principal (flex-1) + MenuPeca
 }
 
-// Selos no canto da foto: "Clube" e "Adicional" (peça que entrou depois do pagamento).
+// Selo no canto da foto: "Clube".
 function SelosPeca({ item }: { item: Item }) {
-  if (item.origem !== "clube" && !item.adicional) return null
+  if (item.origem !== "clube") return null
   return (
     <div className="absolute top-1.5 left-1.5 flex flex-col items-start gap-1">
       {item.origem === "clube" && (
         <Badge variant="outline" className="bg-background">
           Clube
-        </Badge>
-      )}
-      {item.adicional && (
-        <Badge variant="outline" className="bg-background">
-          Adicional
         </Badge>
       )}
     </div>
@@ -123,20 +117,6 @@ export function InstrucaoTile({ children }: { children: ReactNode }) {
 
 export function GradePecas({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
-}
-
-// Peças adicionais (entraram depois do pagamento) em seção própria, depois das peças do pedido.
-// Some quando não há nenhuma. Quem usa passa os blocos já montados (children).
-export function SecaoAdicionais({ contagem, children }: { contagem: number; children: ReactNode }) {
-  if (contagem === 0) return null
-  return (
-    <div className="flex flex-col gap-2 pt-1" role="group" aria-label="Peças adicionais">
-      <TituloSecao as="h3" contagem={contagem}>
-        Peças adicionais
-      </TituloSecao>
-      <GradePecas>{children}</GradePecas>
-    </div>
-  )
 }
 
 // Menu "…" do bloco: quadrado sem borda, da mesma altura do botão principal (que é o destaque).

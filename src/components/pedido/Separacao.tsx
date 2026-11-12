@@ -1,36 +1,36 @@
 import { useState } from "react"
-import { ArrowLeftRight, Check, Hash, PackageX, Plus, Trash2 } from "lucide-react"
-import { useMudarQtdDialogo } from "./QtdDialog"
+import { ArrowLeftRight, Check, Info, PackageX, Trash2 } from "lucide-react"
 import { Quantidade } from "@/components/comum/Quantidade"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import RespDialog from "@/components/RespDialog"
+import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useMarcarFalta, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { quando, reais } from "@/lib/formato"
 import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
 import LinhaPeca from "./LinhaPeca"
 import Problemas from "./Problemas"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, SecaoAdicionais, TileModelo, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TileModelo, TilePeca, Vazio } from "./TilePeca"
 
 type Props = {
   pedido: PedidoDetalhe
   acao: AcaoItem
   aoTrocar: (item: Item) => void
-  aoAdicionar: () => void
   aoConcluir?: () => void
 }
 
-export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcluir }: Props) {
+export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props) {
   const itens = pedido.pedido_itens
   const pendentes = itens.filter((i) => i.status === "pendente")
   const achadas = itens.filter((i) => i.status === "encontrado")
   const removidas = itens.filter((i) => i.status === "removido")
   const vivas = itens.length - removidas.length
   // Tamanhos do mesmo modelo (mesmo produto e mesma pedra/cor) viram um bloco só; sem tamanho, um bloco por peça.
-  // As peças adicionais ficam numa seção própria: o agrupamento vale só dentro de cada metade.
+  // As peças adicionais (vieram de uma venda somada) ficam depois de um divisor: o agrupamento vale só dentro de cada metade.
   const agrupar = (pendentes: Item[]) => {
     const grupos = new Map<string, Item[]>()
     for (const i of pendentes) {
@@ -75,7 +75,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
     else marcarFalta.mutate({ item: i, qtd: n })
   }
 
-  const { pedir: pedirQtd, dialogo: dialogoQtd } = useMudarQtdDialogo(pedido)
+  const [verPartes, setVerPartes] = useState(false)
   const bloco = (g: Item[]) =>
               g.length === 1 ? (
                 <TilePeca key={g[0].id} item={g[0]}>
@@ -86,7 +86,6 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     itens={[
                       { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(g[0]) },
                       { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(g[0]) },
-                      { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(g[0]) },
                       { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(g[0], "removido", "cliente desistiu") },
                     ]}
                   />
@@ -105,7 +104,6 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                       itens: [
                         { rotulo: "Em falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
                         { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
-                        { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
                         { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
                       ],
                     }))}
@@ -128,12 +126,26 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         ) : (
           <>
             {blocos.length > 0 && <GradePecas>{blocos.map(bloco)}</GradePecas>}
-            <SecaoAdicionais contagem={adicionais.length}>{blocosAdicionais.map(bloco)}</SecaoAdicionais>
+            {adicionais.length > 0 && (
+              <>
+                <Separator className="my-1" />
+                {/* Os valores da venda somada só aparecem atrás do (i): a separação não mostra dinheiro. */}
+                <TituloSecao
+                  as="h3"
+                  contagem={adicionais.length}
+                  acao={
+                    <Button variant="ghost" size="icon-toque" aria-label="Sobre as peças adicionais" onClick={() => setVerPartes(true)}>
+                      <Info />
+                    </Button>
+                  }
+                >
+                  Peças adicionais
+                </TituloSecao>
+                <GradePecas>{blocosAdicionais.map(bloco)}</GradePecas>
+              </>
+            )}
           </>
         )}
-        <Button variant="outline" size="toque" className="w-fit" onClick={aoAdicionar}>
-          <Plus /> Adicionar peça
-        </Button>
       </section>
 
       <FaixaFeitas titulo="Encontradas" itens={achadas} aoDesfazer={(i) => marcar(i, "pendente")} aoDesfazerTudo={() => achadas.forEach((i) => marcar(i, "pendente"))} />
@@ -157,7 +169,20 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         </Collapsible>
       )}
 
-      {dialogoQtd}
+      <RespDialog aberto={verPartes} aoMudar={setVerPartes} titulo="Peças adicionais" descricao="Vendas somadas a este pedido">
+        <ul className="flex flex-col gap-3 pt-2">
+          {(pedido.partes ?? []).map((p) => (
+            <li key={p.id} className="flex flex-col gap-0.5 rounded-lg bg-muted/50 px-3 py-2 text-sm">
+              <span className="font-semibold">Venda {p.numero}</span>
+              <span className="text-muted-foreground tabular-nums">
+                {[p.pago_em ? `paga ${quando(p.pago_em)}` : null, p.forma_pagamento, reais(p.valor_pago), `${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </RespDialog>
 
       <RespDialog aberto={!!faltaItem} aoMudar={(a) => !a && setFaltaItem(null)} titulo="Quantas faltam?" descricao={faltaItem ? `${faltaItem.sku ?? faltaItem.nome} · o pedido tem ${faltaItem.qtd}` : undefined}>
         {faltaItem && (

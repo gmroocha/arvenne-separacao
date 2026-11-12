@@ -7,6 +7,17 @@ export type DescontoTipo = "valor" | "percentual"
 export type FreteTipo = "PAC" | "SEDEX" | "retirada" | "outro"
 export type FretePagoPor = "cliente" | "arvenne"
 
+// Uma venda somada a um pedido (v_pedidos.partes).
+export type ParteSomada = {
+  id: string
+  numero: string
+  pago_em: string | null
+  forma_pagamento: string | null
+  valor_pago: number | null
+  somada_valor: number | null
+  qtd_pecas: number
+}
+
 // Uma linha de v_pedidos: colunas de pedidos + o que o banco calcula (a tela só formata).
 export type Pedido = {
   id: string
@@ -79,12 +90,15 @@ export type Pedido = {
   // Há troca concluída com diferença ainda não acertada (cobrar ou registrar crédito).
   acerto_pendente: boolean
   troca_coberto?: number
-  // Peças adicionais (entraram depois do pagamento): quantidade, valor e quando a cobrança foi recebida.
-  // Ausentes em bancos sem a migration de peças adicionais.
+  // Venda somada: peças adicionais no pedido principal (quantidade, valor das vendas somadas, total geral e
+  // uma linha por venda) e, na própria venda, o pedido ao qual ela vai somar / foi somada.
   qtd_adicionais?: number
-  valor_adicionais?: number
-  adicionais_recebido_em?: string | null
-  adicionais_a_cobrar?: number
+  valor_somado?: number
+  valor_pago_somado?: number
+  total_geral?: number
+  partes?: ParteSomada[]
+  somar_em?: string | null
+  somada_em?: string | null
   // Reembolso pendente de peças tiradas ("cliente desistiu") depois do pagamento. Ausente em bancos sem a coluna.
   a_devolver?: number | null
   pendente_rastreio: boolean
@@ -120,7 +134,9 @@ export type Item = {
   devolvido_em?: string | null
   shopify_line_id?: number | string | null
   // Entrou depois do pagamento do pedido: separada à parte e cobrada à parte.
+  // Peça que veio de uma venda somada (venda_origem_id = a venda).
   adicional?: boolean
+  venda_origem_id?: string | null
 }
 
 export type ResultadoBipagem = "ok" | "fora_do_pedido" | "excedente"
@@ -226,6 +242,10 @@ export type Romaneio = {
   frete_tipo: FreteTipo | null
   frete_cobrado: number
   total: number
+  adicionais?: { nome: string; variante: string | null; sku: string | null; foto_url: string | null; qtd: number; preco: number | null }[]
+  valor_somado?: number
+  total_geral?: number
+  somada_a?: string | null
 }
 
 export type Feedback = {

@@ -34,6 +34,10 @@ function descreverEvento(e: Evento) {
   return `Peça ${e.texto ?? ""} → ${NOME_ITEM[e.para as StatusItem] ?? e.para}`
 }
 
+// "Pix · R$ 90,00 · 10/11 14:32": uma parte do pagamento (o pedido ou uma venda somada).
+const textoPagamento = (forma: string | null, valor: number | null, pagoEm: string | null) =>
+  [forma, valor != null ? reais(valor) : null, pagoEm ? quando(pagoEm) : null].filter(Boolean).join(" · ") || "—"
+
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-3 text-sm">
@@ -74,6 +78,7 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
   const [obs, setObs] = useState(pedido.observacoes ?? "")
   const wa = linkWhatsApp(pedido.cliente_telefone, "")
   const acerto = useAcerto(pedido.id).data
+  const partes = pedido.partes ?? []
   const temEndereco = Boolean(pedido.entrega_logradouro || pedido.entrega_cep)
 
   return (
@@ -148,12 +153,33 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
               {acerto && acerto.pecas.length > 0 && acerto.acerto_status !== "sem_diferenca" && (
                 <Linha rotulo="Ajuste de troca">{acerto.saldo > 0 ? `+ ${reais(acerto.saldo)}` : acerto.saldo < 0 ? `− ${reais(-acerto.saldo)}` : reais(0)}</Linha>
               )}
-              <Linha rotulo="Total">
+              <Linha rotulo={partes.length ? "Total do pedido" : "Total"}>
                 <strong>{reais(pedido.total)}</strong>
               </Linha>
+              {partes.map((p) => (
+                <Linha key={p.id} rotulo={`Venda ${p.numero} · ${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`}>
+                  {reais(p.somada_valor)}
+                </Linha>
+              ))}
+              {partes.length > 0 && (
+                <Linha rotulo="Total geral">
+                  <strong>{reais(pedido.total_geral)}</strong>
+                </Linha>
+              )}
             </div>
 
-            {(pedido.forma_pagamento || pedido.pago_em) && (
+            {partes.length > 0 && (
+              <div className="flex flex-col gap-1.5 border-t pt-3">
+                <Linha rotulo="Pedido">{textoPagamento(pedido.forma_pagamento, pedido.valor_pago, pedido.pago_em)}</Linha>
+                {partes.map((p) => (
+                  <Linha key={p.id} rotulo={`Venda ${p.numero}`}>
+                    {textoPagamento(p.forma_pagamento, p.valor_pago, p.pago_em)}
+                  </Linha>
+                ))}
+              </div>
+            )}
+
+            {partes.length === 0 && (pedido.forma_pagamento || pedido.pago_em) && (
               <div className="flex flex-col gap-1.5 border-t pt-3">
                 <Linha rotulo="Pagamento">{pedido.forma_pagamento ?? "—"}</Linha>
                 {pedido.valor_pago != null && <Linha rotulo="Valor pago">{reais(pedido.valor_pago)}</Linha>}

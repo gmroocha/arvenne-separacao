@@ -26,6 +26,8 @@ export type FormVenda = {
   frete_pago_por: FretePagoPor
   frete_cobrado: string
   observacoes: string
+  // Pedido principal ao qual esta venda vai somar as peças (null = venda comum).
+  somar_em: string | null
 }
 
 export function formDe(p: Pedido): FormVenda {
@@ -51,6 +53,7 @@ export function formDe(p: Pedido): FormVenda {
     frete_pago_por: p.frete_pago_por ?? "cliente",
     frete_cobrado: numeroParaTexto(p.frete_cobrado),
     observacoes: p.observacoes ?? "",
+    somar_em: p.somar_em ?? null,
   }
 }
 
@@ -92,6 +95,7 @@ export function camposDe(f: FormVenda): CamposPedido {
     frete_tipo: f.frete_tipo,
     frete_pago_por: f.frete_tipo ? f.frete_pago_por : null,
     observacoes: t(f.observacoes),
+    somar_em: f.somar_em,
   }
   if (desconto !== undefined) {
     campos.desconto_tipo = desconto == null ? null : f.desconto_tipo

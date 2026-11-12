@@ -106,6 +106,36 @@ export function useContagens() {
   })
 }
 
+// Pedidos da expedição (ainda não enviados) para "Somar a um pedido": por número ou nome da cliente.
+export function useBuscaPedidosParaSomar(busca: string, ativo: boolean) {
+  return useQuery({
+    queryKey: ["pedidos", "somar", busca],
+    enabled: ativo,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      let q = supabase.from("v_pedidos").select("*").in("status", STATUS_DA_FASE.expedicao).order("pedido_em", { ascending: false }).limit(20)
+      const t = busca.trim().replace(/[%,()]/g, " ")
+      if (t) q = q.or(`numero.ilike.%${t}%,cliente_nome.ilike.%${t}%`)
+      const { data, error } = await q
+      if (error) throw error
+      return data as Pedido[]
+    },
+  })
+}
+
+// Número e cliente de um pedido (faixa "Vai somar ao pedido ...").
+export function usePedidoResumo(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ["pedido", "resumo", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_pedidos").select("id, numero, cliente_nome, status").eq("id", id!).single()
+      if (error) throw error
+      return data as Pick<Pedido, "id" | "numero" | "cliente_nome" | "status">
+    },
+  })
+}
+
 export function usePedido(id: string | undefined) {
   return useQuery({
     queryKey: ["pedido", id],
@@ -425,12 +455,19 @@ export type CamposPedido = Partial<
     | "entrega_bairro" | "entrega_cidade" | "entrega_uf"
     | "desconto_tipo" | "desconto_valor" | "cupom"
     | "frete_tipo" | "frete_pago_por" | "frete_cobrado" | "frete_custo"
-    | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra" | "adicionais_recebido_em"
+    | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra" | "somar_em"
     | "status" | "rastreio" | "observacoes"
     | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_servico" | "rastreio_url"
     | "pedido_fornecedor_numero" | "pedido_fornecedor_em" | "embalado_em" | "postado_em" | "rastreio_enviado_em"
   >
 >
+
+// Marca a venda como paga e soma as peças ao pedido principal (função somar_venda): a venda vira
+// "somada" e as peças entram no pedido como adicionais. Devolve a promessa para a tela navegar depois.
+export async function somarVenda(p: { venda: string; forma: string; valor: number; pagoEm: string }) {
+  const { error } = await supabase.rpc("somar_venda", { p_venda: p.venda, p_forma: p.forma, p_valor: p.valor, p_pago_em: p.pagoEm })
+  if (error) throw new Error(msgBanco(error))
+}
 
 export async function atualizarPedido(pedidoId: string, campos: CamposPedido) {
   const { error } = await supabase.from("pedidos").update(campos).eq("id", pedidoId)
@@ -570,27 +607,6 @@ export function useMarcarFalta(pedidoId: string) {
         toast.info("Avise a cliente sobre a peça em falta")
         mudarStatus.mutate({ pedidoId, para: "avisar_cliente", silencioso: true })
       }
-    },
-    onError: (e) => toast.error(msgBanco(e)),
-    onSettled: () => {
-      if (qc.isMutating({ mutationKey: ["item", pedidoId] }) <= 1) {
-        ;[chavePedido(pedidoId), ["pedidos"], ["troca"], ["repetidas"], ["acerto"], ["etiquetar"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
-      }
-    },
-  })
-}
-
-// Mudar a quantidade de uma peça (função mudar_qtd). Aumentar depois de pago manda a diferença para uma
-// linha de peça adicional; diminuir cria uma linha "removido" (fica no histórico). Mesmo padrão de
-// useMarcarFalta: entra na fila do pedido e recarrega só no fim.
-export function useMudarQtd(pedidoId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationKey: ["item", pedidoId],
-    scope: { id: `pedido-${pedidoId}` },
-    mutationFn: async ({ item, qtd }: { item: Item; qtd: number }) => {
-      const { error } = await supabase.rpc("mudar_qtd", { p_item: item.id, p_qtd: qtd })
-      if (error) throw error
     },
     onError: (e) => toast.error(msgBanco(e)),
     onSettled: () => {

@@ -1,15 +1,14 @@
-import { ArrowLeftRight, Check, Hash, PackageX, Trash2 } from "lucide-react"
+import { ArrowLeftRight, Check, PackageX, Trash2 } from "lucide-react"
 import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
-import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { etapaCompleta } from "@/lib/etapa"
 import type { Item } from "@/lib/tipos"
 import AvisoConferencia from "./AvisoConferencia"
 import AvisoPendentes from "./AvisoPendentes"
 import Problemas from "./Problemas"
-import { useMudarQtdDialogo } from "./QtdDialog"
-import { FaixaFeitas, GradePecas, InstrucaoTile, MenuPeca, ProgressoEtapa, SecaoAdicionais, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, InstrucaoTile, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void; aoConcluir?: () => void }
 
@@ -18,8 +17,6 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
   const achadas = pedido.pedido_itens.filter((i) => i.status === "encontrado")
   const aConferir = achadas.filter((i) => !i.conferido_em)
   const conferidas = achadas.filter((i) => i.conferido_em)
-  const { normais, adicionais } = separarAdicionais(aConferir)
-  const { pedir: pedirQtd, dialogo: dialogoQtd } = useMudarQtdDialogo(pedido)
 
   const tile = (i: Item) => (
     <TilePeca key={i.id} item={i} instrucao={<InstrucaoTile>Separe {i.qtd}</InstrucaoTile>}>
@@ -30,7 +27,6 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
         itens={[
           { rotulo: "Falta", icone: PackageX, aoClicar: () => acao(i, { status: "falta" }) },
           { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
-          { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
           { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => acao(i, { status: "removido", observacao: "cliente desistiu" }) },
         ]}
       />
@@ -54,14 +50,9 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
         {aConferir.length === 0 ? (
           <Vazio>Nenhuma peça a conferir.</Vazio>
         ) : (
-          <>
-            {normais.length > 0 && <GradePecas>{normais.map(tile)}</GradePecas>}
-            <SecaoAdicionais contagem={adicionais.length}>{adicionais.map(tile)}</SecaoAdicionais>
-          </>
+          <GradePecas>{aConferir.map(tile)}</GradePecas>
         )}
       </section>
-
-      {dialogoQtd}
 
       <FaixaFeitas titulo="Conferidas" itens={conferidas} aoDesfazer={(i) => acao(i, { conferido_em: null })} aoDesfazerTudo={() => conferidas.forEach((i) => acao(i, { conferido_em: null }))} />
 

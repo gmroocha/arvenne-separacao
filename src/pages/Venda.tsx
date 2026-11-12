@@ -7,6 +7,7 @@ import ClienteCard from "@/components/venda/ClienteCard"
 import PagoDialog, { type DadosPagamento } from "@/components/venda/PagoDialog"
 import PecasVenda from "@/components/venda/PecasVenda"
 import ResumoVenda from "@/components/venda/ResumoVenda"
+import SomarPedido from "@/components/venda/SomarPedido"
 import { camposDe, dinheiroInvalido, formDe, type FormVenda } from "@/components/venda/form"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -16,7 +17,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { atualizarPedido, salvarCliente, usePedido, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
+import { atualizarPedido, salvarCliente, somarVenda, usePedido, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
 import { linkWhatsApp, reais } from "@/lib/formato"
 import { StatusBadge } from "@/components/StatusBadge"
 
@@ -210,6 +211,16 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
     }
     try {
       const id = await garantirCliente()
+      if (form.somar_em) {
+        // Venda somada: grava o que falta (cliente, endereço, pedido escolhido) e o banco move as peças.
+        await gravar({ cliente_id: id })
+        await somarVenda({ venda: pedido.id, forma: d.forma, valor: d.valor ?? pedido.total, pagoEm: d.pagoEm })
+        await Promise.all([qc.invalidateQueries({ queryKey: ["pedidos"] }), qc.invalidateQueries({ queryKey: ["pedido"] })])
+        const alvo = qc.getQueryData<{ numero: string }>(["pedido", "resumo", form.somar_em])
+        toast.success(`Peças somadas ao pedido ${alvo?.numero.replace(/^#/, "") ?? ""}`.trim())
+        navegar(`/pedidos/${form.somar_em}`, { replace: true })
+        return
+      }
       await gravar({ cliente_id: id, forma_pagamento: d.forma, valor_pago: d.valor, pago_em: d.pagoEm, status: "novo" })
       await qc.invalidateQueries({ queryKey: ["pedidos"] })
       toast.success("Pedido entrou na expedição")
@@ -241,7 +252,6 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         void enviar()
       }}
       aoCopiar={copiar}
-      aoRecebido={(v) => void gravar({ adicionais_recebido_em: v }).catch(() => {})}
       aoPago={() => void pedirPagamento()}
       aoPerdida={() => {
         setResumoAberto(false)
@@ -272,7 +282,8 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           <PecasVenda pedido={pedido} />
-          <ClienteCard form={form} aoMudar={mudar} aoSalvarCliente={aoSalvarCliente} />
+          <SomarPedido form={form} aoMudar={mudar} />
+          {!form.somar_em && <ClienteCard form={form} aoMudar={mudar} aoSalvarCliente={aoSalvarCliente} />}
           <Field>
             <FieldLabel htmlFor="v-obs">Observações</FieldLabel>
             <Textarea id="v-obs" value={form.observacoes} onChange={(e) => mudar({ observacoes: e.target.value })} />
