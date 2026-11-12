@@ -42,6 +42,10 @@ query Pedidos($cursor: String, $q: String!) {
       totalPriceSet { shopMoney { amount } }
       subtotalPriceSet { shopMoney { amount } }
       currentTotalPriceSet { shopMoney { amount } }
+      netPaymentSet { shopMoney { amount } }
+      totalReceivedSet { shopMoney { amount } }
+      totalRefundedSet { shopMoney { amount } }
+      totalOutstandingSet { shopMoney { amount } }
       currentSubtotalPriceSet { shopMoney { amount } }
       totalDiscountsSet { shopMoney { amount } }
       totalShippingPriceSet { shopMoney { amount } }
@@ -140,6 +144,10 @@ type Pedido = {
   totalPriceSet: Dinheiro;
   subtotalPriceSet: Dinheiro;
   currentTotalPriceSet: Dinheiro;
+  netPaymentSet: Dinheiro;
+  totalReceivedSet: Dinheiro;
+  totalRefundedSet: Dinheiro;
+  totalOutstandingSet: Dinheiro;
   currentSubtotalPriceSet: Dinheiro;
   totalDiscountsSet: Dinheiro;
   totalShippingPriceSet: Dinheiro;
@@ -292,6 +300,8 @@ Deno.serve(async (req) => {
         const desconto = linhas.reduce((t, i) =>
           t + i.qtd * (Number(i.originalUnitPriceSet.shopMoney.amount) - Number(i.discountedUnitPriceAfterAllDiscountsSet.shopMoney.amount)), 0);
         const valorAtual = o.currentTotalPriceSet?.shopMoney.amount ?? o.totalPriceSet.shopMoney.amount;
+        const recebidoLiquido = o.netPaymentSet?.shopMoney.amount;
+        if (recebidoLiquido == null) throw new Error("A Shopify não informou o pagamento líquido deste pedido");
 
         const { data: criado, error } = await db.rpc("importar_pedido_shopify", {
           p: {
@@ -311,7 +321,9 @@ Deno.serve(async (req) => {
             ...enderecoBR(sa),
             // Valor atual (depois de reembolso/edição), regravado a cada sincronização.
             valor_total: valorAtual,
-            valor_pago: valorAtual,
+            // Recebido menos reembolsado, independente do total atual ou do saldo ainda em aberto.
+            // Os quatro campos financeiros originais também ficam no pedido bruto abaixo.
+            valor_pago: recebidoLiquido,
             desconto_valor: dinheiro(Math.max(0, desconto)),
             desconto_codigos: o.discountCodes,
             // Frete: o que a Shopify cobraria (original) e o que a cliente pagou (cobrado).
