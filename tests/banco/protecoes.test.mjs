@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 import { db, one, criarBanco } from "./suporte.mjs"
-import { fixture, recusa, somaFixture } from "./fixtures.mjs"
+import { fixture, recusa, somaFixture, escolher, concluir } from "./fixtures.mjs"
 
 test("V20: restrição impede mais bipagens que unidades, inclusive por atualização direta", async () => {
   const f = await fixture()
@@ -14,8 +14,13 @@ test("adicional e venda de origem precisam ser gravadas juntas", async () => {
 })
 test("V27: nem o auxiliar pode ligar opção de outra peça no carrinho", async () => {
   const f = await fixture({ quantidade: 2 })
-  await recusa(() => one("select troca_carrinho_definir($1,$2)", [f.pecas[0].id, f.opcoes[1].id]), /troca_escolhas_opcao_da_peca/)
+  await recusa(() => one("select troca_carrinho_definir($1,$2)", [f.pecas[0].id, f.opcoes[1].id]), /não pertence a esta peça/)
   expect(Number((await one("select count(*) as n from troca_escolhas")).n)).toBe(0)
+})
+test("V27: auxiliar não muda escolha de peça já concluída", async () => {
+  const f = await fixture()
+  await escolher(f); await concluir(f)
+  await recusa(() => one("select troca_carrinho_definir($1,$2)", [f.pecas[0].id, f.opcoes[0].id]), /concluída ou cancelada/)
 })
 test("V35: gatilhos antigos não são RPCs públicas", async () => {
   const p = await one(`select has_function_privilege('anon','public.tg_itens_depois()','execute') as itens,
