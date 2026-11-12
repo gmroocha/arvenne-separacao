@@ -300,6 +300,34 @@ seu funcionamento no relógio real depende de aplicação autorizada e conferên
 Capturas: `capturas/vigia-celular.png` e `capturas/vigia-pc.png`, escuras, dados fictícios.
 Guia de manutenção: [`TESTES.md`](TESTES.md). A Fase 3 começou pelos problemas financeiros altos.
 
+## Fase 3 — correções locais em andamento
+
+Todas as migrations desta seção estão apenas no repositório local. Nenhuma correção de código autoriza
+reconstruir pedidos antigos ou presumir recebimentos. A publicação de Edge e a aplicação de SQL seguem
+dependendo do “sim” específico. Reproduções foram executadas falhando antes das alterações.
+
+| ID | Commit | Correção e proteção |
+| --- | --- | --- |
+| V02 | `bb738fa` | Falta parcial mantém adicional, venda de origem e preço pago; regressões com falta/defeito e Cartão/Pix. |
+| V01 | `6d3b5a9` | Retrato imutável mantém itens e valores da venda de origem; total aparece sem duplicação no principal; regressão SQL e romaneio em celular/PC. |
+| V07 | `1bb798e` | Situação, validação e histórico do acerto usam saldo após cobertura; testes com cobertura parcial/total/excedente e crédito. |
+| V15 | `10a2ab0` | Resposta/conclusão ignoram peças que já não faltam e guardam suas linhas históricas; testado por escolha e carrinho. |
+| V17 | `87f755b` | Reinício e restauração recusam peça com devolução confirmada; reiniciar só a etapa mantém o registro financeiro. |
+| V05 | `6410f01` | Reajuste do desconto fixo exclui adicionais da base original; Cartão/Pix e cobertura conferidos. |
+| V06 | `327bd79` | Atalho Trocar usa uma transação com acerto, repetição segura e rollback; acréscimo direto é restrito à venda aberta; testes SQL e celular/PC. |
+| V09 | `242de71` | Edge separa total atual de recebido líquido, preservando recebido/reembolsado/saldo no bruto; quatro casos simulados sem chamar a Shopify. |
+
+Para V09 foi usado `netPaymentSet`, definido como recebido menos reembolsado na
+[referência oficial da versão 2026-01](https://shopify.dev/docs/api/admin-graphql/2026-01/objects/Order#field-Order.fields.netPaymentSet).
+Campo ausente gera erro por pedido e não grava um pagamento presumido. É uma correção local da Edge;
+a versão publicada ainda não mudou. Totais legados das vendas somadas sem retrato continuam sinalizados
+pelo vigia; a migration não inventa uma fotografia antiga.
+
+Até este ponto, **10 dos 36 problemas têm correção local, incluindo 9 dos 13 altos**.
+Permanecem altos V03, V04, V08 e V14. Os problemas médios/baixos ainda abertos seguem nas tabelas
+originais; V20, V27 e V35 têm apenas as proteções parciais da Fase 2. As cinco reproduções ainda
+esperadas em `conhecidos.test.mjs` são V04, V08, V11, V14 e V28.
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na
