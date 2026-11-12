@@ -107,8 +107,10 @@ test('peça removida depois do pagamento: a devolver + acerto pendente; marcar_d
   v = await ver()
   assert.deepEqual([Number(v.a_devolver), v.acerto_pendente], [40, true])
   assert.equal(await eventos(p.id, 'devolvido_desfeito'), 1)
-  // Peça que volta (reiniciar não é possível aqui; volta pelo status) zera removido_em e devolvido_em.
+  // V17: uma devolução confirmada bloqueia restaurar; desfazer o acerto permite a volta explícita.
   await one('select marcar_devolvido($1)', [p.id])
+  await recusa(() => db.query("update pedido_itens set status='pendente' where id=$1", [b.id]), /devolução/)
+  await one('select marcar_devolvido($1, true)', [p.id])
   await db.query("update pedido_itens set status = 'pendente' where id = $1", [b.id])
   const i = await one('select removido_em, devolvido_em from pedido_itens where id = $1', [b.id])
   assert.deepEqual(i, { removido_em: null, devolvido_em: null })

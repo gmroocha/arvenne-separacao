@@ -152,3 +152,18 @@ test('falta parcial: quantidade igual ou maior marca a linha inteira e zera as e
   await db.exec('set local role anon')
   await recusa(() => one('select marcar_falta($1, 1)', [g.i.id]), /permission denied/)
 })
+
+test('V17: reiniciar e restaurar não recolocam uma peça já devolvida como paga', async () => {
+  const p=await pedidoWhats('novo')
+  await db.query("update pedidos set valor_pago=80,pago_em=now()-interval '1 day' where id=$1",[p.id])
+  const i=await one("select id from pedido_itens where pedido_id=$1 and sku='C1'",[p.id])
+  await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where id=$1",[i.id])
+  await db.exec('set local role authenticated')
+  await one('select marcar_devolvido($1)',[p.id])
+  const antes=await one('select status,removido_em,devolvido_em from pedido_itens where id=$1',[i.id])
+  await recusa(() => one("select reiniciar_pedido($1,'separacao',true)",[p.id]), /devolução|devolvida/)
+  await recusa(() => db.query("update pedido_itens set status='pendente' where id=$1",[i.id]), /devolução|devolvida/)
+  await one("select reiniciar_pedido($1,'conferencia',false)",[p.id])
+  assert.deepEqual(await one('select status,removido_em,devolvido_em from pedido_itens where id=$1',[i.id]),antes)
+  assert.equal((await one("select count(*)::int n from pedido_eventos where pedido_id=$1 and tipo='devolvido'",[p.id])).n,1)
+})
