@@ -78,6 +78,17 @@ test("cliente escolhe troca, recupera falha e muda para crédito", async ({ page
   await page.getByRole("button", { name: /Prefiro crédito/ }).click()
   await expect(page.getByRole("region", { name: "Resumo" }).getByText(/80,00/)).toBeVisible()
   expect((await sim.one("select escolha_tipo from troca_pecas where troca_id=$1", [sim.troca.id])).escolha_tipo).toBe("credito")
+  // Com crédito escolhido, o "Quero esta" fica em segundo plano para não parecer igual ao crédito.
+  await expect(page.getByRole("button", { name: "Quero esta", exact: true })).toHaveAttribute("data-variant", "secondary")
+  // No fim, ela conclui e vê a confirmação; mudar volta às opções.
+  await page.screenshot({ path: `capturas/troca-concluir-${test.info().project.name}.png`, fullPage: true, animations: "disabled" })
+  await page.getByRole("button", { name: "Concluir minhas escolhas" }).click()
+  const pronto = page.getByRole("region", { name: "Escolhas concluídas" })
+  await expect(pronto.getByText("Pronto! Recebemos suas escolhas.")).toBeVisible()
+  await expect(pronto.getByText(/Crédito de R\$\s*80,00/)).toBeVisible()
+  await page.screenshot({ path: `capturas/troca-concluida-${test.info().project.name}.png`, fullPage: true, animations: "disabled" })
+  await pronto.getByRole("button", { name: "Mudar minhas escolhas" }).click()
+  await expect(page.getByRole("button", { name: /Crédito escolhido/ })).toBeVisible()
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
 })

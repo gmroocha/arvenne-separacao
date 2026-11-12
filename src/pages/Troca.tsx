@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useParams } from "react-router"
 import { Check, CircleCheck, HandCoins, MessageCircle, PackageX, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
 import Foto from "@/components/Foto"
@@ -17,6 +17,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Toggle } from "@/components/ui/toggle"
 import { carrinhoDaPeca, useCarrinhoTroca, useEscolherTroca, useTrocaPublica } from "@/lib/api"
 import { reais } from "@/lib/formato"
+import { assinaturaEscolhas, gravarConclusao, lerConclusao } from "@/lib/trocaConclusao"
 import { fotoTamanho } from "@/lib/foto"
 import type { TrocaPublica } from "@/lib/tipos"
 import { chaveModelo, codigoModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
@@ -103,9 +104,10 @@ type CartaoProps = {
   ocupado: boolean
   aoEscolher: () => void
   aoQtd: (n: number) => void
+  secundario?: boolean // a cliente já escolheu crédito nesta peça: o "Quero esta" fica em segundo plano
 }
 
-function CartaoOpcao({ o, varias, mesmoModelo, qtd, vazio, cheio, carregando, ocupado, aoEscolher, aoQtd }: CartaoProps) {
+function CartaoOpcao({ o, varias, mesmoModelo, qtd, vazio, cheio, carregando, ocupado, aoEscolher, aoQtd, secundario }: CartaoProps) {
   return (
     <li className={cn("relative flex flex-col gap-2.5 rounded-xl bg-card p-3 ring-1 ring-foreground/10", qtd > 0 && "ring-2 ring-foreground/40")}>
       <div className="flex gap-3">
@@ -121,7 +123,7 @@ function CartaoOpcao({ o, varias, mesmoModelo, qtd, vazio, cheio, carregando, oc
         </div>
       </div>
       {vazio ? (
-        <Button type="button" size="xl" className="w-full" disabled={ocupado} onClick={aoEscolher}>
+        <Button type="button" size="xl" variant={secundario ? "secondary" : "default"} className="w-full" disabled={ocupado} onClick={aoEscolher}>
           {carregando ? <Spinner /> : null}
           Quero esta
         </Button>
@@ -255,7 +257,8 @@ function Resumo({ data, respondidas }: { data: TrocaPublica; respondidas: number
 }
 
 // Página pública (sem login): a cliente escolhe a troca de cada peça em falta.
-// Cada toque já grava a escolha daquela peça (sem botão final): é o mais simples e não perde nada se ela sair.
+// Cada toque já grava a escolha daquela peça (não perde nada se ela sair). No fim, "Concluir minhas escolhas"
+// mostra a confirmação, para ela saber que terminou; mudar qualquer escolha depois pede concluir de novo.
 export default function Troca() {
   const { token } = useParams()
   const { data, isLoading, isError, refetch, isFetching } = useTrocaPublica(token)
@@ -274,6 +277,16 @@ export default function Troca() {
   const total = data?.resumo.pecas_total ?? pecas.length
   const respondidas = pecas.filter((p) => p.escolha_tipo).length
   const tudo = total > 0 && respondidas === total
+  const assinatura = useMemo(() => assinaturaEscolhas(pecas), [pecas])
+  const [concluidaEm, setConcluidaEm] = useState<string | null>(() => lerConclusao(token))
+  // Finalizou: todas escolhidas e confirmadas com o botão, sem mudar nada depois.
+  const finalizada = tudo && !concluida && concluidaEm === assinatura
+  const concluir = (sim: boolean) => {
+    const valor = sim ? assinatura : null
+    gravarConclusao(token, valor)
+    setConcluidaEm(valor)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   const linkWa =
     WHATSAPP_LOJA && data
@@ -312,16 +325,54 @@ export default function Troca() {
             <p className="text-sm text-muted-foreground">Pedido {data.numero.replace(/^#/, "")}</p>
           </div>
 
-          <p className="text-base">
+          {!finalizada && <p className="text-base">
             {total === 1 ? "Uma peça do seu pedido ficou" : `${total} peças do seu pedido ficaram`} sem estoque. Escolha uma troca ou crédito para{" "}
             {total === 1 ? "ela" : "cada uma"}.
-          </p>
+          </p>}
 
-          {(data.resumo.cobrir_ate ?? 0) > 0 && !concluida && (
+          {(data.resumo.cobrir_ate ?? 0) > 0 && !concluida && !finalizada && (
             <p className="text-sm text-muted-foreground">A loja cobre até {reais(data.resumo.cobrir_ate ?? 0)} da diferença 🤍</p>
           )}
 
-          {pecas.map((p, n) => {
+          {finalizada && (
+            <section aria-label="Escolhas concluídas" className="flex flex-col gap-4 rounded-xl border border-success/40 bg-success/10 p-4">
+              <div className="flex items-center gap-2.5">
+                <CircleCheck className="size-7 shrink-0 text-success" />
+                <h2 className="text-xl font-semibold">Pronto! Recebemos suas escolhas.</h2>
+              </div>
+              <p className="text-base">Agora é com a gente: vamos separar as peças e te avisar pelo WhatsApp.</p>
+              <ul className="flex flex-col gap-2 text-sm">
+                {pecas.map((p) => {
+                  const cart = carrinhoDaPeca(p)
+                  return (
+                    <li key={p.item_id} className="flex flex-col">
+                      <span className="text-muted-foreground">No lugar de {titulo(p)}{p.variante ? ` · ${p.variante}` : ""}:</span>
+                      {p.escolha_tipo === "credito" ? (
+                        <span className="font-medium">Crédito de {reais(p.valor_pago)}</span>
+                      ) : (
+                        cart.map((c) => {
+                          const o = p.opcoes.find((x) => x.id === c.opcao_id)
+                          return (
+                            <span key={c.opcao_id} className="font-medium">
+                              {c.qtd > 1 ? `${c.qtd}× ` : ""}
+                              {o ? titulo(o) : "Peça escolhida"}
+                              {o?.variante ? ` · ${o.variante}` : ""}
+                            </span>
+                          )
+                        })
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+              <Resumo data={data} respondidas={respondidas} />
+              <Button type="button" size="xl" variant="outline" className="w-full" onClick={() => concluir(false)}>
+                Mudar minhas escolhas
+              </Button>
+            </section>
+          )}
+
+          {!finalizada && pecas.map((p, n) => {
             const feita = concluida || p.concluida
             const cart = carrinhoDaPeca(p)
             const qtds: Record<string, number> = Object.fromEntries(cart.map((c) => [c.opcao_id, c.qtd]))
@@ -412,6 +463,7 @@ export default function Troca() {
                                 carregando={gravando === `${p.item_id}:${g[0].id}`}
                                 ocupado={escolher.isPending}
                                 aoEscolher={() => escolha(p.item_id, "opcao", g[0].id)}
+                                secundario={p.escolha_tipo === "credito"}
                                 aoQtd={(n) => carrinho.mutate({ itemId: p.item_id, opcaoId: g[0].id, qtd: n })}
                               />
                             ) : (
@@ -449,10 +501,10 @@ export default function Troca() {
             )
           })}
 
-          <Separator />
-          <Resumo data={data} respondidas={respondidas} />
+          {!finalizada && <Separator />}
+          {!finalizada && <Resumo data={data} respondidas={respondidas} />}
 
-          {!concluida && (
+          {!concluida && !finalizada && (
             <div className="flex flex-col gap-2" aria-label="Suas escolhas">
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="text-muted-foreground">Suas escolhas</span>
@@ -464,12 +516,19 @@ export default function Troca() {
             </div>
           )}
 
-          {!concluida && (
+          {!concluida && !finalizada && (
             <p className="text-sm text-muted-foreground">
               {tudo
-                ? "Recebemos todas as suas escolhas. Se mudar de ideia, é só escolher outra opção."
+                ? "Tudo escolhido! Confira e toque em Concluir para finalizar."
                 : "Cada toque já fica salvo. Se mudar de ideia, é só escolher outra opção."}
             </p>
+          )}
+
+          {tudo && !concluida && !finalizada && (
+            <Button type="button" size="xl" className="w-full" disabled={escolher.isPending || carrinho.isPending} onClick={() => concluir(true)}>
+              <Check />
+              Concluir minhas escolhas
+            </Button>
           )}
 
           {linkWa && (
