@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react"
 import { ChevronDown, MoreHorizontal, Printer } from "lucide-react"
 import { MarcaCheck } from "@/components/comum/Bolha"
+import { TituloSecao } from "@/components/comum/TituloSecao"
 import { LinhaPeca } from "@/components/comum/Peca"
 import Foto from "@/components/Foto"
 import MenuAcoes, { type GrupoAcoes, type ItemAcao } from "@/components/MenuAcoes"
@@ -21,6 +22,25 @@ type TileProps = {
   children?: ReactNode // ações, em uma linha: botão principal (flex-1) + MenuPeca
 }
 
+// Selos no canto da foto: "Clube" e "Adicional" (peça que entrou depois do pagamento).
+function SelosPeca({ item }: { item: Item }) {
+  if (item.origem !== "clube" && !item.adicional) return null
+  return (
+    <div className="absolute top-1.5 left-1.5 flex flex-col items-start gap-1">
+      {item.origem === "clube" && (
+        <Badge variant="outline" className="bg-background">
+          Clube
+        </Badge>
+      )}
+      {item.adicional && (
+        <Badge variant="outline" className="bg-background">
+          Adicional
+        </Badge>
+      )}
+    </div>
+  )
+}
+
 // Peça em bloco: foto grande, código, variante e quantidade legíveis no celular. O nome fica pequeno.
 // Instrução e ações ficam juntas no rodapé (mt-auto), para os blocos da mesma linha alinharem por baixo.
 export function TilePeca({ item, instrucao, contador, piscando, esmaecida, children }: TileProps) {
@@ -35,11 +55,7 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
     >
       <div className="relative">
         <Foto url={item.foto_url} alt={item.nome} ampliar className={cn("w-full", esmaecida && "opacity-60")} />
-        {item.origem === "clube" && (
-          <Badge variant="outline" className="absolute top-1.5 left-1.5 bg-background">
-            Clube
-          </Badge>
-        )}
+        <SelosPeca item={item} />
         {contador && <div className="absolute right-1.5 bottom-1.5">{contador}</div>}
       </div>
       <div className="flex min-w-0 flex-col gap-0.5 px-0.5">
@@ -72,11 +88,7 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
     <div style={{ viewTransitionName: `peca-${base.id}` }} className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300">
       <div className="relative">
         <Foto url={base.foto_url} alt={base.nome} ampliar className="w-full" />
-        {base.origem === "clube" && (
-          <Badge variant="outline" className="absolute top-1.5 left-1.5 bg-background">
-            Clube
-          </Badge>
-        )}
+        <SelosPeca item={base} />
       </div>
       <div className="flex min-w-0 flex-col gap-1 px-0.5">
         <div className="flex items-start justify-between gap-2">
@@ -110,6 +122,20 @@ export function InstrucaoTile({ children }: { children: ReactNode }) {
 
 export function GradePecas({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
+}
+
+// Peças adicionais (entraram depois do pagamento) em seção própria, depois das peças do pedido.
+// Some quando não há nenhuma. Quem usa passa os blocos já montados (children).
+export function SecaoAdicionais({ contagem, children }: { contagem: number; children: ReactNode }) {
+  if (contagem === 0) return null
+  return (
+    <div className="flex flex-col gap-2 pt-1" role="group" aria-label="Peças adicionais">
+      <TituloSecao as="h3" contagem={contagem}>
+        Peças adicionais
+      </TituloSecao>
+      <GradePecas>{children}</GradePecas>
+    </div>
+  )
 }
 
 // Menu "…" do bloco: quadrado sem borda, da mesma altura do botão principal (que é o destaque).

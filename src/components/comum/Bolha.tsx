@@ -21,14 +21,19 @@ export function MarcaCheck({ solida, pequena, className }: { solida?: boolean; p
 }
 
 // Visto sobre a foto de um cartão escolhido (posicione com className, ex.: "absolute top-1.5 right-1.5").
+// Escolher não é sucesso: a bolha é neutra (cor do texto), não verde.
 export function BolhaCheck({ className }: { className?: string }) {
-  return <MarcaCheck solida pequena className={className} />
+  return (
+    <span aria-hidden className={cn("z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm ring-2 ring-card [&>svg]:size-3.5", className)}>
+      <Check strokeWidth={2.5} />
+    </span>
+  )
 }
 
-// Bolinha com número (quantas unidades daquele tamanho foram escolhidas). Mesmo verde do "marcado".
+// Bolinha com número (quantas unidades daquele tamanho foram escolhidas). Neutra, como a BolhaCheck.
 export function BolhaContador({ n, className }: { n: number; className?: string }) {
   return (
-    <span className={cn("z-10 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-success px-1 text-xs font-semibold text-success-foreground tabular-nums ring-2 ring-card", className)}>
+    <span className={cn("z-10 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground tabular-nums ring-2 ring-card", className)}>
       {n}
     </span>
   )

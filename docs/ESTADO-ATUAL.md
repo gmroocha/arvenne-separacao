@@ -12,6 +12,35 @@
 | Repositório | `gmroocha/arvenne-separacao`, branch `main`, tudo enviado |
 | Cloudflare Pages | **ainda não publicado**; o app roda só com `npm run dev` |
 
+## Peças adicionais, mudar quantidade, link de carrinho e ajustes da troca (11/11/2026, commitado, ainda NÃO no Supabase)
+
+- **Migrations pendentes de push:** `20261115090000_pecas_adicionais.sql` e `20261115100000_troca_pecas_ativas.sql` (conferidas com
+  `npx supabase db push --remote --dry-run`; só entra com o "sim" do Gustavo). Cria `pedido_itens.adicional`,
+  `pedidos.adicionais_recebido_em`, a função `mudar_qtd`, nova `adicionar_itens` e novos campos em
+  `v_pedidos` (`qtd_adicionais`, `valor_adicionais`, `adicionais_a_cobrar`). A segunda faz a troca contar só
+  as peças ainda em falta (peça que voltou a "pendente" saía como "Peça 4 de 4 · sem estoque" na página da
+  cliente, caso ARV-1274) e manda `valor_pago_unit`. Testes: `npm run test:banco` (73).
+- **Página da troca (cliente):** peça com várias unidades mostra "3×" e "3 unidades de R$ X · você pagou
+  R$ Y" (depois do push); opções mostram o valor de uma unidade ("R$ 42,24 cada"); selo "Mesmo modelo,
+  outro tamanho" quando a opção é a mesma peça; código do modelo corrigido (AN3243-20/24 virava "AN3243-2").
+- **Verde só para sucesso:** escolha/seleção (faixa de preço, tamanhos, cartão escolhido, bolinha de
+  quantidade) agora é cinza/neutra. Verde continua em peça feita, troca concluída e crédito.
+- **Falta na Conferência/Etiquetagem:** a tela fica na etapa, com o cartão "Avise a cliente" em cima.
+- **Peças adicionais:** peça que entra depois do pedido pago nasce "adicional". Aparece numa seção própria
+  ("Peças adicionais") na Separação, Conferência, Etiquetagem e Bipagem, com o selo "Adicional". Em Nota e
+  frete (e na Venda) aparece "Peças adicionais · a cobrar R$ X", com o botão "Recebido" (dá para desfazer).
+- **Mudar quantidade:** item "Mudar quantidade" no menu da peça. Aumentar depois de pago manda a
+  diferença para uma peça adicional; diminuir deixa a diferença como removida ("quantidade reduzida"),
+  nada é apagado.
+- **Colar carrinho:** campo no "Adicionar peça" do pedido e na Venda. O link do site (`/cart/ID:QTD`)
+  já funciona. O link compartilhado (`/cart/c/...`) chama a função Edge `carrinho-ler`, que **ainda não
+  existe**: falta um link de exemplo real do Gustavo (veja o plano em
+  `~/.claude/plans/snappy-finding-twilight.md`). Até lá o app mostra "Não consegui ler esse carrinho
+  compartilhado".
+
+**Próximas ações:** Gustavo dar o "sim" para o push das duas migrations; mandar um link `/cart/c/` de exemplo
+(sem dados da cliente); depois escrever e publicar `carrinho-ler` (também pede o "sim").
+
 ## Vistoria e melhorias de 11/11/2026 (aplicadas no Supabase)
 
 Migrations aplicadas em 11/11/2026: `20261114090000_vistoria`, `20261114100000_troca_cobertura`,

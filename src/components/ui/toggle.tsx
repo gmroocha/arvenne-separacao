@@ -5,13 +5,14 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { Toggle as TogglePrimitive } from "radix-ui"
 
+// Marcado = cinza (fundo muted + contorno claro). Verde fica só para sucesso (peça feita, troca concluída).
 const toggleVariants = cva(
-  "group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-success/10 data-[state=on]:bg-success/10 data-[state=on]:hover:bg-success/15 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-muted data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-transparent aria-pressed:text-success data-[state=on]:text-success data-[state=on]:hover:text-success",
-        outline: "border border-input bg-transparent hover:bg-muted aria-pressed:border-success/60 aria-pressed:text-foreground data-[state=on]:border-success/60 data-[state=on]:text-foreground data-[state=on]:hover:text-foreground",
+        default: "bg-transparent aria-pressed:text-foreground data-[state=on]:text-foreground",
+        outline: "border border-input bg-transparent hover:bg-muted aria-pressed:border-foreground/50 aria-pressed:text-foreground data-[state=on]:border-foreground/50 data-[state=on]:text-foreground data-[state=on]:hover:text-foreground",
       },
       size: {
         default:

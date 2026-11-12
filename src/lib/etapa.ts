@@ -4,6 +4,11 @@ import type { Item } from "@/lib/tipos"
 // Peças que contam numa etapa: as que ainda estão no pedido.
 export const vivas = (itens: Item[]) => itens.filter((i) => i.status !== "removido")
 
+// Divide a lista em peças do pedido e peças adicionais (entraram depois do pagamento).
+export function separarAdicionais(itens: Item[]): { normais: Item[]; adicionais: Item[] } {
+  return { normais: itens.filter((i) => !i.adicional), adicionais: itens.filter((i) => i.adicional) }
+}
+
 // A etapa de peças (separação, conferência, etiquetagem, bipagem) está completa?
 // Só olha as peças; quem decide mudar de etapa é a pessoa, pelo Dialog.
 export function etapaCompleta(status: StatusPedido, itens: Item[]): boolean {

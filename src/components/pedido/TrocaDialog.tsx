@@ -187,7 +187,7 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
             role="tab"
             aria-selected={atual}
             onClick={() => aoEscolher(i.id)}
-            className={cn("flex shrink-0 items-center gap-2 rounded-lg bg-card p-1.5 pr-3 text-left text-xs ring-1 ring-foreground/10 transition-colors", atual && "bg-success/5 ring-success/40")}
+            className={cn("flex shrink-0 items-center gap-2 rounded-lg bg-card p-1.5 pr-3 text-left text-xs ring-1 ring-foreground/10 transition-colors", atual && "ring-2 ring-foreground/40")}
           >
             <Foto url={fotoTamanho(i.foto_url, 100)} alt={i.nome} className="size-10" />
             <span className="flex flex-col gap-0.5">

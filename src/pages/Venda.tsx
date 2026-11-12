@@ -241,6 +241,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         void enviar()
       }}
       aoCopiar={copiar}
+      aoRecebido={(v) => void gravar({ adicionais_recebido_em: v }).catch(() => {})}
       aoPago={() => void pedirPagamento()}
       aoPerdida={() => {
         setResumoAberto(false)

@@ -1199,6 +1199,108 @@ test('carrinho: anon só usa troca_carrinho, troca_escolher e troca_publica', as
   await recusa(() => db.query('insert into troca_escolhas (troca_peca_id, opcao_id, qtd) values ($1, $2, 1)', [f.pecas[0].id, f.opcoes[0].id]), /permission denied/)
 })
 
+// ---- Peças adicionais e mudar quantidade ----
+const itemJson = (extra = {}) => JSON.stringify([{ origem: 'shopify', shopify_variant_id: 77, sku: 'ADD-1', nome: 'Brinco', variante: 'U', qtd: 1, preco: 30, ...extra }])
+
+test('adicionar_itens: antes do pagamento a linha é normal; depois de pago nasce adicional e só soma em adicional', async () => {
+  const p = await one("insert into pedidos (origem, status, cliente_nome) values ('whatsapp', 'em_aberto', 'Cliente') returning *")
+  await db.exec('set local role authenticated')
+  await one('select adicionar_itens($1, $2::jsonb, true)', [p.id, itemJson()])
+  assert.equal((await one('select adicional from pedido_itens where pedido_id = $1', [p.id])).adicional, false)
+  await db.exec('reset role')
+  await db.query('update pedidos set pago_em = now() where id = $1', [p.id])
+  await db.exec('set local role authenticated')
+  await one('select adicionar_itens($1, $2::jsonb, true)', [p.id, itemJson()])
+  await one('select adicionar_itens($1, $2::jsonb, true)', [p.id, itemJson()])
+  const l = (await db.query('select adicional, qtd from pedido_itens where pedido_id = $1 order by ordem', [p.id])).rows
+  assert.deepEqual(l.map(x => [x.adicional, x.qtd]), [[false, 1], [true, 2]])
+  const v = await one('select qtd_adicionais, valor_adicionais, adicionais_a_cobrar, adicionais_recebido_em from v_pedidos where id = $1', [p.id])
+  assert.deepEqual([v.qtd_adicionais, num(v.valor_adicionais), num(v.adicionais_a_cobrar), v.adicionais_recebido_em], [2, 60, 60, null])
+  await db.query('update pedidos set adicionais_recebido_em = now() where id = $1', [p.id])
+  const r = await one('select valor_adicionais, adicionais_a_cobrar from v_pedidos where id = $1', [p.id])
+  assert.deepEqual([num(r.valor_adicionais), num(r.adicionais_a_cobrar)], [60, 0])
+})
+
+test('mudar_qtd: aumentar em pedido pago cria/soma linha adicional; sem pagamento soma na própria linha', async () => {
+  const { p, i } = await itemQtd4()
+  await db.exec('reset role')
+  await db.query('update pedidos set pago_em = now() where id = $1', [p.id])
+  await db.exec('set local role authenticated')
+  await one('select mudar_qtd($1, 6, true)', [i.id])
+  const ad = await one('select * from pedido_itens where pedido_id = $1 and adicional', [p.id])
+  assert.deepEqual([ad.qtd, ad.status, ad.shopify_line_id, ad.sku, num(ad.preco_pago)], [2, 'encontrado', null, 'AN-4', 40])
+  assert.equal((await one('select qtd from pedido_itens where id = $1', [i.id])).qtd, 4)
+  await one('select mudar_qtd($1, 5)', [i.id])
+  assert.equal((await one('select qtd from pedido_itens where id = $1 and adicional', [ad.id])).qtd, 3)
+  assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id = $1', [p.id])).n, 2)
+  // linha adicional aumenta na própria linha
+  await one('select mudar_qtd($1, 4)', [ad.id])
+  assert.equal((await one('select qtd from pedido_itens where id = $1', [ad.id])).qtd, 4)
+  const v = await one('select qtd_adicionais, valor_adicionais, total from v_pedidos where id = $1', [p.id])
+  assert.deepEqual([v.qtd_adicionais, num(v.valor_adicionais)], [4, 160])
+  // sem pagamento
+  const g = await itemQtd4()
+  await db.exec('reset role')
+  await db.query("update pedidos set status = 'em_aberto', pago_em = null where id = $1", [g.p.id])
+  await db.exec('set local role authenticated')
+  await one('select mudar_qtd($1, 7)', [g.i.id])
+  const r = await one('select qtd, adicional from pedido_itens where id = $1', [g.i.id])
+  assert.deepEqual([r.qtd, r.adicional], [7, false])
+  assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id = $1', [g.p.id])).n, 1)
+  const ev = await db.query("select * from pedido_eventos where item_id = $1 and tipo = 'qtd'", [g.i.id])
+  assert.equal(ev.rows.length, 1)
+})
+
+test('mudar_qtd: diminuir cria linha removida, limita a bipagem e mantém a linha da Shopify; recusas', async () => {
+  const { p, i } = await itemQtd4()
+  await one('select mudar_qtd($1, 1)', [i.id])
+  const velha = await one('select qtd, qtd_bipada from pedido_itens where id = $1', [i.id])
+  assert.deepEqual([velha.qtd, velha.qtd_bipada], [1, 1])
+  const rem = await one("select * from pedido_itens where pedido_id = $1 and status = 'removido'", [p.id])
+  assert.deepEqual([rem.qtd, rem.observacao, rem.shopify_line_id, rem.removido_em !== null], [3, 'quantidade reduzida', 'L1', true])
+  await recusa(() => one('select mudar_qtd($1, 0)', [i.id]), /pelo menos 1/)
+  await recusa(() => one('select mudar_qtd($1, 2)', [rem.id]), /removida/)
+  await one('select mudar_qtd($1, 1)', [i.id]) // igual: nada muda
+  assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id = $1', [p.id])).n, 2)
+  await db.exec('reset role')
+  await db.query("update pedidos set status = 'enviado' where id = $1", [p.id])
+  await db.exec('set local role authenticated')
+  await recusa(() => one('select mudar_qtd($1, 3)', [i.id]), /não aceita/)
+  await db.exec('set local role anon')
+  await recusa(() => one('select mudar_qtd($1, 3)', [i.id]), /permission denied/)
+  await db.exec('set local role authenticated')
+})
+
+test('v_pedidos Shopify: total soma o valor das adicionais ao valor_total', async () => {
+  const p = await one("insert into pedidos (origem, status, cliente_nome, valor_total, shopify_order_id, pago_em) values ('shopify', 'separacao', 'C', 100, 9100, now()) returning *")
+  await db.query("insert into pedido_itens (pedido_id, origem, nome, qtd, preco, preco_pago, ordem, status, adicional) values ($1, 'shopify', 'A', 2, 25, 25, 1, 'pendente', true)", [p.id])
+  await db.exec('set local role authenticated')
+  const v = await one('select total, valor_adicionais from v_pedidos where id = $1', [p.id])
+  assert.deepEqual([num(v.total), num(v.valor_adicionais)], [150, 50])
+})
+
+test('troca: peça que saiu da falta some da página e do resumo, e volta igual se faltar de novo', async () => {
+  const f = await fixture({ quantidade: 2 })
+  const resumo = () => one('select pecas_total, total_pago from v_troca_resumo where troca_id = $1', [f.troca.id])
+  const antes = await resumo()
+  assert.equal(antes.pecas_total, 2)
+  await db.query("update pedido_itens set status = 'pendente' where id = $1", [f.itens[1].id])
+  let dados = await publica(f)
+  assert.equal(dados.pecas.length, 1)
+  assert.equal(dados.pecas[0].item_id, f.itens[0].id)
+  assert.equal(dados.resumo.pecas_total, 1)
+  assert.equal((await resumo()).pecas_total, 1)
+  // valor de UMA unidade vem pronto do banco (2 unidades -> metade do total pago).
+  const p0 = dados.pecas[0]
+  assert.ok(Math.abs(num(p0.valor_pago_unit) * p0.qtd - num(p0.valor_pago)) <= 0.01)
+  // Volta a faltar: a peça reaparece com as opções que já tinha.
+  await db.query("update pedido_itens set status = 'falta' where id = $1", [f.itens[1].id])
+  dados = await publica(f)
+  assert.equal(dados.pecas.length, 2)
+  assert.equal(dados.pecas[1].opcoes.length, 1)
+  assert.equal(num((await resumo()).total_pago), num(antes.total_pago))
+})
+
 await preparar()
 let falhas = 0
 try {

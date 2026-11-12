@@ -1,9 +1,11 @@
-import { useEffect } from "react"
+import { useCallback, useEffect } from "react"
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import { etapaCompleta } from "@/lib/etapa"
+import { lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
+import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
 import type { AcertoPedido, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
@@ -234,6 +236,41 @@ export async function buscarVariantes(variantIds: string[]) {
   return { variantes: achadas, faltando: variantIds.filter((id) => !ids.has(String(id))) }
 }
 
+// Lê um link de carrinho (do site ou compartilhado) e devolve as peças prontas para o pedido.
+// "lidos" são as variantes e quantidades encontradas (servem para tentar de novo depois de atualizar o
+// catálogo); "faltando" são as variantes que o catálogo ainda não conhece.
+export type CarrinhoLido = { itens: NovoItem[]; faltando: string[]; lidos: LidoCarrinho[] }
+
+export async function variantesDoCarrinho(lidos: LidoCarrinho[]): Promise<CarrinhoLido> {
+  const { variantes, faltando } = await buscarVariantes(lidos.map((l) => l.variantId))
+  const itens = variantes.map((v) => itemDoSite(v, lidos.find((l) => String(l.variantId) === String(v.shopify_variant_id))?.qtd ?? 1))
+  return { itens, faltando, lidos }
+}
+
+export function useLerCarrinho() {
+  return useCallback(async (entrada: string | LidoCarrinho[]): Promise<CarrinhoLido | null> => {
+    let lidos: LidoCarrinho[]
+    if (typeof entrada !== "string") lidos = entrada
+    else {
+      const link = lerLinkCarrinho(entrada)
+      if (!link) return null
+      if (link.tipo === "itens") lidos = link.itens
+      else {
+        // TODO: a função Edge "carrinho-ler" ainda não existe (esperamos um link /cart/c/ de exemplo).
+        // Ver o plano em /home/gmrocha/.claude/plans/snappy-finding-twilight.md (Parte A).
+        try {
+          const r = await chamarFuncao<{ itens: { variantId: string | number; qtd: number }[] }>("carrinho-ler", { url: link.url })
+          lidos = (r.itens ?? []).map((i) => ({ variantId: String(i.variantId), qtd: Number(i.qtd) || 1 }))
+        } catch {
+          throw new Error("Não consegui ler esse carrinho compartilhado")
+        }
+        if (!lidos.length) throw new Error("Não consegui ler esse carrinho compartilhado")
+      }
+    }
+    return variantesDoCarrinho(lidos)
+  }, [])
+}
+
 // Quantas variantes o catálogo copiado tem (0 = ainda não foi carregado da Shopify) e quando foi
 // a última alteração gravada nele (max atualizado_em).
 export type CatalogoInfo = { total: number; atualizadoEm: string | null }
@@ -389,7 +426,7 @@ export type CamposPedido = Partial<
     | "entrega_bairro" | "entrega_cidade" | "entrega_uf"
     | "desconto_tipo" | "desconto_valor" | "cupom"
     | "frete_tipo" | "frete_pago_por" | "frete_cobrado" | "frete_custo"
-    | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra"
+    | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra" | "adicionais_recebido_em"
     | "status" | "rastreio" | "observacoes"
     | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_servico" | "rastreio_url"
     | "pedido_fornecedor_numero" | "pedido_fornecedor_em" | "embalado_em" | "postado_em" | "rastreio_enviado_em"
@@ -534,6 +571,27 @@ export function useMarcarFalta(pedidoId: string) {
         toast.info("Avise a cliente sobre a peça em falta")
         mudarStatus.mutate({ pedidoId, para: "avisar_cliente", silencioso: true })
       }
+    },
+    onError: (e) => toast.error(msgBanco(e)),
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: ["item", pedidoId] }) <= 1) {
+        ;[chavePedido(pedidoId), ["pedidos"], ["troca"], ["repetidas"], ["acerto"], ["etiquetar"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
+      }
+    },
+  })
+}
+
+// Mudar a quantidade de uma peça (função mudar_qtd). Aumentar depois de pago manda a diferença para uma
+// linha de peça adicional; diminuir cria uma linha "removido" (fica no histórico). Mesmo padrão de
+// useMarcarFalta: entra na fila do pedido e recarrega só no fim.
+export function useMudarQtd(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: ["item", pedidoId],
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async ({ item, qtd, encontrada = false }: { item: Item; qtd: number; encontrada?: boolean }) => {
+      const { error } = await supabase.rpc("mudar_qtd", { p_item: item.id, p_qtd: qtd, p_encontrada: encontrada })
+      if (error) throw error
     },
     onError: (e) => toast.error(msgBanco(e)),
     onSettled: () => {

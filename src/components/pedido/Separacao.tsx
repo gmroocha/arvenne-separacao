@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { ArrowLeftRight, Check, PackageX, Plus, Trash2 } from "lucide-react"
+import { ArrowLeftRight, Check, Hash, PackageX, Plus, Trash2 } from "lucide-react"
+import { useMudarQtdDialogo } from "./QtdDialog"
 import { Quantidade } from "@/components/comum/Quantidade"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
@@ -7,12 +8,12 @@ import RespDialog from "@/components/RespDialog"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useMarcarFalta, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
-import { etapaCompleta } from "@/lib/etapa"
+import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
 import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
 import LinhaPeca from "./LinhaPeca"
 import Problemas from "./Problemas"
-import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TileModelo, TilePeca, Vazio } from "./TilePeca"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, SecaoAdicionais, TileModelo, TilePeca, Vazio } from "./TilePeca"
 
 type Props = {
   pedido: PedidoDetalhe
@@ -29,7 +30,8 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
   const removidas = itens.filter((i) => i.status === "removido")
   const vivas = itens.length - removidas.length
   // Tamanhos do mesmo modelo (mesmo produto e mesma pedra/cor) viram um bloco só; sem tamanho, um bloco por peça.
-  const blocos = (() => {
+  // As peças adicionais ficam numa seção própria: o agrupamento vale só dentro de cada metade.
+  const agrupar = (pendentes: Item[]) => {
     const grupos = new Map<string, Item[]>()
     for (const i of pendentes) {
       if (!separarTamanho(i.variante).tamanho) continue
@@ -48,7 +50,10 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
       }
     }
     return saida
-  })()
+  }
+  const { normais, adicionais } = separarAdicionais(pendentes)
+  const blocos = agrupar(normais)
+  const blocosAdicionais = agrupar(adicionais)
   const marcar = (item: Item, status: Item["status"], observacao?: string | null) =>
     acao(item, observacao === undefined ? { status } : { status, observacao })
 
@@ -70,6 +75,44 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
     else marcarFalta.mutate({ item: i, qtd: n })
   }
 
+  const { pedir: pedirQtd, dialogo: dialogoQtd } = useMudarQtdDialogo(pedido)
+  const bloco = (g: Item[]) =>
+              g.length === 1 ? (
+                <TilePeca key={g[0].id} item={g[0]}>
+                  <Button size="bloco" className="flex-1" onClick={() => acao(g[0], { status: "encontrado" })}>
+                    <Check /> Achei
+                  </Button>
+                  <MenuPeca
+                    itens={[
+                      { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(g[0]) },
+                      { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(g[0]) },
+                      { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(g[0]) },
+                      { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(g[0], "removido", "cliente desistiu") },
+                    ]}
+                  />
+                </TilePeca>
+              ) : (
+                <TileModelo key={g[0].id} itens={g}>
+                  {/* Uma chamada por tamanho (cada uma grava o seu evento); a etapa só completa na última. */}
+                  <Button size="bloco" className="flex-1" onClick={() => g.forEach((i) => acao(i, { status: "encontrado" }))}>
+                    <Check /> Achei
+                  </Button>
+                  {/* Uma seção por tamanho: título "N°16 · 2 un." e as ações embaixo. */}
+                  <MenuPeca
+                    rotulo="Ações por tamanho"
+                    grupos={g.map((i) => ({
+                      titulo: `${separarTamanho(i.variante).tamanho ?? i.variante ?? i.sku ?? i.nome}${i.qtd > 1 ? ` · ${i.qtd} un.` : ""}`,
+                      itens: [
+                        { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
+                        { rotulo: "Em falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
+                        { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                        { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
+                      ],
+                    }))}
+                  />
+                </TileModelo>
+              )
+
   return (
     <div className="flex flex-col gap-4">
       <ProgressoEtapa titulo="Separação" feitas={achadas.length} total={vivas} unidade="peças" />
@@ -83,43 +126,10 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         {pendentes.length === 0 ? (
           <Vazio>{itens.length === 0 ? "Este pedido ainda não tem peças." : "Nenhuma peça pendente."}</Vazio>
         ) : (
-          <GradePecas>
-            {blocos.map((g) =>
-              g.length === 1 ? (
-                <TilePeca key={g[0].id} item={g[0]}>
-                  <Button size="bloco" className="flex-1" onClick={() => acao(g[0], { status: "encontrado" })}>
-                    <Check /> Achei
-                  </Button>
-                  <MenuPeca
-                    itens={[
-                      { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(g[0]) },
-                      { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(g[0]) },
-                      { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(g[0], "removido", "cliente desistiu") },
-                    ]}
-                  />
-                </TilePeca>
-              ) : (
-                <TileModelo key={g[0].id} itens={g}>
-                  {/* Uma chamada por tamanho (cada uma grava o seu evento); a etapa só completa na última. */}
-                  <Button size="bloco" className="flex-1" onClick={() => g.forEach((i) => acao(i, { status: "encontrado" }))}>
-                    <Check /> Achei
-                  </Button>
-                  {/* Uma seção por tamanho: título "N°16 · 2 un." e as três ações embaixo. */}
-                  <MenuPeca
-                    rotulo="Ações por tamanho"
-                    grupos={g.map((i) => ({
-                      titulo: `${separarTamanho(i.variante).tamanho ?? i.variante ?? i.sku ?? i.nome}${i.qtd > 1 ? ` · ${i.qtd} un.` : ""}`,
-                      itens: [
-                        { rotulo: "Em falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
-                        { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
-                        { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
-                      ],
-                    }))}
-                  />
-                </TileModelo>
-              ),
-            )}
-          </GradePecas>
+          <>
+            {blocos.length > 0 && <GradePecas>{blocos.map(bloco)}</GradePecas>}
+            <SecaoAdicionais contagem={adicionais.length}>{blocosAdicionais.map(bloco)}</SecaoAdicionais>
+          </>
         )}
         <Button variant="outline" size="toque" className="w-fit" onClick={aoAdicionar}>
           <Plus /> Adicionar peça
@@ -146,6 +156,8 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      {dialogoQtd}
 
       <RespDialog aberto={!!faltaItem} aoMudar={(a) => !a && setFaltaItem(null)} titulo="Quantas faltam?" descricao={faltaItem ? `${faltaItem.sku ?? faltaItem.nome} · o pedido tem ${faltaItem.qtd}` : undefined}>
         {faltaItem && (

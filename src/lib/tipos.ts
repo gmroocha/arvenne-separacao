@@ -79,6 +79,12 @@ export type Pedido = {
   // Há troca concluída com diferença ainda não acertada (cobrar ou registrar crédito).
   acerto_pendente: boolean
   troca_coberto?: number
+  // Peças adicionais (entraram depois do pagamento): quantidade, valor e quando a cobrança foi recebida.
+  // Ausentes em bancos sem a migration de peças adicionais.
+  qtd_adicionais?: number
+  valor_adicionais?: number
+  adicionais_recebido_em?: string | null
+  adicionais_a_cobrar?: number
   // Reembolso pendente de peças tiradas ("cliente desistiu") depois do pagamento. Ausente em bancos sem a coluna.
   a_devolver?: number | null
   pendente_rastreio: boolean
@@ -113,6 +119,8 @@ export type Item = {
   removido_em?: string | null
   devolvido_em?: string | null
   shopify_line_id?: number | string | null
+  // Entrou depois do pagamento do pedido: separada à parte e cobrada à parte.
+  adicional?: boolean
 }
 
 export type ResultadoBipagem = "ok" | "fora_do_pedido" | "excedente"
@@ -414,6 +422,8 @@ export type TrocaPublicaPeca = {
   sku: string | null
   qtd: number
   valor_pago: number
+  // Valor pago por UMA unidade (do banco). Vem da migration 20261115100000; antes dela, ausente.
+  valor_pago_unit?: number | null
   escolha_tipo: EscolhaTroca | null
   escolha_opcao_id: string | null
   concluida: boolean

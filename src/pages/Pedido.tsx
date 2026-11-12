@@ -137,6 +137,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
       </Sheet>
 
       <AdicionarPecas
+        comLink
         aberto={adicionando}
         aoMudar={(a) => {
           setAdicionando(a)

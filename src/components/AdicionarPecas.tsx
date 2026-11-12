@@ -2,6 +2,7 @@ import { useState } from "react"
 import { ChevronUp, Trash2, TriangleAlert } from "lucide-react"
 import RespDialog from "@/components/RespDialog"
 import { AreaRolavel } from "@/components/comum/AreaRolavel"
+import { ColarCarrinho } from "@/components/comum/ColarCarrinho"
 import { LinhaPeca } from "@/components/comum/Peca"
 import { Quantidade } from "@/components/comum/Quantidade"
 import { TituloSecao } from "@/components/comum/TituloSecao"
@@ -37,6 +38,8 @@ type Props = {
   comPreco?: boolean // só a venda mostra preço na busca
   // Itens vivos do pedido: avisa quando a peça escolhida já está nele (evita linha duplicada sem querer).
   jaNoPedido?: PecaNoPedido[]
+  // Mostra o campo "Colar carrinho" em cima das abas; as peças lidas entram no carrinho do diálogo.
+  comLink?: boolean
 }
 
 // Peças escolhidas: muda a quantidade ou tira antes de salvar.
@@ -83,7 +86,7 @@ function ListaCarrinho({
   )
 }
 
-export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar, comPreco, jaNoPedido }: Props) {
+export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar, comPreco, jaNoPedido, comLink }: Props) {
   const celular = useIsMobile()
   const [carrinho, setCarrinho] = useState<Carrinho>([])
   const [verCarrinho, setVerCarrinho] = useState(false)
@@ -121,7 +124,13 @@ export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar, comPreco,
     else fechar()
   }
 
-  const abas = aberto && <BuscaPecas comPreco={comPreco} aoEscolher={tocar} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} qtdNoPedido={noPedido} selecionada={(item) => carrinho.some((x) => igual(x, item))} />
+  const busca = aberto && <BuscaPecas comPreco={comPreco} aoEscolher={tocar} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} qtdNoPedido={noPedido} selecionada={(item) => carrinho.some((x) => igual(x, item))} />
+  const abas = (
+    <div className="flex flex-col gap-3">
+      {aberto && comLink && <ColarCarrinho aoLer={(itens) => itens.forEach(tocar)} />}
+      {busca}
+    </div>
+  )
   const lista = <ListaCarrinho carrinho={carrinho} aoMudarQtd={mudarQtd} aoRemover={remover} noPedido={noPedido} />
 
   return (

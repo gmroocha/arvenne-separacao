@@ -160,3 +160,16 @@ Chrome: escolha a ZD220 uma vez (o Chrome lembra), sem margens e sem cabeçalho.
 Depois de imprimir, o app pergunta "Saiu tudo certo?". Se sim, marca as peças como etiquetadas.
 Em Expedição, "Imprimir todas" imprime os pedidos que estão em Etiquetagem, com uma etiqueta separadora
 entre um pedido e outro.
+
+## Token da Storefront (só se precisar)
+
+Serve para o app ler o link de carrinho compartilhado da Shopify (`/cart/c/...`). Só faça se eu avisar
+que o caminho sem token não funcionou.
+
+1. No admin da Shopify, abra **Configurações > Apps e canais de vendas > Desenvolver apps** (ou o Dev
+   Dashboard, no app "Arvenne Separação").
+2. Na configuração do app, ative a **Storefront API** e marque o acesso de leitura a produtos e
+   carrinhos (`unauthenticated_read_product_listings` e `unauthenticated_read_checkouts`).
+3. Reinstale o app e copie o **token de acesso da Storefront API**. Não cole o token no chat.
+4. No painel do Supabase, vá em **Edge Functions > Secrets**, crie o segredo `SHOPIFY_STOREFRONT_TOKEN`
+   e cole o token no valor. Salve.

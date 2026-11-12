@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert, Truck } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
+import { AdicionaisACobrar } from "@/components/comum/AdicionaisACobrar"
 import { LinhaPeca } from "@/components/comum/Peca"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -326,6 +327,8 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
       </Collapsible>
 
       <Faltando pedido={pedido} patch={patch} />
+
+      <AdicionaisACobrar pedido={pedido} aoMudar={(v) => patch({ adicionais_recebido_em: v })} />
 
       <Passo numero={1} icone={<FileText />} titulo="Nota fiscal" feito={nf} feitoEm={pedido.nf_emitida_em} aoDesfazer={() => patch({ nf_emitida_em: null })} textoDesfazer="Desfazer nota emitida">
         <div className="flex flex-col">

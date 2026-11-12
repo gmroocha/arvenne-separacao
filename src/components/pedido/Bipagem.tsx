@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Check, Minus, Plus, ScanBarcode, TriangleAlert, Volume2, VolumeX } from "lucide-react"
+import { Check, Hash, Minus, Plus, ScanBarcode, TriangleAlert, Volume2, VolumeX } from "lucide-react"
 import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import Foto from "@/components/Foto"
@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { registrarBipagem, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
-import { etapaCompleta } from "@/lib/etapa"
+import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
 import { sons } from "@/lib/sons"
-import type { ResultadoBipagem } from "@/lib/tipos"
-import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import type { Item, ResultadoBipagem } from "@/lib/tipos"
+import { useMudarQtdDialogo } from "./QtdDialog"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, SecaoAdicionais, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir?: () => void }
 type Aviso = { tipo: ResultadoBipagem; texto: string }
@@ -60,7 +61,49 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
   // As que ainda faltam ficam em cima; as completas descem para "Bipadas", em verde, sem sumir.
   const aBipar = itens.filter((i) => i.qtd_bipada < i.qtd)
   const completas = itens.filter((i) => i.qtd_bipada >= i.qtd)
+  const { normais, adicionais } = separarAdicionais(aBipar)
+  const { pedir: pedirQtd, dialogo: dialogoQtd } = useMudarQtdDialogo(pedido)
   const ultima = itens.find((i) => i.id === ultimaId) ?? null
+
+  const tile = (i: Item) => (
+                  <TilePeca
+                    key={i.id}
+                    item={i}
+                    piscando={piscando === i.id}
+                    contador={
+                      <Badge
+                        variant={i.qtd_bipada > 0 ? "default" : "secondary"}
+                        className="h-7 px-2.5 text-base tabular-nums shadow-sm"
+                      >
+                        {i.qtd_bipada}/{i.qtd}
+                      </Badge>
+                    }
+                  >
+                    {/* Contagem à mão (peça sem código legível): os dois botões direto, sem menu. */}
+                    <div className="flex w-full items-center gap-1.5">
+                      <Button
+                        variant="secondary"
+                        size="bloco"
+                        className="min-w-0 flex-1 px-2"
+                        aria-label="Tirar 1"
+                        disabled={i.qtd_bipada <= 0}
+                        onClick={() => acao(i, { qtd_bipada: i.qtd_bipada - 1 }, undefined, -1)}
+                      >
+                        <Minus /> 1
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="bloco"
+                        className="min-w-0 flex-1 px-2"
+                        aria-label="Contar 1"
+                        onClick={() => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() }, undefined, 1)}
+                      >
+                        <Plus /> 1
+                      </Button>
+                      <MenuPeca itens={[{ rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) }]} />
+                    </div>
+                  </TilePeca>
+  )
 
   const tocar = (som: keyof typeof sons) => {
     if (!mudo) sons[som]()
@@ -188,44 +231,10 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
             {aBipar.length === 0 ? (
               <Vazio>Tudo bipado. Pode concluir a bipagem.</Vazio>
             ) : (
-              <GradePecas>
-                {aBipar.map((i) => (
-                  <TilePeca
-                    key={i.id}
-                    item={i}
-                    piscando={piscando === i.id}
-                    contador={
-                      <Badge
-                        variant={i.qtd_bipada > 0 ? "default" : "secondary"}
-                        className="h-7 px-2.5 text-base tabular-nums shadow-sm"
-                      >
-                        {i.qtd_bipada}/{i.qtd}
-                      </Badge>
-                    }
-                  >
-                    {/* Contagem à mão (peça sem código legível): os dois botões direto, sem menu. */}
-                    <div className="flex w-full items-center gap-1.5">
-                      <Button
-                        variant="secondary"
-                        size="bloco"
-                        className="min-w-0 flex-1 px-2"
-                        disabled={i.qtd_bipada <= 0}
-                        onClick={() => acao(i, { qtd_bipada: i.qtd_bipada - 1 }, undefined, -1)}
-                      >
-                        <Minus /> Tirar 1
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="bloco"
-                        className="min-w-0 flex-1 px-2"
-                        onClick={() => acao(i, { qtd_bipada: i.qtd_bipada + 1, bipado_em: agora() }, undefined, 1)}
-                      >
-                        <Plus /> Contar 1
-                      </Button>
-                    </div>
-                  </TilePeca>
-                ))}
-              </GradePecas>
+<>
+                {normais.length > 0 && <GradePecas>{normais.map(tile)}</GradePecas>}
+                <SecaoAdicionais contagem={adicionais.length}>{adicionais.map(tile)}</SecaoAdicionais>
+              </>
             )}
           </section>
 
@@ -238,6 +247,8 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
           />
         </>
       )}
+
+      {dialogoQtd}
 
       {aoConcluir && (
         <ConcluirEtapa disabled={!etapaCompleta("bipagem", pedido.pedido_itens)} onClick={aoConcluir}>

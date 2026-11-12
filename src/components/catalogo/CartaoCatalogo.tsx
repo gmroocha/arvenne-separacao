@@ -56,7 +56,7 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
     </>
   )
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1.5 rounded-xl bg-card p-1.5 text-left ring-1 ring-foreground/10 transition-colors", selecionado && "bg-success/5 ring-success/40", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-1.5 rounded-xl bg-card p-1.5 text-left ring-1 ring-foreground/10 transition-colors", selecionado && "ring-2 ring-foreground/40", className)}>
       <div className="relative">
         <Foto ampliar url={fotoTamanho(foto, 300)} alt={alt} className="w-full" />
         {selo && <div className="pointer-events-none absolute top-1.5 left-1.5 flex flex-col items-start gap-1">{selo}</div>}
@@ -98,9 +98,9 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
             variant="outline"
             aria-pressed={!!selecionado}
             onClick={onCard}
-            className={cn("mt-1 w-full", selecionado && "border-success/60 bg-success/10 text-foreground hover:bg-success/15")}
+            className={cn("mt-1 w-full", selecionado && "border-foreground/50 bg-muted text-foreground hover:bg-muted")}
           >
-            {selecionado ? <Check className="text-success" /> : <Plus />}
+            {selecionado ? <Check /> : <Plus />}
             {selecionado ? acao.rotuloMarcado : acao.rotulo}
           </Button>
         )}

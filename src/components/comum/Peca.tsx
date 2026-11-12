@@ -14,6 +14,7 @@ export type PecaBasica = {
   origem?: string | null
   observacao?: string | null
   status?: string | null
+  adicional?: boolean
 }
 
 type Props = {
@@ -58,7 +59,7 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
         )}
         <div className={cn("truncate text-xs text-muted-foreground", riscada && "line-through")}>{item.nome}</div>
         {item.observacao && <div className="text-xs text-muted-foreground">{item.observacao}</div>}
-        {(qtd > 1 || item.origem === "clube") && (
+        {(qtd > 1 || item.origem === "clube" || item.adicional) && (
           <div className="mt-1 flex gap-1">
             {qtd > 1 && (
               <Badge variant="secondary" className="tabular-nums">
@@ -66,6 +67,7 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
               </Badge>
             )}
             {item.origem === "clube" && <Badge variant="outline">Clube</Badge>}
+            {item.adicional && <Badge variant="outline">Adicional</Badge>}
           </div>
         )}
         {extra}
