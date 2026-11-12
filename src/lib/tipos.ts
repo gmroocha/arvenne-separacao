@@ -1,4 +1,5 @@
-import type { Tables, Database } from './gerado/database.types'
+import type { Database } from './gerado/database.local.types'
+type Tables<N extends keyof Database['public']['Tables']> = Database['public']['Tables'][N]['Row']
 type Views<N extends keyof Database['public']['Views']> = Database['public']['Views'][N]['Row']
 type Obrigatorios<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> }
 import type { Fase, StatusItem, StatusPedido } from "./status"

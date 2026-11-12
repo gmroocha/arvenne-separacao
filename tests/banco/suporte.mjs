@@ -4,7 +4,7 @@ import { PGlite } from "@electric-sql/pglite"
 export let db
 export const one = async (sql, args = []) => (await db.query(sql, args)).rows[0]
 
-export async function criarBanco({ ate } = {}) {
+export async function criarBanco({ ate, antesDe, prepararAntes } = {}) {
   const banco = new PGlite()
   // Só infraestrutura é simulada. Regras, RLS, funções e gatilhos vêm dos arquivos reais.
   await banco.exec(`create role anon; create role authenticated; create role service_role;
@@ -20,6 +20,7 @@ export async function criarBanco({ ate } = {}) {
     $$;`)
   for (const file of readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort()) {
     if (ate && file.slice(0, 14) > ate) break
+    if (antesDe && file.slice(0, 14) === antesDe) await prepararAntes(banco)
     const sql = readFileSync(`supabase/migrations/${file}`, "utf8")
     // PGlite não possui servidor de replicação; os objetos de negócio ficam intactos.
     await banco.exec(sql.replace(/^alter publication .*;$/gm, "")

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { db, one } from "./suporte.mjs"
+import { db, one, criarBanco } from "./suporte.mjs"
 import { fixture, recusa, somaFixture } from "./fixtures.mjs"
 
 test("V20: restrição impede mais bipagens que unidades, inclusive por atualização direta", async () => {
@@ -22,14 +22,18 @@ test("V35: gatilhos antigos não são RPCs públicas", async () => {
     has_function_privilege('anon','public.tg_pedidos_depois()','execute') as pedidos`)
   expect(p).toEqual({ itens: false, pedidos: false })
 })
-test("vigia encontra a etapa errada sem mudar pedido ou peças", async () => {
-  const { p } = await somaFixture()
-  await db.query("update pedidos set status='faturamento' where id=$1", [p.id])
-  const antes = (await one("select to_jsonb(p) as dado from pedidos p where id=$1", [p.id])).dado
-  const alertas = (await db.query("select * from listar_inconsistencias() where pedido_id=$1", [p.id])).rows
-  expect(alertas.map((a) => a.regra)).toContain("etapa_adiantada")
-  const depois = (await one("select to_jsonb(p) as dado from pedidos p where id=$1", [p.id])).dado
-  expect(depois).toEqual(antes)
+test("vigia encontra dado legado de etapa sem alterar pedidos", async () => {
+  let id
+  const legado=await criarBanco({antesDe:'20261118160000',prepararAntes: async (b) => {
+    id=(await b.query("insert into pedidos(origem,status) values ('shopify','faturamento') returning id")).rows[0].id
+    await b.query("insert into pedido_itens(pedido_id,origem,nome,qtd,preco) values ($1,'avulso','Legada',1,10)",[id])
+  }})
+  try {
+    const antes=(await legado.query('select to_jsonb(p) as dado from pedidos p where id=$1',[id])).rows[0].dado
+    const alertas=(await legado.query('select * from listar_inconsistencias() where pedido_id=$1',[id])).rows
+    expect(alertas.map(a=>a.regra)).toContain('etapa_adiantada')
+    expect((await legado.query('select to_jsonb(p) as dado from pedidos p where id=$1',[id])).rows[0].dado).toEqual(antes)
+  } finally { await legado.close() }
 })
 test("vigia grava uma fotografia por execução, inclusive sem ocorrências, e mantém as anteriores", async () => {
   const a = await one("select registrar_vistoria() as id")

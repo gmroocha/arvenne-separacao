@@ -10,7 +10,7 @@ export default defineConfig({
   retries: 0,
   forbidOnly: true,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
-  use: { baseURL: "http://127.0.0.1:4175", colorScheme: "dark", serviceWorkers: "block", trace: "retain-on-failure", screenshot: "only-on-failure" },
+  use: { baseURL: "http://127.0.0.1:4175", actionTimeout: 10_000, colorScheme: "dark", serviceWorkers: "block", trace: "retain-on-failure", screenshot: "only-on-failure" },
   projects: [
     { name: "celular", use: { browserName: "chromium", viewport: { width: 390, height: 844 } } },
     { name: "pc", use: { browserName: "chromium", viewport: { width: 1280, height: 900 } } },

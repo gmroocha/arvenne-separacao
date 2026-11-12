@@ -15,6 +15,7 @@ export type ItemAcao = {
   aoClicar: () => void
   destrutivo?: boolean
   desabilitado?: boolean
+  motivo?: string
   atual?: boolean // etapa em que o pedido já está: marcada com check e sem ação
 }
 export type GrupoAcoes = { titulo?: string; itens: ItemAcao[]; estilo?: "ghost" | "outline" }
@@ -53,6 +54,8 @@ export default function MenuAcoes({ grupos, gatilho, titulo = "Ações" }: Props
                         key={it.rotulo}
                         variant={g.estilo ?? "outline"}
                         disabled={it.desabilitado}
+                        title={it.motivo}
+                        aria-description={it.motivo}
                         aria-current={it.atual ? "step" : undefined}
                         className={cn("h-11 w-full justify-start gap-3 text-base", it.destrutivo && "text-destructive hover:text-destructive")}
                         onClick={() => {
@@ -84,6 +87,8 @@ export default function MenuAcoes({ grupos, gatilho, titulo = "Ações" }: Props
         key={it.rotulo}
         variant={it.destrutivo ? "destructive" : undefined}
         disabled={it.desabilitado}
+        title={it.motivo}
+        aria-description={it.motivo}
         aria-current={it.atual ? "step" : undefined}
         onSelect={it.atual ? (e) => e.preventDefault() : undefined}
         onClick={it.atual ? undefined : it.aoClicar}

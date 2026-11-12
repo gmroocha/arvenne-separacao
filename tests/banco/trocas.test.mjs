@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { fixture, escolher, concluir, publica, recusa, totalFecha, pedidoWhats, BACKFILL, pedidoShopifyAntigo, num, preco, cobrir, resumo, opcaoB, carrinho, cart } from './fixtures.mjs'
+import { fixture, escolher, concluir, publica, recusa, totalFecha, pedidoWhats, prepararEtapa, BACKFILL, pedidoShopifyAntigo, num, preco, cobrir, resumo, opcaoB, carrinho, cart } from './fixtures.mjs'
 
 test('troca por peça do site: preserva quantidade, registra histórico e repetir não duplica', async () => {
   const f = await fixture()
@@ -256,7 +256,7 @@ test('pedido cancelado cancela as trocas ativas; pedido cancelado ou enviado rec
   // Pedido enviado com troca ativa (caso de dado antigo): escolher, aprovar e concluir recusam.
   const g = await fixture({ desconto: 20 })
   await escolher(g)
-  await db.query("update pedidos set status = 'enviado' where id = $1", [g.pedido.id])
+  await prepararEtapa(g.pedido.id,'enviado')
   await recusa(() => concluir(g), /enviado/)
   await recusa(() => one('select troca_aprovar($1, $2, $3, $4)', [g.troca.id, g.pecas[0].id, 'opcao', g.opcoes[0].id]), /enviado/)
   await db.exec('set local role anon')

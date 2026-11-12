@@ -6,10 +6,7 @@ export const CHAVE_FICTICIA = "chave-publica-ficticia-sem-acesso"
 const citar = (s) => `"${s.replaceAll('"', '""')}"`
 const headers = { "access-control-allow-origin": "*", "access-control-expose-headers": "content-range" }
 
-// Pequeno adaptador PostgREST só para testes: operações usam as migrations e o PostgreSQL em memória.
-// Não há cálculo financeiro copiado para o simulador, conexão remota ou credencial real.
-export async function criarSimulacao({ status = "novo", troca = false, aviso = false, somada = false } = {}) {
-  const banco = await criarBanco()
+async function semear(banco, { status, troca, aviso, somada }) {
   const one = async (sql, args = []) => (await banco.query(sql, args)).rows[0]
   const agora = new Date().toISOString()
   const p = await one(`insert into pedidos(origem,status,cliente_nome,forma_pagamento,valor_pago,pago_em,desconto_tipo,desconto_valor,
@@ -36,6 +33,18 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     await banco.query("update pedidos set status='faturamento' where id=$1", [p.id])
     await one("select registrar_vistoria()")
   }
+  return {p,i,t,vendaSomada}
+}
+
+// Pequeno adaptador PostgREST só para testes: operações usam as migrations e o PostgreSQL em memória.
+// Não há cálculo financeiro copiado para o simulador, conexão remota ou credencial real.
+export async function criarSimulacao({ status = "novo", troca = false, aviso = false, somada = false } = {}) {
+  let legado
+  const opcoes={status,troca,aviso,somada}
+  // Caso de dados antigos: semeia a incoerência ANTES da migration que passa a impedi-la.
+  const banco = await criarBanco(aviso ? { antesDe: '20261118160000', prepararAntes: async (b) => { legado=await semear(b,opcoes) } } : {})
+  const {p,i,t,vendaSomada}=legado ?? await semear(banco,opcoes)
+  const one = async (sql, args = []) => (await banco.query(sql, args)).rows[0]
   const relacoes = (await banco.query(`select table_name,column_name from information_schema.columns where table_schema='public'`)).rows
   const campos = new Map()
   for (const r of relacoes) campos.set(r.table_name, new Set([...(campos.get(r.table_name) ?? []), r.column_name]))

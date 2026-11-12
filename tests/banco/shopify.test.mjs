@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { payload, importar, BACKFILL, pedidoShopifyAntigo, payloadV2, pedidoDe, eventos } from './fixtures.mjs'
+import { payload, importar, BACKFILL, pedidoShopifyAntigo, payloadV2, pedidoDe, eventos, prepararEtapa } from './fixtures.mjs'
 
 test('importação: segunda chamada completa número, cidade e UF vazios', async () => {
   assert.equal(await importar(payload()), true)
@@ -66,7 +66,7 @@ test('reembolsado na Shopify cancela o pedido (uma vez só no histórico); novo 
   assert.equal((await db.query('select 1 from pedidos where shopify_order_id = 777010')).rows.length, 0)
   // Já enviado: não volta atrás, só avisa.
   await importar(payload({ shopify_order_id: '777011' }))
-  await db.query("update pedidos set status = 'enviado' where shopify_order_id = 777011")
+  await prepararEtapa((await pedidoDe(777011)).id,'enviado')
   await importar(payload({ shopify_order_id: '777011', reembolsado: true }))
   assert.equal((await pedidoDe(777011)).status, 'enviado')
 })

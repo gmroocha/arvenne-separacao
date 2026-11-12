@@ -27,11 +27,6 @@ test.fails("V11: opção e carrinho anunciam o mesmo valor para várias unidades
   const c = await one("select valor_escolhido from v_troca_carrinho where troca_peca_id=$1", [f.pecas[0].id])
   expect(num(v.valor_opcao)).toBe(num(c.valor_escolhido))
 })
-test.fails("V14: banco impede envio com peça pendente", async () => {
-  const { p } = await somaFixture()
-  await db.query("update pedido_itens set status='pendente' where pedido_id=$1", [p.id])
-  await recusa(() => db.query("update pedidos set status='enviado' where id=$1", [p.id]), /etapa|pendente|separad/i)
-})
 test.fails("V28: valor de opção concluída não pode reescrever o histórico", async () => {
   const f = await fixture()
   await escolher(f); await concluir(f)

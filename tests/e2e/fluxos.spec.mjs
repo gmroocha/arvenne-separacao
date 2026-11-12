@@ -31,9 +31,20 @@ test("venda paga entra na expedição com o valor calculado pelo banco", async (
   await semQuebra(page)
 })
 
-test("separação, conferência, etiqueta e bipagem preservam as duas unidades", async ({ page, context, baseURL }) => {
+test("separação, conferência, etiqueta e bipagem preservam as duas unidades", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL, { status: "novo" })
   await page.goto(`/pedidos/${sim.pedido.id}`)
+  // V14: o mesmo impedimento do SQL aparece no menu antes de começar o fluxo.
+  await page.getByRole("button", { name: "Mais ações", exact: true }).click()
+  const menu = page.getByRole("dialog", { name: "Ações do pedido", exact: true }).or(page.getByRole("menu"))
+  const enviado = menu.getByRole("button", { name: "Enviado", exact: true }).or(menu.getByRole("menuitem", { name: "Enviado", exact: true }))
+  await expect(enviado).toBeDisabled()
+  await expect(enviado).toHaveAttribute("aria-description", /pendente/)
+  await enviado.scrollIntoViewIfNeeded()
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/etapas-menu-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+  await page.keyboard.press("Escape")
+  await expect(enviado).toBeHidden()
   await page.getByRole("button", { name: "Achei", exact: true }).click()
   await page.getByRole("button", { name: "Ir para Conferência", exact: true }).click()
   await page.getByRole("button", { name: "Conferida", exact: true }).click()

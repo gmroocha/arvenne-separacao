@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { fixture, recusa, pedidoWhats, zero, eventos, num, itemQtd4 } from './fixtures.mjs'
+import { fixture, recusa, pedidoWhats, zero, eventos, num, itemQtd4, prepararEtapa, escolher, concluir } from './fixtures.mjs'
 
 test('venda sem peça ou com peça sem preço não entra na expedição', async () => {
   const v = await one("insert into pedidos (origem, status, cliente_nome) values ('whatsapp', 'aguardando_pagamento', 'Cliente') returning *")
@@ -23,7 +23,7 @@ test('reiniciar do zero não ressuscita peça removida na venda e restaura a rem
   await db.query("update pedido_itens set status = 'removido', observacao = 'removida na venda' where id = $1", [na.id])
   await db.query("update pedidos set status = 'novo' where id = $1", [p.id])
   await db.query("update pedido_itens set status = 'removido' where id = $1", [co.id]) // removida na expedição
-  await db.query("update pedidos set status = 'bipagem', nf_emitida_em = now() where id = $1", [p.id])
+  await db.query("update pedidos set nf_emitida_em = now() where id = $1", [p.id])
   await db.exec('set local role authenticated')
   await one('select reiniciar_pedido($1, $2, true)', [p.id, 'bipagem'])
   assert.equal((await one('select status from pedido_itens where id = $1', [na.id])).status, 'removido')
@@ -167,3 +167,46 @@ test('V17: reiniciar e restaurar não recolocam uma peça já devolvida como pag
   assert.deepEqual(await one('select status,removido_em,devolvido_em from pedido_itens where id=$1',[i.id]),antes)
   assert.equal((await one("select count(*)::int n from pedido_eventos where pedido_id=$1 and tipo='devolvido'",[p.id])).n,1)
 })
+
+
+test('V14: cada destino exige o trabalho das etapas anteriores, inclusive nota e postagem', async () => {
+  const p=await pedidoWhats('novo')
+  await db.exec('set local role authenticated')
+  assert.match((await one('select etapas_permitidas from v_pedidos where id=$1',[p.id])).etapas_permitidas.enviado,/pendente/)
+  await recusa(() => db.query("update pedidos set status='enviado' where id=$1",[p.id]),/pendente/)
+  await db.query("update pedido_itens set status='encontrado' where pedido_id=$1",[p.id])
+  await db.query("update pedidos set status='conferencia' where id=$1",[p.id])
+  await recusa(() => db.query("update pedidos set status='etiquetagem' where id=$1",[p.id]),/Confira/)
+  await db.query('update pedido_itens set conferido_em=now() where pedido_id=$1',[p.id])
+  await db.query("update pedidos set status='etiquetagem' where id=$1",[p.id])
+  await recusa(() => db.query("update pedidos set status='bipagem' where id=$1",[p.id]),/Etiquete/)
+  await db.query('update pedido_itens set etiquetado_em=now() where pedido_id=$1',[p.id])
+  await db.query("update pedidos set status='bipagem' where id=$1",[p.id])
+  await recusa(() => db.query("update pedidos set status='faturamento' where id=$1",[p.id]),/Bipe/)
+  await db.query('update pedido_itens set qtd_bipada=qtd,bipado_em=now() where pedido_id=$1',[p.id])
+  await db.query("update pedidos set status='faturamento' where id=$1",[p.id])
+  await recusa(() => db.query("update pedidos set status='embalagem' where id=$1",[p.id]),/nota fiscal/)
+  // O gatilho considera as datas NOVAS desta mesma gravação.
+  await db.query("update pedidos set nf_emitida_em=now(),frete_gerado_em=now(),pedido_fornecedor_em=now(),status='embalagem' where id=$1",[p.id])
+  await recusa(() => db.query("update pedidos set status='pronto_envio' where id=$1",[p.id]),/embalagem/)
+  await db.query("update pedidos set embalado_em=now(),status='pronto_envio' where id=$1",[p.id])
+  await recusa(() => db.query("update pedidos set status='enviado' where id=$1",[p.id]),/postagem/)
+  await db.query("update pedidos set postado_em=now(),status='enviado' where id=$1",[p.id])
+  assert.equal((await one('select status from pedidos where id=$1',[p.id])).status,'enviado')
+  await recusa(() => db.query("update pedidos set status='separacao' where id=$1",[p.id]),/arquivado/)
+})
+
+test('V14: acerto pendente bloqueia embalagem mesmo com peças e documentos prontos', async () => {
+  const f=await fixture({desconto:0})
+  await escolher(f); await concluir(f)
+  await recusa(() => prepararEtapa(f.pedido.id,'embalagem'),/acertos/)
+  await one("select troca_acerto($1,'recebido')",[f.troca.id])
+  await prepararEtapa(f.pedido.id,'embalagem')
+  assert.equal((await one('select status from pedidos where id=$1',[f.pedido.id])).status,'embalagem')
+})
+
+test('V14: inserir diretamente na etapa avançada não contorna os pré-requisitos', async () => {
+  await db.exec('set local role authenticated')
+  await recusa(() => one("insert into pedidos(origem,status) values ('whatsapp','enviado') returning id"),/peças para expedir/)
+})
+

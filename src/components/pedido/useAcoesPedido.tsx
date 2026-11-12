@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useMudarStatus, useReiniciar } from "@/lib/api"
 import { ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
+import { motivoEtapa } from "@/lib/regrasEtapas"
 
 type Opcoes = {
   aoVerDados?: () => void // só nas etapas de foco, onde a lateral de dados some
@@ -16,7 +17,7 @@ type Opcoes = {
 
 // Ações do pedido num lugar só: servem ao "⋯" do cabeçalho e ao clique direito do cartão.
 // Devolve os grupos do menu e os diálogos de confirmação (renderize `dialogos` uma vez).
-export function useAcoesPedido(pedido: Pick<Pedido, "id" | "status" | "fase" | "shopify_url">, opcoes: Opcoes = {}) {
+export function useAcoesPedido(pedido: Pick<Pedido, "id" | "status" | "fase" | "shopify_url" | "etapas_permitidas">, opcoes: Opcoes = {}) {
   const navegar = useNavigate()
   const mudarStatus = useMudarStatus()
   const reiniciar = useReiniciar(pedido.id)
@@ -37,6 +38,8 @@ export function useAcoesPedido(pedido: Pick<Pedido, "id" | "status" | "fase" | "
         rotulo: NOME_ETAPA[e],
         icone: ICONE_ETAPA[e],
         atual: e === pedido.status,
+        desabilitado: e !== pedido.status && motivoEtapa(pedido.etapas_permitidas, e) !== null,
+        motivo: motivoEtapa(pedido.etapas_permitidas, e) ?? undefined,
         aoClicar: () => mudarStatus.mutate({ pedidoId: pedido.id, para: e as StatusPedido }),
       })),
     },
