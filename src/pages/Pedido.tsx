@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
@@ -58,21 +59,27 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
 
   const aoAdicionar = (novos: NovoItem[]) => {
     const velha = trocando
-    // Depois da separação a peça nova já entra como encontrada (as etapas só mostram essas).
-    const jaEncontradas = ["conferencia", "etiquetagem", "bipagem"].includes(pedido.status)
+    // Peça nova sempre nasce pendente: precisa ser separada. Se o pedido já passou da Separação, ele volta
+    // para lá (as peças já conferidas/etiquetadas continuam assim e não são feitas de novo).
+    const depois = ["conferencia", "etiquetagem", "bipagem"].includes(pedido.status)
     adicionarItens.mutate(
-      { pedidoId: pedido.id, itens: novos, jaEncontradas },
+      { pedidoId: pedido.id, itens: novos },
       {
         // A peça antiga só sai depois que a nova entrou de verdade. Recarrega antes, para a checagem de
         // etapa completa enxergar a peça nova (e não abrir o Dialog antes da hora).
         onSuccess: async () => {
-          if (!velha) return
-          await qc.refetchQueries({ queryKey: ["pedido", pedido.id] })
-          const dados = novos[0]
-          acao(velha, {
-            status: "removido",
-            observacao: `trocada por ${[dados.sku, dados.nome].filter(Boolean).join(" · ")}`,
-          })
+          if (velha) {
+            await qc.refetchQueries({ queryKey: ["pedido", pedido.id] })
+            const dados = novos[0]
+            acao(velha, {
+              status: "removido",
+              observacao: `trocada por ${[dados.sku, dados.nome].filter(Boolean).join(" · ")}`,
+            })
+          }
+          if (depois) {
+            mudarStatus.mutate({ pedidoId: pedido.id, para: "separacao", silencioso: true })
+            toast.info("Separe as peças novas: o pedido voltou para a Separação")
+          }
         },
       },
     )

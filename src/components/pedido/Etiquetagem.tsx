@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import AvisoPendentes from "./AvisoPendentes"
 import Problemas from "./Problemas"
 import { useMudarQtdDialogo } from "./QtdDialog"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, SecaoAdicionais, TilePeca, Vazio } from "./TilePeca"
@@ -41,10 +42,10 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
                   </Button>
                   <MenuPeca
                     itens={[
-                      { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
                       { rotulo: "Imprimir esta etiqueta", icone: Printer, desabilitado: !i.sku || imprimindo, aoClicar: () => imprimir(grupoDe([i])) },
                       { rotulo: "Falta", icone: PackageX, aoClicar: () => acao(i, { status: "falta" }) },
                       { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                      { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
                       { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => acao(i, { status: "removido", observacao: "cliente desistiu" }) },
                     ]}
                   />
@@ -58,6 +59,7 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <ProgressoEtapa titulo="Etiquetagem" feitas={feitas.length} total={achadas.length} unidade="peças" />
+        <AvisoPendentes pedido={pedido} />
         <p className="text-sm text-muted-foreground">Imprima, cole a etiqueta no saquinho de cada peça e marque "Etiquetada".</p>
         <div className="flex items-center gap-2">
           <Button size="xl" className="min-w-0 flex-1 sm:flex-none" disabled={todas.etiquetas.length === 0 || imprimindo} onClick={() => imprimir(grupoDe(aEtiquetar))}>
@@ -109,6 +111,7 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
         titulo="Etiquetadas"
         itens={feitas}
         aoDesfazer={(i) => acao(i, { etiquetado_em: null, etiqueta_previa: false })}
+        aoDesfazerTudo={() => feitas.forEach((i) => acao(i, { etiquetado_em: null, etiqueta_previa: false }))}
         aoReimprimir={(i) => imprimir(grupoDe([i]))}
       />
 

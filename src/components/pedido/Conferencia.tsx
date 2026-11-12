@@ -6,6 +6,7 @@ import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
 import type { Item } from "@/lib/tipos"
 import AvisoConferencia from "./AvisoConferencia"
+import AvisoPendentes from "./AvisoPendentes"
 import Problemas from "./Problemas"
 import { useMudarQtdDialogo } from "./QtdDialog"
 import { FaixaFeitas, GradePecas, InstrucaoTile, MenuPeca, ProgressoEtapa, SecaoAdicionais, TilePeca, Vazio } from "./TilePeca"
@@ -27,9 +28,9 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
       </Button>
       <MenuPeca
         itens={[
-          { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
           { rotulo: "Falta", icone: PackageX, aoClicar: () => acao(i, { status: "falta" }) },
           { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+          { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
           { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => acao(i, { status: "removido", observacao: "cliente desistiu" }) },
         ]}
       />
@@ -41,6 +42,7 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
       <div className="flex flex-col gap-2">
         <ProgressoEtapa titulo="Conferência" feitas={conferidas.length} total={achadas.length} unidade="peças" />
         <AvisoConferencia />
+        <AvisoPendentes pedido={pedido} />
       </div>
 
       <Problemas pedido={pedido} acao={acao} aoTrocar={aoTrocar} />
@@ -61,7 +63,7 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
 
       {dialogoQtd}
 
-      <FaixaFeitas titulo="Conferidas" itens={conferidas} aoDesfazer={(i) => acao(i, { conferido_em: null })} />
+      <FaixaFeitas titulo="Conferidas" itens={conferidas} aoDesfazer={(i) => acao(i, { conferido_em: null })} aoDesfazerTudo={() => conferidas.forEach((i) => acao(i, { conferido_em: null }))} />
 
       {aoConcluir && (
         <ConcluirEtapa disabled={!etapaCompleta("conferencia", pedido.pedido_itens)} onClick={aoConcluir}>

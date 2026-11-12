@@ -24,6 +24,8 @@ type Marcas = {
   // Texto pequeno sob o preço (ex.: aviso de que o valor com desconto aparece ao escolher).
   notaPreco?: string
   quantidade?: (item: NovoItem) => number
+  // Muda a quantidade no carrinho direto no cartão (0 tira do carrinho).
+  aoMudarQtd?: (item: NovoItem, qtd: number) => void
   selecionada?: (item: NovoItem) => boolean
   // Peça que já está no pedido: ganha o selo "Já no pedido".
   noPedido?: (item: NovoItem) => boolean
@@ -86,7 +88,7 @@ function Selos({ noCarrinho, jaNoPedido, qtdNoPedido }: { noCarrinho: number; ja
 }
 
 // Grade de cartões: tamanhos do mesmo modelo juntos (só Site); variante de outro tipo fica em cartão próprio.
-function GradeResultados({ itens, agrupar, aoTocar, quantidade, selecionada, noPedido, qtdNoPedido, notaPreco, comPreco }: { itens: NovoItem[]; agrupar?: boolean } & Pick<Marcas, "quantidade" | "selecionada" | "noPedido" | "qtdNoPedido" | "notaPreco" | "comPreco"> & { aoTocar: Tocar }) {
+function GradeResultados({ itens, agrupar, aoTocar, quantidade, aoMudarQtd, selecionada, noPedido, qtdNoPedido, notaPreco, comPreco }: { itens: NovoItem[]; agrupar?: boolean } & Pick<Marcas, "quantidade" | "aoMudarQtd" | "selecionada" | "noPedido" | "qtdNoPedido" | "notaPreco" | "comPreco"> & { aoTocar: Tocar }) {
   const qtd = (i: NovoItem) => quantidade?.(i) ?? 0
   const marcada = (i: NovoItem) => selecionada?.(i) ?? false
   const nped = (i: NovoItem) => qtdNoPedido?.(i) ?? 0
@@ -108,7 +110,8 @@ function GradeResultados({ itens, agrupar, aoTocar, quantidade, selecionada, noP
               variante={i.variante}
               nome={i.nome}
               selecionado={marcada(i) || qtd(i) > 0}
-              selo={<Selos noCarrinho={qtd(i)} jaNoPedido={noPedido?.(i) ?? false} qtdNoPedido={nped(i)} />}
+              selo={<Selos noCarrinho={aoMudarQtd ? 0 : qtd(i)} jaNoPedido={noPedido?.(i) ?? false} qtdNoPedido={nped(i)} />}
+              quantidade={aoMudarQtd && qtd(i) > 0 ? { valor: qtd(i), aoMudar: (n) => aoMudarQtd(i, n) } : undefined}
               preco={comPreco ? <PrecoCartao item={i} notaPreco={notaPreco} /> : undefined}
               acao={acao}
               onCard={() => aoTocar(i)}
@@ -147,7 +150,7 @@ function GradeResultados({ itens, agrupar, aoTocar, quantidade, selecionada, noP
   )
 }
 
-function AbaSite({ aoTocar, quantidade, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoTocar: Tocar } & Marcas) {
+function AbaSite({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoTocar: Tocar } & Marcas) {
   const [termo, setTermo] = useState("")
   const busca = useDebounce(termo.trim(), 300)
   const { data, isFetching } = useBuscaSite(busca)
@@ -215,12 +218,12 @@ function AbaSite({ aoTocar, quantidade, selecionada, notaPreco, noPedido, qtdNoP
         </Empty>
       )}
       {!isFetching && busca.length >= 2 && data?.length === 0 && <SemResultado />}
-      {data && <GradeResultados agrupar itens={data.map((v) => itemDoSite(v))} aoTocar={aoTocar} quantidade={quantidade} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
+      {data && <GradeResultados agrupar itens={data.map((v) => itemDoSite(v))} aoTocar={aoTocar} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
     </div>
   )
 }
 
-function AbaClube({ aoTocar, quantidade, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoTocar: Tocar } & Marcas) {
+function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoTocar: Tocar } & Marcas) {
   const [termo, setTermo] = useState("")
   const [novo, setNovo] = useState(false)
   const busca = useDebounce(termo.trim(), 300)
@@ -243,13 +246,13 @@ function AbaClube({ aoTocar, quantidade, selecionada, notaPreco, noPedido, qtdNo
         <Plus /> Nova peça do Clube
       </Button>
       {!isFetching && data?.length === 0 && <SemResultado />}
-      {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} aoTocar={aoTocar} quantidade={quantidade} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
+      {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} aoTocar={aoTocar} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
     </div>
   )
 }
 
 // Busca de peças (abas Site e Clube), reutilizada em "Adicionar peça" e na troca de peça em falta.
-export function BuscaPecas({ aoEscolher, quantidade, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoEscolher: Tocar } & Marcas) {
+export function BuscaPecas({ aoEscolher, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoEscolher: Tocar } & Marcas) {
   return (
     <Tabs defaultValue="site">
       <TabsList variant="line">
@@ -257,10 +260,10 @@ export function BuscaPecas({ aoEscolher, quantidade, selecionada, notaPreco, noP
         <TabsTrigger value="clube">Clube</TabsTrigger>
       </TabsList>
       <TabsContent value="site">
-        <AbaSite aoTocar={aoEscolher} quantidade={quantidade} selecionada={selecionada} notaPreco={notaPreco} noPedido={noPedido} qtdNoPedido={qtdNoPedido} comPreco={comPreco} />
+        <AbaSite aoTocar={aoEscolher} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} notaPreco={notaPreco} noPedido={noPedido} qtdNoPedido={qtdNoPedido} comPreco={comPreco} />
       </TabsContent>
       <TabsContent value="clube">
-        <AbaClube aoTocar={aoEscolher} quantidade={quantidade} selecionada={selecionada} notaPreco={notaPreco} noPedido={noPedido} qtdNoPedido={qtdNoPedido} comPreco={comPreco} />
+        <AbaClube aoTocar={aoEscolher} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} notaPreco={notaPreco} noPedido={noPedido} qtdNoPedido={qtdNoPedido} comPreco={comPreco} />
       </TabsContent>
     </Tabs>
   )

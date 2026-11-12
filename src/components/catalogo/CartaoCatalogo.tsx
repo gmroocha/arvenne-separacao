@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { Check, Plus } from "lucide-react"
 import Foto from "@/components/Foto"
 import { BolhaCheck, BolhaContador } from "@/components/comum/Bolha"
+import { Quantidade } from "@/components/comum/Quantidade"
 import { Button } from "@/components/ui/button"
 import { Toggle } from "@/components/ui/toggle"
 import { fotoTamanho } from "@/lib/foto"
@@ -39,6 +40,8 @@ type Props = {
   // Botão explícito no pé do cartão sem tamanhos (a foto abre o zoom, então o toque no texto não bastava).
   acao?: { rotulo: string; rotuloMarcado: string }
   rotuloChips?: string
+  // Peça já no carrinho: no lugar do botão "Adicionada" aparece o − n + (0 tira do carrinho).
+  quantidade?: { valor: number; aoMudar: (n: number) => void }
   // Ações extras no pé do cartão.
   children?: ReactNode
   className?: string
@@ -46,7 +49,7 @@ type Props = {
 
 // Cartão único de catálogo: foto quadrada (com ampliar), código, variante, nome, preço e tamanhos.
 // Só apresenta; quem usa decide o que cada toque faz.
-export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo, selecionado, preco, chips, onChip, onCard, acao, rotuloChips = "Tamanho", children, className }: Props) {
+export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo, selecionado, preco, chips, onChip, onCard, acao, quantidade, rotuloChips = "Tamanho", children, className }: Props) {
   const comChips = !!chips?.length
   const dados = (
     <>
@@ -60,7 +63,7 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
       <div className="relative">
         <Foto ampliar url={fotoTamanho(foto, 300)} alt={alt} className="w-full" />
         {selo && <div className="pointer-events-none absolute top-1.5 left-1.5 flex flex-col items-start gap-1">{selo}</div>}
-        {selecionado && (
+        {selecionado && !quantidade && (
           <BolhaCheck className="pointer-events-none absolute top-1.5 right-1.5" />
         )}
       </div>
@@ -91,7 +94,12 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
             ))}
           </div>
         )}
-        {acao && !comChips && (
+        {acao && !comChips && quantidade && (
+          <div className="mt-1 flex justify-center">
+            <Quantidade valor={quantidade.valor} min={0} aoMudar={quantidade.aoMudar} rotulo={codigo} />
+          </div>
+        )}
+        {acao && !comChips && !quantidade && (
           <Button
             type="button"
             size="bloco"

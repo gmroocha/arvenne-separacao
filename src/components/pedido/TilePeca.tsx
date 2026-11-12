@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react"
-import { ChevronDown, MoreHorizontal, Printer } from "lucide-react"
+import { Check, ChevronDown, MoreHorizontal, Printer, Undo2 } from "lucide-react"
 import { MarcaCheck } from "@/components/comum/Bolha"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import { LinhaPeca } from "@/components/comum/Peca"
 import Foto from "@/components/Foto"
+import RespDialog from "@/components/RespDialog"
 import MenuAcoes, { type GrupoAcoes, type ItemAcao } from "@/components/MenuAcoes"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -178,19 +179,52 @@ type FaixaProps = {
   aoReimprimir?: (item: Item) => void
   nota?: (item: Item) => string | null
   abertaInicial?: boolean
+  // "Desfazer tudo" à direita do título: devolve todas as peças da faixa (pede confirmação antes).
+  aoDesfazerTudo?: () => void
 }
 
 // Faixa recolhível das peças já feitas: miniaturas pequenas com Desfazer.
-export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesfazer, aoReimprimir, nota, abertaInicial = true }: FaixaProps) {
+export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesfazer, aoReimprimir, nota, abertaInicial = true, aoDesfazerTudo }: FaixaProps) {
   const [aberta, setAberta] = useState(abertaInicial)
+  const [confirmarTudo, setConfirmarTudo] = useState(false)
   if (itens.length === 0) return null
   return (
     <Collapsible open={aberta} onOpenChange={setAberta}>
-      <CollapsibleTrigger asChild>
-        <Button variant="ghost" size="sm" className="-ml-2 h-9 text-muted-foreground">
-          {titulo} ({itens.length}) <ChevronDown className={cn("transition-transform", aberta && "rotate-180")} />
-        </Button>
-      </CollapsibleTrigger>
+      <div className="flex items-center justify-between gap-2">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="-ml-2 h-9 text-muted-foreground">
+            {titulo} ({itens.length}) <ChevronDown className={cn("transition-transform", aberta && "rotate-180")} />
+          </Button>
+        </CollapsibleTrigger>
+        {aoDesfazerTudo && itens.length > 1 && (
+          <Button variant="ghost" size="sm" className="-mr-2 h-9 text-muted-foreground" onClick={() => setConfirmarTudo(true)}>
+            <Undo2 /> Desfazer tudo
+          </Button>
+        )}
+      </div>
+      {aoDesfazerTudo && (
+        <RespDialog
+          aberto={confirmarTudo}
+          aoMudar={setConfirmarTudo}
+          titulo={`Desfazer ${itens.length} peças?`}
+          descricao={`Todas as peças de "${titulo}" voltam para a lista de cima.`}
+        >
+          <div className="flex flex-col gap-2 pt-2 sm:flex-row-reverse sm:justify-start">
+            <Button
+              size="toque"
+              onClick={() => {
+                aoDesfazerTudo()
+                setConfirmarTudo(false)
+              }}
+            >
+              <Check /> Desfazer tudo
+            </Button>
+            <Button size="toque" variant="outline" onClick={() => setConfirmarTudo(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </RespDialog>
+      )}
       <CollapsibleContent className="grid gap-1.5 pt-1 sm:grid-cols-2">
         {itens.map((i) => (
           <LinhaPeca

@@ -84,9 +84,9 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                   </Button>
                   <MenuPeca
                     itens={[
-                      { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(g[0]) },
                       { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(g[0]) },
                       { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(g[0]) },
+                      { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(g[0]) },
                       { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(g[0], "removido", "cliente desistiu") },
                     ]}
                   />
@@ -103,9 +103,9 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
                     grupos={g.map((i) => ({
                       titulo: `${separarTamanho(i.variante).tamanho ?? i.variante ?? i.sku ?? i.nome}${i.qtd > 1 ? ` · ${i.qtd} un.` : ""}`,
                       itens: [
-                        { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
                         { rotulo: "Em falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
                         { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                        { rotulo: "Mudar quantidade", icone: Hash, aoClicar: () => pedirQtd(i) },
                         { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
                       ],
                     }))}
@@ -136,7 +136,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoAdicionar, aoConcl
         </Button>
       </section>
 
-      <FaixaFeitas titulo="Encontradas" itens={achadas} aoDesfazer={(i) => marcar(i, "pendente")} />
+      <FaixaFeitas titulo="Encontradas" itens={achadas} aoDesfazer={(i) => marcar(i, "pendente")} aoDesfazerTudo={() => achadas.forEach((i) => marcar(i, "pendente"))} />
 
       {removidas.length > 0 && (
         <Collapsible>

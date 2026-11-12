@@ -12,6 +12,7 @@ import { etapaCompleta, separarAdicionais } from "@/lib/etapa"
 import { sons } from "@/lib/sons"
 import type { Item, ResultadoBipagem } from "@/lib/tipos"
 import { useMudarQtdDialogo } from "./QtdDialog"
+import AvisoPendentes from "./AvisoPendentes"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, SecaoAdicionais, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir?: () => void }
@@ -157,6 +158,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <ProgressoEtapa titulo="Bipagem" feitas={bipadas} total={totalPecas} unidade="peças" />
+      <AvisoPendentes pedido={pedido} />
 
       <form
         className="flex gap-2"
@@ -244,6 +246,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
             rotuloDesfazer="Tirar 1"
             aoDesfazer={(i) => void acao(i, { qtd_bipada: Math.max(0, i.qtd_bipada - 1) }, undefined, -1)}
             nota={(i) => `${Math.min(i.qtd_bipada, i.qtd)}/${i.qtd} bipadas`}
+            aoDesfazerTudo={() => completas.forEach((i) => void acao(i, { qtd_bipada: 0, bipado_em: null }))}
           />
         </>
       )}

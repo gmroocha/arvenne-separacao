@@ -15,8 +15,8 @@ type Props = {
   className?: string
 }
 
-// Campo "Colar carrinho da cliente": aceita o link do site (/cart/ID:QTD,...) e o compartilhado
-// (/cart/c/...). Lê sozinho ao colar e avisa as peças que o catálogo ainda não tem.
+// Campo "Colar carrinho da cliente": aceita o link do site (/cart/ID:QTD,...) e o de checkout
+// (/checkouts/.../recover ou /cart/c/...). Lê sozinho ao colar e avisa as peças que o catálogo ainda não tem.
 export function ColarCarrinho({ aoLer, className }: Props) {
   const ler = useLerCarrinho()
   const atualizarCatalogo = useAtualizarCatalogo()
@@ -29,7 +29,7 @@ export function ColarCarrinho({ aoLer, className }: Props) {
   async function lerCarrinho(entrada: string | LidoCarrinho[]) {
     if (lendoRef.current) return // já está lendo: evita adicionar duas vezes
     if (typeof entrada === "string" && !lerLinkCarrinho(entrada)) {
-      if (entrada.trim()) toast.error("Não reconheci o carrinho. Cole o link completo, com /cart/…")
+      if (entrada.trim()) toast.error("Não reconheci o link. Cole o link do carrinho (/cart/…) ou o de checkout.")
       return
     }
     lendoRef.current = true

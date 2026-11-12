@@ -26,6 +26,13 @@
 - **Verde só para sucesso:** escolha/seleção (faixa de preço, tamanhos, cartão escolhido, bolinha de
   quantidade) agora é cinza/neutra. Verde continua em peça feita, troca concluída e crédito.
 - **Falta na Conferência/Etiquetagem:** a tela fica na etapa, com o cartão "Avise a cliente" em cima.
+- **Peça nova sempre vai para a Separação:** adicionar peça (ou aumentar quantidade de peça já achada) cria
+  peça pendente; se o pedido já passou da Separação, ele volta para lá (o que já foi conferido/etiquetado
+  continua feito). Conferência/Etiquetagem/Bipagem avisam quando há peça pendente, com "Voltar para a Separação".
+- **Desfazer tudo** ao lado de Encontradas/Conferidas/Etiquetadas/Bipadas (pede confirmação).
+- **Link de checkout** (`/checkouts/.../recover?key=...`): função Edge `carrinho-ler` escrita
+  (procura o checkout abandonado na Admin API, escopo read_orders); **falta publicar** (pede o "sim").
+  O link `/cart/ID:QTD` que as clientes mandam é lido no próprio app.
 - **Peças adicionais:** peça que entra depois do pedido pago nasce "adicional". Aparece numa seção própria
   ("Peças adicionais") na Separação, Conferência, Etiquetagem e Bipagem, com o selo "Adicional". Em Nota e
   frete (e na Venda) aparece "Peças adicionais · a cobrar R$ X", com o botão "Recebido" (dá para desfazer).
@@ -39,7 +46,7 @@
   compartilhado".
 
 **Próximas ações:** Gustavo dar o "sim" para o push das duas migrations; mandar um link `/cart/c/` de exemplo
-(sem dados da cliente); depois escrever e publicar `carrinho-ler` (também pede o "sim").
+(sem dados da cliente); publicar `carrinho-ler` (também pede o "sim").
 
 ## Vistoria e melhorias de 11/11/2026 (aplicadas no Supabase)
 

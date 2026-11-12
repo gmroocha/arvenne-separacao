@@ -256,15 +256,14 @@ export function useLerCarrinho() {
       if (!link) return null
       if (link.tipo === "itens") lidos = link.itens
       else {
-        // TODO: a função Edge "carrinho-ler" ainda não existe (esperamos um link /cart/c/ de exemplo).
-        // Ver o plano em /home/gmrocha/.claude/plans/snappy-finding-twilight.md (Parte A).
+        // Link de checkout: a função Edge carrinho-ler procura o checkout na Shopify e devolve as peças.
         try {
           const r = await chamarFuncao<{ itens: { variantId: string | number; qtd: number }[] }>("carrinho-ler", { url: link.url })
           lidos = (r.itens ?? []).map((i) => ({ variantId: String(i.variantId), qtd: Number(i.qtd) || 1 }))
-        } catch {
-          throw new Error("Não consegui ler esse carrinho compartilhado")
+        } catch (e) {
+          throw new Error(e instanceof Error && e.message ? e.message : "Não consegui ler esse link de checkout")
         }
-        if (!lidos.length) throw new Error("Não consegui ler esse carrinho compartilhado")
+        if (!lidos.length) throw new Error("Esse checkout está vazio")
       }
     }
     return variantesDoCarrinho(lidos)
@@ -589,8 +588,8 @@ export function useMudarQtd(pedidoId: string) {
   return useMutation({
     mutationKey: ["item", pedidoId],
     scope: { id: `pedido-${pedidoId}` },
-    mutationFn: async ({ item, qtd, encontrada = false }: { item: Item; qtd: number; encontrada?: boolean }) => {
-      const { error } = await supabase.rpc("mudar_qtd", { p_item: item.id, p_qtd: qtd, p_encontrada: encontrada })
+    mutationFn: async ({ item, qtd }: { item: Item; qtd: number }) => {
+      const { error } = await supabase.rpc("mudar_qtd", { p_item: item.id, p_qtd: qtd })
       if (error) throw error
     },
     onError: (e) => toast.error(msgBanco(e)),

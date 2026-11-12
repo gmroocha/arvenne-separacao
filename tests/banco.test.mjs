@@ -1221,27 +1221,29 @@ test('adicionar_itens: antes do pagamento a linha é normal; depois de pago nasc
   assert.deepEqual([num(r.valor_adicionais), num(r.adicionais_a_cobrar)], [60, 0])
 })
 
-test('mudar_qtd: aumentar em pedido pago cria/soma linha adicional; sem pagamento soma na própria linha', async () => {
+test('mudar_qtd: aumentar peça já achada cria linha pendente à parte (adicional se pago); pendente soma nela', async () => {
   const { p, i } = await itemQtd4()
   await db.exec('reset role')
   await db.query('update pedidos set pago_em = now() where id = $1', [p.id])
   await db.exec('set local role authenticated')
-  await one('select mudar_qtd($1, 6, true)', [i.id])
+  await one('select mudar_qtd($1, 6)', [i.id])
   const ad = await one('select * from pedido_itens where pedido_id = $1 and adicional', [p.id])
-  assert.deepEqual([ad.qtd, ad.status, ad.shopify_line_id, ad.sku, num(ad.preco_pago)], [2, 'encontrado', null, 'AN-4', 40])
-  assert.equal((await one('select qtd from pedido_itens where id = $1', [i.id])).qtd, 4)
+  assert.deepEqual([ad.qtd, ad.status, ad.shopify_line_id, ad.sku, num(ad.preco_pago)], [2, 'pendente', null, 'AN-4', 40])
+  const orig = await one('select qtd, status, conferido_em is not null c from pedido_itens where id = $1', [i.id])
+  assert.deepEqual([orig.qtd, orig.status, orig.c], [4, 'encontrado', true])
   await one('select mudar_qtd($1, 5)', [i.id])
-  assert.equal((await one('select qtd from pedido_itens where id = $1 and adicional', [ad.id])).qtd, 3)
+  assert.equal((await one('select qtd from pedido_itens where id = $1', [ad.id])).qtd, 3)
   assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id = $1', [p.id])).n, 2)
-  // linha adicional aumenta na própria linha
+  // linha adicional pendente aumenta na própria linha
   await one('select mudar_qtd($1, 4)', [ad.id])
   assert.equal((await one('select qtd from pedido_itens where id = $1', [ad.id])).qtd, 4)
   const v = await one('select qtd_adicionais, valor_adicionais, total from v_pedidos where id = $1', [p.id])
   assert.deepEqual([v.qtd_adicionais, num(v.valor_adicionais)], [4, 160])
-  // sem pagamento
+  // sem pagamento: peça pendente soma na própria linha; peça achada ganha linha pendente normal
   const g = await itemQtd4()
   await db.exec('reset role')
   await db.query("update pedidos set status = 'em_aberto', pago_em = null where id = $1", [g.p.id])
+  await db.query("update pedido_itens set status = 'pendente' where id = $1", [g.i.id])
   await db.exec('set local role authenticated')
   await one('select mudar_qtd($1, 7)', [g.i.id])
   const r = await one('select qtd, adicional from pedido_itens where id = $1', [g.i.id])
@@ -1249,6 +1251,13 @@ test('mudar_qtd: aumentar em pedido pago cria/soma linha adicional; sem pagament
   assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id = $1', [g.p.id])).n, 1)
   const ev = await db.query("select * from pedido_eventos where item_id = $1 and tipo = 'qtd'", [g.i.id])
   assert.equal(ev.rows.length, 1)
+  const h = await itemQtd4()
+  await db.exec('reset role')
+  await db.query("update pedidos set status = 'em_aberto', pago_em = null where id = $1", [h.p.id])
+  await db.exec('set local role authenticated')
+  await one('select mudar_qtd($1, 5)', [h.i.id])
+  const nova = await one("select qtd, status, adicional from pedido_itens where pedido_id = $1 and id <> $2", [h.p.id, h.i.id])
+  assert.deepEqual([nova.qtd, nova.status, nova.adicional], [1, 'pendente', false])
 })
 
 test('mudar_qtd: diminuir cria linha removida, limita a bipagem e mantém a linha da Shopify; recusas', async () => {

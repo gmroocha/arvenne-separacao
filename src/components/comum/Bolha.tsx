@@ -11,7 +11,7 @@ export function MarcaCheck({ solida, pequena, className }: { solida?: boolean; p
       className={cn(
         "z-10 flex shrink-0 items-center justify-center rounded-full",
         pequena ? "size-6 [&>svg]:size-3.5" : "size-7 [&>svg]:size-4",
-        solida ? "bg-success text-success-foreground shadow-sm ring-2 ring-card" : "bg-success/15 text-success ring-1 ring-success/30",
+        solida ? "bg-success text-success-foreground shadow-sm ring-2 ring-card" : "bg-success/15 text-success ring-1 ring-inset ring-success/30",
         className,
       )}
     >
@@ -24,7 +24,7 @@ export function MarcaCheck({ solida, pequena, className }: { solida?: boolean; p
 // Escolher não é sucesso: a bolha é neutra (cor do texto), não verde.
 export function BolhaCheck({ className }: { className?: string }) {
   return (
-    <span aria-hidden className={cn("z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm ring-2 ring-card [&>svg]:size-3.5", className)}>
+    <span aria-hidden className={cn("z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm ring-1 ring-inset ring-foreground/15 backdrop-blur-sm [&>svg]:size-3.5", className)}>
       <Check strokeWidth={2.5} />
     </span>
   )

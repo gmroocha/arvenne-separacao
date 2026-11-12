@@ -1,4 +1,4 @@
--- Peças adicionais e mudar quantidade (15/11/2026).
+-- Peças adicionais e mudar quantidade (11/11/2026).
 -- 1) pedido_itens.adicional: peça que entrou depois do pagamento (separada e cobrada à parte).
 -- 2) pedidos.adicionais_recebido_em: quando a cobrança das adicionais foi recebida.
 -- 3) adicionar_itens marca adicional; mudar_qtd aumenta/diminui a quantidade de uma peça.
@@ -53,19 +53,21 @@ grant execute on function public.adicionar_itens(uuid, jsonb, boolean) to authen
 
 -- ---------------------------------------------------------------------------
 -- mudar_qtd: muda a quantidade de uma peça.
--- Aumentar: pedido pago e linha não adicional => a diferença vai para uma linha adicional da mesma peça
--- (soma se já existir); senão soma na própria linha. p_encontrada: a nova linha já nasce 'encontrado'
--- (pedido já passou da separação). O gatilho de eventos registra a mudança de qtd.
+-- Aumentar: as unidades a mais sempre precisam ser separadas. Linha pendente do mesmo tipo (sem
+-- pagamento, ou já adicional) soma nela; senão a diferença vira uma linha PENDENTE à parte (adicional
+-- se o pedido já foi pago), e a linha original (achada, conferida...) fica como está. O gatilho de
+-- eventos registra a mudança de qtd.
 -- Diminuir: a linha diminui e a diferença vira linha 'removido' (observação 'quantidade reduzida'),
 -- mantendo shopify_line_id para a checagem da Shopify continuar batendo.
 -- ---------------------------------------------------------------------------
-create or replace function public.mudar_qtd(p_item uuid, p_qtd int, p_encontrada boolean default false)
+create or replace function public.mudar_qtd(p_item uuid, p_qtd int)
 returns void language plpgsql security invoker set search_path = public, pg_temp as $$
 declare
   v_i pedido_itens%rowtype;
   v_ped text;
   v_pago timestamptz;
   v_dif int;
+  v_adic boolean;
   v_alvo uuid;
 begin
   if p_qtd is null or p_qtd < 1 then
@@ -82,25 +84,29 @@ begin
 
   if p_qtd > v_i.qtd then
     v_dif := p_qtd - v_i.qtd;
-    if v_pago is not null and not v_i.adicional then
-      select id into v_alvo from pedido_itens
-       where pedido_id = v_i.pedido_id and adicional and status <> 'removido'
-         and shopify_variant_id is not distinct from v_i.shopify_variant_id
-         and peca_clube_id is not distinct from v_i.peca_clube_id
-         and sku is not distinct from v_i.sku
-       order by ordem limit 1 for update;
-      if v_alvo is not null then
-        update pedido_itens set qtd = qtd + v_dif where id = v_alvo;
-      else
-        insert into pedido_itens (pedido_id, origem, shopify_variant_id, peca_clube_id, sku, nome, variante,
-          foto_url, preco, preco_pago, shopify_line_id, ordem, observacao, status, qtd, adicional)
-        values (v_i.pedido_id, v_i.origem, v_i.shopify_variant_id, v_i.peca_clube_id, v_i.sku, v_i.nome,
-          v_i.variante, v_i.foto_url, v_i.preco, v_i.preco_pago, null,
-          (select coalesce(max(ordem), 0) + 1 from pedido_itens where pedido_id = v_i.pedido_id),
-          null, case when p_encontrada then 'encontrado' else 'pendente' end, v_dif, true);
-      end if;
-    else
+    -- Linha ainda pendente e do mesmo tipo (pedido sem pagamento, ou ela já é adicional): soma nela.
+    if v_i.status = 'pendente' and (v_pago is null or v_i.adicional) then
       update pedido_itens set qtd = p_qtd where id = p_item;
+      return;
+    end if;
+    -- Senão as unidades a mais ainda precisam ser separadas: linha PENDENTE à parte (soma numa que já
+    -- exista), adicional quando o pedido já foi pago. A linha original (achada, conferida...) não muda.
+    v_adic := v_pago is not null or v_i.adicional;
+    select id into v_alvo from pedido_itens
+     where pedido_id = v_i.pedido_id and status = 'pendente' and adicional = v_adic and id <> p_item
+       and shopify_variant_id is not distinct from v_i.shopify_variant_id
+       and peca_clube_id is not distinct from v_i.peca_clube_id
+       and sku is not distinct from v_i.sku
+     order by ordem limit 1 for update;
+    if v_alvo is not null then
+      update pedido_itens set qtd = qtd + v_dif where id = v_alvo;
+    else
+      insert into pedido_itens (pedido_id, origem, shopify_variant_id, peca_clube_id, sku, nome, variante,
+        foto_url, preco, preco_pago, shopify_line_id, ordem, observacao, status, qtd, adicional)
+      values (v_i.pedido_id, v_i.origem, v_i.shopify_variant_id, v_i.peca_clube_id, v_i.sku, v_i.nome,
+        v_i.variante, v_i.foto_url, v_i.preco, v_i.preco_pago, null,
+        (select coalesce(max(ordem), 0) + 1 from pedido_itens where pedido_id = v_i.pedido_id),
+        null, 'pendente', v_dif, v_adic);
     end if;
     return;
   end if;
@@ -114,8 +120,8 @@ begin
     v_i.variante, v_i.foto_url, v_i.preco, v_i.preco_pago, v_i.shopify_line_id, v_i.ordem,
     'quantidade reduzida', 'removido', v_dif, v_i.adicional);
 end $$;
-revoke all on function public.mudar_qtd(uuid, int, boolean) from public, anon;
-grant execute on function public.mudar_qtd(uuid, int, boolean) to authenticated;
+revoke all on function public.mudar_qtd(uuid, int) from public, anon;
+grant execute on function public.mudar_qtd(uuid, int) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- v_pedidos: mesmas colunas e ordem; novas no fim.

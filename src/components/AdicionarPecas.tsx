@@ -124,9 +124,17 @@ export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar, comPreco,
     else fechar()
   }
 
-  const busca = aberto && <BuscaPecas comPreco={comPreco} aoEscolher={tocar} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} qtdNoPedido={noPedido} selecionada={(item) => carrinho.some((x) => igual(x, item))} />
+  // − / + direto no cartão da busca: 0 tira a peça do carrinho.
+  const qtdNoCartao = (item: NovoItem, n: number) => {
+    const x = carrinho.find((c) => igual(c, item))
+    if (!x) return
+    if (n <= 0) remover(x.chave)
+    else mudarQtd(x.chave, n)
+  }
+  const busca = aberto && <BuscaPecas comPreco={comPreco} aoEscolher={tocar} aoMudarQtd={qtdNoCartao} quantidade={(item) => carrinho.find((x) => igual(x, item))?.qtd ?? 0} qtdNoPedido={noPedido} selecionada={(item) => carrinho.some((x) => igual(x, item))} />
+  // p-1: folga para o anel de foco dos campos não ser cortado pela área rolável.
   const abas = (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 p-1">
       {aberto && comLink && <ColarCarrinho aoLer={(itens) => itens.forEach(tocar)} />}
       {busca}
     </div>
