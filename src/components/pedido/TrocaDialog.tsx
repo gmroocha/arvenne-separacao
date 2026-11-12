@@ -6,11 +6,10 @@ import { AreaRolavel } from "@/components/comum/AreaRolavel"
 import CampoReais from "@/components/CampoReais"
 import { BuscaPecas } from "@/components/BuscaPecas"
 import CartaoCatalogo from "@/components/catalogo/CartaoCatalogo"
-import { MarcaCheck } from "@/components/comum/Bolha"
+import { MarcaCheck, SeloFoto } from "@/components/comum/Bolha"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
 import ConfirmarTroca from "@/components/pedido/ConfirmarTroca"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -76,7 +75,7 @@ function Diferenca({ s }: { s: Sugestao }) {
 }
 
 // Cartão de uma variante sem tamanho (cor, pedra, mm): uma foto por cartão.
-const SeloNoPedido = <Badge variant="secondary" className="h-5 px-1.5 text-xs">No pedido</Badge>
+const SeloNoPedido = <SeloFoto>No pedido</SeloFoto>
 
 function CartaoSugestao({ s, marcada, aoTocar }: { s: Sugestao; marcada: boolean; aoTocar: (s: Sugestao) => void }) {
   return (

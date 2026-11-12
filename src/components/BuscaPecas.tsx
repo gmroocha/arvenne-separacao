@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { Plus, RefreshCw, Search, SearchX } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import CartaoCatalogo from "@/components/catalogo/CartaoCatalogo"
+import { SeloFoto } from "@/components/comum/Bolha"
 import PecaClubeForm from "@/components/PecaClubeForm"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Spinner } from "@/components/ui/spinner"
@@ -78,11 +78,11 @@ function Selos({ noCarrinho, jaNoPedido, qtdNoPedido }: { noCarrinho: number; ja
   return (
     <>
       {qtdNoPedido > 0 ? (
-        <Badge variant="warning" className="h-5 px-1.5 text-xs">No pedido · {qtdNoPedido}×</Badge>
+        <SeloFoto aviso>No pedido · {qtdNoPedido}×</SeloFoto>
       ) : (
-        jaNoPedido && <Badge variant="secondary" className="h-5 px-1.5 text-xs">No pedido</Badge>
+        jaNoPedido && <SeloFoto>No pedido</SeloFoto>
       )}
-      {noCarrinho > 0 && <Badge variant="secondary" className="h-5 px-1.5 text-xs">×{noCarrinho}</Badge>}
+      {noCarrinho > 0 && <SeloFoto>×{noCarrinho}</SeloFoto>}
     </>
   )
 }

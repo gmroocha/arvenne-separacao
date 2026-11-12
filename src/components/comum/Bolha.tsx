@@ -1,3 +1,4 @@
+import type React from "react"
 import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -35,6 +36,17 @@ export function BolhaContador({ n, className }: { n: number; className?: string 
   return (
     <span className={cn("z-10 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground tabular-nums ring-2 ring-card", className)}>
       {n}
+    </span>
+  )
+}
+
+// Selo sobre a foto da peça (as fotos têm fundo claro): pílula neutra e opaca, legível nos dois temas.
+// aviso: bolinha âmbar antes do texto (ex.: "No pedido · 2×").
+export function SeloFoto({ children, aviso, className }: { children: React.ReactNode; aviso?: boolean; className?: string }) {
+  return (
+    <span className={cn("inline-flex h-5 items-center gap-1 rounded-full bg-background/90 px-1.5 text-xs font-medium text-foreground shadow-sm ring-1 ring-inset ring-foreground/10 backdrop-blur-sm tabular-nums", className)}>
+      {aviso && <span aria-hidden className="size-1.5 rounded-full bg-warning" />}
+      {children}
     </span>
   )
 }
