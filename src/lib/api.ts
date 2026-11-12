@@ -698,21 +698,34 @@ export function useAcoesItemVenda(pedidoId: string) {
 
 // Com somar (só na venda), peça já no pedido ganha quantidade em vez de uma linha nova.
 // A ordem das linhas e a soma são feitas no banco (função adicionar_itens), numa transação.
+const linhasDosItens = (itens: NovoItem[]) => itens.map((i) => ({
+  origem: i.origem,
+  shopify_variant_id: i.shopify_variant_id,
+  peca_clube_id: i.peca_clube_id,
+  sku: i.sku,
+  nome: i.nome,
+  variante: i.variante,
+  foto_url: i.foto_url,
+  qtd: i.qtd,
+  preco: i.preco,
+}))
+
+// V06: uma chamada grava as substitutas e o acerto ou desfaz tudo.
+export function useSubstituirItem() {
+  return useAcao(
+    async ({ itemId, itens }: { itemId: string; itens: NovoItem[] }) => {
+      const { error } = await supabase.rpc("substituir_item", { p_item: itemId, p_itens: linhasDosItens(itens) })
+      if (error) throw new Error(msgBanco(error))
+    },
+    [...TODAS, ["troca"]],
+  )
+}
+
 export function useAdicionarItens() {
   return useAcao(
     async ({ pedidoId, itens, somar, jaEncontradas }: { pedidoId: string; itens: NovoItem[]; somar?: boolean; jaEncontradas?: boolean }) => {
       if (!itens.length) return
-      const linhas = itens.map((i) => ({
-        origem: i.origem,
-        shopify_variant_id: i.shopify_variant_id,
-        peca_clube_id: i.peca_clube_id,
-        sku: i.sku,
-        nome: i.nome,
-        variante: i.variante,
-        foto_url: i.foto_url,
-        qtd: i.qtd,
-        preco: i.preco,
-      }))
+      const linhas = linhasDosItens(itens)
       // Peças pendentes de antes: não podem virar "encontrado" junto com as novas.
       let antes = new Set<string>()
       if (jaEncontradas) {

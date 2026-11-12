@@ -71,6 +71,26 @@ test("cliente escolhe troca, recupera falha e muda para crédito", async ({ page
   await semQuebra(page)
 })
 
+test("V06: atalho Trocar usa uma operação e cria a diferença a receber", async ({ page, context, baseURL }) => {
+  await iniciar(context, baseURL)
+  await sim.banco.query(`insert into catalogo_site(variant_id,produto_id,sku,produto,preco,status)
+    select n,n,'CAT-'||n,case when n=1 then 'Nova de teste' else 'Outra peça '||n end,150,'ACTIVE'
+    from generate_series(1,20) n`)
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await page.getByRole("button", { name: "Mais opções", exact: true }).click()
+  await page.getByText("Trocar", { exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Adicionar peça", exact: true })
+  await dialog.getByPlaceholder("Buscar por nome ou código").fill("Nova de teste")
+  await dialog.getByRole("button", { name: "Adicionar", exact: true }).click()
+  await dialog.getByRole("button", { name: /^Salvar/ }).click()
+  await expect.poll(async () => Number((await sim.one("select total from v_pedidos where id=$1", [sim.pedido.id])).total)).toBe(150)
+  expect(Number((await sim.one("select saldo from v_pedido_acerto where pedido_id=$1", [sim.pedido.id])).saldo)).toBe(50)
+  expect(sim.requisicoes.filter((r) => r.path.endsWith("/rpc/substituir_item"))).toHaveLength(1)
+  expect(sim.requisicoes.some((r) => r.path.endsWith("/rpc/adicionar_itens"))).toBe(false)
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
 test("V01: cliente continua vendo a compra no romaneio da venda somada", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL, { somada: true })
   await page.goto(`/r/${sim.vendaSomada.token_publico}`)

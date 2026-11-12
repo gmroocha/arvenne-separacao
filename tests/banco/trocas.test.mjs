@@ -437,3 +437,33 @@ test.each(['pendente','encontrado','removido'])('V15: peça inativa %s não impe
     assert.equal((await one('select count(*)::int n from troca_pecas where troca_id=$1',[f.troca.id])).n,2)
   }
 })
+
+test.each(['whatsapp','shopify'])('V06: troca direta é atômica e gera acerto no pedido %s', async (origem) => {
+  const p=await one("insert into pedidos(origem,status,valor_total,valor_pago,desconto_tipo,desconto_valor) values ($1,'separacao',80,80,'percentual',20) returning *",[origem])
+  const i=await one("insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,preco_pago,status) values ($1,'shopify','Original','A1',2,50,$2,'encontrado') returning *",[p.id,origem==='shopify' ? 40 : null])
+  const novos=JSON.stringify([{ origem:'shopify',nome:'Nova',sku:'N1',qtd:2,preco:75 }])
+  await db.exec('set local role authenticated')
+  const t=(await one('select substituir_item($1,$2::jsonb) as id',[i.id,novos])).id
+  assert.equal((await one('select status from pedido_itens where id=$1',[i.id])).status,'removido')
+  assert.equal(num((await one('select total from v_pedidos where id=$1',[p.id])).total),120)
+  const ac=await one('select acerto_status,saldo from v_pedido_acerto where troca_id=$1',[t])
+  assert.deepEqual([ac.acerto_status,num(ac.saldo)],['pendente',40])
+  await one('select substituir_item($1,$2::jsonb)',[i.id,novos]) // repetição não duplica substitutas nem cobrança
+  assert.equal((await one("select count(*)::int n from pedido_itens where pedido_id=$1 and status<>'removido'",[p.id])).n,1)
+  await recusa(() => one('select adicionar_itens($1,$2::jsonb)',[p.id,novos]), /pago|venda somada|troca/i)
+})
+
+test('V06: falha após criar a troca desfaz opções, status e novas peças', async () => {
+  const p=await pedidoWhats('novo')
+  const i=await one("select id from pedido_itens where pedido_id=$1 and sku='A1'",[p.id])
+  await db.exec(`create function public.falhar_substituta() returns trigger language plpgsql as $$
+    begin if new.observacao like 'troca de%' then raise exception 'Falha de teste na substituta'; end if; return new; end $$;
+    create trigger falhar_substituta before insert on pedido_itens for each row execute function public.falhar_substituta();`)
+  await db.exec('set local role authenticated')
+  await recusa(() => one('select substituir_item($1,$2::jsonb)',[i.id,JSON.stringify([{ origem:'clube',nome:'Nova',qtd:1,preco:75 }])]), /Falha de teste/)
+  assert.equal((await one('select count(*)::int n from trocas where pedido_id=$1',[p.id])).n,0)
+  assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id=$1',[p.id])).n,2)
+  assert.equal((await one('select status from pedido_itens where id=$1',[i.id])).status,'pendente')
+  await db.exec('set local role anon')
+  await recusa(() => one("select substituir_item($1,'[]')",[i.id]), /permission denied/)
+})

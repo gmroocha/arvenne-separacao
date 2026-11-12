@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
@@ -13,13 +11,12 @@ import AdicionarPecas from "@/components/AdicionarPecas"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAcoesItem, useAdicionarItens, useMudarStatus, usePatchPedido, usePedido, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { useAcoesItem, useSubstituirItem, useMudarStatus, usePatchPedido, usePedido, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { ETAPAS_DE_PECAS } from "@/lib/etapa"
 import { PASSOS, passoDe, type StatusPedido } from "@/lib/status"
 import type { Item, NovoItem } from "@/lib/tipos"
 
 function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
-  const qc = useQueryClient()
   const mudarStatus = useMudarStatus()
   const patch = usePatchPedido(pedido.id)
   const [concluida, setConcluida] = useState<StatusPedido | null>(null) // etapa que abriu o Dialog
@@ -53,40 +50,14 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
     setManter(null)
   }
   const foco = ETAPAS_DE_PECAS.includes(pedido.status)
-  const adicionarItens = useAdicionarItens()
+  const substituirItem = useSubstituirItem()
   const [adicionando, setAdicionando] = useState(false)
   const [trocando, setTrocando] = useState<Item | null>(null)
 
   const aoAdicionar = (novos: NovoItem[]) => {
-    const velha = trocando
-    // Peça nova sempre nasce pendente: precisa ser separada. Se o pedido já passou da Separação, ele volta
-    // para lá (as peças já conferidas/etiquetadas continuam assim e não são feitas de novo).
-    const depois = ["conferencia", "etiquetagem", "bipagem"].includes(pedido.status)
-    adicionarItens.mutate(
-      { pedidoId: pedido.id, itens: novos },
-      {
-        // A peça antiga só sai depois que a nova entrou de verdade. Recarrega antes, para a checagem de
-        // etapa completa enxergar a peça nova (e não abrir o Dialog antes da hora).
-        onSuccess: async () => {
-          if (velha) {
-            await qc.refetchQueries({ queryKey: ["pedido", pedido.id] })
-            const dados = novos[0]
-            acao(velha, {
-              status: "removido",
-              observacao: `trocada por ${[dados.sku, dados.nome].filter(Boolean).join(" · ")}`,
-            })
-          }
-          if (depois) {
-            mudarStatus.mutate({ pedidoId: pedido.id, para: "separacao", silencioso: true })
-            toast.info("Separe as peças novas: o pedido voltou para a Separação")
-          }
-        },
-      },
-    )
-    if (velha) {
-      setTrocando(null)
-      setAdicionando(false)
-    }
+    if (!trocando) return
+    // Substitutas, retirada, acerto e retorno à Separação são uma única operação do banco.
+    substituirItem.mutate({ itemId: trocando.id, itens: novos })
   }
 
   return (
