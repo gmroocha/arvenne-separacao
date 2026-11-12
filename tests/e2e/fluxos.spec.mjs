@@ -147,3 +147,18 @@ test("V31: Edge, Storage e RPC de escrita nunca chegam à rede real", async ({ p
   expect(resultados).toEqual([403, 403, 400]) // a RPC desconhecida é recusada pelo banco fictício
   expect(sim.bloqueadas).toHaveLength(2)
 })
+
+test("V33: Clube carrega mais peças além das 30 primeiras", async ({ page, context, baseURL }, info) => {
+  await iniciar(context, baseURL)
+  await sim.banco.query(`insert into pecas_clube(codigo,nome,preco,created_at)
+    select 'CL-'||lpad(n::text,2,'0'),'Peça '||n,10,now()-n*interval '1 minute' from generate_series(1,31) n`)
+  await page.goto("/clube")
+  await expect(page.getByText("CL-30", { exact: true })).toBeVisible()
+  await expect(page.getByText("CL-31", { exact: true })).toHaveCount(0)
+  await page.getByRole("button", { name: "Carregar mais", exact: true }).click()
+  await expect(page.getByText("CL-31", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Carregar mais", exact: true })).toHaveCount(0)
+  await page.screenshot({ path: `capturas/clube-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})

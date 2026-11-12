@@ -196,11 +196,13 @@ export function useContagemRepetidas() {
   })
 }
 
-export function usePecasClube(busca: string, incluirInativas = false) {
+// V33: o Clube mostrava só as 30 mais recentes, sem como ver as outras. "limite" cresce com "Carregar mais".
+export function usePecasClube(busca: string, incluirInativas = false, limite = 30) {
   return useQuery({
-    queryKey: ["clube", busca, incluirInativas],
+    queryKey: ["clube", busca, incluirInativas, limite],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      let q = supabase.from("pecas_clube").select("*").order("created_at", { ascending: false }).limit(30)
+      let q = supabase.from("pecas_clube").select("*").order("created_at", { ascending: false }).order("id").limit(limite)
       if (!incluirInativas) q = q.eq("ativo", true)
       const t = busca.trim().replace(/[%,()]/g, " ")
       if (t) q = q.or(`codigo.ilike.%${t}%,nome.ilike.%${t}%`)

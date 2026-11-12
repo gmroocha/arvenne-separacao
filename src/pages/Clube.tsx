@@ -13,19 +13,37 @@ import { Switch } from "@/components/ui/switch"
 import { useAtivarPecaClube, usePecasClube } from "@/lib/api"
 import { reais } from "@/lib/formato"
 
+const PASSO = 30
+
 export default function Clube() {
   const [busca, setBusca] = useState("")
   const [novo, setNovo] = useState(false)
   const [inativas, setInativas] = useState(false)
-  const { data, isLoading } = usePecasClube(busca, inativas)
+  const [limite, setLimite] = useState(PASSO)
+  const { data, isLoading } = usePecasClube(busca, inativas, limite)
   const ativar = useAtivarPecaClube()
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <CampoBusca className="min-w-48 flex-1" valor={busca} aoMudar={setBusca} placeholder="Buscar por código ou nome" />
+        <CampoBusca
+          className="min-w-48 flex-1"
+          valor={busca}
+          aoMudar={(v) => {
+            setBusca(v)
+            setLimite(PASSO)
+          }}
+          placeholder="Buscar por código ou nome"
+        />
         <div className="flex items-center gap-2">
-          <Switch id="inativas" checked={inativas} onCheckedChange={setInativas} />
+          <Switch
+            id="inativas"
+            checked={inativas}
+            onCheckedChange={(v) => {
+              setInativas(v)
+              setLimite(PASSO)
+            }}
+          />
           <Label htmlFor="inativas">Mostrar desativadas</Label>
         </div>
         <Button size="toque" onClick={() => setNovo(true)}>
@@ -70,6 +88,11 @@ export default function Clube() {
             </Card>
           ))}
         </div>
+      )}
+      {data && data.length >= limite && (
+        <Button variant="outline" size="toque" className="w-fit self-center" onClick={() => setLimite(limite + PASSO)}>
+          Carregar mais
+        </Button>
       )}
 
       <RespDialog aberto={novo} aoMudar={setNovo} titulo="Nova peça do Clube" largo>
