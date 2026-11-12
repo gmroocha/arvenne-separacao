@@ -273,6 +273,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
     ? [
         { rotulo: "Parte 1 – pedido: valor das peças", valor: reais(pedido.subtotal) },
         ...(pedido.desconto > 0 ? [{ rotulo: pedido.cupom ? `Parte 1 – pedido: desconto (${pedido.cupom})` : "Parte 1 – pedido: desconto", valor: reais(pedido.desconto) }] : []),
+        ...(pedido.desconto_pix > 0 ? [{ rotulo: "Parte 1 – pedido: desconto Pix", valor: reais(pedido.desconto_pix) }] : []),
         { rotulo: "Parte 1 – pedido: frete cobrado", valor: pedido.frete_cobrado != null ? `${reais(pedido.frete_cobrado)}${quemPaga ? ` (${quemPaga.toLowerCase()})` : ""}` : null },
         { rotulo: "Parte 1 – pedido: total", valor: reais(pedido.total) },
         ...partes.map((p, n) => ({ rotulo: `Parte ${n + 2} – venda ${p.numero}: ${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`, valor: reais(p.somada_valor) })),
@@ -282,6 +283,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
     : [
         { rotulo: "Valor das peças", valor: reais(pedido.subtotal) },
         ...(pedido.desconto > 0 ? [{ rotulo: pedido.cupom ? `Desconto (${pedido.cupom})` : "Desconto", valor: reais(pedido.desconto) }] : []),
+        ...(pedido.desconto_pix > 0 ? [{ rotulo: "Desconto Pix", valor: reais(pedido.desconto_pix) }] : []),
         { rotulo: "Frete cobrado", valor: pedido.frete_cobrado != null ? `${reais(pedido.frete_cobrado)}${quemPaga ? ` (${quemPaga.toLowerCase()})` : ""}` : null },
         { rotulo: "Total", valor: reais(pedido.total) },
       ]
@@ -298,7 +300,7 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
 
   const dadosFrete: Dado[] = [
     { rotulo: "CEP", valor: cep },
-    { rotulo: "Valor das peças (com desconto)", valor: reais(pedido.valor_pecas_com_desconto) },
+    { rotulo: "Valor das peças (com desconto)", valor: reais(pedido.valor_pecas_pacote ?? pedido.valor_pecas_com_desconto) },
     { rotulo: "Tipo de envio", valor: pedido.frete_tipo },
     { rotulo: "CPF/CNPJ", valor: cpf },
     ...(pedido.cliente_ie ? [{ rotulo: "Inscrição estadual", valor: pedido.cliente_ie }] : []),
