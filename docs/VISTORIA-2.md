@@ -5,8 +5,8 @@
 - **Fase/item atual:** validação integral final antes da publicação.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
 - **Concluído:** V42–V58 commitados. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
-- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-final-58.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. Nenhuma migration aplicada, Edge publicada ou push ainda.
-- **Próximo passo exato:** concluir `npm test` atual (inclui V58); publicado `--antes` e dry-run das 5 migrations já concluídos; aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
+- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-validacao-final.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. V37/V57 atualizado e verde em celular/PC; nenhuma migration aplicada, Edge publicada ou push ainda.
+- **Próximo passo exato:** concluir `npm test` atual (inclui V58 e contrato de transporte V37/V57 atualizado); publicado `--antes` e dry-run das 5 migrations já concluídos; aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -161,3 +161,5 @@ Complemento de privacidade V58: teste vermelho e verde confirmado; a suíte inic
 V58: ao gerar a migration a partir de `pg_get_functiondef`, faltou o `;` externo antes do GRANT. Os testes recusaram a preparação; corrigido em `6b86f0c`, 6 testes de segurança verdes. A execução em andamento foi interrompida e reiniciada do começo com todos os arquivos finais; nenhuma falha foi marcada esperada ou afrouxada.
 
 Revisão de código: nenhum `any` explícito nem `dangerouslySetInnerHTML` em `src`/Edges. Divisão por rota já usa `React.lazy`; consultas de catálogo mantêm cache de 5/30 min, listas agrupam eventos Realtime e têm polling de reserva (60 s desconectado, 300 s conectado). Preservado sem reescrita especulativa; V39 já agrupava a leitura da troca e V57 passa a agrupar peça/etapa na escrita. Sem novo serviço Frenet ou envio automático de WhatsApp.
+
+Compatibilidade V37/V57: a asserção de negócio antiga confirmou o retorno à Conferência, mas uma asserção de transporte ainda exigia a segunda RPC `sair_do_desvio` que V57 removeu. Substituída por exigência de **uma** RPC atômica e **zero** RPCs de segunda etapa, mantendo todas as expectativas de estado, tela e barreira. Não há relaxamento da regra de origem do desvio.

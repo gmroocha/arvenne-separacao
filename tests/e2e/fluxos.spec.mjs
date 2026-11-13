@@ -147,7 +147,9 @@ test("V37: falta na Conferência mantém o pedido na Conferência e resolver vol
   await page.getByRole("button", { name: "Resolver", exact: true }).click()
   await page.getByText("Remover", { exact: true }).click()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("conferencia")
-  expect(sim.requisicoes.some((r) => r.path.endsWith("/rpc/sair_do_desvio"))).toBe(true)
+  // V57: a mesma requisição conclui peça e etapa; não depende mais de uma segunda RPC.
+  expect(sim.requisicoes.filter((r) => r.metodo === "POST" && r.path.endsWith("/rpc/alterar_item"))).toHaveLength(1)
+  expect(sim.requisicoes.filter((r) => r.path.endsWith("/rpc/sair_do_desvio"))).toHaveLength(0)
   await expect(page.getByText("Avise a cliente", { exact: true })).toBeHidden()
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
