@@ -12,6 +12,8 @@ Relatório e evidências em [`VISTORIA-2.md`](VISTORIA-2.md), com **18 correçõ
 - Banco remoto coincide com o local: 72 funções, 29 relações, 32 policies, 27 gatilhos e 59 migrations. **23 pedidos, 456 itens e 21 trocas preservados**, inclusive o conteúdo; os mesmos 12 avisos históricos do vigia continuam.
 - Verificação final: **137 unidade, 180 banco, 64 e2e (381 testes)**, tipos e build verdes. Lint: **8 → 0 avisos**. Cinco FKs sem índice: **5 → 0**. Advisors mantêm avisos intencionais/limitações descritos no relatório, sem erros.
 
+**Conferência publicada:** 36 situações de nove telas em celular/PC e dois temas sem erros de console/HTTP/JavaScript ou overflow; Lighthouse do login: **98 desempenho, 100 acessibilidade, 100 boas práticas**. O asset publicado foi comparado ao build local.
+
 **No navegador:** recarregar a página para usar a versão nova; se uma aba antiga persistir, usar Ctrl+Shift+R. Não precisa limpar dados nem recriar pedidos.
 
 **Pendência de painel já existente (V35):** proteção contra senhas vazadas e confirmação de cadastro público desativado dependem do Authentication; não foram alterados nesta autorização. Seis avisos da cadeia da CLI shadcn permanecem, sem atualização compatível segura (nenhum alto/crítico); não foi aplicado downgrade forçado.

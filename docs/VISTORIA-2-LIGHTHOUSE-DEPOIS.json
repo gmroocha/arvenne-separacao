@@ -1,0 +1,14 @@
+{
+  "pagina": "login",
+  "fetchTime": "2026-11-13T07:00:52.386Z",
+  "categorias": {
+    "performance": 0.98,
+    "accessibility": 1,
+    "best-practices": 1
+  },
+  "metricas": {
+    "largest-contentful-paint": 2129.2889999999998,
+    "cumulative-layout-shift": 0,
+    "total-blocking-time": 0
+  }
+}

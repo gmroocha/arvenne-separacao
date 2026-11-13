@@ -2,13 +2,13 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** suíte V59 verde; segundo push e conferência final.
-- **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42–V58 publicados em `f709894`; 5 migrations aplicadas, 4 Edges publicadas, tipos regenerados (base `20261120140000`). Banco remoto igual ao local; 23 pedidos, 456 itens e 21 trocas preservados. Conferência publicada: 36 situações, zero erros/overflow/tentativas de gravação.
-- **Último bloco integral verde:** 137 unidade, 180 banco, 58 e2e (7,3 min), tipos, lint sem avisos e build. Asset publicado `index-CrVpaqnx.js` idêntico ao build; 2 valores privados conhecidos ausentes do bundle.
-- **Resultado final V59:** 137 unidade, 180 banco, 64 e2e, tipos, lint e build verdes (`/tmp/arvenne-vistoria2-final-v59.log`); capturas inspecionadas. Scanner do build final verde; asset esperado `index-B12FyOxW.js`.
-- **Próximo passo exato:** concluir a suíte V59, atualizar scanner do bundle, push; conferir hash, repetir Lighthouse e `publicado.mjs`; guardar métricas, atualizar Estado atual, encerrar relatório e enviar docs. Não há arquivo de app pela metade.
-- **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
+- **Fase/item atual:** concluída — 18 correções V42–V59 aplicadas e publicadas.
+- **Base:** `3ce7b4a`; correções e evidências na tabela abaixo. Código final publicado no push `a0d46fe` (inclui V59 `ba9e0f9`).
+- **Concluído:** 5 migrations aplicadas após dry-run, 4 Edges publicadas e tipos regenerados (base `20261120140000`). Banco remoto igual ao local; 23 pedidos, 456 itens e 21 trocas preservados. Nenhum dado de negócio gravado na conferência.
+- **Verificação final:** 137 unidade, 180 banco, 64 e2e (381 testes; 7,6 min nas telas), tipos, lint sem avisos e build verdes. Deno check das 4 Edges verde. Asset `index-B12FyOxW.js` publicado idêntico ao build; 2 valores privados conhecidos ausentes do bundle.
+- **Conferência publicada:** 36 situações, zero erros JS/console/HTTP, overflow ou tentativas de gravação. Lighthouse final do login: 98 desempenho, 100 acessibilidade, 100 boas práticas.
+- **Arquivos pela metade:** nenhum. Resultados completos e limites abaixo; capturas locais em `capturas/vistoria2/` (ignoradas pelo git).
+- **Próximo passo:** nenhuma implementação pendente nesta vistoria; configuração de Authentication e demais limites ficam explicitados em “Pendências e limitações”. Não limpar/reconstruir os pedidos históricos.
 
 ### Checklist do inventário
 
@@ -24,8 +24,8 @@
 - [x] Fase 2: design, acessibilidade e estados nas três larguras e dois temas.
 - [x] Fase 2: desempenho, código e dependências (medições finais remotas na Fase 4).
 - [x] Fase 3: propriedades, contratos Edge, e2e, visual, axe e desempenho.
-- [ ] Fase 4: testes finais, migrations/tipos/Edges necessários, push e conferência publicada.
-- [ ] Entrega: Estado atual, métricas antes/depois, pendências e resumo em português.
+- [x] Fase 4: testes finais, migrations/tipos/Edges necessários, push e conferência publicada.
+- [x] Entrega: Estado atual, métricas antes/depois, pendências e resumo em português.
 
 ## Escopo e proteções
 
@@ -37,14 +37,15 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | Medida | Antes (`3ce7b4a`) | Depois |
 | --- | --- | --- |
-| `npm test` completo | **109 unidade, 165 banco, 24 e2e**, tipos e build verdes | **137 unidade, 180 banco, 64 e2e** (381 testes), tipos e build verdes | |
-| Lint | **8 avisos / 0 erros** (6 Fast Refresh, 1 hook mobile, 1 catch) | **0 avisos / 0 erros**, sem desligar regras | |
-| Bundle por chunk | Entrada 303,08 kB / gzip 97,32; Pedido 149,51 / 41,88; Supabase 216,72 / 55,95; demais abaixo | Entrada **301,32 / 96,68**; Pedido **149,50 / 41,86**; Supabase **216,72 / 55,95** kB/gzip | |
-| Inconsistências remotas | **12** (4 composição, 5 etapa, 1 pagamento, 1 venda sem composição, 1 troca inativa) | **Os mesmos 12**, mesmos pedidos e regras; dados preservados | |
-| Advisors segurança/desempenho | **32**: 18 avisos, 14 informações, 0 erros; 5 FKs sem índice | **32**: 18 avisos, 14 informações, 0 erros; **0 FKs sem índice**; índices sem uso **8 → 13** (inclui os 5 novos) | |
-| Planos SQL mais usados | Execução: expedição **53,959 ms**, detalhe **8,176 ms**, v_pedidos **19,182 ms**, alterações **22,368 ms** | Medianas: expedição **16,593 ms**, detalhe **6,324 ms**, v_pedidos **17,946 ms**, alterações **5,924 ms**; painel/sugestão agora permitidos | |
-| LCP / INP / CLS móvel | Expedição **1.752 ms / não medido / 0,0477**, laboratório sem throttling | Pendente |
-| Requisições / abertura de telas | Expedição **88 / 2.447 ms**, pedido **79 / 1.794 ms** (leituras novas bloqueadas) | Pendente |
+| `npm test` completo | **109 unidade, 165 banco, 24 e2e**, tipos e build verdes | **137 unidade, 180 banco, 64 e2e** (381 testes), tipos e build verdes |
+| Lint | **8 avisos / 0 erros** (6 Fast Refresh, 1 hook mobile, 1 catch) | **0 avisos / 0 erros**, sem desligar regras |
+| Bundle por chunk | Entrada 303,08 kB / gzip 97,32; Pedido 149,51 / 41,88; Supabase 216,72 / 55,95; demais abaixo | Entrada **301,32 / 96,68**; Pedido **149,50 / 41,86**; Supabase **216,72 / 55,95** kB/gzip |
+| Inconsistências remotas | **12** (4 composição, 5 etapa, 1 pagamento, 1 venda sem composição, 1 troca inativa) | **Os mesmos 12**, mesmos pedidos e regras; dados preservados |
+| Advisors segurança/desempenho | **32**: 18 avisos, 14 informações, 0 erros; 5 FKs sem índice | **32**: 18 avisos, 14 informações, 0 erros; **0 FKs sem índice**; índices sem uso **8 → 13** (inclui os 5 novos) |
+| Planos SQL mais usados | Execução: expedição **53,959 ms**, detalhe **8,176 ms**, v_pedidos **19,182 ms**, alterações **22,368 ms** | Medianas: expedição **16,593 ms**, detalhe **6,324 ms**, v_pedidos **17,946 ms**, alterações **5,924 ms**; painel/sugestão agora permitidos |
+| LCP / INP / CLS móvel | Expedição **1.752 ms / não medido / 0,0477**, laboratório sem throttling | Expedição **2.048 ms / não medido / 0,0739**; menu do pedido **24 ms** de Event Timing (laboratório, não INP de campo) |
+| Requisições / abertura de telas | Expedição **88 / 2.447 ms**, pedido **79 / 1.794 ms** (leituras novas bloqueadas) | Expedição **88 / 2.639 ms**; pedido **81 / 2.961 ms**, agora com todas as leituras permitidas |
+| Lighthouse do login (móvel) | Desempenho **98**, acessibilidade **98**, boas práticas **100**; LCP **2,0 s**, CLS **0**, TBT **100 ms** | **98 / 100 / 100**, LCP **2,129 s**, CLS **0**, TBT **0 ms** |
 
 ## Correções e evidências
 
@@ -191,3 +192,27 @@ Planos somente leitura com `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`. Cache/lat�
 Bundle completo depois: [VISTORIA-2-BUNDLE-DEPOIS.json](VISTORIA-2-BUNDLE-DEPOIS.json). Total de 77 assets; verificação dos dois valores privados conhecidos do ambiente sem ocorrência em JS/CSS e chave pública com papel anon/publishable. Isso não é uma prova de ausência de qualquer segredo desconhecido, mas nenhum valor privado foi impresso ou gravado nos relatórios.
 
 Primeiro deploy conferido em 36 situações (9 rotas × 390/1280 × claro/escuro): zero erros JS/console/HTTP, overflow ou tentativa de gravação. Nova venda não é aberta no ambiente real porque criaria rascunho; a rota e a venda preenchida foram cobertas em PGlite na matriz de 12 rotas. Lighthouse desse deploy: 99/98/100; o único apontamento de acessibilidade era `landmark-one-main` no login, corrigido em V59 e agora incluído no teste permanente nos três tamanhos/dois temas. A suíte final V59 está em andamento antes do segundo push.
+
+## Conferência final da versão publicada
+
+Segundo push `a0d46fe`, incluindo V59: `index-B12FyOxW.js` servido pelo Cloudflare byte a byte igual ao build. Login medido depois da publicação: **98 desempenho / 100 acessibilidade / 100 boas práticas**, LCP 2,129 s, CLS 0, TBT 0 ms. A pontuação de desempenho variou entre 98/99 nas amostras; não declarar ganho geral de velocidade a partir disso. [Lighthouse final](VISTORIA-2-LIGHTHOUSE-DEPOIS.json).
+
+`publicado.mjs` repetido na versão final: **36 situações** (9 rotas × 2 larguras × 2 temas), zero erros de JavaScript, console, HTTP, overflow ou tentativa de gravação. Páginas públicas carregaram conteúdo real de romaneio e troca; nenhuma escolha ou confirmação foi enviada. Os botões do menu só foram abertos/fechados para medir a interação. [Antes ampliado](VISTORIA-2-PUBLICADO-ANTES.json), [depois final](VISTORIA-2-PUBLICADO-DEPOIS.json).
+
+| Tela, 390 px escuro | Antes ampliado: req / abertura ms | Depois: req / abertura ms | LCP depois ms | CLS depois |
+| --- | --- | --- | --- | --- |
+| Expedição | 88 / 8.837 | 88 / 2.639 | 2.048 | 0,0739 |
+| Vendas | 49 / 2.187 | 50 / 1.891 | 924 | 0,0564 |
+| Arquivo | 53 / 2.641 | 54 / 1.742 | 840 | 0,0598 |
+| Clube | 45 / 1.756 | 45 / 1.924 | 952 | 0,0998 |
+| Repetidas | 50 / 1.778 | 51 / 1.656 | 964 | 0,0895 |
+| Feedbacks | 39 / 2.115 | 40 / 1.747 | 848 | 0,0496 |
+| Pedido | 82 / 4.827 | 81 / 2.961 | 1.840 | 0 |
+| Romaneio | 48 / 1.291 | 48 / 1.320 | 832 | 0,0004 |
+| Troca | 37 / 2.058 | 36 / 1.637 | 1.100 | 0,0007 |
+
+Reload completo com barreira de rede (cache do navegador desabilitado pelo roteamento), Chromium sem throttling; amostras únicas por variante, com variação de rede/CPU e sem valor estatístico de campo. A amostra inicial de expedição era 2.447 ms e a ampliada teve 8.837 ms, ilustrando essa variação. LCP/CLS da expedição ficaram um pouco maiores que a primeira linha de base; não há evidência controlada para atribuir a diferença às mudanças. As listas ainda têm deslocamentos durante carregamento, quantificados acima; não afirmar CLS zero nelas. O pequeno acréscimo de uma requisição nas quatro listas corresponde ao chunk compartilhado da mensagem de erro V55. Ganho de ida ao banco confirmado por contrato: ações peça/etapa **2 → 1**, sem depender da segunda resposta.
+
+Axe final: 72 situações WCAG A/AA nas 12 rotas, seis verificações de landmark do login, estados de erro das seis listas em 24 situações extras e navegação das abas por teclado. As 12 referências visuais passaram sem atualização/afrouxamento; todas as telas de peças continuam sem valores. Nenhum teste `.skip`, `.fails` ou `.only`; a conservação só ampliou os geradores com centavos, preservando todas as asserções.
+
+Migrations aplicadas anteriores à vistoria permaneceram sem edição (só cinco arquivos novos). Nenhum reset, limpeza de dados, troca de segredos ou mudança em Authentication. Relatório, inventário, métricas e Estado atual atualizados; as notas intermediárias acima ficam como histórico e são superadas por este fechamento.
