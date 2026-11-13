@@ -1,3 +1,4 @@
+import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { Plus, Receipt } from "lucide-react"
@@ -18,7 +19,7 @@ export default function Vendas() {
   const aba = params.get("aba") === "aguardando" ? "aguardando_pagamento" : "em_aberto"
   const [busca, setBusca] = useState("")
   const termo = useDebounce(busca, 300)
-  const { data, isLoading } = usePedidosFase("venda", termo)
+  const { data, isLoading, isError, isFetching, refetch } = usePedidosFase("venda", termo)
 
   const filtradas = useMemo(() => {
     const t = busca.trim().toLowerCase()
@@ -59,13 +60,14 @@ export default function Vendas() {
         <p className="text-xs text-muted-foreground">Mostrando as {LIMITE_LISTA} vendas mais recentes: pode haver mais. Use a busca.</p>
       )}
 
+      {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-[70px] w-full" />
           ))}
         </div>
-      ) : lista.length === 0 ? (
+      ) : isError && !data ? null : lista.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">

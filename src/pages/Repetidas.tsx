@@ -1,3 +1,4 @@
+import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Link } from "react-router"
 import { ChevronRight, PackageCheck } from "lucide-react"
 import Foto from "@/components/Foto"
@@ -10,17 +11,18 @@ import { useRepetidas } from "@/lib/api"
 // Peças pendentes que estão em mais de um pedido: pega o saco uma vez e separa para todas.
 // O que importa para achar no estoque é foto, código, variante e quantidade; o nome fica pequeno.
 export default function Repetidas() {
-  const { data, isLoading } = useRepetidas()
+  const { data, isLoading, isError, isFetching, refetch } = useRepetidas()
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">Pegue o saco uma vez e separe para todos os pedidos.</p>
+      {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
       {isLoading ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-56 w-full" />
           ))}
         </div>
-      ) : !data?.length ? (
+      ) : isError && !data ? null : !data?.length ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">

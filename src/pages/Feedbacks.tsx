@@ -1,3 +1,4 @@
+import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { useState } from "react"
 import { Link } from "react-router"
 import { MessageSquare } from "lucide-react"
@@ -17,7 +18,7 @@ function linkDaTela(f: Feedback) {
 
 export default function Feedbacks() {
   const [aba, setAba] = useState<"abertos" | "resolvidos">("abertos")
-  const { data, isLoading } = useFeedbacks()
+  const { data, isLoading, isError, isFetching, refetch } = useFeedbacks()
   const resolver = useResolverFeedback()
   const lista = (data ?? []).filter((f) => (aba === "abertos" ? !f.resolvido_em : Boolean(f.resolvido_em)))
 
@@ -28,13 +29,14 @@ export default function Feedbacks() {
           <TabsTrigger value="resolvidos">Resolvidos</TabsTrigger>
         </TabsList>
       <TabsContent value={aba} className="flex flex-col gap-4">
+      {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>
-      ) : lista.length === 0 ? (
+      ) : isError && !data ? null : lista.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">

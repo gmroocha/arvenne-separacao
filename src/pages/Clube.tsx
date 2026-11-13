@@ -1,3 +1,4 @@
+import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { useState } from "react"
 import { Gem, Plus } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
@@ -20,7 +21,7 @@ export default function Clube() {
   const [novo, setNovo] = useState(false)
   const [inativas, setInativas] = useState(false)
   const [limite, setLimite] = useState(PASSO)
-  const { data, isLoading } = usePecasClube(busca, inativas, limite)
+  const { data, isLoading, isError, isFetching, refetch } = usePecasClube(busca, inativas, limite)
   const ativar = useAtivarPecaClube()
 
   return (
@@ -51,13 +52,14 @@ export default function Clube() {
         </Button>
       </div>
 
+      {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
       {isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-72 w-full" />
           ))}
         </div>
-      ) : data?.length === 0 ? (
+      ) : isError && !data ? null : data?.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">

@@ -1,3 +1,4 @@
+import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { useState } from "react"
 import { Archive } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
@@ -16,7 +17,7 @@ export default function Arquivo() {
   const [busca, setBusca] = useState("")
   const [limite, setLimite] = useState(PASSO)
   const termo = useDebounce(busca, 300)
-  const { data, isLoading } = useArquivo(termo, limite)
+  const { data, isLoading, isError, isFetching, refetch } = useArquivo(termo, limite)
 
   return (
     <div className="flex flex-col gap-4">
@@ -28,13 +29,14 @@ export default function Arquivo() {
         }}
         placeholder="Número, cliente ou telefone"
       />
+      {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-[70px] w-full" />
           ))}
         </div>
-      ) : !data || data.length === 0 ? (
+      ) : isError && !data ? null : !data || data.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">

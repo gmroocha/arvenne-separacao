@@ -1,3 +1,4 @@
+import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
@@ -122,7 +123,7 @@ export default function Expedicao() {
   const soAtrasados = params.get("atrasados") === "1"
   const [busca, setBusca] = useState("")
   const termo = useDebounce(busca, 300)
-  const { data, isLoading } = usePedidosFase("expedicao", termo)
+  const { data, isLoading, isError, isFetching, refetch } = usePedidosFase("expedicao", termo)
   const { data: contagens } = useContagens()
   const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
@@ -233,6 +234,8 @@ export default function Expedicao() {
         <p className="text-xs text-muted-foreground">Mostrando os {LIMITE_LISTA} primeiros pedidos da expedição: pode haver mais. Use a busca para achar os outros.</p>
       )}
 
+      {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
+      {(!isError || !!data) && <>
       {/* Celular: faixa da esteira, uma etapa por ícone ligada por linha. Toque filtra a lista. */}
       <div className="lg:hidden">
         <FaixaRolavel chave={selecionada}>
@@ -375,6 +378,7 @@ export default function Expedicao() {
         <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent" />
       )}
       </div>
+      </>}
       {dialogo}
     </div>
   )
