@@ -2,11 +2,12 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** Fase 3/4, consolidar a suíte final antes da aplicação (retomada em 13/11/2026).
+- **Fase/item atual:** complemento de Fase 2/3 após a primeira suíte integral verde, antes da publicação.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42–V54 em commits individuais (tabela abaixo); oito avisos do lint eliminados. Contratos das quatro Edges, propriedades financeiras com centavos e oráculo de etapas (60 cenários/420 transições). Axe em 54 situações e oito baselines visuais geradas/inspecionadas, sem relaxar regras. Todos esses arquivos já commitados até `9950226`.
-- **Em andamento:** V55 em `b20a113`, com 4 testes de erro/recuperação e axe verdes em 24 situações; limite de dois workers em `bb9dea2`. Baselines da separação adicionadas às páginas públicas (12 PNGs ao todo), sem alterar as oito referências existentes. O último `npm test` (`/tmp/arvenne-vistoria2-bloco2.log`) passou 125 unidades e 172 de banco, mas falhou por falta de memória/timeout em navegador. Máquina chegou a 7,4/7,6 GiB e swap 2/2 GiB, com trabalhos externos. Não considerar essa suíte verde. Servidor de teste órfão da execução encerrado; configuração temporária de visual removida (não necessária ao npm test).
-- **Próximo passo exato:** repetir a suíte final sem paralelismo entre tarefas próprias; verificar os 134 testes de unidade, 173 de banco e 52 e2e atualmente existentes. Manter todos os limites e assertivas. Após verde: dry-run das 3 migrations, aplicar, regenerar tipos/baseAplicada, publicar as 4 Edges, push e conferência publicada bloqueando gravações. Atualizar Estado atual e métricas antes/depois. Nada desta vistoria foi aplicado/publicado ainda.
+- **Concluído:** V42–V55 commitados; `npm test` verde em 13/11: **134 unidade, 173 banco, 52 e2e**, tipos, lint sem avisos e build. Dinheiro, 420 transições geradas, contratos Edge, segurança, erros e 12 baselines visuais cobertos. Dry-run confirmou as 3 migrations previstas; 54 remotas coincidem com a base. Corpos das 71 funções remotas iguais aos locais; só 4 configurações `search_path` aguardam alteração.
+- **Em andamento:** sem commit: V56 — lista preenchida de Vendas não tinha filhos listitem (axe reproduziu); `ItemGroup` agora usa `ul`, LinhaPedido e Repetidas usam `li`. Matriz axe ampliada às 12 rotas e listas preenchidas; testes de concorrência/queda/HTML em `concorrencia.spec.mjs`; dois testes de tempo real verdes (136 unidades ao todo); patch Vite 8.3.7→8.3.8 no lock. Nenhum deploy/aplicação remota ainda.
+- **Verificação complementar:** 12 testes de acessibilidade/concorrência passaram; V56 conferida visualmente nas quatro combinações. V57 atômica com 6 testes de banco verdes, aguarda suíte integral atual em `/tmp/arvenne-vistoria2-integral-atual.log`.
+- **Próximo passo exato:** concluir `/tmp/arvenne-vistoria2-complementos.log`; repetir `concorrencia.spec.mjs` com localizadores por botão (“Encontradas (1)”), sem relaxar expectativa. Caso de resposta retida precisa confirmar atomicidade da etapa: deve ficar Separação após recarregar, mesmo sem a resposta chegar. Concluir V56 e suas capturas. Depois suíte completa com os complementos, aplicar migrations/tipos/Edges, push e conferência publicada.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -62,8 +63,9 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | V52 | Média | ViaCEP/CNPJá/BrasilAPI sem limite: serviço sem resposta deixava a busca e o formulário esperando indefinidamente. | AbortSignal de 10 s por serviço; CNPJ ainda tenta a reserva e termina em até 20 s de rede. | `ea54493` | 2 reproduções de rede parada falharam antes e passaram após; contrato de CEP inválido/inexistente/válido mantido. |
 | V53 | Média | Falha temporária no RPC do romaneio virava `null` e dizia “não encontrado”. | Distinguir falha de rede de link inexistente; erro claro e botão Tentar novamente. Token malformado continua como inexistente. | `dbd7182` | Regressão falhou antes e passou em celular/PC, claro/escuro; recuperação real com RPC fictícia, sem recarregar a página. Capturas inspecionadas. |
 | V54 | Média | Foto sem `width` nos cartões, repetidas, miniaturas e bipagem baixava o original inteiro da Shopify. | Limitar miniaturas a 600 px, preservar tamanhos menores explícitos e manter ampliação em 1200 px; outras origens intactas. | `7819cb8` | HTML realmente renderizado falhou sem width antes; passa com limite e preservação de tamanho/host. Layout preservado. |
-
 | V55 | Média | Falha na leitura de Expedição, Vendas, Arquivo, Clube, Repetidas ou Feedbacks aparecia como lista vazia (ou sem conteúdo). | Aviso comum com Tentar novamente; na falha de atualização mantém os dados anteriores com aviso. Sem lista vazia falsa na falha inicial. | `b20a113` | Reprodução HTTP 500 falhou no código anterior; recuperação e axe passaram em 24 situações (6 listas × 2 temas × celular/PC). Capturas nas quatro combinações inspecionadas. |
+
+| V56 | Média | Axe nas listas preenchidas de Vendas/Repetidas encontrou links diretamente sob `role=list`, sem listitem. | Grupo como `ul` e cada linha como `li`, mantendo navegação e aparência. | Neste commit | 6 verificações axe falharam antes; matriz ampliada de 12 rotas × 3 larguras × 2 temas passou (72 situações). Capturas de ambas as listas em 390/1280, claro/escuro, inspecionadas. |
 
 ## Decisões tomadas sem o Gustavo
 
@@ -143,3 +145,5 @@ Retomada de 13/11: a execução anterior também falhou ao criar a página do Ch
 O ambiente foi reiniciado durante a falta de memória: logs em `/tmp` da sessão anterior desapareceram; os resultados já registrados neste relatório e todos os commits persistiram. Memória livre voltou a mais de 3 GiB. Nenhum processo de outro trabalho foi encerrado. A única redução de paralelismo é `maxWorkers: 2` para unidades, mantendo testes, seeds, timeouts e regras.
 
 Regressão visual do coração do app: adicionadas quatro referências da região “A encontrar” (celular/PC × claro/escuro), com foto, SKU, quantidade e ações. Recorte evita prazos/relógios variáveis; pedido continua calculado pelo PostgreSQL real. Também verifica que nenhuma quantia aparece na etapa. As oito referências públicas existentes passaram sem atualização; `--update-snapshots=missing` criou apenas as quatro novas.
+
+Primeira suíte final verde (`/tmp/arvenne-vistoria2-final.log`): 134 unidade + 173 banco + 52 e2e (6,4 min nas telas), tipos e build. Entrada do bundle: 301,32 kB / gzip 96,68; Pedido: 149,50 / 41,86; Supabase: 216,72 / 55,95. O complemento de revisão ainda está em andamento, portanto esse resultado não declara toda a vistoria encerrada.

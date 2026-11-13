@@ -11,6 +11,7 @@ import type { Pedido } from "@/lib/tipos"
 export default function LinhaPedido({ p }: { p: Pedido }) {
   const pecas = `${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`
   return (
+    <li>
     <Item variant="outline" asChild>
       <Link to={p.fase === "venda" ? `/vendas/${p.id}` : `/pedidos/${p.id}`}>
         <ItemMedia>
@@ -51,5 +52,6 @@ export default function LinhaPedido({ p }: { p: Pedido }) {
         </ItemActions>
       </Link>
     </Item>
+    </li>
   )
 }

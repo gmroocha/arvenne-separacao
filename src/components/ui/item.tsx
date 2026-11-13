@@ -5,9 +5,9 @@ import { Slot } from "radix-ui"
 
 import { Separator } from "@/components/ui/separator"
 
-function ItemGroup({ className, ...props }: React.ComponentProps<"div">) {
+function ItemGroup({ className, ...props }: React.ComponentProps<"ul">) {
   return (
-    <div
+    <ul
       role="list"
       data-slot="item-group"
       className={cn(

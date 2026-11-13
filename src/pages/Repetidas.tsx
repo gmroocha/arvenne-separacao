@@ -51,7 +51,8 @@ export default function Repetidas() {
                 </div>
                 <ItemGroup className="gap-2">
                   {r.pedidos.map((p) => (
-                    <Item key={p.pedido_id} variant="outline" size="sm" asChild>
+                    <li key={p.pedido_id}>
+                    <Item variant="outline" size="sm" asChild>
                       <Link to={`/pedidos/${p.pedido_id}`}>
                         <ItemContent>
                           <ItemTitle>{p.cliente ?? "Sem nome"}</ItemTitle>
@@ -61,6 +62,7 @@ export default function Repetidas() {
                         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                       </Link>
                     </Item>
+                    </li>
                   ))}
                 </ItemGroup>
               </CardContent>
