@@ -4,9 +4,9 @@
 
 - **Fase/item atual:** validação integral final antes da publicação.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42–V56 commitados; V57 neste commit. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
+- **Concluído:** V42–V57 commitados; V58 neste commit. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
 - **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-integral-atual.log`; sem commit adicional: 2 testes de tempo real, patch Vite 8.3.8 e ampliação da conferência publicada. Nenhuma migration aplicada, Edge publicada ou push ainda.
-- **Próximo passo exato:** concluir `npm test` atual; capturar publicado `--antes`; dry-run das 4 migrations, aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
+- **Próximo passo exato:** concluir `npm test` atual; capturar publicado `--antes`; novo dry-run das 5 migrations, aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -66,7 +66,9 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V56 | Média | Axe nas listas preenchidas de Vendas/Repetidas encontrou links diretamente sob `role=list`, sem listitem. | Grupo como `ul` e cada linha como `li`, mantendo navegação e aparência. | `be5212a` | 6 verificações axe falharam antes; matriz ampliada de 12 rotas × 3 larguras × 2 temas passou (72 situações). Capturas de ambas as listas em 390/1280, claro/escuro, inspecionadas. |
 
-| V57 | Alta | Ao perder a resposta após salvar “Achei”, a etapa dependia de outra requisição: peça encontrada e pedido ainda Novo; falta parcial também podia ficar sem desvio. | RPC `alterar_item` com bloqueio do pedido grava peça/etapa juntas; `marcar_falta` conclui o desvio na própria transação, preservando origem. Remove segunda gravação do navegador. Sem alteração retroativa de dados. | Neste commit | Browser reproduziu peça encontrada com pedido Novo e 3 casos SQL falharam antes. Agora 6 regressões SQL e 6 casos e2e de duplo clique, resposta perdida e entradas longas/HTML passam em celular/PC. Rede nega RPC real nos testes. |
+| V57 | Alta | Ao perder a resposta após salvar “Achei”, a etapa dependia de outra requisição: peça encontrada e pedido ainda Novo; falta parcial também podia ficar sem desvio. | RPC `alterar_item` com bloqueio do pedido grava peça/etapa juntas; `marcar_falta` conclui o desvio na própria transação, preservando origem. Remove segunda gravação do navegador. Sem alteração retroativa de dados. | `f9d3d17` | Browser reproduziu peça encontrada com pedido Novo e 3 casos SQL falharam antes. Agora 6 regressões SQL e 6 casos e2e de duplo clique, resposta perdida e entradas longas/HTML passam em celular/PC. Rede nega RPC real nos testes. |
+
+| V58 | Média | Nome da cliente preenchido como e-mail era devolvido integralmente por `romaneio_publico`, embora o campo separado de e-mail já fosse omitido. | Omitir nome com `@` no romaneio, como já faz `troca_publica`; preservar primeiro nome nos demais casos. Migration nova, sem editar dados. | Neste commit | Teste novo recebeu `privado@ficticio.test` antes e passou com `null` após; 6 testes de segurança verdes. |
 
 ## Decisões tomadas sem o Gustavo
 
@@ -148,3 +150,5 @@ O ambiente foi reiniciado durante a falta de memória: logs em `/tmp` da sessão
 Regressão visual do coração do app: adicionadas quatro referências da região “A encontrar” (celular/PC × claro/escuro), com foto, SKU, quantidade e ações. Recorte evita prazos/relógios variáveis; pedido continua calculado pelo PostgreSQL real. Também verifica que nenhuma quantia aparece na etapa. As oito referências públicas existentes passaram sem atualização; `--update-snapshots=missing` criou apenas as quatro novas.
 
 Primeira suíte final verde (`/tmp/arvenne-vistoria2-final.log`): 134 unidade + 173 banco + 52 e2e (6,4 min nas telas), tipos e build. Entrada do bundle: 301,32 kB / gzip 96,68; Pedido: 149,50 / 41,86; Supabase: 216,72 / 55,95. O complemento de revisão ainda está em andamento, portanto esse resultado não declara toda a vistoria encerrada.
+
+Complemento de privacidade V58: teste vermelho e verde confirmado; a suíte iniciada antes desse achado tem 137 unidades/179 banco e 58 e2e em andamento. Repetir a suíte após esta migration antes de aplicar. Conferência publicada ampliada ANTES: 36 situações, nenhuma gravação bloqueada tentada, nenhum erro de console/JS/HTTP nem overflow. Dados de laboratório variam com a rede; não usar uma única amostra para alegar ganho causal.

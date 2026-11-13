@@ -58,3 +58,12 @@ test('V45: tabela temporária não desvia o histórico de escolha executado pelo
  expect((await one("select count(*)::int n from public.pedido_eventos where pedido_id=$1 and tipo='troca_respondida'",[f.pedido.id])).n).toBe(1)
  expect((await one('select count(*)::int n from pg_temp.pedido_eventos')).n).toBe(0)
 })
+
+test('V58: e-mail usado como nome da cliente também é omitido no romaneio público',async()=>{
+ const f=await fixture()
+ await db.query("update pedidos set cliente_nome='privado@ficticio.test' where id=$1",[f.pedido.id])
+ const r=(await one('select romaneio_publico($1) r',[f.pedido.token_publico])).r
+ expect(r.cliente).toBeNull()
+ expect(JSON.stringify(r)).not.toContain('privado@ficticio.test')
+ expect((await publica(f)).cliente).toBeNull()
+})
