@@ -12,13 +12,13 @@ Gerado por `node scripts/vistoria/inventario.mjs` em PGlite, aplicando todas as 
 | [ ] | `bipar(uuid,uuid,text)` | `20261119120000_bipagem_valida_codigo.sql` | false | false/true | 2e9535522980 |
 | [ ] | `bipar_ajustar(uuid,integer)` | `20261119120000_bipagem_valida_codigo.sql` | false | false/true | 4907cf86de6c |
 | [ ] | `categorias_catalogo()` | `20261112150000_trocas.sql` | false | false/true | ece9b0c11621 |
-| [ ] | `criar_venda(jsonb)` | `20261111090000_vendas.sql` | false | false/true | 24a4d4889833 |
+| [ ] | `criar_venda(jsonb)` | `20261117090000_protecoes_integridade.sql` | false | false/true | 24a4d4889833 |
 | [ ] | `enviar_troca(uuid)` | `20261113110000_acoes.sql` | false | false/true | 5c92dc2c3821 |
 | [ ] | `fator_pedido(uuid)` | `20261114100000_troca_cobertura.sql` | false | false/true | 61e5b2f5d661 |
 | [ ] | `fechar_financeiro(uuid)` | `20261118180000_financeiro_por_parte.sql` | true | false/false | 4127a49711da |
 | [ ] | `feriados_ate()` | `20261119170000_calendario_feriados.sql` | true | false/true | 40c6b6d41a3d |
 | [ ] | `garantir_troca(uuid,uuid[])` | `20261113110000_acoes.sql` | false | false/true | 91676c9401f4 |
-| [ ] | `horas_uteis(timestamp with time zone,timestamp with time zone)` | `20261111090000_vendas.sql` | true | false/true | 3d69eae5ff98 |
+| [ ] | `horas_uteis(timestamp with time zone,timestamp with time zone)` | `20261120110000_definer_pg_temp.sql` | true | false/true | 18df48bf3e23 |
 | [ ] | `importar_pedido_shopify(jsonb)` | `20261119110000_valor_exato_linha_shopify.sql` | true | false/false | a4faeebdf24b |
 | [ ] | `listar_inconsistencias()` | `20261119170000_calendario_feriados.sql` | false | false/true | 9a784127625c |
 | [ ] | `marcar_devolvido(uuid,boolean)` | `20261118190000_movimentos_financeiros.sql` | true | false/true | 05ebcdbe1d59 |
@@ -38,7 +38,7 @@ Gerado por `node scripts/vistoria/inventario.mjs` em PGlite, aplicando todas as 
 | [ ] | `somar_venda(uuid,text,numeric,timestamp with time zone)` | `20261118100000_retrato_venda_somada.sql` | true | false/true | ac59f17a515f |
 | [ ] | `substituir_item(uuid,jsonb)` | `20261118150000_substituicao_atomica.sql` | true | false/true | d68940c406c1 |
 | [ ] | `sugerir_troca(uuid,text,text,numeric,text,boolean,boolean)` | `20261120090000_trocas_visiveis.sql` | false | false/true | 71f4370600ed |
-| [ ] | `tg_clientes_antes()` | `20261111090000_vendas.sql` | false | true/true | 44ef56e9c9c9 |
+| [ ] | `tg_clientes_antes()` | `20261117090000_protecoes_integridade.sql` | false | true/true | 44ef56e9c9c9 |
 | [ ] | `tg_descontos_shopify()` | `20261120090000_trocas_visiveis.sql` | true | false/false | 1a6a897e2f5f |
 | [ ] | `tg_documento_reaberto()` | `20261118170000_retornar_trabalho_reaberto.sql` | true | false/false | 566dd91e6d51 |
 | [ ] | `tg_estorno_validar()` | `20261118190000_movimentos_financeiros.sql` | false | false/false | dce5cf22d506 |
@@ -47,11 +47,11 @@ Gerado por `node scripts/vistoria/inventario.mjs` em PGlite, aplicando todas as 
 | [ ] | `tg_financeiro_imutavel()` | `20261118180000_financeiro_por_parte.sql` | false | false/false | 8f68d33c1314 |
 | [ ] | `tg_itens_antes()` | `20261118130000_preservar_devolucao_no_reinicio.sql` | false | false/false | 550a0e8fd509 |
 | [ ] | `tg_itens_antes_ins()` | `20261114090000_vistoria.sql` | false | false/false | 11fddb554c20 |
-| [ ] | `tg_itens_depois()` | `20261112091000_eventos_analise.sql` | true | false/false | 3fb400ce94b5 |
+| [ ] | `tg_itens_depois()` | `20261120110000_definer_pg_temp.sql` | true | false/false | f15818779aeb |
 | [ ] | `tg_movimento_imutavel()` | `20261118190000_movimentos_financeiros.sql` | false | false/false | 7756d847f24f |
 | [ ] | `tg_pedidos_antes()` | `20261118160000_travas_etapas.sql` | false | false/false | 2a6169430c5c |
 | [ ] | `tg_pedidos_cancela_trocas()` | `20261114090000_vistoria.sql` | true | false/false | e623a75773db |
-| [ ] | `tg_pedidos_depois()` | `20261112091000_eventos_analise.sql` | true | false/false | 943bf6ac6e17 |
+| [ ] | `tg_pedidos_depois()` | `20261120110000_definer_pg_temp.sql` | true | false/false | 81acd5cc9984 |
 | [ ] | `tg_retrato_somada_imutavel()` | `20261118100000_retrato_venda_somada.sql` | false | false/false | cec90bff8847 |
 | [ ] | `tg_saldo_itens_alterado()` | `20261119190000_gatilhos_leves.sql` | true | false/false | 6a84b3322fba |
 | [ ] | `tg_saldo_pagamento_alterado()` | `20261118200000_devolucao_adicionais.sql` | true | false/false | 76512e3b0057 |
@@ -59,7 +59,7 @@ Gerado por `node scripts/vistoria/inventario.mjs` em PGlite, aplicando todas as 
 | [ ] | `tg_troca_escolhas_apagada()` | `20261114130000_carrinho_falta_parcial.sql` | true | false/false | 392b7f55c54a |
 | [ ] | `tg_troca_escolhas_historico()` | `20261119160000_historico_carrinho_troca.sql` | true | false/false | bb8416f959aa |
 | [ ] | `tg_troca_opcoes_historico()` | `20261119150000_opcao_concluida_imutavel.sql` | false | false/false | ded4c73ccf77 |
-| [ ] | `tg_troca_pecas_depois()` | `20261112150000_trocas.sql` | true | false/false | b96fa41d0059 |
+| [ ] | `tg_troca_pecas_depois()` | `20261120110000_definer_pg_temp.sql` | true | false/false | af3556bd7867 |
 | [ ] | `tg_troca_pecas_validar()` | `20261114130000_carrinho_falta_parcial.sql` | false | false/false | 6decb56540f8 |
 | [ ] | `tg_trocas_antes()` | `20261118190000_movimentos_financeiros.sql` | true | false/false | f1d7b83b02c7 |
 | [ ] | `tg_trocas_cobertura()` | `20261114100000_troca_cobertura.sql` | false | false/false | f3bbe2311752 |
@@ -77,7 +77,7 @@ Gerado por `node scripts/vistoria/inventario.mjs` em PGlite, aplicando todas as 
 | [ ] | `troca_recalcular_escolha(uuid)` | `20261114130000_carrinho_falta_parcial.sql` | true | false/false | 35cc20ae83f4 |
 | [ ] | `troca_saldo_liquido(uuid)` | `20261118110000_acerto_liquido.sql` | false | false/true | 842cf24aea3c |
 | [ ] | `troca_valor_pago(uuid)` | `20261118180000_financeiro_por_parte.sql` | false | false/true | 2b3f0553f724 |
-| [ ] | `usuario_atual_email()` | `20261110120000_inicio.sql` | false | true/true | 61ae2fa6449d |
+| [ ] | `usuario_atual_email()` | `20261117090000_protecoes_integridade.sql` | false | true/true | 61ae2fa6449d |
 | [ ] | `valor_linha_shopify(pedido_itens,text,integer,numeric)` | `20261119110000_valor_exato_linha_shopify.sql` | false | false/false | 64f20d3e2d68 |
 
 ## Tabelas e views

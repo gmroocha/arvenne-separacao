@@ -23,7 +23,7 @@ try {
     where n.nspname='public' and not t.tgisinternal order by c.relname,t.tgname`)).rows
   const arquivos = readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort()
   function ultima(nome, tipo) {
-    const rx = new RegExp(`create\\s+(?:or\\s+replace\\s+)?${tipo}\\s+(?:public\\.)?${nome}\\s*\\(`,'i')
+    const rx = new RegExp(`(?:create(?:\\s+or\\s+replace)?|alter)\\s+${tipo}\\s+(?:public\\.)?${nome}\\s*\\(`,'i')
     return arquivos.filter(f=>rx.test(readFileSync(`supabase/migrations/${f}`,'utf8'))).at(-1) ?? 'ver catálogo'
   }
   const sha = x => createHash('sha256').update(x).digest('hex').slice(0,12)
