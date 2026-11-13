@@ -1,0 +1,15 @@
+{
+  "total": 32,
+  "porNivel": {
+    "INFO": 14,
+    "WARN": 18,
+    "ERROR": 0
+  },
+  "porTipo": {
+    "rls_enabled_no_policy": 1,
+    "anon_security_definer_function_executable": 4,
+    "authenticated_security_definer_function_executable": 13,
+    "auth_leaked_password_protection": 1,
+    "unused_index": 13
+  }
+}

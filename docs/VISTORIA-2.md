@@ -2,12 +2,12 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** Fase 4 — aplicar e publicar após suíte integral verde.
+- **Fase/item atual:** complemento final V59 identificado pelo Lighthouse publicado.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
 - **Concluído:** V42–V58 commitados. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
 - **Resultado final:** `npm test` verde: **137 unidade, 180 banco, 58 e2e (7,3 min)**, tipos, lint sem avisos e build. Scanner do build final: 2 valores privados conhecidos ausentes, chave anon/publishable.
-- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-validacao-final.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. 5 migrations aplicadas no Supabase; tipos oficiais regenerados; `shopify-sync` publicada. 4 Edges publicadas; tipos oficiais/complemento regenerados e tipos/lint/137 unidades/build verdes. Próximo: push e conferência final.
-- **Próximo passo exato:** suíte integral verde; publicado `--antes` e dry-run das 5 migrations concluídos; aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
+- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-validacao-final.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. 5 migrations aplicadas no Supabase; tipos oficiais regenerados; `shopify-sync` publicada. 4 Edges publicadas; tipos oficiais/complemento regenerados e tipos/lint/137 unidades/build verdes. Push `f709894` publicado; asset `index-CrVpaqnx.js` idêntico ao build local. Conferência publicada/Lighthouse em execução.
+- **Próximo passo exato:** V59 reproduzida em celular nos dois temas (falta landmark main no login); corrigir e conferir capturas, testar suíte final, push e repetir Lighthouse/medidas; comparar métricas/capturas; atualizar Estado atual e fechar relatórios. Banco remoto já comparado: 72 funções, 29 relações, 32 policies, 27 gatilhos e 59 migrations iguais. Hashes de dados antes/depois iguais (23 pedidos, 456 itens, 21 trocas).
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -37,12 +37,12 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | Medida | Antes (`3ce7b4a`) | Depois |
 | --- | --- | --- |
-| `npm test` completo | **109 unidade, 165 banco, 24 e2e**, tipos e build verdes | Pendente |
-| Lint | **8 avisos / 0 erros** (6 Fast Refresh, 1 hook mobile, 1 catch) | Pendente |
-| Bundle por chunk | Entrada 303,08 kB / gzip 97,32; Pedido 149,51 / 41,88; Supabase 216,72 / 55,95; demais abaixo | Pendente |
-| Inconsistências remotas | **12** (4 composição, 5 etapa, 1 pagamento, 1 venda sem composição, 1 troca inativa) | Pendente |
-| Advisors segurança/desempenho | **32**: 18 avisos, 14 informações, 0 erros; 5 FKs sem índice | Pendente |
-| Planos SQL mais usados | Execução: expedição **53,959 ms**, detalhe **8,176 ms**, v_pedidos **19,182 ms**, alterações **22,368 ms** | Pendente |
+| `npm test` completo | **109 unidade, 165 banco, 24 e2e**, tipos e build verdes | **137 unidade, 180 banco, 58 e2e** (375 testes), tipos e build verdes | |
+| Lint | **8 avisos / 0 erros** (6 Fast Refresh, 1 hook mobile, 1 catch) | **0 avisos / 0 erros**, sem desligar regras | |
+| Bundle por chunk | Entrada 303,08 kB / gzip 97,32; Pedido 149,51 / 41,88; Supabase 216,72 / 55,95; demais abaixo | Entrada **301,32 / 96,67**; Pedido **149,50 / 41,86**; Supabase **216,72 / 55,95** kB/gzip | |
+| Inconsistências remotas | **12** (4 composição, 5 etapa, 1 pagamento, 1 venda sem composição, 1 troca inativa) | **Os mesmos 12**, mesmos pedidos e regras; dados preservados | |
+| Advisors segurança/desempenho | **32**: 18 avisos, 14 informações, 0 erros; 5 FKs sem índice | **32**: 18 avisos, 14 informações, 0 erros; **0 FKs sem índice**; índices sem uso **8 → 13** (inclui os 5 novos) | |
+| Planos SQL mais usados | Execução: expedição **53,959 ms**, detalhe **8,176 ms**, v_pedidos **19,182 ms**, alterações **22,368 ms** | Medianas: expedição **16,593 ms**, detalhe **6,324 ms**, v_pedidos **17,946 ms**, alterações **5,924 ms**; painel/sugestão agora permitidos | |
 | LCP / INP / CLS móvel | Expedição **1.752 ms / não medido / 0,0477**, laboratório sem throttling | Pendente |
 | Requisições / abertura de telas | Expedição **88 / 2.447 ms**, pedido **79 / 1.794 ms** (leituras novas bloqueadas) | Pendente |
 
@@ -167,3 +167,24 @@ Preparação de publicação: `git ls-remote` confirmou `origin/main` ainda em `
 Aplicação confirmada: 5 migrations (`20261120100000` a `20261120140000`), sem seeds ou alteração de pedidos; quatro Edges publicadas (`shopify-sync`, `catalogo-sync`, `carrinho-ler`, `shopify-clientes`). Tipos remotos/complemento regenerados com base `20261120140000`; tipos, lint, 137 unidades e build novamente verdes, mesmos hashes de assets.
 
 Comparação remota: os corpos/permissões das 72 funções coincidem por assinatura. A comparação inicial marcou falso por ordem de collation diferente, e `pg_policies.roles` chegou do CLI como `{authenticated}` em vez de array: a ferramenta agora pede `to_jsonb(roles)` e compara conjuntos de linhas canônicas. Nenhuma diferença de função ou policy foi ignorada. As 29 relações, 27 gatilhos e 59 migrations já coincidiram.
+
+## Evidências finais do banco e da publicação
+
+Push `f709894` na `main`; Cloudflare serviu `index-CrVpaqnx.js` com conteúdo byte a byte igual ao build validado. Nenhuma função Edge foi invocada para testar o deploy; as quatro respostas do CLI confirmaram publicação por bundling remoto (Docker local não é necessário).
+
+Comparação pós-aplicação **inteiramente igual**: 72 funções (corpos, search_path, definer e EXECUTE anon/equipe), 29 relações (definição de view, RLS e privilégios), 32 policies, 27 gatilhos e 59 migrations. Diferenças de ordem da collation e representação de `name[]` normalizadas sem omitir campos. [Resultado do banco](VISTORIA-2-BANCO-DEPOIS.json), [resumo dos advisors](VISTORIA-2-ADVISORS-DEPOIS.json).
+
+Hashes agregados de **23 pedidos, 456 itens e 21 trocas** iguais antes/depois: nenhuma linha dessas tabelas mudou. O vigia manteve os 12 avisos históricos e não encontrou um novo. `Auth`/segredos intactos; só login de teste autorizado na conferência.
+
+| Consulta | Antes (uma amostra, ms) | Depois (mediana de 3, ms) |
+| --- | --- | --- |
+| Expedição | 53,959 | 16,593 |
+| Detalhe | 8,176 | 6,324 |
+| v_pedidos | 19,182 | 17,946 |
+| troca_painel | Permissão recusada | 43,371 |
+| sugerir_troca | Permissão recusada | 12,712 |
+| Alterações | 22,368 | 5,924 |
+
+Planos somente leitura com `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`. Cache/latência/pequeno volume variam: estes números não provam que os índices causaram toda a diferença. A amostra de sugestões retornou **0 candidatos**, portanto mede também a busca sem correspondência; não representa catálogo grande. Não remover índices com zero uso em uma base pequena.
+
+Bundle completo depois: [VISTORIA-2-BUNDLE-DEPOIS.json](VISTORIA-2-BUNDLE-DEPOIS.json). Total de 77 assets; verificação dos dois valores privados conhecidos do ambiente sem ocorrência em JS/CSS e chave pública com papel anon/publishable. Isso não é uma prova de ausência de qualquer segredo desconhecido, mas nenhum valor privado foi impresso ou gravado nos relatórios.

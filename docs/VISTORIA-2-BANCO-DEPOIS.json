@@ -1,0 +1,195 @@
+{
+  "comparacao": {
+    "funcoes": {
+      "locais": 72,
+      "remotas": 72,
+      "iguais": true
+    },
+    "relacoes": {
+      "locais": 29,
+      "remotas": 29,
+      "iguais": true
+    },
+    "politicas": {
+      "locais": 32,
+      "remotas": 32,
+      "iguais": true
+    },
+    "gatilhos": {
+      "locais": 27,
+      "remotas": 27,
+      "iguais": true
+    },
+    "migrations": {
+      "locais": 59,
+      "remotas": 59,
+      "iguais": true
+    }
+  },
+  "inconsistencias": [
+    {
+      "pedidos": [
+        "ARV-1273",
+        "ARV-1274",
+        "ARV-1276",
+        "ARV-1277"
+      ],
+      "quantidade": 4,
+      "regra": "composicao_total"
+    },
+    {
+      "pedidos": [
+        "ARV-1272",
+        "ARV-1275",
+        "ARV-1276",
+        "ARV-1277",
+        "W0006"
+      ],
+      "quantidade": 5,
+      "regra": "etapa_adiantada"
+    },
+    {
+      "pedidos": [
+        "W0001"
+      ],
+      "quantidade": 1,
+      "regra": "pagamento_sem_conferencia"
+    },
+    {
+      "pedidos": [
+        "W0008"
+      ],
+      "quantidade": 1,
+      "regra": "somada_sem_composicao"
+    },
+    {
+      "pedidos": [
+        "W0007"
+      ],
+      "quantidade": 1,
+      "regra": "troca_inativa_pendente"
+    }
+  ],
+  "planos": {
+    "expedicao": {
+      "amostras": [
+        {
+          "planejamentoMs": 18.507,
+          "execucaoMs": 16.593,
+          "linhas": 18
+        },
+        {
+          "planejamentoMs": 18.39,
+          "execucaoMs": 16.501,
+          "linhas": 18
+        },
+        {
+          "planejamentoMs": 19.068,
+          "execucaoMs": 17.573,
+          "linhas": 18
+        }
+      ],
+      "medianaMs": 16.593
+    },
+    "detalhe": {
+      "amostras": [
+        {
+          "planejamentoMs": 15.756,
+          "execucaoMs": 6.388,
+          "linhas": 1
+        },
+        {
+          "planejamentoMs": 15.437,
+          "execucaoMs": 6.254,
+          "linhas": 1
+        },
+        {
+          "planejamentoMs": 15.408,
+          "execucaoMs": 6.324,
+          "linhas": 1
+        }
+      ],
+      "medianaMs": 6.324
+    },
+    "v_pedidos": {
+      "amostras": [
+        {
+          "planejamentoMs": 18.661,
+          "execucaoMs": 18.098,
+          "linhas": 23
+        },
+        {
+          "planejamentoMs": 18.511,
+          "execucaoMs": 17.946,
+          "linhas": 23
+        },
+        {
+          "planejamentoMs": 18.431,
+          "execucaoMs": 17.932,
+          "linhas": 23
+        }
+      ],
+      "medianaMs": 17.946
+    },
+    "troca_painel": {
+      "amostras": [
+        {
+          "planejamentoMs": 0.59,
+          "execucaoMs": 43.371,
+          "linhas": 1
+        },
+        {
+          "planejamentoMs": 0.551,
+          "execucaoMs": 42.926,
+          "linhas": 1
+        },
+        {
+          "planejamentoMs": 0.556,
+          "execucaoMs": 43.389,
+          "linhas": 1
+        }
+      ],
+      "medianaMs": 43.371
+    },
+    "sugerir_troca": {
+      "amostras": [
+        {
+          "planejamentoMs": 1.075,
+          "execucaoMs": 13.17,
+          "linhas": 0
+        },
+        {
+          "planejamentoMs": 1.071,
+          "execucaoMs": 12.112,
+          "linhas": 0
+        },
+        {
+          "planejamentoMs": 1.142,
+          "execucaoMs": 12.712,
+          "linhas": 0
+        }
+      ],
+      "medianaMs": 12.712
+    },
+    "alteracoes": {
+      "amostras": [
+        {
+          "planejamentoMs": 11.783,
+          "execucaoMs": 6.364,
+          "linhas": 2
+        },
+        {
+          "planejamentoMs": 11.284,
+          "execucaoMs": 5.899,
+          "linhas": 2
+        },
+        {
+          "planejamentoMs": 11.223,
+          "execucaoMs": 5.924,
+          "linhas": 2
+        }
+      ],
+      "medianaMs": 5.924
+    }
+  }
+}
