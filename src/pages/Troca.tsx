@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "react-router"
-import { Check, CircleCheck, HandCoins, MessageCircle, PackageX, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
+import { ArrowDown, Check, CircleCheck, HandCoins, MessageCircle, PackageX, RefreshCw, SearchX, TriangleAlert } from "lucide-react"
 import Foto from "@/components/Foto"
 import { BolhaCheck, BolhaContador, MarcaCheck } from "@/components/comum/Bolha"
 import { LinhaValor } from "@/components/comum/LinhaValor"
@@ -9,6 +9,7 @@ import { Quantidade } from "@/components/comum/Quantidade"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
@@ -319,6 +320,20 @@ function BarraConcluir({ data, respondidas, total, noFim, ocupado, aoConcluir }:
   )
 }
 
+// Foto pequena + código + variante (e quantidade) de uma peça, no resumo final.
+function MiniPeca({ foto, sku, variante, qtd, esmaecida }: { foto: string | null; sku: string; variante: string | null; qtd: number; esmaecida?: boolean }) {
+  return (
+    <div className={cn("flex items-center gap-3", esmaecida && "text-muted-foreground")}>
+      <Foto url={fotoTamanho(foto, 200)} alt={sku} ampliar className={cn("size-12 shrink-0", esmaecida && "opacity-70")} />
+      <div className="min-w-0 flex-1">
+        <div className={cn("truncate font-mono text-sm font-semibold", esmaecida ? "line-through" : "text-foreground")}>{sku}</div>
+        {variante && <div className="truncate text-xs text-muted-foreground">{variante}</div>}
+      </div>
+      {qtd > 1 && <Badge variant="secondary" className="tabular-nums">{qtd}×</Badge>}
+    </div>
+  )
+}
+
 // Tela depois de "Concluir": a mensagem é o foco; o resumo fica discreto embaixo.
 function Concluida({ data, pecas, cliente, aoMudar }: { data: TrocaPublica; pecas: Peca[]; cliente: string | undefined; aoMudar: () => void }) {
   const dif = data.resumo.diferenca
@@ -336,40 +351,40 @@ function Concluida({ data, pecas, cliente, aoMudar }: { data: TrocaPublica; peca
         </div>
       </div>
 
-      <dl className="w-full divide-y border-y text-left text-sm">
-        {pecas.map((p) => {
-          const cart = carrinhoDaPeca(p)
-          return (
-            <div key={p.item_id} className="flex items-start justify-between gap-4 py-3">
-              <dt className="min-w-0 text-muted-foreground">
-                No lugar de <span className="font-mono text-foreground">{titulo(p)}</span>
-              </dt>
-              <dd className="flex shrink-0 flex-col items-end text-right font-medium">
+      <Card className="w-full text-left" aria-label="Resumo das trocas">
+        <CardContent className="flex flex-col divide-y [&>*]:py-4 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+          {pecas.map((p) => {
+            const cart = carrinhoDaPeca(p)
+            return (
+              <div key={p.item_id} className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-muted-foreground">No lugar de</span>
+                <MiniPeca foto={p.foto_url} sku={titulo(p)} variante={p.variante} qtd={p.qtd} esmaecida />
+                <ArrowDown className="mx-auto size-4 text-muted-foreground" aria-hidden />
                 {p.escolha_tipo === "credito" ? (
-                  <span className="text-success">Crédito {reais(p.valor_pago)}</span>
+                  <div className="flex items-center gap-3 text-sm font-medium text-success">
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-success/10">
+                      <HandCoins className="size-5" />
+                    </span>
+                    Crédito {reais(p.valor_pago)}
+                  </div>
                 ) : (
                   cart.map((c) => {
                     const o = p.opcoes.find((x) => x.id === c.opcao_id)
-                    return (
-                      <span key={c.opcao_id} className="font-mono">
-                        {c.qtd > 1 ? `${c.qtd}× ` : ""}
-                        {o ? titulo(o) : "Peça escolhida"}
-                      </span>
-                    )
+                    return <MiniPeca key={c.opcao_id} foto={o?.foto_url ?? null} sku={o ? titulo(o) : "Peça escolhida"} variante={o?.variante ?? null} qtd={c.qtd} />
                   })
                 )}
-              </dd>
+              </div>
+            )
+          })}
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Diferença</span>
+            <div className="flex flex-col items-end">
+              <span className={cn("text-xl font-semibold tabular-nums", corDiferenca(dif))}>{valorDiferenca(dif)}</span>
+              <span className="text-xs text-muted-foreground">{legendaDiferenca(dif, true)}</span>
             </div>
-          )
-        })}
-        <div className="flex items-baseline justify-between gap-4 py-3">
-          <dt className="text-muted-foreground">Diferença</dt>
-          <dd className="flex flex-col items-end">
-            <span className={cn("text-xl font-semibold tabular-nums", corDiferenca(dif))}>{valorDiferenca(dif)}</span>
-            <span className="text-xs text-muted-foreground">{legendaDiferenca(dif, true)}</span>
-          </dd>
-        </div>
-      </dl>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-col items-center gap-1">
         <Button type="button" variant="ghost" size="xl" onClick={aoMudar}>

@@ -1,5 +1,14 @@
 # Estado atual (atualizado em 12/11/2026)
 
+## Telas da troca, do histórico e dos descontos (12/11/2026, só local; migration 20261120090000 ainda NÃO aplicada)
+
+- **Dados do pedido:** desconto com percentual e motivo ("Desconto · 25% · cupom PIX25", vindo de `descontos`), linha "Arvenne cobriu na troca" e linhas "Peças trocadas (N)" / "Peças removidas (N)" que abrem o diálogo das alterações.
+- **AlteracoesDialog** (`v_pedido_alteracoes`): cada alteração como "sai ↓ entra", valores do banco e quem/quando. Abre pelo selo "Peças trocadas" no cabeçalho, pelos dados do pedido e pelo texto "troca de X" da peça (focado nessa troca, sem valores nas etapas de peças).
+- **Histórico** virou diálogo grande (`HistoricoDialog`): nota no topo, filtros, linha do tempo por dia. Rótulos em `src/lib/historico.ts`.
+- **Traço médio** dos contornos pelo token `--traco` (1,5 px, como sombra: o Chrome só desenha borda de 1 ou 2 px); barra de progresso h-1.5, ligações das etapas h-0.5.
+- **Troca:** abas sem tranco (V40) e "Cobrir diferença" com "Tudo" | "Até R$ X". **Página da cliente concluída:** cartão com foto e código de cada lado e a diferença dentro dele; logo maior.
+- Sem a migration no banco remoto a view das alterações não existe: o app trata como lista vazia e o selo some.
+
 ## Vistoria e proteções automáticas — referência atual
 
 A vistoria está em [`VISTORIA.md`](VISTORIA.md): 36 problemas (13 altos, 21 médios, 2 baixos).

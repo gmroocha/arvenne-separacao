@@ -40,7 +40,7 @@ export function AreaRolavel({ children, className }: { children: ReactNode; clas
       ref={ref}
       onScroll={medir}
       style={pontas.topo || pontas.pe ? { WebkitMaskImage: m, maskImage: m } : undefined}
-      className={cn("min-h-0 overflow-y-auto", className)}
+      className={cn("min-h-0 overflow-y-auto [scrollbar-gutter:stable]", className)}
     >
       {children}
     </div>

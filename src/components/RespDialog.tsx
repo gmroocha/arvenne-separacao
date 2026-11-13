@@ -27,7 +27,7 @@ export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, 
             <DrawerDescription className={descricao ? undefined : "sr-only"}>{descricao ?? titulo}</DrawerDescription>
           </DrawerHeader>
           {/* min-h-0 + flex-1: a rolagem fica aqui dentro (sem isso o conteúdo vaza por baixo da gaveta). */}
-          <div className={`min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 ${rolagemPropria ? "" : "pb-6"}`}>{children}</div>
+          <div className={`min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 ${rolagemPropria ? "[scrollbar-gutter:stable]" : "pb-6"}`}>{children}</div>
         </DrawerContent>
       </Drawer>
     )

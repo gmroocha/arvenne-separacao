@@ -27,7 +27,7 @@ import { numeroParaTexto, reais } from "@/lib/formato"
 import { chaveModelo, codigoDoModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import { fotoTamanho } from "@/lib/foto"
 import { COR_TEXTO_AVISO } from "@/lib/selo"
-import { cobreTudo, listaEscolhida, rotuloPagamento, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
+import { COBRIR_TUDO, cobreTudo, listaEscolhida, rotuloPagamento, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
 import type { CategoriaCatalogo, Item, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca, ValorPago } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
@@ -607,19 +607,38 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   const [cobrirTxt, setCobrirTxt] = useState("")
   const [cobrirErro, setCobrirErro] = useState(false)
   const [cobrirVisto, setCobrirVisto] = useState<number | null>(null)
+  // "Tudo" grava COBRIR_TUDO (a loja cobre a diferença inteira) e esconde o campo; "Até" mostra o campo.
+  const [cobrirModo, setCobrirModo] = useState<"tudo" | "ate">("ate")
+  // Passou de "Tudo" para "Até": o banco volta a 0 até a pessoa digitar, mas o bloco segue ligado.
+  const [cobrirManter, setCobrirManter] = useState(false)
   if (troca && cobrirVisto !== cobrirAte) {
     setCobrirVisto(cobrirAte)
-    setCobrirLigado(cobrirAte > 0)
-    setCobrirTxt(cobrirAte > 0 ? numeroParaTexto(cobrirAte) : "")
+    setCobrirLigado(cobrirAte > 0 || cobrirManter)
+    setCobrirModo(cobreTudo(cobrirAte) ? "tudo" : "ate")
+    setCobrirTxt(cobrirAte > 0 && !cobreTudo(cobrirAte) ? numeroParaTexto(cobrirAte) : "")
     setCobrirErro(false)
+    if (cobrirAte > 0) setCobrirManter(false)
   }
   function alternarCobrir(v: boolean) {
     if (!troca) return
     setCobrirLigado(v)
     setCobrirErro(false)
+    setCobrirManter(false)
     if (!v) {
       setCobrirTxt("")
+      setCobrirModo("ate")
       if (cobrirAte > 0) cobrirMut.mutate({ trocaId: troca.id, valor: 0 })
+    }
+  }
+  function mudarModoCobrir(modo: "tudo" | "ate") {
+    if (!troca || modo === cobrirModo) return
+    setCobrirModo(modo)
+    setCobrirErro(false)
+    setCobrirTxt("")
+    if (modo === "tudo") cobrirMut.mutate({ trocaId: troca.id, valor: COBRIR_TUDO })
+    else if (cobrirAte > 0) {
+      setCobrirManter(true)
+      cobrirMut.mutate({ trocaId: troca.id, valor: 0 })
     }
   }
   function salvarCobrir(n: number | null) {
@@ -673,6 +692,13 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
           <Switch id="cobrir-diferenca" checked={cobrirLigado} disabled={trava} onCheckedChange={alternarCobrir} />
         </div>
         {cobrirLigado && (
+          <ToggleGroup type="single" variant="outline" size="sm" spacing={1} value={cobrirModo} disabled={trava} onValueChange={(v) => v && mudarModoCobrir(v as "tudo" | "ate")} aria-label="Quanto a loja cobre">
+            <ToggleGroupItem value="tudo">Tudo</ToggleGroupItem>
+            <ToggleGroupItem value="ate">{cobrirAte > 0 && !cobreTudo(cobrirAte) ? `Até ${reais(cobrirAte)}` : "Até um valor"}</ToggleGroupItem>
+          </ToggleGroup>
+        )}
+        {cobrirLigado && cobrirModo === "tudo" && <p className="text-xs text-muted-foreground">A Arvenne cobre a diferença inteira da troca.</p>}
+        {cobrirLigado && cobrirModo === "ate" && (
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <Label htmlFor="cobrir-ate" className="text-sm font-normal text-muted-foreground">
