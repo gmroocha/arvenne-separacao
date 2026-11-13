@@ -256,7 +256,7 @@ async function completarLinhas(o: Pedido, limite: number): Promise<void> {
     if (!endCursor || cursores.has(endCursor)) throw new Error("A paginação das linhas não avançou. Tente sincronizar novamente.");
     if (Date.now() >= limite) throw new Error("O tempo para ler todas as linhas acabou. Tente sincronizar novamente.");
     cursores.add(endCursor);
-    const r = await shopify<{ node: { lineItems: Pedido["lineItems"] } | null }>(QUERY_LINHAS, { id: o.id, cursor: endCursor });
+    const r = await shopify<{ node: { lineItems: Pedido["lineItems"] } | null }>(QUERY_LINHAS, { id: o.id, cursor: endCursor }, { limite });
     if (!r.node) throw new Error("Não foi possível ler todas as linhas deste pedido. Tente sincronizar novamente.");
     o.lineItems.nodes.push(...r.node.lineItems.nodes);
     ({ hasNextPage, endCursor } = r.node.lineItems.pageInfo);
@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
     const erros: { numero: string; erro: string }[] = [];
 
     do {
-      const data: Resposta = await shopify<Resposta>(QUERY, { cursor, q: `updated_at:>=${desde}` });
+      const data: Resposta = await shopify<Resposta>(QUERY, { cursor, q: `updated_at:>=${desde}` }, { limite });
       lidos += data.orders.nodes.length;
 
       // Pedidos que já estão no app vão SEMPRE ao banco, em qualquer status (cancelamento, reembolso e
@@ -317,6 +317,7 @@ Deno.serve(async (req) => {
           const r = await shopify<{ nodes: ({ legacyResourceId: string; localizedFields: { nodes: CampoLocal[] } } | null)[] }>(
             QUERY_CPF,
             { ids: aImportar.map((o) => o.id) },
+            { limite },
           );
           for (const n of r.nodes) if (n) cpfs.set(n.legacyResourceId, n.localizedFields.nodes);
         } catch (e) {
@@ -331,6 +332,7 @@ Deno.serve(async (req) => {
           const r = await shopify<{ nodes: ({ legacyResourceId: string; discountApplications: { nodes: AplicacaoDesconto[] } } | null)[] }>(
             QUERY_DESCONTOS,
             { ids: aImportar.map((o) => o.id) },
+            { limite },
           );
           for (const n of r.nodes) if (n?.discountApplications) descontos.set(n.legacyResourceId, n.discountApplications.nodes);
         } catch (e) {
@@ -345,6 +347,7 @@ Deno.serve(async (req) => {
           const r = await shopify<{ nodes: ({ legacyResourceId: string; transactions: Transacao[] } | null)[] }>(
             QUERY_PAGO,
             { ids: aImportar.map((o) => o.id) },
+            { limite },
           );
           for (const n of r.nodes) if (n) pagos.set(n.legacyResourceId, n.transactions);
         } catch (e) {

@@ -46,10 +46,11 @@ Deno.serve(async (req) => {
     if (!token) return json({ erro: "Link não reconhecido. Cole o link do carrinho (/cart/...) ou o de recuperar checkout." }, 400);
 
     const limite = Date.now() + 90_000;
+    const consultar = <T>(q: string, v: Record<string, unknown>) => consulta<T>(q, v, { limite });
     let cursor: string | null = null;
     for (let pagina = 0; pagina < 5; pagina++) {
       if (Date.now() >= limite) throw new Error("A Shopify demorou para ler o checkout. Tente novamente.");
-      const data: Pagina = await consulta<Pagina>(
+      const data: Pagina = await consultar<Pagina>(
         `query($cursor: String) {
            abandonedCheckouts(first: 100, after: $cursor, sortKey: CREATED_AT, reverse: true) {
              pageInfo { hasNextPage endCursor }
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
           if ((linhas.length > 0 && !proxima.endCursor) || (proxima.endCursor && cursores.has(proxima.endCursor))) throw new Error("A paginação das peças do checkout não avançou. Tente novamente.");
           if (Date.now() >= limite) throw new Error("A Shopify demorou para ler todas as peças. Tente novamente.");
           if (proxima.endCursor) cursores.add(proxima.endCursor);
-          const r = await consulta<{ node: { lineItems: Linhas } | null }>(
+          const r = await consultar<{ node: { lineItems: Linhas } | null }>(
             `query LinhasCheckout($id: ID!, $cursor: String) {
               node(id: $id) { ... on AbandonedCheckout {
                 lineItems(first: 100, after: $cursor) {

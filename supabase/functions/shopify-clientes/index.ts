@@ -46,11 +46,11 @@ type CpfNode = {
   orders?: { nodes: { localizedFields?: { nodes: { key: string; value: string | null }[] } }[] };
 } | null;
 
-async function cpfPorCliente(ids: string[]): Promise<Map<string, string>> {
+async function cpfPorCliente(ids: string[], limite: number): Promise<Map<string, string>> {
   const mapa = new Map<string, string>();
   if (ids.length === 0) return mapa;
   try {
-    const data = await shopify<{ nodes: CpfNode[] }>(QUERY_CPF, { ids: ids.map((i) => `gid://shopify/Customer/${i}`) });
+    const data = await shopify<{ nodes: CpfNode[] }>(QUERY_CPF, { ids: ids.map((i) => `gid://shopify/Customer/${i}`) }, { limite });
     for (const n of data.nodes) {
       const campo = n?.orders?.nodes[0]?.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR");
       const d = (campo?.value ?? "").replace(/\D/g, "");
@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
   if (negado) return negado;
 
   try {
+    const limite = Date.now() + 60_000;
     const { q } = (await req.json()) as { q?: string };
     // Entre aspas na busca da Shopify: tira o que tem significado na sintaxe (aspas, barra, : * ( ) -).
     const termo = (q ?? "").trim().replace(/["\\:*()-]/g, " ").replace(/\s+/g, " ").trim();
@@ -102,8 +103,8 @@ Deno.serve(async (req) => {
       ? `email:"${(q ?? "").trim().replace(/["\\]/g, "")}"`
       : `"${termo}"`;
 
-    const data = await shopify<{ customers: { nodes: Cliente[] } }>(QUERY, { q: consulta });
-    const cpfs = await cpfPorCliente(data.customers.nodes.map((c) => c.legacyResourceId));
+    const data = await shopify<{ customers: { nodes: Cliente[] } }>(QUERY, { q: consulta }, { limite });
+    const cpfs = await cpfPorCliente(data.customers.nodes.map((c) => c.legacyResourceId), limite);
     const clientes = data.customers.nodes.map((c) => {
       const a = c.defaultAddress;
       const e = enderecoBR(a) as Record<string, string | null | undefined>;

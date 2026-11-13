@@ -2,11 +2,11 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** Fase 2, bloco de integrações V42–V44; verificar suíte completa antes de aplicar.
-- **Base:** `3ce7b4a`, árvore limpa no início, 12/11/2026 (São Paulo).
-- **Concluído:** documento inicial em `42c8af6`; linha de base completa local; catálogo efetivo (71 funções, 13 views, 16 tabelas, 27 gatilhos, 56 migrations); métricas remotas e primeira conferência publicada.
-- **Em andamento:** V42 em `2fcb2f3`, V43 em `8808918`; V44 em `447774f`; V45 com migration e testes de segurança; V45 em `4ea876f`; V46 em `2a3ad25`; oito avisos antigos do lint eliminados sem mudar tokens/estilos. Nenhuma migration/Edge aplicada ainda. Dry-run V44 conferido; repetir com todas as migrations antes de aplicar. Scripts e linha de base em `f1f793e`.
-- **Próximo passo exato:** rodar `npm test`; aplicar `20261120100000_leituras_vistoria2.sql` com dry-run, regenerar tipos, publicar `shopify-sync` e `carrinho-ler`; medir os dois planos antes bloqueados. Prosseguir dinheiro, etapas e UI.
+- **Fase/item atual:** Fase 2/3, acessibilidade e regressões de tela V49/V50 (13/11/2026, São Paulo).
+- **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
+- **Concluído:** V42 `2fcb2f3`, V43 `8808918`, V44 `447774f`, V45 `4ea876f`, V46 `2a3ad25`, lint sem avisos `8b26dbf`, índices V48 `e4f026e`, cliente V47 `cc438cf`. Bloco inicial `npm test` verde; conservação com preços/limites de cobertura em centavos reforçada e 300 sequências adicionais verdes.
+- **Em andamento:** sem commit: axe no package/lock, `playwright.config.ts` (tablet), testes e2e de semântica/acessibilidade; TabsContent em Vendas/Feedbacks; nome/valor da Progress; tokens claros de contraste; gerador financeiro ampliado. Migrations V44/V45/V48 ainda NÃO aplicadas; Edges ainda NÃO publicadas.
+- **Próximo passo exato:** ler `/tmp/arvenne-v49-v50-verde.log`, corrigir qualquer falha sem afrouxar regras; inspecionar capturas em `capturas/vistoria2` (390/768/1280, claro/escuro), commit separado V49 e V50 com seus testes. Depois `npm test` completo, dry-run atualizado, aplicar migrations, regenerar tipos/baseAplicada, deploy das quatro Edges afetadas, push e conferência publicada sem gravação.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -62,6 +62,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | Commit desta correção | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
 
 | V47 | Alta | Na venda, digitar CNPJ, trocar para CPF e só então receber a resposta antiga preenchia empresa/endereço da cliente anterior. | Versão única para buscas CEP/CNPJ e seleção de cliente; respostas/erros antigos não alteram o formulário nem o indicador de carregamento. | Commit desta correção | E2E reproduziu empresa/endereço antigos; passou em 390 e 1280 após a correção. |
+
+| V51 | Média | Cliente HTTP Shopify não repetia HTTP 429 e seis tentativas podiam ultrapassar o teto da Edge, mesmo com tempo por chamada. | Prazo compartilhado entre token, requests e espera; cada Edge repassa seu prazo absoluto; 429 recuperável; erro claro ao esgotar o tempo. | Commit desta correção | 2 contratos falharam antes (429 e prazo de 5 s); 22 contratos de HTTP/Edges verdes após. Erro permanente não é repetido. |
 
 ## Decisões tomadas sem o Gustavo
 
@@ -125,3 +127,5 @@ Varredura de segurança em PGlite: 16 tabelas com RLS; 13 views invoker; anon se
 Manutenção do código: lint **8 → 0 avisos**, sem desabilitar regras. Exports internos sem uso removidos; variantes e contexto da sidebar separados para preservar Fast Refresh; `useIsMobile` usa assinatura de `matchMedia` por `useSyncExternalStore`; catch sem parâmetro inútil. `test:rapido`: tipos + lint + 122 unidades verdes. Bloco V42–V44: `npm test` verde (118 unidade, 166 banco, 24 e2e e build); V45/V46 entrarão na próxima suíte completa antes da aplicação.
 
 Lighthouse do login publicado (móvel, emulação/throttling padrão): desempenho **98**, acessibilidade **98**, boas práticas **100**, LCP **2,0 s**, CLS **0**, TBT **100 ms**. Autenticação não foi incluída nesse Lighthouse; telas internas têm medidas Chromium separadas.
+
+Decisão de design: os tokens claros de aviso/sucesso/erro/texto secundário são escurecidos só o necessário para WCAG AA sobre fundos suaves. Inter Tight, peso máximo semibold, cores semânticas e tema escuro preservados. Antes: axe apontou contraste 3,24–4,42:1 em selos/avisos; abas sem painel e progresso sem nome. Nenhuma regra do axe será desabilitada para passar.

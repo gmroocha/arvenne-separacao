@@ -70,6 +70,7 @@ export async function completarVariantes(p: Produto, limite = Date.now() + 90_00
          product(id: $id) { variants(first: 100, after: $cursor) { pageInfo { hasNextPage endCursor } nodes { ${CAMPOS_VARIANTE} } } }
        }`,
       { id: p.id, cursor: pagina.endCursor },
+      { limite },
     );
     if (!data.product) throw new Error("Não foi possível ler todas as variantes do produto. Tente atualizar o catálogo novamente.");
     p.variants.nodes.push(...data.product.variants.nodes);
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
     };
     const agora = new Date().toISOString();
     const limite = Date.now() + 90_000;
+    const consultar = <T>(q: string, v: Record<string, unknown>) => consulta<T>(q, v, { limite });
 
     if (variantIds?.length) {
       let total = 0;
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
       for (let i = 0; i < variantIds.length; i += 100) {
         if (Date.now() >= limite) throw new Error("O tempo para ler as variantes acabou. Tente novamente.");
         const lote = variantIds.slice(i, i + 100).map((id) => `gid://shopify/ProductVariant/${id}`);
-        const data = await consulta<{ nodes: (Variante | null)[] }>(
+        const data = await consultar<{ nodes: (Variante | null)[] }>(
           `query($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { ${CAMPOS} } } }`,
           { ids: lote },
         );
@@ -145,7 +147,7 @@ Deno.serve(async (req) => {
         let pagina: { hasNextPage: boolean; endCursor: string | null };
         if (f.produtos) {
           const data: { products: { pageInfo: Pagina; nodes: Produto[] } } =
-            await consulta(
+            await consultar(
               `query($cursor: String, $q: String) {
                  products(first: 3, after: $cursor, query: $q) {
                    pageInfo { hasNextPage endCursor }
@@ -168,7 +170,7 @@ Deno.serve(async (req) => {
           pagina = data.products.pageInfo;
         } else {
           const data: { productVariants: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: Variante[] } } =
-            await consulta(
+            await consultar(
               `query($cursor: String, $q: String) {
                  productVariants(first: 100, after: $cursor, query: $q) {
                    pageInfo { hasNextPage endCursor }

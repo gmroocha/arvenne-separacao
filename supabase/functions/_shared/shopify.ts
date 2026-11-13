@@ -8,7 +8,14 @@ const VERSION = Deno.env.get("SHOPIFY_API_VERSION") ?? "2026-01";
 
 let cache: { token: string; expira: number } | null = null;
 
-async function tokenAdmin(): Promise<string> {
+const erroTempo = () => new Error("A Shopify demorou para responder. Tente novamente.");
+const sinal = (limite: number) => {
+  const restante = limite - Date.now();
+  if (restante <= 0) throw erroTempo();
+  return AbortSignal.timeout(Math.min(20_000, restante));
+};
+
+async function tokenAdmin(limite: number): Promise<string> {
   if (cache && Date.now() < cache.expira) return cache.token;
   if (!DOMAIN || !CLIENT_ID || !CLIENT_SECRET) {
     throw new Error("Faltam SHOPIFY_STORE_DOMAIN, SHOPIFY_CLIENT_ID ou SHOPIFY_CLIENT_SECRET nos segredos.");
@@ -16,7 +23,7 @@ async function tokenAdmin(): Promise<string> {
   const res = await fetch(`https://${DOMAIN}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(20_000),
+    signal: sinal(limite),
     body: JSON.stringify({
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
@@ -48,12 +55,13 @@ class ErroShopify extends Error {
 
 let custoLogado = false;
 
-async function chamar<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+async function chamar<T>(query: string, variables: Record<string, unknown>, limite: number): Promise<T> {
+  const token = await tokenAdmin(limite);
   const res = await fetch(`https://${DOMAIN}/admin/api/${VERSION}/graphql.json`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": await tokenAdmin() },
+    headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
     body: JSON.stringify({ query, variables }),
-    signal: AbortSignal.timeout(20_000),
+    signal: sinal(limite),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.errors) {
@@ -82,19 +90,22 @@ function ehTimeout(e: unknown): boolean {
 
 // A Admin API limita o custo por segundo: no THROTTLED espera e tenta de novo. Também repete em erro 5xx
 // e timeout. No 401 (token vencido ou trocado) limpa o cache do token e tenta com um novo.
-export async function consulta<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+export async function consulta<T>(query: string, variables: Record<string, unknown> = {}, opcoes: { limite?: number } = {}): Promise<T> {
+  const limite = opcoes.limite ?? Date.now() + 60_000;
   for (let tentativa = 0; tentativa < 6; tentativa++) {
+    if (Date.now() >= limite) throw erroTempo();
     try {
-      return await chamar<T>(query, variables);
+      return await chamar<T>(query, variables, limite);
     } catch (e) {
       const status = e instanceof ErroShopify ? e.status : 0;
+      if (Date.now() >= limite) throw erroTempo();
       if (tentativa === 5) throw e;
       if (status === 401) {
         cache = null;
-      } else if (!(String((e as Error).message).includes("THROTTLED") || status >= 500 || ehTimeout(e))) {
+      } else if (!(String((e as Error).message).includes("THROTTLED") || status === 429 || status >= 500 || ehTimeout(e))) {
         throw e;
       }
-      await espera(1500 * 2 ** tentativa);
+      await espera(Math.min(1500 * 2 ** tentativa, Math.max(0, limite - Date.now())));
     }
   }
   throw new Error("Shopify: limite de consultas persistente");
