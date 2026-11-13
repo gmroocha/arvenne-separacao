@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, test, vi } from "vitest"
 
-const sim = vi.hoisted(() => ({ pedido: null, gravados: [], consultas: [], handler: null, descontos: [], falharDescontos: false }))
+const sim = vi.hoisted(() => ({ pedido: null, gravados: [], consultas: [], handler: null, descontos: [], falharDescontos: false, paginasLinhas: [], cursoresLinhas: [] }))
 vi.mock("../../supabase/functions/_shared/http.ts", () => ({
   admin: () => ({
     from: () => ({ select: () => ({ in: async () => ({ data: [{ shopify_order_id: 777 }], error: null }) }) }),
@@ -11,8 +11,9 @@ vi.mock("../../supabase/functions/_shared/http.ts", () => ({
 }))
 vi.mock("../../supabase/functions/_shared/shopify.ts", () => ({
   urlAdminPedido: () => "https://admin.shopify.test/orders/777",
-  consulta: async (query) => {
+  consulta: async (query, variables) => {
     sim.consultas.push(query)
+    if (query.includes("query Linhas")) { sim.cursoresLinhas.push(variables.cursor); return { node: sim.paginasLinhas.shift() ?? null } }
     if (query.includes("query Pedidos")) return { orders: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [sim.pedido] } }
     if (query.includes("discountApplications")) {
       if (sim.falharDescontos) throw new Error("Campo indisponível nesta versão da API")
@@ -110,4 +111,41 @@ test("descontos da Shopify entram no pedido bruto; falha na consulta não impede
   expect(r.erros).toEqual([])
   expect(sim.gravados).toHaveLength(1)
   expect("discountApplications" in sim.gravados[0].shopify_bruto).toBe(false)
+})
+
+const linhaShopify = (n) => ({
+  id: `gid://shopify/LineItem/${n}`, sku: `P${n}`, title: `Peça ${n}`, variantTitle: null,
+  currentQuantity: 1, unfulfilledQuantity: 1, requiresShipping: true, isGiftCard: false,
+  image: null, variant: null, originalUnitPriceSet: money("1.00"), discountedUnitPriceAfterAllDiscountsSet: money("1.00"),
+})
+
+test.each([
+  ["pedido desaparece durante a paginação", [null]],
+  ["cursor não avança", [{ lineItems: { nodes: [linhaShopify(51)], pageInfo: { hasNextPage: true, endCursor: "pagina-1" } } }]],
+  ["cursor ausente", [{ lineItems: { nodes: [linhaShopify(51)], pageInfo: { hasNextPage: true, endCursor: null } } }]],
+])("V42: não importa composição incompleta quando %s", async (_nome, paginas) => {
+  sim.pedido = pedido(); sim.gravados = []; sim.paginasLinhas = [...paginas]; sim.cursoresLinhas = []
+  sim.pedido.lineItems = { nodes: Array.from({length:50}, (_,n)=>linhaShopify(n)), pageInfo: {hasNextPage:true,endCursor:"pagina-1"} }
+  const r = await (await sim.handler(new Request("https://edge.ficticia.test", {method:"POST"}))).json()
+  expect(sim.gravados).toEqual([])
+  expect(r.erros).toHaveLength(1)
+  expect(r.erros[0].erro).toMatch(/linhas|paginação/i)
+})
+
+test("V42: mais de 50 linhas são importadas uma vez e com a composição completa", async () => {
+  sim.pedido = pedido({total:"151.00",recebido:"151.00",liquido:"151.00",saldo:"0.00"})
+  sim.pedido.currentSubtotalPriceSet = money("151.00")
+  sim.pedido.lineItems = { nodes: Array.from({length:50}, (_,n)=>linhaShopify(n)), pageInfo: {hasNextPage:true,endCursor:"pagina-1"} }
+  sim.paginasLinhas = [
+    {lineItems:{nodes:Array.from({length:100},(_,n)=>linhaShopify(n+50)),pageInfo:{hasNextPage:true,endCursor:"pagina-2"}}},
+    {lineItems:{nodes:[linhaShopify(150)],pageInfo:{hasNextPage:false,endCursor:"fim"}}},
+  ]
+  sim.gravados=[];sim.cursoresLinhas=[]
+  const r=await (await sim.handler(new Request("https://edge.ficticia.test",{method:"POST"}))).json()
+  expect(r.erros).toEqual([])
+  expect(sim.cursoresLinhas).toEqual(["pagina-1","pagina-2"])
+  expect(sim.gravados).toHaveLength(1)
+  expect(sim.gravados[0].itens).toHaveLength(151)
+  expect(new Set(sim.gravados[0].itens.map(i=>i.shopify_line_id)).size).toBe(151)
+  expect(sim.gravados[0].itens.reduce((s,i)=>s+Math.round(Number(i.valor_pago_linha)*100),0)).toBe(15100)
 })

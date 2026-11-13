@@ -249,11 +249,15 @@ function pagoEm(o: Pedido, transacoes: Transacao[] | undefined): { em: string; e
 }
 
 // Pega as linhas que passaram das 50 primeiras (pedido grande) em vez de recusar o pedido.
-async function completarLinhas(o: Pedido): Promise<void> {
+async function completarLinhas(o: Pedido, limite: number): Promise<void> {
   let { hasNextPage, endCursor } = o.lineItems.pageInfo;
+  const cursores = new Set<string>();
   while (hasNextPage) {
+    if (!endCursor || cursores.has(endCursor)) throw new Error("A paginação das linhas não avançou. Tente sincronizar novamente.");
+    if (Date.now() >= limite) throw new Error("O tempo para ler todas as linhas acabou. Tente sincronizar novamente.");
+    cursores.add(endCursor);
     const r = await shopify<{ node: { lineItems: Pedido["lineItems"] } | null }>(QUERY_LINHAS, { id: o.id, cursor: endCursor });
-    if (!r.node) break;
+    if (!r.node) throw new Error("Não foi possível ler todas as linhas deste pedido. Tente sincronizar novamente.");
     o.lineItems.nodes.push(...r.node.lineItems.nodes);
     ({ hasNextPage, endCursor } = r.node.lineItems.pageInfo);
   }
@@ -350,7 +354,7 @@ Deno.serve(async (req) => {
 
       for (const o of aImportar) {
         try {
-        await completarLinhas(o);
+        await completarLinhas(o, limite);
         const cancelado = o.cancelledAt !== null;
         const reembolsado = REEMBOLSADOS.has(o.displayFinancialStatus ?? "");
         const despachado = o.displayFulfillmentStatus === "FULFILLED";
