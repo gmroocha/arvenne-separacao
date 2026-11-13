@@ -1,8 +1,10 @@
 import { useParams } from "react-router"
-import { SearchX } from "lucide-react"
+import { RefreshCw, SearchX, TriangleAlert } from "lucide-react"
 import { LinhaPeca } from "@/components/comum/Peca"
 import { LinhaValor } from "@/components/comum/LinhaValor"
 import { PaginaPublica } from "@/components/comum/PaginaPublica"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
@@ -14,7 +16,7 @@ import { seloRomaneio } from "@/lib/status"
 // Página pública (sem login) que a vendedora manda para a cliente. Atualiza sozinha.
 export default function Romaneio() {
   const { token } = useParams()
-  const { data, isLoading } = useRomaneio(token)
+  const { data, isLoading, isError, isFetching, refetch } = useRomaneio(token)
   const selo = data ? seloRomaneio(data.fase, data.status) : null
 
   return (
@@ -25,6 +27,14 @@ export default function Romaneio() {
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>
+      ) : isError ? (
+        <Alert variant="destructive" className="flex flex-col items-center gap-3 p-4 text-center">
+          <TriangleAlert className="size-5" />
+          <AlertDescription className="text-destructive">Não foi possível carregar o romaneio. Verifique a internet e tente de novo.</AlertDescription>
+          <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+            <RefreshCw /> Tentar novamente
+          </Button>
+        </Alert>
       ) : !data ? (
         <Empty>
           <EmptyHeader>

@@ -173,7 +173,8 @@ export function useRomaneio(token: string | undefined) {
     retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("romaneio_publico", { p_token: token! })
-      if (error) return null
+      if (error?.code === "22P02") return null // link com token malformado
+      if (error) throw error
       return (data as Romaneio | null) ?? null
     },
   })

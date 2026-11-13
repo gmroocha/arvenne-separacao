@@ -71,6 +71,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V52 | Média | ViaCEP/CNPJá/BrasilAPI sem limite: serviço sem resposta deixava a busca e o formulário esperando indefinidamente. | AbortSignal de 10 s por serviço; CNPJ ainda tenta a reserva e termina em até 20 s de rede. | Commit desta correção | 2 reproduções de rede parada falharam antes e passaram após; contrato de CEP inválido/inexistente/válido mantido. |
 
+| V53 | Média | Falha temporária no RPC do romaneio virava `null` e dizia “não encontrado”. | Distinguir falha de rede de link inexistente; erro claro e botão Tentar novamente. Token malformado continua como inexistente. | Commit desta correção | Regressão falhou antes e passou em celular/PC, claro/escuro; recuperação real com RPC fictícia, sem recarregar a página. Capturas inspecionadas. |
+
 ## Decisões tomadas sem o Gustavo
 
 - Preservar comportamentos e decisões de produto documentados; nenhuma limpeza de dados antigos e nenhuma sincronização real durante testes.
@@ -139,3 +141,5 @@ Decisão de design: os tokens claros de aviso/sucesso/erro/texto secundário sã
 Validação visual/acessibilidade: `npx playwright test tests/e2e/semantica.spec.mjs tests/e2e/acessibilidade.spec.mjs`: **12 testes verdes**, 3,6 min, 54 situações de telas e 18 situações com troca de aba por teclado. Artefatos locais em `capturas/vistoria2/`, ignorados pelo git. Deno check das quatro Edges também passou (só análise de tipos, sem execução remota).
 
 Propriedades financeiras permanentes reforçadas: `conservacao.test.mjs` agora combina preços inteiros e fracionados em centavos e coberturas em centavos; não mantém cópia duplicada do teste. 300 sequências adicionais na seed 45 passaram em 96,34 s após ampliar o gerador.
+
+Limitação observada durante a suíte do bloco 2: máquina com cerca de 6/7,6 GiB em uso e 1,8/2 GiB de swap, outros trabalhos ativos. Um teste visual estourou o tempo na preparação do PGlite (antes de abrir a tela), sem divergência de imagem. Não aumentar timeout nem marcar esperado: reduzir custo de preparar o banco e repetir a suíte integral antes de publicar.
