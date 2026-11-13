@@ -83,3 +83,5 @@ As proteções não reconstroem automaticamente pedidos antigos nem presumem pag
 PGlite serializa o acesso: dois contextos de navegador conferem interface/cache/idempotência, sem reproduzir toda disputa de bloqueios entre conexões PostgreSQL. Não há teste automatizado em impressora física ou sincronização real Shopify.
 
 Ferramentas de conferência publicada (fora de `npm test`): `scripts/vistoria/publicado.mjs` usa o login autorizado e barreira de gravações; captura nove telas em dois temas/duas larguras. `banco-remoto.mjs` compara metadados e mede seis planos com CLI `--remote --read-only`. `bundle.mjs` guarda tamanhos e verifica que os valores privados conhecidos do ambiente não foram empacotados, sem imprimir valores.
+
+Última suíte integral da Vistoria 2: **137 testes de unidade, 180 de banco e 64 de tela** (381), tipos, lint sem avisos e build verdes. A regra axe `landmark-one-main` do login também é conferida nos três tamanhos e dois temas.

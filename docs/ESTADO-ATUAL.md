@@ -1,4 +1,24 @@
-# Estado atual (atualizado em 12/11/2026)
+# Estado atual (atualizado em 13/11/2026)
+
+## Vistoria 2 — aplicada e publicada
+
+Relatório e evidências em [`VISTORIA-2.md`](VISTORIA-2.md), com **18 correções V42–V59** e inventário efetivo. Esta seção é o estado atual; as seções seguintes preservam o histórico de novembro.
+
+- Importação Shopify e carrinhos recusam composição incompleta, paginam todas as linhas e tratam limite de chamadas/tempo. Catálogo não avança marcador após falha parcial.
+- Peça e etapa são gravadas juntas: queda de conexão após “Achei” não deixa o pedido na fila. Falta parcial preserva a etapa de origem do desvio. Menos uma requisição nas ações que mudam a etapa.
+- Buscas CEP/CNPJ têm prazo e respostas antigas não sobrescrevem outra cliente. Listas e romaneio distinguem erro de rede de conteúdo inexistente, com nova tentativa.
+- Acessibilidade: contraste claro, abas, progresso, listas e região principal do login corrigidos; Inter Tight, temas e ausência de valores nas etapas de peças preservados. Miniaturas Shopify limitadas a 600 px; ampliação continua em 1200 px.
+- Cinco migrations `20261120100000` até `20261120140000` aplicadas após dry-run; quatro Edges publicadas (`shopify-sync`, `catalogo-sync`, `carrinho-ler`, `shopify-clientes`). Tipos regenerados; `baseAplicada = 20261120140000`.
+- Banco remoto coincide com o local: 72 funções, 29 relações, 32 policies, 27 gatilhos e 59 migrations. **23 pedidos, 456 itens e 21 trocas preservados**, inclusive o conteúdo; os mesmos 12 avisos históricos do vigia continuam.
+- Verificação final: **137 unidade, 180 banco, 64 e2e (381 testes)**, tipos e build verdes. Lint: **8 → 0 avisos**. Cinco FKs sem índice: **5 → 0**. Advisors mantêm avisos intencionais/limitações descritos no relatório, sem erros.
+
+**No navegador:** recarregar a página para usar a versão nova; se uma aba antiga persistir, usar Ctrl+Shift+R. Não precisa limpar dados nem recriar pedidos.
+
+**Pendência de painel já existente (V35):** proteção contra senhas vazadas e confirmação de cadastro público desativado dependem do Authentication; não foram alterados nesta autorização. Seis avisos da cadeia da CLI shadcn permanecem, sem atualização compatível segura (nenhum alto/crítico); não foi aplicado downgrade forçado.
+
+Sem impressão física, sincronização Shopify real ou gravações de negócio durante a conferência publicada. Os contratos e fluxos foram executados com respostas fictícias e PostgreSQL descartável. INP de campo permanece sem amostragem; medidas de laboratório estão identificadas no relatório.
+
+## Histórico anterior à Vistoria 2
 
 ## Troca, histórico e descontos (12/11/2026, APLICADO no Supabase)
 

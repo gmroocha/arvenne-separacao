@@ -66,7 +66,7 @@ cd ~/arvenne-separacao
 npm run dev      # servidor local (usa .env.local, ignorado pelo git)
 npm run build    # tsc + vite
 npm run capturas -- / /pedidos/<id>   # prints em 390 e 1280 px na pasta capturas/ (precisa do npm run dev e de E2E_EMAIL/E2E_SENHA no .env.local)
-npm run lint     # oxlint (restam avisos antigos em src/components/ui e use-mobile)
+npm run lint     # oxlint (sem avisos após a Vistoria 2)
 npm run test:rapido # tipos, lint e unidade; uso diário
 npm test         # tipos locais, verificação rápida, banco, celular/PC e build; sem dados reais
 npm run tipos:local # atualiza o complemento gerado das migrations ainda não aplicadas

@@ -3,24 +3,24 @@
   "chaveFrontend": "anon/publishable",
   "arquivos": [
     {
-      "arquivo": "AdicionarPecas-D2GxfO4I.js",
+      "arquivo": "AdicionarPecas-CU1kmrt5.js",
       "bytes": 27109,
       "gzipBytes": 9191
     },
     {
-      "arquivo": "Arquivo-gpwtnTdz.js",
+      "arquivo": "Arquivo-DKCjpWnY.js",
       "bytes": 1515,
-      "gzipBytes": 818
+      "gzipBytes": 820
     },
     {
-      "arquivo": "CampoBusca-DaNdONOH.js",
+      "arquivo": "CampoBusca-i7-BgMXF.js",
       "bytes": 3570,
-      "gzipBytes": 1372
+      "gzipBytes": 1374
     },
     {
-      "arquivo": "Clube-BuM8sS7u.js",
+      "arquivo": "Clube-DTwXfnY9.js",
       "bytes": 3021,
-      "gzipBytes": 1303
+      "gzipBytes": 1299
     },
     {
       "arquivo": "ErroConsulta-B7uW3UGm.js",
@@ -28,19 +28,19 @@
       "gzipBytes": 421
     },
     {
-      "arquivo": "Expedicao-xnB3AbuI.js",
+      "arquivo": "Expedicao-94RWe8UK.js",
       "bytes": 32179,
-      "gzipBytes": 10357
+      "gzipBytes": 10359
     },
     {
-      "arquivo": "Feedbacks-31gu0cF1.js",
+      "arquivo": "Feedbacks-C9dYM3ym.js",
       "bytes": 2540,
-      "gzipBytes": 1154
+      "gzipBytes": 1155
     },
     {
-      "arquivo": "Foto-D_WAUwVk.js",
+      "arquivo": "Foto-CHIZc0FY.js",
       "bytes": 3185,
-      "gzipBytes": 1560
+      "gzipBytes": 1561
     },
     {
       "arquivo": "JsBarcode-Dftosdkr.js",
@@ -48,14 +48,14 @@
       "gzipBytes": 11187
     },
     {
-      "arquivo": "Layout-BpgipQeE.js",
+      "arquivo": "Layout-D2kXwZAU.js",
       "bytes": 16737,
-      "gzipBytes": 5784
+      "gzipBytes": 5788
     },
     {
-      "arquivo": "LinhaPedido-MLaswmpl.js",
+      "arquivo": "LinhaPedido-DvPTit73.js",
       "bytes": 1835,
-      "gzipBytes": 810
+      "gzipBytes": 812
     },
     {
       "arquivo": "LinhaValor-C6UXEgn4.js",
@@ -63,14 +63,14 @@
       "gzipBytes": 288
     },
     {
-      "arquivo": "Login-DXE_dgLO.js",
-      "bytes": 1576,
-      "gzipBytes": 766
+      "arquivo": "Login-DpJO8_kY.js",
+      "bytes": 1577,
+      "gzipBytes": 768
     },
     {
-      "arquivo": "NovaVenda-C-gbpaSo.js",
+      "arquivo": "NovaVenda-NkkZtnU0.js",
       "bytes": 552,
-      "gzipBytes": 381
+      "gzipBytes": 382
     },
     {
       "arquivo": "PaginaPublica-Dz8vBmEh.js",
@@ -78,19 +78,19 @@
       "gzipBytes": 395
     },
     {
-      "arquivo": "Peca-v7tLOe8R.js",
+      "arquivo": "Peca-CokzbQ8j.js",
       "bytes": 1887,
-      "gzipBytes": 880
+      "gzipBytes": 881
     },
     {
-      "arquivo": "PecaClubeForm-D3_npX20.js",
+      "arquivo": "PecaClubeForm-Cshkf0wx.js",
       "bytes": 5567,
-      "gzipBytes": 2431
+      "gzipBytes": 2433
     },
     {
-      "arquivo": "Pedido-De-_9j4s.js",
+      "arquivo": "Pedido-Bt36-d04.js",
       "bytes": 149506,
-      "gzipBytes": 41657
+      "gzipBytes": 41661
     },
     {
       "arquivo": "Prazo-pLDeYpmM.js",
@@ -98,9 +98,9 @@
       "gzipBytes": 420
     },
     {
-      "arquivo": "Protegido-emDSU386.js",
+      "arquivo": "Protegido-CzYZYcaZ.js",
       "bytes": 657,
-      "gzipBytes": 429
+      "gzipBytes": 431
     },
     {
       "arquivo": "Quantidade-C0bdfv5V.js",
@@ -108,29 +108,29 @@
       "gzipBytes": 1686
     },
     {
-      "arquivo": "Repetidas-B19P0cvW.js",
+      "arquivo": "Repetidas-BghI13V2.js",
       "bytes": 3206,
-      "gzipBytes": 1360
+      "gzipBytes": 1362
     },
     {
-      "arquivo": "RespDialog-OR9Xq3V5.js",
+      "arquivo": "RespDialog-CHEWEvbV.js",
       "bytes": 32558,
-      "gzipBytes": 9641
+      "gzipBytes": 9640
     },
     {
-      "arquivo": "Romaneio-BPfAx8GY.js",
+      "arquivo": "Romaneio-BSRlpKsK.js",
       "bytes": 4045,
       "gzipBytes": 1506
     },
     {
-      "arquivo": "SeloAcerto-BxyPEweP.js",
+      "arquivo": "SeloAcerto-BVuwSLwa.js",
       "bytes": 733,
-      "gzipBytes": 434
+      "gzipBytes": 435
     },
     {
-      "arquivo": "Troca-AfrGdoy2.js",
+      "arquivo": "Troca-DmfAb1GJ.js",
       "bytes": 20522,
-      "gzipBytes": 6250
+      "gzipBytes": 6254
     },
     {
       "arquivo": "Vazio-jw3y9SAe.js",
@@ -138,19 +138,19 @@
       "gzipBytes": 411
     },
     {
-      "arquivo": "Venda-BckdltO8.js",
+      "arquivo": "Venda-DIVE7M-e.js",
       "bytes": 31829,
-      "gzipBytes": 9465
+      "gzipBytes": 9464
     },
     {
-      "arquivo": "Vendas-CIaC__fO.js",
+      "arquivo": "Vendas-DLVAhfRl.js",
       "bytes": 2789,
-      "gzipBytes": 1320
+      "gzipBytes": 1327
     },
     {
-      "arquivo": "api-CQiz8L2q.js",
+      "arquivo": "api-RZQb8dhn.js",
       "bytes": 49170,
-      "gzipBytes": 15184
+      "gzipBytes": 15186
     },
     {
       "arquivo": "archive-Ra5T5u2m.js",
@@ -183,9 +183,9 @@
       "gzipBytes": 3614
     },
     {
-      "arquivo": "dialog-iKM1OAO9.js",
+      "arquivo": "dialog-Deg_V2e3.js",
       "bytes": 20400,
-      "gzipBytes": 7474
+      "gzipBytes": 7475
     },
     {
       "arquivo": "dist-0d1vmCSe.js",
@@ -238,14 +238,14 @@
       "gzipBytes": 8081
     },
     {
+      "arquivo": "index-B12FyOxW.js",
+      "bytes": 301321,
+      "gzipBytes": 95716
+    },
+    {
       "arquivo": "index-B4BWZfhE.css",
       "bytes": 144203,
       "gzipBytes": 21726
-    },
-    {
-      "arquivo": "index-CrVpaqnx.js",
-      "bytes": 301321,
-      "gzipBytes": 95696
     },
     {
       "arquivo": "input-CjGNap2P.js",
@@ -338,9 +338,9 @@
       "gzipBytes": 519
     },
     {
-      "arquivo": "sheet-CjRFicnF.js",
+      "arquivo": "sheet-CQ_G6ddA.js",
       "bytes": 2711,
-      "gzipBytes": 917
+      "gzipBytes": 911
     },
     {
       "arquivo": "skeleton-D0pbO-Hu.js",
@@ -368,9 +368,9 @@
       "gzipBytes": 419
     },
     {
-      "arquivo": "toggle-Dsz0c6Yy.js",
+      "arquivo": "toggle-DCyEX6Po.js",
       "bytes": 3503,
-      "gzipBytes": 1352
+      "gzipBytes": 1351
     },
     {
       "arquivo": "trocaTexto-JcNw9OgH.js",
@@ -378,14 +378,14 @@
       "gzipBytes": 2071
     },
     {
-      "arquivo": "useDebounce-BA3d24sL.js",
+      "arquivo": "useDebounce-CvmK9XLh.js",
       "bytes": 1992,
-      "gzipBytes": 933
+      "gzipBytes": 932
     },
     {
-      "arquivo": "useImprimirEtiquetas-BvXEnF7r.js",
+      "arquivo": "useImprimirEtiquetas-BRYy4HMc.js",
       "bytes": 19707,
-      "gzipBytes": 7855
+      "gzipBytes": 7853
     }
   ]
 }

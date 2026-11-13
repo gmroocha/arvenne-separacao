@@ -2,11 +2,11 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** último complemento de acessibilidade V59; suíte integral em execução antes do segundo push.
+- **Fase/item atual:** suíte V59 verde; segundo push e conferência final.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
 - **Concluído:** V42–V58 publicados em `f709894`; 5 migrations aplicadas, 4 Edges publicadas, tipos regenerados (base `20261120140000`). Banco remoto igual ao local; 23 pedidos, 456 itens e 21 trocas preservados. Conferência publicada: 36 situações, zero erros/overflow/tentativas de gravação.
 - **Último bloco integral verde:** 137 unidade, 180 banco, 58 e2e (7,3 min), tipos, lint sem avisos e build. Asset publicado `index-CrVpaqnx.js` idêntico ao build; 2 valores privados conhecidos ausentes do bundle.
-- **Em andamento:** V59 commitada em `ba9e0f9`, seis casos específicos verdes e capturas inspecionadas; nova suíte `/tmp/arvenne-vistoria2-final-v59.log` (64 e2e). Lighthouse do primeiro deploy: 99/98/100; V59 resolve o único apontamento de acessibilidade do login.
+- **Resultado final V59:** 137 unidade, 180 banco, 64 e2e, tipos, lint e build verdes (`/tmp/arvenne-vistoria2-final-v59.log`); capturas inspecionadas. Scanner do build final verde; asset esperado `index-B12FyOxW.js`.
 - **Próximo passo exato:** concluir a suíte V59, atualizar scanner do bundle, push; conferir hash, repetir Lighthouse e `publicado.mjs`; guardar métricas, atualizar Estado atual, encerrar relatório e enviar docs. Não há arquivo de app pela metade.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
@@ -37,9 +37,9 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | Medida | Antes (`3ce7b4a`) | Depois |
 | --- | --- | --- |
-| `npm test` completo | **109 unidade, 165 banco, 24 e2e**, tipos e build verdes | **137 unidade, 180 banco, 58 e2e** (375 testes), tipos e build verdes | |
+| `npm test` completo | **109 unidade, 165 banco, 24 e2e**, tipos e build verdes | **137 unidade, 180 banco, 64 e2e** (381 testes), tipos e build verdes | |
 | Lint | **8 avisos / 0 erros** (6 Fast Refresh, 1 hook mobile, 1 catch) | **0 avisos / 0 erros**, sem desligar regras | |
-| Bundle por chunk | Entrada 303,08 kB / gzip 97,32; Pedido 149,51 / 41,88; Supabase 216,72 / 55,95; demais abaixo | Entrada **301,32 / 96,67**; Pedido **149,50 / 41,86**; Supabase **216,72 / 55,95** kB/gzip | |
+| Bundle por chunk | Entrada 303,08 kB / gzip 97,32; Pedido 149,51 / 41,88; Supabase 216,72 / 55,95; demais abaixo | Entrada **301,32 / 96,68**; Pedido **149,50 / 41,86**; Supabase **216,72 / 55,95** kB/gzip | |
 | Inconsistências remotas | **12** (4 composição, 5 etapa, 1 pagamento, 1 venda sem composição, 1 troca inativa) | **Os mesmos 12**, mesmos pedidos e regras; dados preservados | |
 | Advisors segurança/desempenho | **32**: 18 avisos, 14 informações, 0 erros; 5 FKs sem índice | **32**: 18 avisos, 14 informações, 0 erros; **0 FKs sem índice**; índices sem uso **8 → 13** (inclui os 5 novos) | |
 | Planos SQL mais usados | Execução: expedição **53,959 ms**, detalhe **8,176 ms**, v_pedidos **19,182 ms**, alterações **22,368 ms** | Medianas: expedição **16,593 ms**, detalhe **6,324 ms**, v_pedidos **17,946 ms**, alterações **5,924 ms**; painel/sugestão agora permitidos | |
