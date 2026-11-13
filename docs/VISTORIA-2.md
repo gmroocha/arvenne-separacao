@@ -5,7 +5,7 @@
 - **Fase/item atual:** Fase 2, primeiro bloco de integrações (V42); inventário efetivo criado.
 - **Base:** `3ce7b4a`, árvore limpa no início, 12/11/2026 (São Paulo).
 - **Concluído:** documento inicial em `42c8af6`; linha de base completa local; catálogo efetivo (71 funções, 13 views, 16 tabelas, 27 gatilhos, 56 migrations); métricas remotas e primeira conferência publicada.
-- **Em andamento:** V42 em `shopify-sync/index.ts` e `tests/unidade/shopify-sync.test.mjs` (3 reproduções vermelhas → 10 testes verdes). Scripts e inventário em `5850523` (confirmar pelo log); V42 ainda sem commit; bloco completo de testes a executar.
+- **Em andamento:** V42 em `shopify-sync/index.ts` e `tests/unidade/shopify-sync.test.mjs` (3 reproduções vermelhas → 10 testes verdes). Scripts e inventário em `f1f793e`; V42 em `2fcb2f3`; bloco completo de testes a executar.
 - **Próximo passo exato:** concluir contratos de paginação do checkout, corrigir leituras novas recusadas na auditoria; rodar `npm test`, commit por correção, deploy das Edges afetadas após os testes.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
@@ -49,7 +49,9 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | ID | Gravidade | Onde / reprodução | Correção | Commit | Teste vermelho → verde |
 | --- | --- | --- | --- | --- | --- |
-| V42 | Alta | `shopify-sync`: pedido com >50 linhas; Shopify devolve nó nulo ou cursor repetido/ausente durante a paginação. A composição parcial era enviada ao banco como completa. | Recusar a importação desse pedido com erro claro; validar avanço do cursor e teto de tempo antes de cada página. Importação íntegra de 151 linhas coberta. | Commit desta correção (ver log) | Contrato `shopify-sync.test.mjs`: 3 casos falharam antes; 10 passaram após. |
+| V42 | Alta | `shopify-sync`: pedido com >50 linhas; Shopify devolve nó nulo ou cursor repetido/ausente durante a paginação. A composição parcial era enviada ao banco como completa. | Recusar a importação desse pedido com erro claro; validar avanço do cursor e teto de tempo antes de cada página. Importação íntegra de 151 linhas coberta. | `2fcb2f3` | Contrato `shopify-sync.test.mjs`: 3 casos falharam antes; 10 passaram após. |
+
+| V43 | Alta | Edge `carrinho-ler` lia só 100 linhas e comparava o token com `includes`, aceitando coincidência na query string de outro checkout. | Busca só ID/URL dos checkouts (sem conexão aninhada de 100×100); paginar linhas por ID até terminar; recusar falha/tempo/cursor inválido; comparar token exato do caminho. | Commit desta correção | Contrato novo: 3 reproduções falharam antes e passaram depois, incluindo 101 linhas. |
 
 ## Decisões tomadas sem o Gustavo
 
@@ -105,3 +107,5 @@ O catálogo SQL, com assinaturas, GRANTs, RLS, hashes dos corpos e gatilhos efet
 - Baseline completa do build no log temporário `/tmp/arvenne-vistoria2-baseline.log`; métricas resumidas aqui permanecem versionadas. Os logs temporários não são a única evidência dos resultados.
 
 Bundle inicial completo por chunk, inclusive fontes: [VISTORIA-2-BUNDLE-ANTES.json](VISTORIA-2-BUNDLE-ANTES.json).
+
+Contrato de paginação do checkout conferido na [API Shopify 2026-01 (AbandonedCheckout)](https://shopify.dev/docs/api/admin-graphql/2026-01/objects/AbandonedCheckout): conexão `lineItems` e interface Node permitem buscar as próximas páginas pelo ID. Nenhuma API real da Shopify foi acionada nos contratos.
