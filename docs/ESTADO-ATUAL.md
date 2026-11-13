@@ -1,13 +1,27 @@
 # Estado atual (atualizado em 12/11/2026)
 
-## Telas da troca, do histórico e dos descontos (12/11/2026, só local; migration 20261120090000 ainda NÃO aplicada)
+## Troca, histórico e descontos (12/11/2026, APLICADO no Supabase)
+
+**Aplicado com o "sim" do Gustavo:** migration `20261120090000_trocas_visiveis.sql`, Edge `shopify-sync`
+(busca `discountApplications`), tipos regenerados (`baseAplicada` = `20261120090000`).
+Conferido no banco (só leitura), ARV-1273: desvio lembra a Conferência (`etapa_antes_desvio`), desconto
+25% = R$ 430,38 + "Arvenne cobriu" R$ 0,68 à parte, alterações BRI-ESP-1 → BRI-ASC-1 (cliente paga 0) e
+GA1803-N removida.
+
+- **V37:** falta na Conferência (ou depois) não joga mais o pedido para a Separação; a esteira mostra a etapa
+  de origem com o selo do desvio. Ao resolver, `sair_do_desvio` volta para a origem (peça nova de troca → Separação).
+- **V38:** rótulos da troca mostram "Arvenne cobre R$ X" / "Cliente paga R$ Y" (`coberto_previsto`,
+  `cliente_paga_previsto`). "Cobrir tudo" grava `cobrir_ate = 99999999.99` (`COBRIR_TUDO`).
+- **V39:** `troca_painel` lê a troca numa viagem só; a tela abre na hora com troca existente.
+
+**Próxima ação (Gustavo):** clicar "Sincronizar" para os pedidos da Shopify ganharem o motivo do desconto
+(cupom/automático); conferir uma troca com "Cobrir tudo" e uma falta marcada na Conferência.
 
 - **Dados do pedido:** desconto com percentual e motivo ("Desconto · 25% · cupom PIX25", vindo de `descontos`), linha "Arvenne cobriu na troca" e linhas "Peças trocadas (N)" / "Peças removidas (N)" que abrem o diálogo das alterações.
 - **AlteracoesDialog** (`v_pedido_alteracoes`): cada alteração como "sai ↓ entra", valores do banco e quem/quando. Abre pelo selo "Peças trocadas" no cabeçalho, pelos dados do pedido e pelo texto "troca de X" da peça (focado nessa troca, sem valores nas etapas de peças).
 - **Histórico** virou diálogo grande (`HistoricoDialog`): nota no topo, filtros, linha do tempo por dia. Rótulos em `src/lib/historico.ts`.
 - **Traço médio** dos contornos pelo token `--traco` (1,5 px, como sombra: o Chrome só desenha borda de 1 ou 2 px); barra de progresso h-1.5, ligações das etapas h-0.5.
 - **Troca:** abas sem tranco (V40) e "Cobrir diferença" com "Tudo" | "Até R$ X". **Página da cliente concluída:** cartão com foto e código de cada lado e a diferença dentro dele; logo maior.
-- Sem a migration no banco remoto a view das alterações não existe: o app trata como lista vazia e o selo some.
 
 ## Vistoria e proteções automáticas — referência atual
 

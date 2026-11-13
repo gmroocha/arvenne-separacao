@@ -653,6 +653,7 @@ export type Database = {
           desconto_frete: number | null
           desconto_tipo: string | null
           desconto_valor: number | null
+          descontos: Json | null
           embalado_em: string | null
           entrega_bairro: string | null
           entrega_cep: string | null
@@ -661,6 +662,7 @@ export type Database = {
           entrega_logradouro: string | null
           entrega_numero: string | null
           entrega_uf: string | null
+          etapa_antes_desvio: string | null
           financeiro_retrato: Json | null
           forma_pagamento: string | null
           frete_cobrado: number | null
@@ -716,6 +718,7 @@ export type Database = {
           desconto_frete?: number | null
           desconto_tipo?: string | null
           desconto_valor?: number | null
+          descontos?: Json | null
           embalado_em?: string | null
           entrega_bairro?: string | null
           entrega_cep?: string | null
@@ -724,6 +727,7 @@ export type Database = {
           entrega_logradouro?: string | null
           entrega_numero?: string | null
           entrega_uf?: string | null
+          etapa_antes_desvio?: string | null
           financeiro_retrato?: Json | null
           forma_pagamento?: string | null
           frete_cobrado?: number | null
@@ -779,6 +783,7 @@ export type Database = {
           desconto_frete?: number | null
           desconto_tipo?: string | null
           desconto_valor?: number | null
+          descontos?: Json | null
           embalado_em?: string | null
           entrega_bairro?: string | null
           entrega_cep?: string | null
@@ -787,6 +792,7 @@ export type Database = {
           entrega_logradouro?: string | null
           entrega_numero?: string | null
           entrega_uf?: string | null
+          etapa_antes_desvio?: string | null
           financeiro_retrato?: Json | null
           forma_pagamento?: string | null
           frete_cobrado?: number | null
@@ -1388,6 +1394,26 @@ export type Database = {
           },
         ]
       }
+      v_pedido_alteracoes: {
+        Row: {
+          a_devolver: number | null
+          cliente_paga: number | null
+          coberto_loja: number | null
+          credito: number | null
+          devolvido_em: string | null
+          diferenca: number | null
+          em: string | null
+          entra: Json | null
+          escolhida_por: string | null
+          id: string | null
+          pedido_id: string | null
+          por: string | null
+          sai: Json | null
+          tipo: string | null
+          valor: number | null
+        }
+        Relationships: []
+      }
       v_pedidos: {
         Row: {
           a_devolver: number | null
@@ -1406,9 +1432,12 @@ export type Database = {
           desconto: number | null
           desconto_codigos: string[] | null
           desconto_frete: number | null
+          desconto_percentual: number | null
           desconto_pix: number | null
+          desconto_sem_cobertura: number | null
           desconto_tipo: string | null
           desconto_valor: number | null
+          descontos: Json | null
           embalado_em: string | null
           entrega_bairro: string | null
           entrega_cep: string | null
@@ -1417,6 +1446,7 @@ export type Database = {
           entrega_logradouro: string | null
           entrega_numero: string | null
           entrega_uf: string | null
+          etapa_antes_desvio: string | null
           etapas_permitidas: Json | null
           fase: string | null
           forma_pagamento: string | null
@@ -1608,6 +1638,8 @@ export type Database = {
       }
       v_troca_carrinho: {
         Row: {
+          cliente_paga_previsto: number | null
+          coberto_previsto: number | null
           diferenca: number | null
           item_id: string | null
           itens: Json | null
@@ -1673,6 +1705,8 @@ export type Database = {
       }
       v_troca_valores: {
         Row: {
+          cliente_paga_previsto: number | null
+          coberto_previsto: number | null
           diferenca: number | null
           item_id: string | null
           opcao_id: string | null
@@ -1752,6 +1786,7 @@ export type Database = {
         Args: { p_item: string; p_qtd: number; p_status?: string }
         Returns: string
       }
+      normalizar_descontos: { Args: { p_bruto: Json }; Returns: Json }
       pascoa: { Args: { p_ano: number }; Returns: string }
       prazo_envio: { Args: { pago: string }; Returns: string }
       reavaliar_etapa: { Args: { p_pedido: string }; Returns: undefined }
@@ -1770,6 +1805,7 @@ export type Database = {
         Returns: undefined
       }
       romaneio_publico: { Args: { p_token: string }; Returns: Json }
+      sair_do_desvio: { Args: { p_pedido: string }; Returns: string }
       saldo_financeiro: { Args: { p_pedido: string }; Returns: number }
       somar_venda: {
         Args: {
@@ -1795,6 +1831,8 @@ export type Database = {
           p_so_sem_estoque?: boolean
         }
         Returns: {
+          cliente_paga_previsto: number
+          coberto_previsto: number
           diferenca: number
           foto_url: string
           motivo: string
@@ -1861,6 +1899,7 @@ export type Database = {
         Returns: boolean
       }
       troca_fator: { Args: { p_item: string }; Returns: number }
+      troca_painel: { Args: { p_pedido: string }; Returns: Json }
       troca_publica: { Args: { p_token: string }; Returns: Json }
       troca_recalcular_escolha: { Args: { p_peca: string }; Returns: undefined }
       troca_saldo_liquido: { Args: { p_troca: string }; Returns: number }
