@@ -67,7 +67,7 @@ Próxima ação (Gustavo, no painel do Supabase): Authentication → ligar a pro
 | Segredos das funções (só os nomes) | `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_IMPORTAR_DESDE` (feitos pelo Gustavo no painel) |
 | Funções Edge publicadas | `shopify-sync`, `catalogo-sync`, `shopify-clientes` (`shopify-produtos` removida do código; nunca esteve publicada). Republicadas em 11/11/2026: `shopify-sync` v5, `catalogo-sync` v3, `shopify-clientes` v5 |
 | Repositório | `gmroocha/arvenne-separacao`, branch `main`, tudo enviado |
-| Cloudflare Pages | **ainda não publicado**; o app roda só com `npm run dev` |
+| Cloudflare | **publicado** em https://arvenne-separacao.gmroocha.workers.dev (Workers com arquivos estáticos, `wrangler.jsonc`); cada push na `main` publica; `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` nas variáveis de Build. Conferido em 12/11/2026: login, expedição, pedido e página pública da troca no celular e no PC |
 
 ## Venda somada a um pedido (12/11/2026, migration APLICADA no Supabase)
 - **12/11/2026, migration `20261116090000_total_pago_somada.sql` (aplicada):** `v_pedidos` ganhou `total_pago`

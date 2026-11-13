@@ -15,8 +15,9 @@ exige navegador, senha ou segredo.
 ## Stack
 
 Vite 8, React 19, TypeScript 7, Tailwind 4, react-router 8, TanStack Query, shadcn/ui (preset
-`radix-nova`, ícones lucide), Supabase (banco, login, fotos, funções Edge). Hospedagem prevista:
-Cloudflare Pages (ainda não publicado). Repositório: `gmroocha/arvenne-separacao` (privado). O push usa a
+`radix-nova`, ícones lucide), Supabase (banco, login, fotos, funções Edge). Hospedagem:
+Cloudflare Workers (arquivos estáticos, `wrangler.jsonc`), em https://arvenne-separacao.gmroocha.workers.dev;
+cada `git push` na `main` publica sozinho (variáveis `VITE_*` ficam nas variáveis de Build do painel). Repositório: `gmroocha/arvenne-separacao` (privado). O push usa a
 chave certa via `core.sshCommand` já configurado neste repositório.
 
 ## Regras que não se renegociam
