@@ -2,12 +2,12 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** complemento final V59 identificado pelo Lighthouse publicado.
+- **Fase/item atual:** último complemento de acessibilidade V59; suíte integral em execução antes do segundo push.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42–V59 commitados. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
-- **Resultado final:** `npm test` verde: **137 unidade, 180 banco, 58 e2e (7,3 min)**, tipos, lint sem avisos e build. Scanner do build final: 2 valores privados conhecidos ausentes, chave anon/publishable.
-- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-validacao-final.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. 5 migrations aplicadas no Supabase; tipos oficiais regenerados; `shopify-sync` publicada. 4 Edges publicadas; tipos oficiais/complemento regenerados e tipos/lint/137 unidades/build verdes. Push `f709894` publicado; asset `index-CrVpaqnx.js` idêntico ao build local. Conferência publicada/Lighthouse em execução.
-- **Próximo passo exato:** V59 reproduzida em celular nos dois temas (falta landmark main no login); correção e capturas verdes; concluir nova suíte em `/tmp/arvenne-vistoria2-final-v59.log`, push e repetir Lighthouse/medidas; comparar métricas/capturas; atualizar Estado atual e fechar relatórios. Banco remoto já comparado: 72 funções, 29 relações, 32 policies, 27 gatilhos e 59 migrations iguais. Hashes de dados antes/depois iguais (23 pedidos, 456 itens, 21 trocas).
+- **Concluído:** V42–V58 publicados em `f709894`; 5 migrations aplicadas, 4 Edges publicadas, tipos regenerados (base `20261120140000`). Banco remoto igual ao local; 23 pedidos, 456 itens e 21 trocas preservados. Conferência publicada: 36 situações, zero erros/overflow/tentativas de gravação.
+- **Último bloco integral verde:** 137 unidade, 180 banco, 58 e2e (7,3 min), tipos, lint sem avisos e build. Asset publicado `index-CrVpaqnx.js` idêntico ao build; 2 valores privados conhecidos ausentes do bundle.
+- **Em andamento:** V59 commitada em `ba9e0f9`, seis casos específicos verdes e capturas inspecionadas; nova suíte `/tmp/arvenne-vistoria2-final-v59.log` (64 e2e). Lighthouse do primeiro deploy: 99/98/100; V59 resolve o único apontamento de acessibilidade do login.
+- **Próximo passo exato:** concluir a suíte V59, atualizar scanner do bundle, push; conferir hash, repetir Lighthouse e `publicado.mjs`; guardar métricas, atualizar Estado atual, encerrar relatório e enviar docs. Não há arquivo de app pela metade.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -67,7 +67,6 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | V56 | Média | Axe nas listas preenchidas de Vendas/Repetidas encontrou links diretamente sob `role=list`, sem listitem. | Grupo como `ul` e cada linha como `li`, mantendo navegação e aparência. | `be5212a` | 6 verificações axe falharam antes; matriz ampliada de 12 rotas × 3 larguras × 2 temas passou (72 situações). Capturas de ambas as listas em 390/1280, claro/escuro, inspecionadas. |
 | V57 | Alta | Ao perder a resposta após salvar “Achei”, a etapa dependia de outra requisição: peça encontrada e pedido ainda Novo; falta parcial também podia ficar sem desvio. | RPC `alterar_item` com bloqueio do pedido grava peça/etapa juntas; `marcar_falta` conclui o desvio na própria transação, preservando origem. Remove segunda gravação do navegador. Sem alteração retroativa de dados. | `f9d3d17` | Browser reproduziu peça encontrada com pedido Novo e 3 casos SQL falharam antes. Agora 6 regressões SQL e 6 casos e2e de duplo clique, resposta perdida e entradas longas/HTML passam em celular/PC. Rede nega RPC real nos testes. |
 | V58 | Média | Nome da cliente preenchido como e-mail era devolvido integralmente por `romaneio_publico`, embora o campo separado de e-mail já fosse omitido. | Omitir nome com `@` no romaneio, como já faz `troca_publica`; preservar primeiro nome nos demais casos. Migration nova, sem editar dados. | `067309a` + `6b86f0c` | Teste novo recebeu `privado@ficticio.test` antes e passou com `null` após; 6 testes de segurança verdes. |
-
 | V59 | Média | Lighthouse do login marcou 98 em acessibilidade: não havia região principal para navegação por leitor de tela. | Usar `main` na raiz do login, com as mesmas classes e aparência. | `ba9e0f9` | Regra axe `landmark-one-main` falhou nos dois temas antes; 6 casos passam após em 390/768/1280. Capturas de 390/1280 nos dois temas inspecionadas antes do commit. |
 
 ## Decisões tomadas sem o Gustavo
