@@ -63,12 +63,16 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
   const [mostrar, setMostrar] = useState(Boolean(form.cliente_nome || form.cliente_telefone))
   const [salvando, setSalvando] = useState(false)
   const [buscandoCep, setBuscandoCep] = useState(false)
-  const cepAtual = useRef(form.entrega_cep)
+  const consultaAtual = useRef(0)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
   const [situacao, setSituacao] = useState<string | null>(null)
   const termo = useDebounce(busca.trim(), 300)
   const { local, shopify, carregando } = useBuscaClientes(termo)
   const escolher = (c: Achada) => {
+    consultaAtual.current++
+    setBuscandoCep(false)
+    setBuscandoCnpj(false)
+    setSituacao(null)
     aoMudar(parcialDe(c))
     setMostrar(true)
     setBusca("")
@@ -77,13 +81,14 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
 
   async function mudarCep(valor: string) {
     const cep = mascaraCep(valor)
-    cepAtual.current = cep
+    const consulta = ++consultaAtual.current
+    setBuscandoCnpj(false)
     aoMudar({ entrega_cep: cep })
     if (cep.replace(/\D/g, "").length !== 8) return void setBuscandoCep(false)
     setBuscandoCep(true)
     try {
       const r = await buscarCep(cep)
-      if (cepAtual.current !== cep) return // a pessoa já mudou o CEP: ignora a resposta antiga
+      if (consultaAtual.current !== consulta) return // a pessoa já mudou o CEP: ignora a resposta antiga
       if (r)
         aoMudar({
           entrega_logradouro: r.logradouro ?? "",
@@ -93,14 +98,17 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
         })
       else toast.error("CEP não encontrado")
     } catch {
-      if (cepAtual.current === cep) toast.error("Não foi possível consultar o CEP")
+      if (consultaAtual.current === consulta) toast.error("Não foi possível consultar o CEP")
     } finally {
-      if (cepAtual.current === cep) setBuscandoCep(false)
+      if (consultaAtual.current === consulta) setBuscandoCep(false)
     }
   }
 
   // 14 dígitos = CNPJ: busca razão social, endereço e inscrição estadual (só o número sai do app).
   async function mudarDocumento(valor: string) {
+    const consulta = ++consultaAtual.current
+    setBuscandoCep(false)
+    setBuscandoCnpj(false)
     const doc = mascaraDocumento(valor)
     aoMudar({ cliente_cpf: doc })
     setSituacao(null)
@@ -108,6 +116,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
     setBuscandoCnpj(true)
     try {
       const r = await buscarCnpj(doc)
+      if (consultaAtual.current !== consulta) return
       if (!r) return void toast.error("CNPJ não encontrado")
       setSituacao(r.situacao)
       const e = r.endereco
@@ -124,9 +133,9 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
         entrega_uf: e.uf ?? "",
       })
     } catch {
-      toast.error("Não foi possível consultar o CNPJ")
+      if (consultaAtual.current === consulta) toast.error("Não foi possível consultar o CNPJ")
     } finally {
-      setBuscandoCnpj(false)
+      if (consultaAtual.current === consulta) setBuscandoCnpj(false)
     }
   }
 

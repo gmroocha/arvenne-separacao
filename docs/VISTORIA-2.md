@@ -61,6 +61,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | Commit desta correção | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
 
+| V47 | Alta | Na venda, digitar CNPJ, trocar para CPF e só então receber a resposta antiga preenchia empresa/endereço da cliente anterior. | Versão única para buscas CEP/CNPJ e seleção de cliente; respostas/erros antigos não alteram o formulário nem o indicador de carregamento. | Commit desta correção | E2E reproduziu empresa/endereço antigos; passou em 390 e 1280 após a correção. |
+
 ## Decisões tomadas sem o Gustavo
 
 - Preservar comportamentos e decisões de produto documentados; nenhuma limpeza de dados antigos e nenhuma sincronização real durante testes.
@@ -121,3 +123,5 @@ Contrato de paginação do checkout conferido na [API Shopify 2026-01 (Abandoned
 Varredura de segurança em PGlite: 16 tabelas com RLS; 13 views invoker; anon sem acesso a nenhuma relação interna; sem DELETE de pedidos/itens/movimentos/eventos; quatro definers públicos intencionais; respostas públicas verificadas recursivamente sem CPF/e-mail/endereço/telefone/dados brutos; token de outra troca recusado. Propriedade extra com centavos: 300 sequências (`PROP_SEED=45`) passaram em 105 s; nenhuma falha financeira nova encontrada nessa amostra.
 
 Manutenção do código: lint **8 → 0 avisos**, sem desabilitar regras. Exports internos sem uso removidos; variantes e contexto da sidebar separados para preservar Fast Refresh; `useIsMobile` usa assinatura de `matchMedia` por `useSyncExternalStore`; catch sem parâmetro inútil. `test:rapido`: tipos + lint + 122 unidades verdes. Bloco V42–V44: `npm test` verde (118 unidade, 166 banco, 24 e2e e build); V45/V46 entrarão na próxima suíte completa antes da aplicação.
+
+Lighthouse do login publicado (móvel, emulação/throttling padrão): desempenho **98**, acessibilidade **98**, boas práticas **100**, LCP **2,0 s**, CLS **0**, TBT **100 ms**. Autenticação não foi incluída nesse Lighthouse; telas internas têm medidas Chromium separadas.
