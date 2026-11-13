@@ -1,0 +1,387 @@
+[
+  {
+    "chunk": "logo-pratas-branca-DYZrrVGt.svg",
+    "kB": 5.05,
+    "gzip_kB": 2.14
+  },
+  {
+    "chunk": "logo-pratas-preta-BsoOMQBF.svg",
+    "kB": 5.05,
+    "gzip_kB": 2.14
+  },
+  {
+    "chunk": "inter-tight-vietnamese-wght-normal-TKKdAiBA.woff2",
+    "kB": 10.48,
+    "gzip_kB": null
+  },
+  {
+    "chunk": "inter-tight-greek-ext-wght-normal-DQgQPNk4.woff2",
+    "kB": 11.7,
+    "gzip_kB": null
+  },
+  {
+    "chunk": "inter-tight-cyrillic-wght-normal-BS41q_Tv.woff2",
+    "kB": 16.99,
+    "gzip_kB": null
+  },
+  {
+    "chunk": "inter-tight-greek-wght-normal-sS1B39LI.woff2",
+    "kB": 22.19,
+    "gzip_kB": null
+  },
+  {
+    "chunk": "inter-tight-cyrillic-ext-wght-normal-okcGN4Nq.woff2",
+    "kB": 26.66,
+    "gzip_kB": null
+  },
+  {
+    "chunk": "inter-tight-latin-wght-normal-DX-nOvPD.woff2",
+    "kB": 44.87,
+    "gzip_kB": null
+  },
+  {
+    "chunk": "inter-tight-latin-ext-wght-normal-B4u9PlvR.woff2",
+    "kB": 89.8,
+    "gzip_kB": null
+  },
+  {
+    "chunk": "index-CpXX4ins.css",
+    "kB": 144.21,
+    "gzip_kB": 21.77
+  },
+  {
+    "chunk": "chevron-right-Dry-jqAd.js",
+    "kB": 0.15,
+    "gzip_kB": 0.15
+  },
+  {
+    "chunk": "plus-BC3bfs7M.js",
+    "kB": 0.18,
+    "gzip_kB": 0.16
+  },
+  {
+    "chunk": "skeleton-D0pbO-Hu.js",
+    "kB": 0.2,
+    "gzip_kB": 0.17
+  },
+  {
+    "chunk": "message-square-CqEpovAB.js",
+    "kB": 0.26,
+    "gzip_kB": 0.21
+  },
+  {
+    "chunk": "message-circle-Csf9G9is.js",
+    "kB": 0.26,
+    "gzip_kB": 0.22
+  },
+  {
+    "chunk": "archive-Ra5T5u2m.js",
+    "kB": 0.28,
+    "gzip_kB": 0.22
+  },
+  {
+    "chunk": "search-x-CthOpW7e.js",
+    "kB": 0.28,
+    "gzip_kB": 0.21
+  },
+  {
+    "chunk": "refresh-cw-xkmTRxz2.js",
+    "kB": 0.34,
+    "gzip_kB": 0.24
+  },
+  {
+    "chunk": "hand-coins-CxS0078-.js",
+    "kB": 0.44,
+    "gzip_kB": 0.3
+  },
+  {
+    "chunk": "LinhaValor-C6UXEgn4.js",
+    "kB": 0.46,
+    "gzip_kB": 0.28
+  },
+  {
+    "chunk": "NovaVenda-Br8AkzRm.js",
+    "kB": 0.55,
+    "gzip_kB": 0.38
+  },
+  {
+    "chunk": "rolldown-runtime-WkwZ5CU-.js",
+    "kB": 0.59,
+    "gzip_kB": 0.36
+  },
+  {
+    "chunk": "Prazo-pLDeYpmM.js",
+    "kB": 0.64,
+    "gzip_kB": 0.42
+  },
+  {
+    "chunk": "Protegido-BWO3IUTu.js",
+    "kB": 0.65,
+    "gzip_kB": 0.43
+  },
+  {
+    "chunk": "Vazio-5w7Jg5Mh.js",
+    "kB": 0.67,
+    "gzip_kB": 0.41
+  },
+  {
+    "chunk": "receipt-jqdB5fXS.js",
+    "kB": 0.68,
+    "gzip_kB": 0.3
+  },
+  {
+    "chunk": "PaginaPublica-Dz8vBmEh.js",
+    "kB": 0.73,
+    "gzip_kB": 0.39
+  },
+  {
+    "chunk": "SeloAcerto-1zSGMBye.js",
+    "kB": 0.73,
+    "gzip_kB": 0.43
+  },
+  {
+    "chunk": "textarea-tRVYwry-.js",
+    "kB": 0.76,
+    "gzip_kB": 0.41
+  },
+  {
+    "chunk": "dist-CMRBrOnF.js",
+    "kB": 0.78,
+    "gzip_kB": 0.47
+  },
+  {
+    "chunk": "input-CjGNap2P.js",
+    "kB": 0.88,
+    "gzip_kB": 0.45
+  },
+  {
+    "chunk": "separator-kAmBGdLo.js",
+    "kB": 0.91,
+    "gzip_kB": 0.51
+  },
+  {
+    "chunk": "empty-Cw8gSRMC.js",
+    "kB": 1.34,
+    "gzip_kB": 0.56
+  },
+  {
+    "chunk": "Arquivo-CR3SBJpe.js",
+    "kB": 1.36,
+    "gzip_kB": 0.73
+  },
+  {
+    "chunk": "card-DLK0D8yZ.js",
+    "kB": 1.5,
+    "gzip_kB": 0.63
+  },
+  {
+    "chunk": "Login-B0J5nhbF.js",
+    "kB": 1.57,
+    "gzip_kB": 0.76
+  },
+  {
+    "chunk": "LinhaPedido-BLPOzmQK.js",
+    "kB": 1.8,
+    "gzip_kB": 0.8
+  },
+  {
+    "chunk": "badge-CrLu1gUy.js",
+    "kB": 1.86,
+    "gzip_kB": 0.79
+  },
+  {
+    "chunk": "Peca-DOov7Tm_.js",
+    "kB": 1.88,
+    "gzip_kB": 0.88
+  },
+  {
+    "chunk": "useDebounce-CorLpDXX.js",
+    "kB": 1.99,
+    "gzip_kB": 0.93
+  },
+  {
+    "chunk": "Feedbacks-DO6MAD5E.js",
+    "kB": 2.34,
+    "gzip_kB": 1.05
+  },
+  {
+    "chunk": "formato-DR6Eubrl.js",
+    "kB": 2.51,
+    "gzip_kB": 1.1
+  },
+  {
+    "chunk": "Vendas-n95StYkH.js",
+    "kB": 2.59,
+    "gzip_kB": 1.21
+  },
+  {
+    "chunk": "item-i80CNWda.js",
+    "kB": 2.66,
+    "gzip_kB": 1.0
+  },
+  {
+    "chunk": "sheet-C76Pvfxp.js",
+    "kB": 2.71,
+    "gzip_kB": 0.91
+  },
+  {
+    "chunk": "field-QbHcCNyF.js",
+    "kB": 2.72,
+    "gzip_kB": 1.02
+  },
+  {
+    "chunk": "Clube-Dyhc7j34.js",
+    "kB": 2.87,
+    "gzip_kB": 1.21
+  },
+  {
+    "chunk": "Repetidas-DslPeJbX.js",
+    "kB": 3.0,
+    "gzip_kB": 1.25
+  },
+  {
+    "chunk": "Foto-8ViUHGSI.js",
+    "kB": 3.05,
+    "gzip_kB": 1.51
+  },
+  {
+    "chunk": "toggle-kbQkoyXL.js",
+    "kB": 3.5,
+    "gzip_kB": 1.35
+  },
+  {
+    "chunk": "Romaneio-CvDAE1ZU.js",
+    "kB": 3.51,
+    "gzip_kB": 1.28
+  },
+  {
+    "chunk": "CampoBusca-B7JKtqpj.js",
+    "kB": 3.57,
+    "gzip_kB": 1.37
+  },
+  {
+    "chunk": "Quantidade-C0bdfv5V.js",
+    "kB": 3.67,
+    "gzip_kB": 1.69
+  },
+  {
+    "chunk": "trocaTexto-BwKc8_3-.js",
+    "kB": 4.72,
+    "gzip_kB": 2.07
+  },
+  {
+    "chunk": "tabs-DajX43uF.js",
+    "kB": 5.13,
+    "gzip_kB": 1.92
+  },
+  {
+    "chunk": "switch-DQnZQOEY.js",
+    "kB": 5.17,
+    "gzip_kB": 2.04
+  },
+  {
+    "chunk": "PecaClubeForm-BC48WAVH.js",
+    "kB": 5.54,
+    "gzip_kB": 2.42
+  },
+  {
+    "chunk": "dist-twT3c9Nh.js",
+    "kB": 7.52,
+    "gzip_kB": 2.86
+  },
+  {
+    "chunk": "button-DAvy-_uR.js",
+    "kB": 7.86,
+    "gzip_kB": 3.02
+  },
+  {
+    "chunk": "components-DZhbDO6R.js",
+    "kB": 8.88,
+    "gzip_kB": 3.62
+  },
+  {
+    "chunk": "dist-DkaA0mr3.js",
+    "kB": 12.73,
+    "gzip_kB": 4.54
+  },
+  {
+    "chunk": "Layout-BNPpfbM6.js",
+    "kB": 16.7,
+    "gzip_kB": 5.79
+  },
+  {
+    "chunk": "useImprimirEtiquetas-dgxexymd.js",
+    "kB": 19.7,
+    "gzip_kB": 7.89
+  },
+  {
+    "chunk": "dialog-jwfFto7U.js",
+    "kB": 20.39,
+    "gzip_kB": 7.49
+  },
+  {
+    "chunk": "Troca-DizNvAD0.js",
+    "kB": 20.52,
+    "gzip_kB": 6.27
+  },
+  {
+    "chunk": "hooks-Klqp3Si9.js",
+    "kB": 21.37,
+    "gzip_kB": 8.13
+  },
+  {
+    "chunk": "AdicionarPecas-aiMrhJp2.js",
+    "kB": 27.08,
+    "gzip_kB": 9.21
+  },
+  {
+    "chunk": "Venda-Cr2t1ryd.js",
+    "kB": 31.65,
+    "gzip_kB": 9.42
+  },
+  {
+    "chunk": "Expedicao-DuSZh6wy.js",
+    "kB": 31.97,
+    "gzip_kB": 10.3
+  },
+  {
+    "chunk": "RespDialog-BzSlcB8h.js",
+    "kB": 32.57,
+    "gzip_kB": 9.65
+  },
+  {
+    "chunk": "dist-DgVBvFz3.js",
+    "kB": 37.03,
+    "gzip_kB": 15.04
+  },
+  {
+    "chunk": "dist-0d1vmCSe.js",
+    "kB": 37.33,
+    "gzip_kB": 10.57
+  },
+  {
+    "chunk": "api-BPMebDRx.js",
+    "kB": 49.63,
+    "gzip_kB": 15.37
+  },
+  {
+    "chunk": "JsBarcode-Dftosdkr.js",
+    "kB": 64.14,
+    "gzip_kB": 11.3
+  },
+  {
+    "chunk": "Pedido-DuwAYfud.js",
+    "kB": 149.51,
+    "gzip_kB": 41.88
+  },
+  {
+    "chunk": "supabase-DJhU87rz.js",
+    "kB": 216.72,
+    "gzip_kB": 55.95
+  },
+  {
+    "chunk": "index-1Owia709.js",
+    "kB": 303.08,
+    "gzip_kB": 97.32
+  }
+]

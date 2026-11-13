@@ -2,20 +2,20 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** Fase 0, medição da linha de base; Fase 1, inventário efetivo.
+- **Fase/item atual:** Fase 2, primeiro bloco de integrações (V42); inventário efetivo criado.
 - **Base:** `3ce7b4a`, árvore limpa no início, 12/11/2026 (São Paulo).
-- **Concluído:** leitura de `CLAUDE.md`, Estado atual, Vistoria 1, Testes e Roadmap; regras e autorização desta vistoria registradas neste documento.
-- **Em andamento:** `npm test` inicial (log temporário `/tmp/arvenne-vistoria2-baseline.log`); este documento ainda sem commit inicial.
-- **Próximo passo exato:** ler resultado do teste inicial, gerar inventário pelo catálogo PostgreSQL em memória e medir banco remoto usando exclusivamente `npx supabase db query --remote --read-only`. Depois investigar cada item, começando por dinheiro e etapas.
+- **Concluído:** documento inicial em `42c8af6`; linha de base completa local; catálogo efetivo (71 funções, 13 views, 16 tabelas, 27 gatilhos, 56 migrations); métricas remotas e primeira conferência publicada.
+- **Em andamento:** V42 em `shopify-sync/index.ts` e `tests/unidade/shopify-sync.test.mjs` (3 reproduções vermelhas → 10 testes verdes). Scripts e inventário ainda sem commit; bloco completo de testes a executar.
+- **Próximo passo exato:** concluir contratos de paginação do checkout, corrigir leituras novas recusadas na auditoria; rodar `npm test`, commit por correção, deploy das Edges afetadas após os testes.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
 
 - [x] Ler regras, histórico V01–V41, testes e decisões anteriores.
-- [ ] Fase 0: testes, lint e bundle por chunk.
-- [ ] Fase 0: inconsistências, advisors e planos de consultas remotas.
-- [ ] Fase 0: site publicado, métricas móveis e requisições.
-- [ ] Fase 1: rotas, componentes de fluxo, integrações e catálogo SQL efetivo.
+- [x] Fase 0: testes, lint e bundle por chunk.
+- [x] Fase 0: inconsistências e advisors; quatro planos medidos, dois bloqueados por GRANT (ver limitações).
+- [x] Fase 0: site publicado e medidas móveis de laboratório; Lighthouse/INP ainda pendentes.
+- [x] Fase 1: rotas, componentes de fluxo, integrações e catálogo SQL efetivo.
 - [ ] Fase 2: dinheiro e conservação, inclusive desconto composto e reembolso.
 - [ ] Fase 2: etapas, desvios, repetição, concorrência e trabalho reaberto.
 - [ ] Fase 2: Shopify, catálogo, clientes, carrinho, ViaCEP, Zebra e links.
@@ -36,14 +36,14 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | Medida | Antes (`3ce7b4a`) | Depois |
 | --- | --- | --- |
-| `npm test` completo | Em execução | Pendente |
-| Lint | Pendente | Pendente |
-| Bundle por chunk | Pendente | Pendente |
-| Inconsistências remotas | Pendente | Pendente |
-| Advisors segurança/desempenho | Pendente | Pendente |
-| Planos SQL mais usados | Pendente | Pendente |
-| LCP / INP / CLS móvel | Pendente | Pendente |
-| Requisições / abertura de telas | Pendente | Pendente |
+| `npm test` completo | **109 unidade, 165 banco, 24 e2e**, tipos e build verdes | Pendente |
+| Lint | **8 avisos / 0 erros** (6 Fast Refresh, 1 hook mobile, 1 catch) | Pendente |
+| Bundle por chunk | Entrada 303,08 kB / gzip 97,32; Pedido 149,51 / 41,88; Supabase 216,72 / 55,95; demais abaixo | Pendente |
+| Inconsistências remotas | **12** (4 composição, 5 etapa, 1 pagamento, 1 venda sem composição, 1 troca inativa) | Pendente |
+| Advisors segurança/desempenho | **32**: 18 avisos, 14 informações, 0 erros; 5 FKs sem índice | Pendente |
+| Planos SQL mais usados | Execução: expedição **53,959 ms**, detalhe **8,176 ms**, v_pedidos **19,182 ms**, alterações **22,368 ms** | Pendente |
+| LCP / INP / CLS móvel | Expedição **1.752 ms / não medido / 0,0477**, laboratório sem throttling | Pendente |
+| Requisições / abertura de telas | Expedição **88 / 2.447 ms**, pedido **79 / 1.794 ms** (leituras novas bloqueadas) | Pendente |
 
 ## Correções e evidências
 
@@ -59,3 +59,48 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 ## Pendências e limitações
 
 Preencher com evidência ao concluir cada verificação. Itens ainda desmarcados não foram declarados concluídos.
+
+## Inventário por área
+
+O catálogo SQL, com assinaturas, GRANTs, RLS, hashes dos corpos e gatilhos efetivos está em [VISTORIA-2-INVENTARIO.md](VISTORIA-2-INVENTARIO.md). Checklist detalhado de revisão nesse arquivo; criar o inventário não significa concluir sua revisão.
+
+| Revisado | Rota / tela | Componentes de fluxo |
+| --- | --- | --- |
+| [ ] | `/login` | Login, Protegido |
+| [ ] | `/` | Expedição, CardPedido, LinhaPedido, Etapas, MenuAcoes, SeloAcerto, AvisoVistoria |
+| [ ] | `/vendas` | Vendas, LinhaPedido |
+| [ ] | `/vendas/nova` | NovaVenda, AdicionarPecas, BuscaPecas, ColarCarrinho |
+| [ ] | `/vendas/:id` | Venda, ClienteCard, PecasVenda, ResumoVenda, PagoDialog, SomarPedido |
+| [ ] | `/pedidos/:id` | Pedido, Cabecalho, PainelEtapa, Separacao, Conferencia, Etiquetagem, Bipagem, NotaFrete, Fechamento |
+| [ ] | fluxos auxiliares do pedido | TrocaDialog, ConfirmarTroca, AcertoTroca, Problemas, AvisoPendentes, AvisoConferencia, DialogEtapa, useAcoesPedido |
+| [ ] | consulta do pedido | AlteracoesDialog, HistoricoDialog, DadosCliente, CampoSalvo, LinhaPeca, TilePeca, Prazo |
+| [ ] | `/arquivo` | Arquivo, LinhaPedido, busca e carregar mais |
+| [ ] | `/repetidas` | Repetidas, miniaturas e pedidos |
+| [ ] | `/clube` | Clube, PecaClubeForm, CartaoCatalogo |
+| [ ] | `/feedbacks` | Feedbacks, FeedbackDialog |
+| [ ] | `/r/:token` | Romaneio, PaginaPublica, LinhaValor |
+| [ ] | `/t/:token` | Troca, carrinho, confirmação pública |
+| [ ] | estrutura transversal | Layout, AppSidebar, RespDialog, ErrorBoundary, Foto, Miniaturas, TempoReal, componentes ui |
+
+| Revisado | Integração | Entrada e fronteira |
+| --- | --- | --- |
+| [ ] | Shopify pedidos | Edge `shopify-sync`, `_shared/shopify.ts`, importação SQL; paginação, descontos, pagamentos, cancelamento, edições |
+| [ ] | Shopify catálogo | Edge `catalogo-sync`, cache `catalogo_site`, marcador completo/incremental, variantes avulsas |
+| [ ] | Shopify clientes | Edge `shopify-clientes`, `_shared/cliente.ts`, busca local/remota |
+| [ ] | Carrinhos | parser local `/cart/ID:QTD`, Edge `carrinho-ler` para checkout; `/cart/c/` explicitamente recusado |
+| [ ] | Endereço e empresa | ViaCEP; CNPJá e BrasilAPI (também existem no código) |
+| [ ] | Zebra | `zebra.ts`, `etiquetas.ts`, useImprimirEtiquetas, FolhaEtiquetas, Browser Print/fallback do navegador |
+| [ ] | WhatsApp | links `wa.me` de troca, romaneio e rastreio; nenhum envio automático |
+| [ ] | Supabase | Auth, PostgREST/RPC, Realtime e Storage de fotos (leituras/gravações separadas nos testes) |
+| [x] | Frenet | Sem integração HTTP ativa: preenchimento manual de dados; API só no roadmap |
+| [ ] | Cloudflare | build automático por push, SPA e arquivos estáticos |
+
+## Medições e ressalvas da linha de base
+
+- Banco remoto: 12 avisos preservados. `etapa_adiantada` também aparece em ARV-1272/1275 (além dos explicitamente citados pelo pedido): não houve alteração nesses pedidos.
+- Advisors: 4 funções públicas por token e 13 funções definer autenticadas intencionais; `feriados` sem policy intencional; proteção de senha vazada fora da autorização; 5 FKs sem índice e 8 índices ainda sem uso. Não apagar índices por estatísticas de banco novo.
+- Planos via `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` em transações somente leitura. `troca_painel` e `sugerir_troca` recusadas para `supabase_read_only_user`. O lote inicial abortou nessa permissão; repetido cada plano separadamente. Sem execução sob conta administrativa.
+- Site publicado, Chromium 390×844, sem throttling, reload completo e espera `networkidle`: vendas 49 req / 1.903 ms / LCP 1.080 ms / CLS 0,0359; arquivo 53 / 2.852 / 968 / 0,0382; Clube 45 / 2.579 / 1.196 / 0,0714; repetidas 50 / 2.453 / 1.608 / 0,0599; feedbacks 39 / 2.649 / 1.004 / 0,0170. Zero erros de JavaScript e overflow em todas. Browser Print foi bloqueado intencionalmente. `troca_painel` e `v_pedido_alteracoes` foram recusadas pela barreira (defeito da ferramenta de conferência, a corrigir). Não é Lighthouse nem INP de campo.
+- Baseline completa do build no log temporário `/tmp/arvenne-vistoria2-baseline.log`; métricas resumidas aqui permanecem versionadas. Os logs temporários não são a única evidência dos resultados.
+
+Bundle inicial completo por chunk, inclusive fontes: [VISTORIA-2-BUNDLE-ANTES.json](VISTORIA-2-BUNDLE-ANTES.json).
