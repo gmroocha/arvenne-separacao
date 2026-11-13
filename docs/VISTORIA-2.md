@@ -4,9 +4,9 @@
 
 - **Fase/item atual:** validação integral final antes da publicação.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42–V57 commitados; V58 neste commit. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
-- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-integral-atual.log`; sem commit adicional: 2 testes de tempo real, patch Vite 8.3.8 e ampliação da conferência publicada. Nenhuma migration aplicada, Edge publicada ou push ainda.
-- **Próximo passo exato:** concluir `npm test` atual; capturar publicado `--antes`; novo dry-run das 5 migrations, aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
+- **Concluído:** V42–V58 commitados. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
+- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-final-58.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. Nenhuma migration aplicada, Edge publicada ou push ainda.
+- **Próximo passo exato:** concluir `npm test` atual (inclui V58); publicado `--antes` e dry-run das 5 migrations já concluídos; aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -14,13 +14,13 @@
 - [x] Ler regras, histórico V01–V41, testes e decisões anteriores.
 - [x] Fase 0: testes, lint e bundle por chunk.
 - [x] Fase 0: inconsistências e advisors; quatro planos medidos, dois bloqueados por GRANT (ver limitações).
-- [x] Fase 0: site publicado e medidas móveis de laboratório; Lighthouse/INP ainda pendentes.
+- [x] Fase 0: site publicado e medidas móveis de laboratório; Lighthouse do login concluído; INP de campo indisponível, interação de laboratório medida.
 - [x] Fase 1: rotas, componentes de fluxo, integrações e catálogo SQL efetivo.
-- [ ] Fase 2: dinheiro e conservação, inclusive desconto composto e reembolso.
-- [ ] Fase 2: etapas, desvios, repetição, concorrência e trabalho reaberto.
-- [ ] Fase 2: Shopify, catálogo, clientes, carrinho, ViaCEP, Zebra e links.
-- [ ] Fase 2: segurança, permissões e páginas públicas.
-- [ ] Fase 2: design, acessibilidade e estados nas três larguras e dois temas.
+- [x] Fase 2: dinheiro e conservação, inclusive desconto composto e reembolso.
+- [x] Fase 2: etapas, desvios, repetição, concorrência e trabalho reaberto.
+- [x] Fase 2: Shopify, catálogo, clientes, carrinho, ViaCEP, Zebra e links.
+- [x] Fase 2: segurança, permissões e páginas públicas.
+- [x] Fase 2: design, acessibilidade e estados nas três larguras e dois temas.
 - [ ] Fase 2: desempenho, código e dependências.
 - [ ] Fase 3: propriedades, contratos Edge, e2e, visual, axe e desempenho.
 - [ ] Fase 4: testes finais, migrations/tipos/Edges necessários, push e conferência publicada.
@@ -68,7 +68,7 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V57 | Alta | Ao perder a resposta após salvar “Achei”, a etapa dependia de outra requisição: peça encontrada e pedido ainda Novo; falta parcial também podia ficar sem desvio. | RPC `alterar_item` com bloqueio do pedido grava peça/etapa juntas; `marcar_falta` conclui o desvio na própria transação, preservando origem. Remove segunda gravação do navegador. Sem alteração retroativa de dados. | `f9d3d17` | Browser reproduziu peça encontrada com pedido Novo e 3 casos SQL falharam antes. Agora 6 regressões SQL e 6 casos e2e de duplo clique, resposta perdida e entradas longas/HTML passam em celular/PC. Rede nega RPC real nos testes. |
 
-| V58 | Média | Nome da cliente preenchido como e-mail era devolvido integralmente por `romaneio_publico`, embora o campo separado de e-mail já fosse omitido. | Omitir nome com `@` no romaneio, como já faz `troca_publica`; preservar primeiro nome nos demais casos. Migration nova, sem editar dados. | Neste commit | Teste novo recebeu `privado@ficticio.test` antes e passou com `null` após; 6 testes de segurança verdes. |
+| V58 | Média | Nome da cliente preenchido como e-mail era devolvido integralmente por `romaneio_publico`, embora o campo separado de e-mail já fosse omitido. | Omitir nome com `@` no romaneio, como já faz `troca_publica`; preservar primeiro nome nos demais casos. Migration nova, sem editar dados. | `067309a` + `6b86f0c` | Teste novo recebeu `privado@ficticio.test` antes e passou com `null` após; 6 testes de segurança verdes. |
 
 ## Decisões tomadas sem o Gustavo
 
@@ -78,42 +78,47 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 ## Pendências e limitações
 
-Preencher com evidência ao concluir cada verificação. Itens ainda desmarcados não foram declarados concluídos.
+- INP de campo exige tráfego real e amostragem; medimos LCP/CLS de laboratório e duração do menu pelo Event Timing. Nenhum INP real inventado.
+- PGlite executa SQL real, mas serializa o acesso: dois navegadores provam disputa/cache/idempotência na interface, sem simular todos os bloqueios MVCC de um PostgreSQL com várias conexões.
+- Sem impressão física, sincronização real Shopify nem escrita nas páginas públicas do ambiente publicado: foram usados contratos e banco descartável, preservando todos os pedidos.
+- Advisor V35 de senha vazada permanece: Authentication/segredos estão fora da autorização. Os definers intencionais, feriados interna e índices ainda sem uso têm justificativa; não se remove proteção para zerar um contador.
+- `npm audit`: 6 avisos transitivos da CLI shadcn (2 baixos, 4 moderados; nenhum alto/crítico). Dry-run sem `--force` não encontra mudança compatível; minimatch 10 está preso por `@ts-morph/common` e a sugestão global rebaixa shadcn para 1.0.0. Mantidos e documentados; JS da CLI não entra no app (só CSS é importado). Atualizado apenas o patch seguro Vite 8.3.7 → 8.3.8.
+- Os 12 avisos históricos de pedidos são preservados; esta vistoria não faz correção retroativa de dados.
 
 ## Inventário por área
 
-O catálogo SQL, com assinaturas, GRANTs, RLS, hashes dos corpos e gatilhos efetivos está em [VISTORIA-2-INVENTARIO.md](VISTORIA-2-INVENTARIO.md). Checklist detalhado de revisão nesse arquivo; criar o inventário não significa concluir sua revisão.
+O catálogo SQL, com assinaturas, GRANTs, RLS, hashes dos corpos e gatilhos efetivos está em [VISTORIA-2-INVENTARIO.md](VISTORIA-2-INVENTARIO.md). Critério e alcance da revisão descritos nesse arquivo; marcar revisão não significa esgotar todas as entradas possíveis.
 
 | Revisado | Rota / tela | Componentes de fluxo |
 | --- | --- | --- |
-| [ ] | `/login` | Login, Protegido |
-| [ ] | `/` | Expedição, CardPedido, LinhaPedido, Etapas, MenuAcoes, SeloAcerto, AvisoVistoria |
-| [ ] | `/vendas` | Vendas, LinhaPedido |
-| [ ] | `/vendas/nova` | NovaVenda, AdicionarPecas, BuscaPecas, ColarCarrinho |
-| [ ] | `/vendas/:id` | Venda, ClienteCard, PecasVenda, ResumoVenda, PagoDialog, SomarPedido |
-| [ ] | `/pedidos/:id` | Pedido, Cabecalho, PainelEtapa, Separacao, Conferencia, Etiquetagem, Bipagem, NotaFrete, Fechamento |
-| [ ] | fluxos auxiliares do pedido | TrocaDialog, ConfirmarTroca, AcertoTroca, Problemas, AvisoPendentes, AvisoConferencia, DialogEtapa, useAcoesPedido |
-| [ ] | consulta do pedido | AlteracoesDialog, HistoricoDialog, DadosCliente, CampoSalvo, LinhaPeca, TilePeca, Prazo |
-| [ ] | `/arquivo` | Arquivo, LinhaPedido, busca e carregar mais |
-| [ ] | `/repetidas` | Repetidas, miniaturas e pedidos |
-| [ ] | `/clube` | Clube, PecaClubeForm, CartaoCatalogo |
-| [ ] | `/feedbacks` | Feedbacks, FeedbackDialog |
-| [ ] | `/r/:token` | Romaneio, PaginaPublica, LinhaValor |
-| [ ] | `/t/:token` | Troca, carrinho, confirmação pública |
-| [ ] | estrutura transversal | Layout, AppSidebar, RespDialog, ErrorBoundary, Foto, Miniaturas, TempoReal, componentes ui |
+| [x] | `/login` | Login, Protegido |
+| [x] | `/` | Expedição, CardPedido, LinhaPedido, Etapas, MenuAcoes, SeloAcerto, AvisoVistoria |
+| [x] | `/vendas` | Vendas, LinhaPedido |
+| [x] | `/vendas/nova` | NovaVenda, AdicionarPecas, BuscaPecas, ColarCarrinho |
+| [x] | `/vendas/:id` | Venda, ClienteCard, PecasVenda, ResumoVenda, PagoDialog, SomarPedido |
+| [x] | `/pedidos/:id` | Pedido, Cabecalho, PainelEtapa, Separacao, Conferencia, Etiquetagem, Bipagem, NotaFrete, Fechamento |
+| [x] | fluxos auxiliares do pedido | TrocaDialog, ConfirmarTroca, AcertoTroca, Problemas, AvisoPendentes, AvisoConferencia, DialogEtapa, useAcoesPedido |
+| [x] | consulta do pedido | AlteracoesDialog, HistoricoDialog, DadosCliente, CampoSalvo, LinhaPeca, TilePeca, Prazo |
+| [x] | `/arquivo` | Arquivo, LinhaPedido, busca e carregar mais |
+| [x] | `/repetidas` | Repetidas, miniaturas e pedidos |
+| [x] | `/clube` | Clube, PecaClubeForm, CartaoCatalogo |
+| [x] | `/feedbacks` | Feedbacks, FeedbackDialog |
+| [x] | `/r/:token` | Romaneio, PaginaPublica, LinhaValor |
+| [x] | `/t/:token` | Troca, carrinho, confirmação pública |
+| [x] | estrutura transversal | Layout, AppSidebar, RespDialog, ErrorBoundary, Foto, Miniaturas, TempoReal, componentes ui |
 
 | Revisado | Integração | Entrada e fronteira |
 | --- | --- | --- |
-| [ ] | Shopify pedidos | Edge `shopify-sync`, `_shared/shopify.ts`, importação SQL; paginação, descontos, pagamentos, cancelamento, edições |
-| [ ] | Shopify catálogo | Edge `catalogo-sync`, cache `catalogo_site`, marcador completo/incremental, variantes avulsas |
-| [ ] | Shopify clientes | Edge `shopify-clientes`, `_shared/cliente.ts`, busca local/remota |
-| [ ] | Carrinhos | parser local `/cart/ID:QTD`, Edge `carrinho-ler` para checkout; `/cart/c/` explicitamente recusado |
-| [ ] | Endereço e empresa | ViaCEP; CNPJá e BrasilAPI (também existem no código) |
-| [ ] | Zebra | `zebra.ts`, `etiquetas.ts`, useImprimirEtiquetas, FolhaEtiquetas, Browser Print/fallback do navegador |
-| [ ] | WhatsApp | links `wa.me` de troca, romaneio e rastreio; nenhum envio automático |
-| [ ] | Supabase | Auth, PostgREST/RPC, Realtime e Storage de fotos (leituras/gravações separadas nos testes) |
+| [x] | Shopify pedidos | Edge `shopify-sync`, `_shared/shopify.ts`, importação SQL; paginação, descontos, pagamentos, cancelamento, edições |
+| [x] | Shopify catálogo | Edge `catalogo-sync`, cache `catalogo_site`, marcador completo/incremental, variantes avulsas |
+| [x] | Shopify clientes | Edge `shopify-clientes`, `_shared/cliente.ts`, busca local/remota |
+| [x] | Carrinhos | parser local `/cart/ID:QTD`, Edge `carrinho-ler` para checkout; `/cart/c/` explicitamente recusado |
+| [x] | Endereço e empresa | ViaCEP; CNPJá e BrasilAPI (também existem no código) |
+| [x] | Zebra | `zebra.ts`, `etiquetas.ts`, useImprimirEtiquetas, FolhaEtiquetas, Browser Print/fallback do navegador |
+| [x] | WhatsApp | links `wa.me` de troca, romaneio e rastreio; nenhum envio automático |
+| [x] | Supabase | Auth, PostgREST/RPC, Realtime e Storage de fotos (leituras/gravações separadas nos testes) |
 | [x] | Frenet | Sem integração HTTP ativa: preenchimento manual de dados; API só no roadmap |
-| [ ] | Cloudflare | build automático por push, SPA e arquivos estáticos |
+| [x] | Cloudflare | build automático por push, SPA e arquivos estáticos |
 
 ## Medições e ressalvas da linha de base
 
@@ -152,3 +157,7 @@ Regressão visual do coração do app: adicionadas quatro referências da regiã
 Primeira suíte final verde (`/tmp/arvenne-vistoria2-final.log`): 134 unidade + 173 banco + 52 e2e (6,4 min nas telas), tipos e build. Entrada do bundle: 301,32 kB / gzip 96,68; Pedido: 149,50 / 41,86; Supabase: 216,72 / 55,95. O complemento de revisão ainda está em andamento, portanto esse resultado não declara toda a vistoria encerrada.
 
 Complemento de privacidade V58: teste vermelho e verde confirmado; a suíte iniciada antes desse achado tem 137 unidades/179 banco e 58 e2e em andamento. Repetir a suíte após esta migration antes de aplicar. Conferência publicada ampliada ANTES: 36 situações, nenhuma gravação bloqueada tentada, nenhum erro de console/JS/HTTP nem overflow. Dados de laboratório variam com a rede; não usar uma única amostra para alegar ganho causal.
+
+V58: ao gerar a migration a partir de `pg_get_functiondef`, faltou o `;` externo antes do GRANT. Os testes recusaram a preparação; corrigido em `6b86f0c`, 6 testes de segurança verdes. A execução em andamento foi interrompida e reiniciada do começo com todos os arquivos finais; nenhuma falha foi marcada esperada ou afrouxada.
+
+Revisão de código: nenhum `any` explícito nem `dangerouslySetInnerHTML` em `src`/Edges. Divisão por rota já usa `React.lazy`; consultas de catálogo mantêm cache de 5/30 min, listas agrupam eventos Realtime e têm polling de reserva (60 s desconectado, 300 s conectado). Preservado sem reescrita especulativa; V39 já agrupava a leitura da troca e V57 passa a agrupar peça/etapa na escrita. Sem novo serviço Frenet ou envio automático de WhatsApp.
