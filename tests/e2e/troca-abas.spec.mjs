@@ -9,7 +9,7 @@ test.afterEach(async () => { await sim?.fechar(); sim = null })
 
 // V40: com barra de rolagem visível (Windows), a lista da esquerda ganhava barra só na aba "Preço parecido" e as abas
 // davam um tranco de ~10 px. No celular, a gaveta crescia com o conteúdo e as abas subiam ~120 px. O Playwright esconde as barras por padrão; aqui elas aparecem como no computador da loja.
-test("V40: trocar de aba não desloca as abas; V38: Cobrir tudo esconde o campo e o número gigante", async ({ page, context, baseURL }, info) => {
+test("V40: trocar de aba não desloca as abas; V38: Cobrir tudo esconde o campo e o número gigante", async ({ page, context, baseURL }) => {
   sim = await criarSimulacao({ troca: true })
   await sim.banco.query(`insert into catalogo_site(variant_id,produto_id,sku,produto,preco,status,vende_sem_estoque)
     select n,n,'CAT-'||n,'Peça de teste '||n,40+(n%10),'ACTIVE',true from generate_series(1,40) n`)
