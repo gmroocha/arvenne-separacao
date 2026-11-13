@@ -41,7 +41,7 @@ begin
     'total_geral',   v.total_geral,
     'somada_a',      (select s.numero from public.pedidos s where s.id = v.somar_em and v.status = 'somada')
   );
-end $function$
+end $function$;
 
 revoke all on function public.romaneio_publico(uuid) from public;
 grant execute on function public.romaneio_publico(uuid) to anon, authenticated, service_role;
