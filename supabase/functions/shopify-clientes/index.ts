@@ -56,7 +56,7 @@ async function cpfPorCliente(ids: string[]): Promise<Map<string, string>> {
       const d = (campo?.value ?? "").replace(/\D/g, "");
       if (n?.legacyResourceId && (d.length === 11 || d.length === 14)) mapa.set(n.legacyResourceId, d);
     }
-  } catch (_) {
+  } catch {
     // segue sem CPF
   }
   return mapa;

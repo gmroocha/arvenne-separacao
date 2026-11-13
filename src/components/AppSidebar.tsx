@@ -1,3 +1,4 @@
+import { useSidebar } from "@/components/ui/sidebar-context"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
 import { Archive, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
@@ -16,7 +17,6 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar"
 
 export default function AppSidebar() {

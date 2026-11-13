@@ -5,7 +5,7 @@
 - **Fase/item atual:** Fase 2, bloco de integrações V42–V44; verificar suíte completa antes de aplicar.
 - **Base:** `3ce7b4a`, árvore limpa no início, 12/11/2026 (São Paulo).
 - **Concluído:** documento inicial em `42c8af6`; linha de base completa local; catálogo efetivo (71 funções, 13 views, 16 tabelas, 27 gatilhos, 56 migrations); métricas remotas e primeira conferência publicada.
-- **Em andamento:** V42 em `2fcb2f3`, V43 em `8808918`; V44 em `447774f`; V45 com migration e testes de segurança; V45 em `4ea876f`; V46 corrigido e com testes, falta commit. Nenhuma migration/Edge aplicada ainda. Dry-run V44 conferido; repetir com todas as migrations antes de aplicar. Scripts e linha de base em `f1f793e`.
+- **Em andamento:** V42 em `2fcb2f3`, V43 em `8808918`; V44 em `447774f`; V45 com migration e testes de segurança; V45 em `4ea876f`; V46 em `2a3ad25`; oito avisos antigos do lint eliminados sem mudar tokens/estilos. Nenhuma migration/Edge aplicada ainda. Dry-run V44 conferido; repetir com todas as migrations antes de aplicar. Scripts e linha de base em `f1f793e`.
 - **Próximo passo exato:** rodar `npm test`; aplicar `20261120100000_leituras_vistoria2.sql` com dry-run, regenerar tipos, publicar `shopify-sync` e `carrinho-ler`; medir os dois planos antes bloqueados. Prosseguir dinheiro, etapas e UI.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
@@ -117,3 +117,5 @@ Bundle inicial completo por chunk, inclusive fontes: [VISTORIA-2-BUNDLE-ANTES.js
 Contrato de paginação do checkout conferido na [API Shopify 2026-01 (AbandonedCheckout)](https://shopify.dev/docs/api/admin-graphql/2026-01/objects/AbandonedCheckout): conexão `lineItems` e interface Node permitem buscar as próximas páginas pelo ID. Nenhuma API real da Shopify foi acionada nos contratos.
 
 Varredura de segurança em PGlite: 16 tabelas com RLS; 13 views invoker; anon sem acesso a nenhuma relação interna; sem DELETE de pedidos/itens/movimentos/eventos; quatro definers públicos intencionais; respostas públicas verificadas recursivamente sem CPF/e-mail/endereço/telefone/dados brutos; token de outra troca recusado. Propriedade extra com centavos: 300 sequências (`PROP_SEED=45`) passaram em 105 s; nenhuma falha financeira nova encontrada nessa amostra.
+
+Manutenção do código: lint **8 → 0 avisos**, sem desabilitar regras. Exports internos sem uso removidos; variantes e contexto da sidebar separados para preservar Fast Refresh; `useIsMobile` usa assinatura de `matchMedia` por `useSyncExternalStore`; catch sem parâmetro inútil. `test:rapido`: tipos + lint + 122 unidades verdes. Bloco V42–V44: `npm test` verde (118 unidade, 166 banco, 24 e2e e build); V45/V46 entrarão na próxima suíte completa antes da aplicação.
