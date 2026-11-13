@@ -10,7 +10,7 @@ export default defineConfig({
     projects: [
       {
         resolve: { alias },
-        test: { name: "unidade", include: ["tests/unidade/**/*.test.{ts,mjs}"], environment: "node" },
+        test: { name: "unidade", include: ["tests/unidade/**/*.test.{ts,mjs}"], environment: "node", maxWorkers: 2 },
       },
       {
         resolve: { alias },
