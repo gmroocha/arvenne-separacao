@@ -5,7 +5,7 @@
 - **Fase/item atual:** Fase 2, bloco de integrações V42–V44; verificar suíte completa antes de aplicar.
 - **Base:** `3ce7b4a`, árvore limpa no início, 12/11/2026 (São Paulo).
 - **Concluído:** documento inicial em `42c8af6`; linha de base completa local; catálogo efetivo (71 funções, 13 views, 16 tabelas, 27 gatilhos, 56 migrations); métricas remotas e primeira conferência publicada.
-- **Em andamento:** V42 em `2fcb2f3`, V43 em `8808918`; V44 com migration nova, barreira e testes de permissão/rede alterados. Nenhuma migration/Edge aplicada ainda. Scripts e linha de base em `f1f793e`.
+- **Em andamento:** V42 em `2fcb2f3`, V43 em `8808918`; V44 em `447774f`; V45 com migration e testes de segurança; V46 em investigação no catálogo. Nenhuma migration/Edge aplicada ainda. Dry-run V44 conferido; repetir com todas as migrations antes de aplicar. Scripts e linha de base em `f1f793e`.
 - **Próximo passo exato:** rodar `npm test`; aplicar `20261120100000_leituras_vistoria2.sql` com dry-run, regenerar tipos, publicar `shopify-sync` e `carrinho-ler`; medir os dois planos antes bloqueados. Prosseguir dinheiro, etapas e UI.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
@@ -54,6 +54,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | V43 | Alta | Edge `carrinho-ler` lia só 100 linhas e comparava o token com `includes`, aceitando coincidência na query string de outro checkout. | Busca só ID/URL dos checkouts (sem conexão aninhada de 100×100); paginar linhas por ID até terminar; recusar falha/tempo/cursor inválido; comparar token exato do caminho. | `8808918` | Contrato novo: 3 reproduções falharam antes e passaram depois, incluindo 101 linhas. |
 
 | V44 | Média | Conferência segura recusava `troca_painel` e `v_pedido_alteracoes`; CLI sem EXECUTE no painel/sugestões. | Lista explícita de novas leituras na barreira; EXECUTE só em funções leitoras para conta de auditoria, mantendo anon e gravações bloqueados. | Commit desta correção | 2 casos de rede e 1 de banco falharam antes; 13 de rede e 9 de permissão verdes. |
+
+| V45 | Média | Quatro definers usavam `search_path=public` sem `pg_temp` no fim. Tabela temporária `pedido_eventos` desviava o histórico da escolha para fora da tabela real. | Fixar `public, pg_temp` nas quatro funções, em migration nova. | Commit desta correção | 2 reproduções falharam antes (histórico real = 0); 5 verificações de segurança verdes após. |
 
 ## Decisões tomadas sem o Gustavo
 
@@ -111,3 +113,5 @@ O catálogo SQL, com assinaturas, GRANTs, RLS, hashes dos corpos e gatilhos efet
 Bundle inicial completo por chunk, inclusive fontes: [VISTORIA-2-BUNDLE-ANTES.json](VISTORIA-2-BUNDLE-ANTES.json).
 
 Contrato de paginação do checkout conferido na [API Shopify 2026-01 (AbandonedCheckout)](https://shopify.dev/docs/api/admin-graphql/2026-01/objects/AbandonedCheckout): conexão `lineItems` e interface Node permitem buscar as próximas páginas pelo ID. Nenhuma API real da Shopify foi acionada nos contratos.
+
+Varredura de segurança em PGlite: 16 tabelas com RLS; 13 views invoker; anon sem acesso a nenhuma relação interna; sem DELETE de pedidos/itens/movimentos/eventos; quatro definers públicos intencionais; respostas públicas verificadas recursivamente sem CPF/e-mail/endereço/telefone/dados brutos; token de outra troca recusado. Propriedade extra com centavos: 300 sequências (`PROP_SEED=45`) passaram em 105 s; nenhuma falha financeira nova encontrada nessa amostra.
