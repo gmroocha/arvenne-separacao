@@ -21,7 +21,7 @@
 - [x] Fase 2: Shopify, catálogo, clientes, carrinho, ViaCEP, Zebra e links.
 - [x] Fase 2: segurança, permissões e páginas públicas.
 - [x] Fase 2: design, acessibilidade e estados nas três larguras e dois temas.
-- [ ] Fase 2: desempenho, código e dependências.
+- [x] Fase 2: desempenho, código e dependências (medições finais remotas na Fase 4).
 - [ ] Fase 3: propriedades, contratos Edge, e2e, visual, axe e desempenho.
 - [ ] Fase 4: testes finais, migrations/tipos/Edges necessários, push e conferência publicada.
 - [ ] Entrega: Estado atual, métricas antes/depois, pendências e resumo em português.
@@ -163,3 +163,5 @@ V58: ao gerar a migration a partir de `pg_get_functiondef`, faltou o `;` externo
 Revisão de código: nenhum `any` explícito nem `dangerouslySetInnerHTML` em `src`/Edges. Divisão por rota já usa `React.lazy`; consultas de catálogo mantêm cache de 5/30 min, listas agrupam eventos Realtime e têm polling de reserva (60 s desconectado, 300 s conectado). Preservado sem reescrita especulativa; V39 já agrupava a leitura da troca e V57 passa a agrupar peça/etapa na escrita. Sem novo serviço Frenet ou envio automático de WhatsApp.
 
 Compatibilidade V37/V57: a asserção de negócio antiga confirmou o retorno à Conferência, mas uma asserção de transporte ainda exigia a segunda RPC `sair_do_desvio` que V57 removeu. Substituída por exigência de **uma** RPC atômica e **zero** RPCs de segunda etapa, mantendo todas as expectativas de estado, tela e barreira. Não há relaxamento da regra de origem do desvio.
+
+Preparação de publicação: `git ls-remote` confirmou `origin/main` ainda em `3ce7b4a` (sem concorrência remota). Dry-run das **5** migrations aprovado; Deno check das **4** Edges verde. A nova suíte integral usa 137 unidades e 180 testes SQL (ambos verdes); aguarda as 58 telas e o build. Os dois valores privados conhecidos do `.env.local` não apareceram no bundle examinado, e a chave de frontend tem papel anon/publishable; repetir o scanner no build final.
