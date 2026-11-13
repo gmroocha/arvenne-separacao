@@ -2,11 +2,11 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** Fase 2/3, acessibilidade e regressões de tela V49/V50 (13/11/2026, São Paulo).
+- **Fase/item atual:** Fase 3, regressão visual e contratos; suíte completa do segundo bloco em execução.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42 `2fcb2f3`, V43 `8808918`, V44 `447774f`, V45 `4ea876f`, V46 `2a3ad25`, lint sem avisos `8b26dbf`, índices V48 `e4f026e`, cliente V47 `cc438cf`. Bloco inicial `npm test` verde; conservação com preços/limites de cobertura em centavos reforçada e 300 sequências adicionais verdes.
-- **Em andamento:** sem commit: axe no package/lock, `playwright.config.ts` (tablet), testes e2e de semântica/acessibilidade; TabsContent em Vendas/Feedbacks; nome/valor da Progress; tokens claros de contraste; gerador financeiro ampliado. Migrations V44/V45/V48 ainda NÃO aplicadas; Edges ainda NÃO publicadas.
-- **Próximo passo exato:** ler `/tmp/arvenne-v49-v50-verde.log`, corrigir qualquer falha sem afrouxar regras; inspecionar capturas em `capturas/vistoria2` (390/768/1280, claro/escuro), commit separado V49 e V50 com seus testes. Depois `npm test` completo, dry-run atualizado, aplicar migrations, regenerar tipos/baseAplicada, deploy das quatro Edges afetadas, push e conferência publicada sem gravação.
+- **Concluído:** V42–V51 commitados individualmente (tabela abaixo), lint 8→0 (`8b26dbf`), gerador financeiro em centavos (`82082e7`). Deno check das 4 Edges verde. Axe/teclado: 12 testes verdes, 54 situações, capturas inspecionadas; nenhuma regra desativada.
+- **Em andamento:** sem commit: `tests/e2e/visual.spec.mjs` (páginas públicas e limite de abertura), `tests/unidade/shopify-clientes.test.mjs` (5 contratos verdes). `npm test` do bloco 2 em `/tmp/arvenne-vistoria2-bloco2.log`; sem aplicação/publicação remota até passar.
+- **Próximo passo exato:** aguardar a suíte atual; gerar e inspecionar baselines visuais com `npx playwright test tests/e2e/visual.spec.mjs --update-snapshots` e repetir sem atualização; commit. Rodar suíte final com todos os novos testes. Dry-run atualizado, aplicar as 3 migrations, regenerar tipos/baseAplicada, deploy das 4 Edges afetadas, push e conferência publicada sem gravação.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -53,21 +53,23 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V43 | Alta | Edge `carrinho-ler` lia só 100 linhas e comparava o token com `includes`, aceitando coincidência na query string de outro checkout. | Busca só ID/URL dos checkouts (sem conexão aninhada de 100×100); paginar linhas por ID até terminar; recusar falha/tempo/cursor inválido; comparar token exato do caminho. | `8808918` | Contrato novo: 3 reproduções falharam antes e passaram depois, incluindo 101 linhas. |
 
-| V44 | Média | Conferência segura recusava `troca_painel` e `v_pedido_alteracoes`; CLI sem EXECUTE no painel/sugestões. | Lista explícita de novas leituras na barreira; EXECUTE só em funções leitoras para conta de auditoria, mantendo anon e gravações bloqueados. | Commit desta correção | 2 casos de rede e 1 de banco falharam antes; 13 de rede e 9 de permissão verdes. |
+| V44 | Média | Conferência segura recusava `troca_painel` e `v_pedido_alteracoes`; CLI sem EXECUTE no painel/sugestões. | Lista explícita de novas leituras na barreira; EXECUTE só em funções leitoras para conta de auditoria, mantendo anon e gravações bloqueados. | `447774f` | 2 casos de rede e 1 de banco falharam antes; 13 de rede e 9 de permissão verdes. |
 
-| V45 | Média | Quatro definers usavam `search_path=public` sem `pg_temp` no fim. Tabela temporária `pedido_eventos` desviava o histórico da escolha para fora da tabela real. | Fixar `public, pg_temp` nas quatro funções, em migration nova. | Commit desta correção | 2 reproduções falharam antes (histórico real = 0); 5 verificações de segurança verdes após. |
+| V45 | Média | Quatro definers usavam `search_path=public` sem `pg_temp` no fim. Tabela temporária `pedido_eventos` desviava o histórico da escolha para fora da tabela real. | Fixar `public, pg_temp` nas quatro funções, em migration nova. | `4ea876f` | 2 reproduções falharam antes (histórico real = 0); 5 verificações de segurança verdes após. |
 
-| V46 | Alta | Catálogo marcava sincronização concluída após produto sumir/paginação incompleta; consulta incremental aninhava 25×100 variantes. | Recusar paginação interrompida/repetida, preservar marcador, limitar tempo e reduzir lote de produtos para 3 (continua paginando todos). | Commit desta correção | 4 regressões falharam antes; 6 contratos verdes depois, incluindo >100 variantes. |
+| V46 | Alta | Catálogo marcava sincronização concluída após produto sumir/paginação incompleta; consulta incremental aninhava 25×100 variantes. | Recusar paginação interrompida/repetida, preservar marcador, limitar tempo e reduzir lote de produtos para 3 (continua paginando todos). | `2a3ad25` | 4 regressões falharam antes; 6 contratos verdes depois, incluindo >100 variantes. |
 
-| V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | Commit desta correção | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
+| V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | `e4f026e` | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
 
-| V47 | Alta | Na venda, digitar CNPJ, trocar para CPF e só então receber a resposta antiga preenchia empresa/endereço da cliente anterior. | Versão única para buscas CEP/CNPJ e seleção de cliente; respostas/erros antigos não alteram o formulário nem o indicador de carregamento. | Commit desta correção | E2E reproduziu empresa/endereço antigos; passou em 390 e 1280 após a correção. |
+| V47 | Alta | Na venda, digitar CNPJ, trocar para CPF e só então receber a resposta antiga preenchia empresa/endereço da cliente anterior. | Versão única para buscas CEP/CNPJ e seleção de cliente; respostas/erros antigos não alteram o formulário nem o indicador de carregamento. | `cc438cf` | E2E reproduziu empresa/endereço antigos; passou em 390 e 1280 após a correção. |
 
-| V51 | Média | Cliente HTTP Shopify não repetia HTTP 429 e seis tentativas podiam ultrapassar o teto da Edge, mesmo com tempo por chamada. | Prazo compartilhado entre token, requests e espera; cada Edge repassa seu prazo absoluto; 429 recuperável; erro claro ao esgotar o tempo. | Commit desta correção | 2 contratos falharam antes (429 e prazo de 5 s); 22 contratos de HTTP/Edges verdes após. Erro permanente não é repetido. |
+| V51 | Média | Cliente HTTP Shopify não repetia HTTP 429 e seis tentativas podiam ultrapassar o teto da Edge, mesmo com tempo por chamada. | Prazo compartilhado entre token, requests e espera; cada Edge repassa seu prazo absoluto; 429 recuperável; erro claro ao esgotar o tempo. | `b6eb0af` | 2 contratos falharam antes (429 e prazo de 5 s); 22 contratos de HTTP/Edges verdes após. Erro permanente não é repetido. |
 
-| V49 | Média | Abas de Vendas/Feedbacks apontavam para painéis inexistentes; barra de peças sem nome e sem valor ARIA. | Painéis TabsContent ligados às abas; progresso com título e percentual repassado à raiz Radix. | Commit desta correção | Axe/teclado falharam antes e passaram depois em 390/768/1280, dois temas. Capturas inspecionadas antes do commit. |
+| V49 | Média | Abas de Vendas/Feedbacks apontavam para painéis inexistentes; barra de peças sem nome e sem valor ARIA. | Painéis TabsContent ligados às abas; progresso com título e percentual repassado à raiz Radix. | `108341f` | Axe/teclado falharam antes e passaram depois em 390/768/1280, dois temas. Capturas inspecionadas antes do commit. |
 
-| V50 | Média | Avisos, selos de sucesso e textos secundários no claro tinham contraste de 3,24–4,42:1. | Ajustar quatro tokens claros, preservando funções semânticas e tema escuro. | Commit desta correção | Axe sem violações WCAG A/AA nas 9 telas × 3 larguras × 2 temas (54 situações). Capturas de celular/PC claro/escuro inspecionadas. |
+| V50 | Média | Avisos, selos de sucesso e textos secundários no claro tinham contraste de 3,24–4,42:1. | Ajustar quatro tokens claros, preservando funções semânticas e tema escuro. | `15239f1` | Axe sem violações WCAG A/AA nas 9 telas × 3 larguras × 2 temas (54 situações). Capturas de celular/PC claro/escuro inspecionadas. |
+
+| V52 | Média | ViaCEP/CNPJá/BrasilAPI sem limite: serviço sem resposta deixava a busca e o formulário esperando indefinidamente. | AbortSignal de 10 s por serviço; CNPJ ainda tenta a reserva e termina em até 20 s de rede. | Commit desta correção | 2 reproduções de rede parada falharam antes e passaram após; contrato de CEP inválido/inexistente/válido mantido. |
 
 ## Decisões tomadas sem o Gustavo
 

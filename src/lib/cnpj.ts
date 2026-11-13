@@ -12,7 +12,7 @@ const obj = (v: unknown) => (v && typeof v === "object" ? (v as Record<string, u
 
 // CNPJá (gratuita, sem chave, poucas consultas por minuto): traz a inscrição estadual.
 async function viaCnpja(cnpj: string): Promise<DadosCnpj | null> {
-  const res = await fetch(`https://open.cnpja.com/office/${cnpj}`)
+  const res = await fetch(`https://open.cnpja.com/office/${cnpj}`, { signal: AbortSignal.timeout(10_000) })
   if (!res.ok) return null
   const r = obj(await res.json())
   const nome = txt(obj(r.company).name)
@@ -41,7 +41,7 @@ async function viaCnpja(cnpj: string): Promise<DadosCnpj | null> {
 
 // BrasilAPI (gratuita, sem chave): razão social e endereço, mas sem inscrição estadual.
 async function viaBrasilApi(cnpj: string): Promise<DadosCnpj | null> {
-  const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
+  const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, { signal: AbortSignal.timeout(10_000) })
   if (res.status === 404) return null
   if (!res.ok) throw new Error("Não foi possível consultar o CNPJ")
   const r = obj(await res.json())
