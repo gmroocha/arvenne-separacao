@@ -59,6 +59,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V46 | Alta | Catálogo marcava sincronização concluída após produto sumir/paginação incompleta; consulta incremental aninhava 25×100 variantes. | Recusar paginação interrompida/repetida, preservar marcador, limitar tempo e reduzir lote de produtos para 3 (continua paginando todos). | Commit desta correção | 4 regressões falharam antes; 6 contratos verdes depois, incluindo >100 variantes. |
 
+| V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | Commit desta correção | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
+
 ## Decisões tomadas sem o Gustavo
 
 - Preservar comportamentos e decisões de produto documentados; nenhuma limpeza de dados antigos e nenhuma sincronização real durante testes.
