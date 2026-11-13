@@ -14,8 +14,14 @@ GA1803-N removida.
   `cliente_paga_previsto`). "Cobrir tudo" grava `cobrir_ate = 99999999.99` (`COBRIR_TUDO`).
 - **V39:** `troca_painel` lê a troca numa viagem só; a tela abre na hora com troca existente.
 
-**Próxima ação (Gustavo):** clicar "Sincronizar" para os pedidos da Shopify ganharem o motivo do desconto
-(cupom/automático); conferir uma troca com "Cobrir tudo" e uma falta marcada na Conferência.
+**Conferido no app real (12/11/2026, logado, Sincronizar clicado 2x):** 11 pedidos novos importados com o motivo
+do desconto (BLACK 15%, 10% OFF PIX, FRETE GRÁTIS); troca abre em ~160 ms; abas sem pulo no PC e no celular;
+ARV-1273 fica na Conferência com "Avisar cliente". Achados e corrigidos na conferência: V40b (gaveta do
+celular) e V41 (valor exato das linhas com dois descontos; `shopify-sync` republicada). O vigia ainda acusa
+composição em ARV-1273/1274/1276/1277: pedidos de teste antigos, mexidos antes do valor exato por linha
+(somem com o reset); todos os pedidos importados agora fecham no centavo.
+
+**Próxima ação (Gustavo):** conferir uma troca com "Cobrir tudo" e uma falta marcada na Conferência.
 
 - **Dados do pedido:** desconto com percentual e motivo ("Desconto · 25% · cupom PIX25", vindo de `descontos`), linha "Arvenne cobriu na troca" e linhas "Peças trocadas (N)" / "Peças removidas (N)" que abrem o diálogo das alterações.
 - **AlteracoesDialog** (`v_pedido_alteracoes`): cada alteração como "sai ↓ entra", valores do banco e quem/quando. Abre pelo selo "Peças trocadas" no cabeçalho, pelos dados do pedido e pelo texto "troca de X" da peça (focado nessa troca, sem valores nas etapas de peças).
