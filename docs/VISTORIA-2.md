@@ -67,6 +67,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V49 | Média | Abas de Vendas/Feedbacks apontavam para painéis inexistentes; barra de peças sem nome e sem valor ARIA. | Painéis TabsContent ligados às abas; progresso com título e percentual repassado à raiz Radix. | Commit desta correção | Axe/teclado falharam antes e passaram depois em 390/768/1280, dois temas. Capturas inspecionadas antes do commit. |
 
+| V50 | Média | Avisos, selos de sucesso e textos secundários no claro tinham contraste de 3,24–4,42:1. | Ajustar quatro tokens claros, preservando funções semânticas e tema escuro. | Commit desta correção | Axe sem violações WCAG A/AA nas 9 telas × 3 larguras × 2 temas (54 situações). Capturas de celular/PC claro/escuro inspecionadas. |
+
 ## Decisões tomadas sem o Gustavo
 
 - Preservar comportamentos e decisões de produto documentados; nenhuma limpeza de dados antigos e nenhuma sincronização real durante testes.
@@ -131,3 +133,5 @@ Manutenção do código: lint **8 → 0 avisos**, sem desabilitar regras. Export
 Lighthouse do login publicado (móvel, emulação/throttling padrão): desempenho **98**, acessibilidade **98**, boas práticas **100**, LCP **2,0 s**, CLS **0**, TBT **100 ms**. Autenticação não foi incluída nesse Lighthouse; telas internas têm medidas Chromium separadas.
 
 Decisão de design: os tokens claros de aviso/sucesso/erro/texto secundário são escurecidos só o necessário para WCAG AA sobre fundos suaves. Inter Tight, peso máximo semibold, cores semânticas e tema escuro preservados. Antes: axe apontou contraste 3,24–4,42:1 em selos/avisos; abas sem painel e progresso sem nome. Nenhuma regra do axe será desabilitada para passar.
+
+Validação visual/acessibilidade: `npx playwright test tests/e2e/semantica.spec.mjs tests/e2e/acessibilidade.spec.mjs`: **12 testes verdes**, 3,6 min, 54 situações de telas e 18 situações com troca de aba por teclado. Artefatos locais em `capturas/vistoria2/`, ignorados pelo git. Deno check das quatro Edges também passou (só análise de tipos, sem execução remota).
