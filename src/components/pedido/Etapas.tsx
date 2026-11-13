@@ -99,19 +99,19 @@ export default function Etapas({ status, etapaAntesDesvio, eventos, vista, aoVer
                   onClick={() => abrir(i)}
                   aria-current={vendo ? "step" : undefined}
                   className={cn(
-                    "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
-                    vendo && "border-primary bg-primary text-primary-foreground",
+                    "flex items-center gap-2 rounded-full inset-ring-(length:--traco) px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
+                    vendo && "inset-ring-primary bg-primary text-primary-foreground",
                     // Contorno suave + fundo tingido: o contorno branco de 1 px serrilhava no modo escuro.
-                    !vendo && ehAtual && "border-primary/35 bg-primary/10 text-foreground hover:bg-primary/15",
-                    !vendo && feita && "border-success/40 bg-success/10 text-success hover:bg-success/15",
-                    !vendo && !feita && !ehAtual && "bg-muted text-muted-foreground hover:bg-muted/70",
+                    !vendo && ehAtual && "inset-ring-primary/35 bg-primary/10 text-foreground hover:bg-primary/15",
+                    !vendo && feita && "inset-ring-success/40 bg-success/10 text-success hover:bg-success/15",
+                    !vendo && !feita && !ehAtual && "inset-ring-border bg-muted text-muted-foreground hover:bg-muted/70",
                   )}
                 >
                   {feita ? <Check className="size-4" /> : <Icone className="size-4" />}
                   {p.nome}
                   {ehAtual && <span className="sr-only">(etapa atual)</span>}
                 </button>
-                {i < PASSOS.length - 1 && <span className={cn("h-px w-4", i < atual ? "bg-success" : "bg-border")} />}
+                {i < PASSOS.length - 1 && <span className={cn("h-0.5 w-4", i < atual ? "bg-success" : "bg-border")} />}
               </li>
             )
           })}

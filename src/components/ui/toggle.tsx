@@ -13,7 +13,7 @@ const toggleVariants = cva(
     variants: {
       variant: {
         default: "bg-transparent aria-pressed:text-foreground data-[state=on]:text-foreground",
-        outline: "border border-input bg-transparent hover:bg-muted aria-pressed:text-foreground data-[state=on]:text-foreground data-[state=on]:hover:text-foreground",
+        outline: "border-0 inset-ring-(length:--traco) inset-ring-input bg-transparent hover:bg-muted aria-pressed:text-foreground data-[state=on]:text-foreground data-[state=on]:hover:text-foreground",
       },
       size: {
         default:
