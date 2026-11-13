@@ -2,11 +2,11 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** Fase 3, regressão visual e contratos; suíte completa do segundo bloco em execução.
+- **Fase/item atual:** Fase 3/4, consolidar a suíte final antes da aplicação (retomada em 13/11/2026).
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42–V51 commitados individualmente (tabela abaixo), lint 8→0 (`8b26dbf`), gerador financeiro em centavos (`82082e7`). Deno check das 4 Edges verde. Axe/teclado: 12 testes verdes, 54 situações, capturas inspecionadas; nenhuma regra desativada.
-- **Em andamento:** sem commit: `tests/e2e/visual.spec.mjs` (páginas públicas e limite de abertura), `tests/unidade/shopify-clientes.test.mjs` (5 contratos verdes). `npm test` do bloco 2 em `/tmp/arvenne-vistoria2-bloco2.log`; sem aplicação/publicação remota até passar.
-- **Próximo passo exato:** aguardar a suíte atual; gerar e inspecionar baselines visuais com `npx playwright test tests/e2e/visual.spec.mjs --update-snapshots` e repetir sem atualização; commit. Rodar suíte final com todos os novos testes. Dry-run atualizado, aplicar as 3 migrations, regenerar tipos/baseAplicada, deploy das 4 Edges afetadas, push e conferência publicada sem gravação.
+- **Concluído:** V42–V54 em commits individuais (tabela abaixo); oito avisos do lint eliminados. Contratos das quatro Edges, propriedades financeiras com centavos e oráculo de etapas (60 cenários/420 transições). Axe em 54 situações e oito baselines visuais geradas/inspecionadas, sem relaxar regras. Todos esses arquivos já commitados até `9950226`.
+- **Em andamento:** último `npm test` (`/tmp/arvenne-vistoria2-bloco2.log`) passou 125 unidades e 172 de banco, mas falhou por falta de memória/timeout em navegador. Máquina chegou a 7,4/7,6 GiB e swap 2/2 GiB, com trabalhos externos. Não considerar essa suíte verde. Servidor de teste órfão da execução encerrado; configuração temporária de visual removida (não necessária ao npm test).
+- **Próximo passo exato:** repetir a suíte final sem paralelismo entre tarefas próprias; verificar os 134 testes de unidade, 173 de banco e 48 e2e atualmente existentes. Manter todos os limites e assertivas. Após verde: dry-run das 3 migrations, aplicar, regenerar tipos/baseAplicada, publicar as 4 Edges, push e conferência publicada bloqueando gravações. Atualizar Estado atual e métricas antes/depois. Nada desta vistoria foi aplicado/publicado ainda.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -50,30 +50,18 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | ID | Gravidade | Onde / reprodução | Correção | Commit | Teste vermelho → verde |
 | --- | --- | --- | --- | --- | --- |
 | V42 | Alta | `shopify-sync`: pedido com >50 linhas; Shopify devolve nó nulo ou cursor repetido/ausente durante a paginação. A composição parcial era enviada ao banco como completa. | Recusar a importação desse pedido com erro claro; validar avanço do cursor e teto de tempo antes de cada página. Importação íntegra de 151 linhas coberta. | `2fcb2f3` | Contrato `shopify-sync.test.mjs`: 3 casos falharam antes; 10 passaram após. |
-
 | V43 | Alta | Edge `carrinho-ler` lia só 100 linhas e comparava o token com `includes`, aceitando coincidência na query string de outro checkout. | Busca só ID/URL dos checkouts (sem conexão aninhada de 100×100); paginar linhas por ID até terminar; recusar falha/tempo/cursor inválido; comparar token exato do caminho. | `8808918` | Contrato novo: 3 reproduções falharam antes e passaram depois, incluindo 101 linhas. |
-
 | V44 | Média | Conferência segura recusava `troca_painel` e `v_pedido_alteracoes`; CLI sem EXECUTE no painel/sugestões. | Lista explícita de novas leituras na barreira; EXECUTE só em funções leitoras para conta de auditoria, mantendo anon e gravações bloqueados. | `447774f` | 2 casos de rede e 1 de banco falharam antes; 13 de rede e 9 de permissão verdes. |
-
 | V45 | Média | Quatro definers usavam `search_path=public` sem `pg_temp` no fim. Tabela temporária `pedido_eventos` desviava o histórico da escolha para fora da tabela real. | Fixar `public, pg_temp` nas quatro funções, em migration nova. | `4ea876f` | 2 reproduções falharam antes (histórico real = 0); 5 verificações de segurança verdes após. |
-
 | V46 | Alta | Catálogo marcava sincronização concluída após produto sumir/paginação incompleta; consulta incremental aninhava 25×100 variantes. | Recusar paginação interrompida/repetida, preservar marcador, limitar tempo e reduzir lote de produtos para 3 (continua paginando todos). | `2a3ad25` | 4 regressões falharam antes; 6 contratos verdes depois, incluindo >100 variantes. |
-
 | V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | `e4f026e` | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
-
 | V47 | Alta | Na venda, digitar CNPJ, trocar para CPF e só então receber a resposta antiga preenchia empresa/endereço da cliente anterior. | Versão única para buscas CEP/CNPJ e seleção de cliente; respostas/erros antigos não alteram o formulário nem o indicador de carregamento. | `cc438cf` | E2E reproduziu empresa/endereço antigos; passou em 390 e 1280 após a correção. |
-
 | V51 | Média | Cliente HTTP Shopify não repetia HTTP 429 e seis tentativas podiam ultrapassar o teto da Edge, mesmo com tempo por chamada. | Prazo compartilhado entre token, requests e espera; cada Edge repassa seu prazo absoluto; 429 recuperável; erro claro ao esgotar o tempo. | `b6eb0af` | 2 contratos falharam antes (429 e prazo de 5 s); 22 contratos de HTTP/Edges verdes após. Erro permanente não é repetido. |
-
 | V49 | Média | Abas de Vendas/Feedbacks apontavam para painéis inexistentes; barra de peças sem nome e sem valor ARIA. | Painéis TabsContent ligados às abas; progresso com título e percentual repassado à raiz Radix. | `108341f` | Axe/teclado falharam antes e passaram depois em 390/768/1280, dois temas. Capturas inspecionadas antes do commit. |
-
 | V50 | Média | Avisos, selos de sucesso e textos secundários no claro tinham contraste de 3,24–4,42:1. | Ajustar quatro tokens claros, preservando funções semânticas e tema escuro. | `15239f1` | Axe sem violações WCAG A/AA nas 9 telas × 3 larguras × 2 temas (54 situações). Capturas de celular/PC claro/escuro inspecionadas. |
-
-| V52 | Média | ViaCEP/CNPJá/BrasilAPI sem limite: serviço sem resposta deixava a busca e o formulário esperando indefinidamente. | AbortSignal de 10 s por serviço; CNPJ ainda tenta a reserva e termina em até 20 s de rede. | Commit desta correção | 2 reproduções de rede parada falharam antes e passaram após; contrato de CEP inválido/inexistente/válido mantido. |
-
-| V53 | Média | Falha temporária no RPC do romaneio virava `null` e dizia “não encontrado”. | Distinguir falha de rede de link inexistente; erro claro e botão Tentar novamente. Token malformado continua como inexistente. | Commit desta correção | Regressão falhou antes e passou em celular/PC, claro/escuro; recuperação real com RPC fictícia, sem recarregar a página. Capturas inspecionadas. |
-
-| V54 | Média | Foto sem `width` nos cartões, repetidas, miniaturas e bipagem baixava o original inteiro da Shopify. | Limitar miniaturas a 600 px, preservar tamanhos menores explícitos e manter ampliação em 1200 px; outras origens intactas. | Commit desta correção | HTML realmente renderizado falhou sem width antes; passa com limite e preservação de tamanho/host. Layout preservado. |
+| V52 | Média | ViaCEP/CNPJá/BrasilAPI sem limite: serviço sem resposta deixava a busca e o formulário esperando indefinidamente. | AbortSignal de 10 s por serviço; CNPJ ainda tenta a reserva e termina em até 20 s de rede. | `ea54493` | 2 reproduções de rede parada falharam antes e passaram após; contrato de CEP inválido/inexistente/válido mantido. |
+| V53 | Média | Falha temporária no RPC do romaneio virava `null` e dizia “não encontrado”. | Distinguir falha de rede de link inexistente; erro claro e botão Tentar novamente. Token malformado continua como inexistente. | `dbd7182` | Regressão falhou antes e passou em celular/PC, claro/escuro; recuperação real com RPC fictícia, sem recarregar a página. Capturas inspecionadas. |
+| V54 | Média | Foto sem `width` nos cartões, repetidas, miniaturas e bipagem baixava o original inteiro da Shopify. | Limitar miniaturas a 600 px, preservar tamanhos menores explícitos e manter ampliação em 1200 px; outras origens intactas. | `7819cb8` | HTML realmente renderizado falhou sem width antes; passa com limite e preservação de tamanho/host. Layout preservado. |
 
 ## Decisões tomadas sem o Gustavo
 
@@ -147,3 +135,5 @@ Propriedades financeiras permanentes reforçadas: `conservacao.test.mjs` agora c
 Limitação observada durante a suíte do bloco 2: máquina com cerca de 6/7,6 GiB em uso e 1,8/2 GiB de swap, outros trabalhos ativos. Um teste visual estourou o tempo na preparação do PGlite (antes de abrir a tela), sem divergência de imagem. Não aumentar timeout nem marcar esperado: reduzir custo de preparar o banco e repetir a suíte integral antes de publicar.
 
 Fase 3: novo oráculo de etapas gerou 60 combinações de peças/documentos e conferiu as sete etapas posteriores tanto pela regra enviada à interface quanto pelo gatilho real (420 tentativas). Passou. Contratos da Edge de clientes: cinco casos verdes (busca curta, telefone E.164, CPF opcional indisponível e erro remoto). Baselines visuais novos totalizam oito PNGs (340 KiB); criados após inspeção, sem substituir referência antiga nem tolerância de pixels. Limite de abertura de pedido/troca em memória: 7 s, inclui navegador/SQL; não substitui métricas do site real.
+
+Retomada de 13/11: a execução anterior também falhou ao criar a página do Chromium e ao inspecionar uma tela já carregada, durante pressão extrema de memória. Não foi diagnosticado como regressão funcional nem ocultado como falha esperada; falta nova execução integral verde.
