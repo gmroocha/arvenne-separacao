@@ -8,6 +8,16 @@ import { cn } from "@/lib/utils"
 
 type Props = { url: string | null; alt?: string; ampliar?: boolean; className?: string }
 
+// Miniaturas sem transformação pediam o original inteiro da Shopify (até vários MB).
+// Preserve as menores já pedidas pelo chamador; a ampliação abaixo continua em 1200 px.
+function miniatura(url: string | null): string | null {
+  if (!url) return url
+  try {
+    const largura = Number(new URL(url).searchParams.get("width"))
+    return largura > 0 && largura <= 600 ? url : fotoTamanho(url, 600)
+  } catch { return url }
+}
+
 function Imagem({ url, alt, className }: { url: string | null; alt: string; className?: string }) {
   return url ? (
     <img draggable={false} src={url} alt={alt} loading="lazy" className={cn("size-full rounded-md object-cover", className)} />
@@ -22,7 +32,7 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
   const [aberta, setAberta] = useState(false)
   const quadro = (
     <AspectRatio ratio={1} className="overflow-hidden rounded-md bg-muted ring-1 ring-foreground/15 ring-inset">
-      <Imagem url={url} alt={alt} />
+      <Imagem url={miniatura(url)} alt={alt} />
     </AspectRatio>
   )
   if (!ampliar || !url) return <div className={className}>{quadro}</div>

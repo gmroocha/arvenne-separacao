@@ -73,6 +73,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V53 | Média | Falha temporária no RPC do romaneio virava `null` e dizia “não encontrado”. | Distinguir falha de rede de link inexistente; erro claro e botão Tentar novamente. Token malformado continua como inexistente. | Commit desta correção | Regressão falhou antes e passou em celular/PC, claro/escuro; recuperação real com RPC fictícia, sem recarregar a página. Capturas inspecionadas. |
 
+| V54 | Média | Foto sem `width` nos cartões, repetidas, miniaturas e bipagem baixava o original inteiro da Shopify. | Limitar miniaturas a 600 px, preservar tamanhos menores explícitos e manter ampliação em 1200 px; outras origens intactas. | Commit desta correção | HTML realmente renderizado falhou sem width antes; passa com limite e preservação de tamanho/host. Layout preservado. |
+
 ## Decisões tomadas sem o Gustavo
 
 - Preservar comportamentos e decisões de produto documentados; nenhuma limpeza de dados antigos e nenhuma sincronização real durante testes.
@@ -143,3 +145,5 @@ Validação visual/acessibilidade: `npx playwright test tests/e2e/semantica.spec
 Propriedades financeiras permanentes reforçadas: `conservacao.test.mjs` agora combina preços inteiros e fracionados em centavos e coberturas em centavos; não mantém cópia duplicada do teste. 300 sequências adicionais na seed 45 passaram em 96,34 s após ampliar o gerador.
 
 Limitação observada durante a suíte do bloco 2: máquina com cerca de 6/7,6 GiB em uso e 1,8/2 GiB de swap, outros trabalhos ativos. Um teste visual estourou o tempo na preparação do PGlite (antes de abrir a tela), sem divergência de imagem. Não aumentar timeout nem marcar esperado: reduzir custo de preparar o banco e repetir a suíte integral antes de publicar.
+
+Fase 3: novo oráculo de etapas gerou 60 combinações de peças/documentos e conferiu as sete etapas posteriores tanto pela regra enviada à interface quanto pelo gatilho real (420 tentativas). Passou. Contratos da Edge de clientes: cinco casos verdes (busca curta, telefone E.164, CPF opcional indisponível e erro remoto). Baselines visuais novos totalizam oito PNGs (340 KiB); criados após inspeção, sem substituir referência antiga nem tolerância de pixels. Limite de abertura de pedido/troca em memória: 7 s, inclui navegador/SQL; não substitui métricas do site real.
