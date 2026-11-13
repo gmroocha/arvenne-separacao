@@ -8,7 +8,7 @@ let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
 
 // V40: com barra de rolagem visível (Windows), a lista da esquerda ganhava barra só na aba "Preço parecido" e as abas
-// davam um tranco de ~10 px. O Playwright esconde as barras por padrão; aqui elas aparecem como no computador da loja.
+// davam um tranco de ~10 px. No celular, a gaveta crescia com o conteúdo e as abas subiam ~120 px. O Playwright esconde as barras por padrão; aqui elas aparecem como no computador da loja.
 test("V40: trocar de aba não desloca as abas; V38: Cobrir tudo esconde o campo e o número gigante", async ({ page, context, baseURL }, info) => {
   sim = await criarSimulacao({ troca: true })
   await sim.banco.query(`insert into catalogo_site(variant_id,produto_id,sku,produto,preco,status,vende_sem_estoque)
@@ -19,7 +19,7 @@ test("V40: trocar de aba não desloca as abas; V38: Cobrir tudo esconde o campo 
   await page.getByRole("button", { name: /Editar troca|Continuar troca/ }).first().click()
   const lista = page.locator('[data-slot="tabs-list"]')
   await expect(lista).toBeVisible()
-  const x = async () => (await lista.evaluate((e) => { const r = e.getBoundingClientRect(); return [r.x, r.width] }))
+  const x = async () => (await lista.evaluate((e) => { const r = e.getBoundingClientRect(); return [r.x, Math.round(r.y), r.width] }))
   await page.getByRole("tab", { name: "Variantes" }).click()
   await expect(page.getByRole("tab", { name: "Variantes" })).toHaveAttribute("data-state", "active")
   await expect(page.getByText("Incluir peças que já estão no pedido")).toBeVisible()

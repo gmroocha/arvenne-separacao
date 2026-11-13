@@ -925,9 +925,9 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       rolagemPropria
     >
       {celular ? (
-        <div className="flex min-w-0 flex-col gap-3">
+        <div className="flex min-h-full min-w-0 flex-col gap-3">
           {conteudo}
-          <Collapsible open={verOpcoes} onOpenChange={setVerOpcoes} className="sticky bottom-0 -mx-4 border-t bg-background px-4 pt-3 pb-4">
+          <Collapsible open={verOpcoes} onOpenChange={setVerOpcoes} className="sticky bottom-0 -mx-4 mt-auto border-t bg-background px-4 pt-3 pb-4">
             <CollapsibleContent>
               <AreaRolavel className="max-h-[40svh] pb-3">
                 <div className="flex flex-col gap-4">

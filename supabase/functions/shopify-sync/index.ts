@@ -214,7 +214,9 @@ export function valoresExatosDasLinhas(o: Pick<Pedido, "currentSubtotalPriceSet"
   const base = linhas.map((i) => i.qtd * unit(i));
   let resto = centavos(sub) - fora - base.reduce((t, v) => t + v, 0);
   const unidades = linhas.reduce((t, i) => t + i.qtd, 0);
-  if (Math.abs(resto) > Math.ceil(unidades / 2)) return null;
+  // Até 1 centavo por unidade: com dois descontos (ex.: BLACK 15% + 10% OFF PIX) a Shopify arredonda o
+  // unitário duas vezes e o resíduo passa de meio centavo por unidade (ARV-1287: 85 unidades, -45 centavos).
+  if (Math.abs(resto) > unidades) return null;
   const ordem = linhas.map((i, n) => n).filter((n) => linhas[n].qtd > 0).sort((a, b) => linhas[b].qtd - linhas[a].qtd || a - b);
   if (!ordem.length) return null;
   const passo = Math.sign(resto);

@@ -21,7 +21,16 @@ export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, 
   if (celular)
     return (
       <Drawer open={aberto} onOpenChange={aoMudar}>
-        <DrawerContent className={largo ? "data-[vaul-drawer-direction=bottom]:max-h-[94svh]" : undefined}>
+        <DrawerContent
+          className={
+            // Rolagem própria (TrocaDialog): altura fixa, para a gaveta não crescer/encolher ao trocar de aba.
+            rolagemPropria
+              ? "data-[vaul-drawer-direction=bottom]:h-[94svh] data-[vaul-drawer-direction=bottom]:max-h-[94svh]"
+              : largo
+                ? "data-[vaul-drawer-direction=bottom]:max-h-[94svh]"
+                : undefined
+          }
+        >
           <DrawerHeader className="text-left">
             <DrawerTitle>{titulo}</DrawerTitle>
             <DrawerDescription className={descricao ? undefined : "sr-only"}>{descricao ?? titulo}</DrawerDescription>

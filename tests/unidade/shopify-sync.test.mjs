@@ -80,6 +80,12 @@ test("V10: valor exato por linha fecha com o subtotal da Shopify", async () => {
   const l2 = [linha(2, "12.35"), linha(2, "7.65")]
   const r = valoresExatosDasLinhas({ currentSubtotalPriceSet: money("39.98"), lineItems: { nodes: l2 } }, l2, false)
   expect(r.reduce((t, v) => t + Math.round(Number(v) * 100), 0)).toBe(3998)
+  // V41: dois descontos arredondam o unitário duas vezes; o resíduo passa de meio centavo por unidade
+  // (ARV-1287 real: 85 unidades somam 580,55 e a Shopify cobrou 580,10 pelas peças).
+  const l3 = [linha(10, "13.05"), linha(10, "13.05"), linha(30, "4.92"), linha(20, "4.93"), linha(15, "4.89")]
+  const r3 = valoresExatosDasLinhas({ currentSubtotalPriceSet: money("580.1"), lineItems: { nodes: l3 } }, l3, false)
+  expect(r3).not.toBeNull()
+  expect(r3.reduce((t, v) => t + Math.round(Number(v) * 100), 0)).toBe(58010)
   // Diferença grande demais não é centavo de arredondamento: não arrisca.
   expect(valoresExatosDasLinhas({ currentSubtotalPriceSet: money("150.00"), lineItems: { nodes: l } }, l, false)).toBeNull()
   // Importação parcial (só o que falta enviar) não fecha com o subtotal do pedido inteiro.
