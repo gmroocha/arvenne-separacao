@@ -1,8 +1,8 @@
-const LEITURAS_RPC = new Set(["sugerir_troca", "troca_valor_pago", "categorias_catalogo", "troca_publica", "romaneio_publico"])
+const LEITURAS_RPC = new Set(["troca_painel", "sugerir_troca", "troca_valor_pago", "categorias_catalogo", "troca_publica", "romaneio_publico"])
 const TABELAS = new Set([
   "v_pedidos", "pedidos", "pedido_itens", "pedido_eventos", "trocas", "troca_pecas", "troca_opcoes",
   "troca_escolhas", "v_troca_valores", "v_troca_resumo", "v_troca_carrinho", "v_pedido_acerto",
-  "v_pecas_em_varios_pedidos", "catalogo_site", "catalogo_sincronizacao", "pecas_clube", "clientes", "feedbacks", "v_vistoria_resumo",
+  "v_pedido_alteracoes", "v_pecas_em_varios_pedidos", "catalogo_site", "catalogo_sincronizacao", "pecas_clube", "clientes", "feedbacks", "v_vistoria_resumo",
 ])
 
 export function permitirLeitura(url, metodo, { baseUrl, supabaseUrl }) {

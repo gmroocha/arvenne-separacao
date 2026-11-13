@@ -19,3 +19,12 @@ test("V31: permite apenas as leituras conhecidas no domínio correto", () => {
   expect(permitirLeitura(opcoes.baseUrl + "/src/main.tsx", "GET", opcoes)).toBe(true)
   expect(permitirLeitura(opcoes.baseUrl + "/gravacao", "POST", opcoes)).toBe(false)
 })
+
+test.each([
+  ['/rest/v1/rpc/troca_painel', 'POST'],
+  ['/rest/v1/v_pedido_alteracoes?select=*', 'GET'],
+])('V44: conferência permite a leitura nova %s sem liberar gravação', (path, metodo) => {
+  expect(permitirLeitura(opcoes.supabaseUrl + path, metodo, opcoes)).toBe(true)
+  expect(permitirLeitura(opcoes.supabaseUrl + path, 'PATCH', opcoes)).toBe(false)
+  expect(permitirLeitura('https://outro.test' + path, metodo, opcoes)).toBe(false)
+})

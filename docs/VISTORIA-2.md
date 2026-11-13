@@ -2,11 +2,11 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** Fase 2, primeiro bloco de integrações (V42); inventário efetivo criado.
+- **Fase/item atual:** Fase 2, bloco de integrações V42–V44; verificar suíte completa antes de aplicar.
 - **Base:** `3ce7b4a`, árvore limpa no início, 12/11/2026 (São Paulo).
 - **Concluído:** documento inicial em `42c8af6`; linha de base completa local; catálogo efetivo (71 funções, 13 views, 16 tabelas, 27 gatilhos, 56 migrations); métricas remotas e primeira conferência publicada.
-- **Em andamento:** V42 em `shopify-sync/index.ts` e `tests/unidade/shopify-sync.test.mjs` (3 reproduções vermelhas → 10 testes verdes). Scripts e inventário em `f1f793e`; V42 em `2fcb2f3`; bloco completo de testes a executar.
-- **Próximo passo exato:** concluir contratos de paginação do checkout, corrigir leituras novas recusadas na auditoria; rodar `npm test`, commit por correção, deploy das Edges afetadas após os testes.
+- **Em andamento:** V42 em `2fcb2f3`, V43 em `8808918`; V44 com migration nova, barreira e testes de permissão/rede alterados. Nenhuma migration/Edge aplicada ainda. Scripts e linha de base em `f1f793e`.
+- **Próximo passo exato:** rodar `npm test`; aplicar `20261120100000_leituras_vistoria2.sql` com dry-run, regenerar tipos, publicar `shopify-sync` e `carrinho-ler`; medir os dois planos antes bloqueados. Prosseguir dinheiro, etapas e UI.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -51,7 +51,9 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | --- | --- | --- | --- | --- | --- |
 | V42 | Alta | `shopify-sync`: pedido com >50 linhas; Shopify devolve nó nulo ou cursor repetido/ausente durante a paginação. A composição parcial era enviada ao banco como completa. | Recusar a importação desse pedido com erro claro; validar avanço do cursor e teto de tempo antes de cada página. Importação íntegra de 151 linhas coberta. | `2fcb2f3` | Contrato `shopify-sync.test.mjs`: 3 casos falharam antes; 10 passaram após. |
 
-| V43 | Alta | Edge `carrinho-ler` lia só 100 linhas e comparava o token com `includes`, aceitando coincidência na query string de outro checkout. | Busca só ID/URL dos checkouts (sem conexão aninhada de 100×100); paginar linhas por ID até terminar; recusar falha/tempo/cursor inválido; comparar token exato do caminho. | Commit desta correção | Contrato novo: 3 reproduções falharam antes e passaram depois, incluindo 101 linhas. |
+| V43 | Alta | Edge `carrinho-ler` lia só 100 linhas e comparava o token com `includes`, aceitando coincidência na query string de outro checkout. | Busca só ID/URL dos checkouts (sem conexão aninhada de 100×100); paginar linhas por ID até terminar; recusar falha/tempo/cursor inválido; comparar token exato do caminho. | `8808918` | Contrato novo: 3 reproduções falharam antes e passaram depois, incluindo 101 linhas. |
+
+| V44 | Média | Conferência segura recusava `troca_painel` e `v_pedido_alteracoes`; CLI sem EXECUTE no painel/sugestões. | Lista explícita de novas leituras na barreira; EXECUTE só em funções leitoras para conta de auditoria, mantendo anon e gravações bloqueados. | Commit desta correção | 2 casos de rede e 1 de banco falharam antes; 13 de rede e 9 de permissão verdes. |
 
 ## Decisões tomadas sem o Gustavo
 

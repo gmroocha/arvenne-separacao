@@ -95,3 +95,16 @@ test('V23: marcador do catálogo só é lido pela equipe e gravado pela função
     has_table_privilege('service_role','catalogo_sincronizacao','insert') funcao`)
   expect(r).toEqual({anon:false,le:true,grava:false,funcao:true})
 })
+
+test('V44: auditoria somente leitura acessa painel e sugestões com o mesmo contrato do app', async () => {
+  const f = await fixture()
+  // Infraestrutura do CLI hospedado: lê tabelas apesar do RLS, sem permissão de escrita.
+  await db.exec('reset role; grant usage on schema public to supabase_read_only_user; grant select on all tables in schema public to supabase_read_only_user; alter role supabase_read_only_user bypassrls; set local role supabase_read_only_user')
+  const painel = (await one('select troca_painel($1) p', [f.pedido.id])).p
+  expect(painel).not.toBeNull()
+  await db.query('select * from sugerir_troca($1)', [f.itens[0].id])
+  await db.query('select * from v_pedido_alteracoes where pedido_id=$1', [f.pedido.id])
+  await recusa(() => db.query("update pedidos set status='cancelado' where id=$1", [f.pedido.id]), /permission denied/)
+  await db.exec('set local role anon')
+  await recusa(() => one('select troca_painel($1)', [f.pedido.id]), /permission denied/)
+})
