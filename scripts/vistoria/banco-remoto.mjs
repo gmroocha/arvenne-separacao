@@ -17,16 +17,18 @@ const qRelacoes=`select c.relname nome,c.relkind tipo,c.relrowsecurity rls,c.rel
  has_table_privilege('authenticated',c.oid,'select') equipe,
  has_table_privilege('authenticated',c.oid,'delete') excluir
  from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','v') order by nome`
-const qPoliticas=`select tablename,policyname,permissive,roles,cmd,qual,with_check from pg_policies where schemaname='public' order by tablename,policyname`
+const qPoliticas=`select tablename,policyname,permissive,to_jsonb(roles) roles,cmd,qual,with_check from pg_policies where schemaname='public' order by tablename,policyname`
 const qGatilhos=`select c.relname tabela,t.tgname nome,pg_get_triggerdef(t.oid) definicao
  from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace
  where n.nspname='public' and not t.tgisinternal order by tabela,nome`
 const canon=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v)
+// A collation do PostgreSQL hospedado pode ordenar assinaturas de outro modo.
+const canonLinhas=linhas=>JSON.stringify(linhas.map(canon).sort())
 const db=await criarBanco(),comparacao={}
 try{
  for(const[nome,sql]of Object.entries({funcoes:qFuncoes,relacoes:qRelacoes,politicas:qPoliticas,gatilhos:qGatilhos})){
   const local=(await db.query(sql)).rows,remoto=await query(sql)
-  comparacao[nome]={locais:local.length,remotas:remoto.length,iguais:canon(local)===canon(remoto)}
+  comparacao[nome]={locais:local.length,remotas:remoto.length,iguais:canonLinhas(local)===canonLinhas(remoto)}
  }
 }finally{await db.close()}
 const locais=readdirSync('supabase/migrations').filter(x=>x.endsWith('.sql')).sort().map(x=>x.slice(0,14))

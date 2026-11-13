@@ -5,8 +5,8 @@
 - **Fase/item atual:** Fase 4 — aplicar e publicar após suíte integral verde.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
 - **Concluído:** V42–V58 commitados. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
-- **Resultado final:** `npm test` verde: **137 unidade, 180 banco, 58 e2e (7,4 min)**, tipos, lint sem avisos e build. Scanner do build final: 2 valores privados conhecidos ausentes, chave anon/publishable.
-- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-validacao-final.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. V37/V57 atualizado e verde em celular/PC; nenhuma migration aplicada, Edge publicada ou push ainda.
+- **Resultado final:** `npm test` verde: **137 unidade, 180 banco, 58 e2e (7,3 min)**, tipos, lint sem avisos e build. Scanner do build final: 2 valores privados conhecidos ausentes, chave anon/publishable.
+- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-validacao-final.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. 5 migrations aplicadas no Supabase; tipos oficiais regenerados; `shopify-sync` publicada. 4 Edges publicadas; tipos oficiais/complemento regenerados e tipos/lint/137 unidades/build verdes. Próximo: push e conferência final.
 - **Próximo passo exato:** suíte integral verde; publicado `--antes` e dry-run das 5 migrations concluídos; aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
@@ -163,3 +163,7 @@ Revisão de código: nenhum `any` explícito nem `dangerouslySetInnerHTML` em `s
 Compatibilidade V37/V57: a asserção de negócio antiga confirmou o retorno à Conferência, mas uma asserção de transporte ainda exigia a segunda RPC `sair_do_desvio` que V57 removeu. Substituída por exigência de **uma** RPC atômica e **zero** RPCs de segunda etapa, mantendo todas as expectativas de estado, tela e barreira. Não há relaxamento da regra de origem do desvio.
 
 Preparação de publicação: `git ls-remote` confirmou `origin/main` ainda em `3ce7b4a` (sem concorrência remota). Dry-run das **5** migrations aprovado; Deno check das **4** Edges verde. A nova suíte integral usa 137 unidades e 180 testes SQL (ambos verdes); aguarda as 58 telas e o build. Os dois valores privados conhecidos do `.env.local` não apareceram no bundle examinado, e a chave de frontend tem papel anon/publishable; repetir o scanner no build final.
+
+Aplicação confirmada: 5 migrations (`20261120100000` a `20261120140000`), sem seeds ou alteração de pedidos; quatro Edges publicadas (`shopify-sync`, `catalogo-sync`, `carrinho-ler`, `shopify-clientes`). Tipos remotos/complemento regenerados com base `20261120140000`; tipos, lint, 137 unidades e build novamente verdes, mesmos hashes de assets.
+
+Comparação remota: os corpos/permissões das 72 funções coincidem por assinatura. A comparação inicial marcou falso por ordem de collation diferente, e `pg_policies.roles` chegou do CLI como `{authenticated}` em vez de array: a ferramenta agora pede `to_jsonb(roles)` e compara conjuntos de linhas canônicas. Nenhuma diferença de função ou policy foi ignorada. As 29 relações, 27 gatilhos e 59 migrations já coincidiram.

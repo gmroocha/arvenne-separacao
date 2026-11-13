@@ -1737,6 +1737,10 @@ export type Database = {
         Args: { p_itens: Json; p_pedido: string; p_somar?: boolean }
         Returns: undefined
       }
+      alterar_item: {
+        Args: { p_campos: Json; p_item: string }
+        Returns: undefined
+      }
       bipar: {
         Args: { p_codigo: string; p_item: string; p_pedido: string }
         Returns: string
