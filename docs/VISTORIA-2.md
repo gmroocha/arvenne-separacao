@@ -2,12 +2,11 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** complemento de Fase 2/3 após a primeira suíte integral verde, antes da publicação.
+- **Fase/item atual:** validação integral final antes da publicação.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
-- **Concluído:** V42–V55 commitados; `npm test` verde em 13/11: **134 unidade, 173 banco, 52 e2e**, tipos, lint sem avisos e build. Dinheiro, 420 transições geradas, contratos Edge, segurança, erros e 12 baselines visuais cobertos. Dry-run confirmou as 3 migrations previstas; 54 remotas coincidem com a base. Corpos das 71 funções remotas iguais aos locais; só 4 configurações `search_path` aguardam alteração.
-- **Em andamento:** sem commit: V56 — lista preenchida de Vendas não tinha filhos listitem (axe reproduziu); `ItemGroup` agora usa `ul`, LinhaPedido e Repetidas usam `li`. Matriz axe ampliada às 12 rotas e listas preenchidas; testes de concorrência/queda/HTML em `concorrencia.spec.mjs`; dois testes de tempo real verdes (136 unidades ao todo); patch Vite 8.3.7→8.3.8 no lock. Nenhum deploy/aplicação remota ainda.
-- **Verificação complementar:** 12 testes de acessibilidade/concorrência passaram; V56 conferida visualmente nas quatro combinações. V57 atômica com 6 testes de banco verdes, aguarda suíte integral atual em `/tmp/arvenne-vistoria2-integral-atual.log`.
-- **Próximo passo exato:** concluir `/tmp/arvenne-vistoria2-complementos.log`; repetir `concorrencia.spec.mjs` com localizadores por botão (“Encontradas (1)”), sem relaxar expectativa. Caso de resposta retida precisa confirmar atomicidade da etapa: deve ficar Separação após recarregar, mesmo sem a resposta chegar. Concluir V56 e suas capturas. Depois suíte completa com os complementos, aplicar migrations/tipos/Edges, push e conferência publicada.
+- **Concluído:** V42–V56 commitados; V57 neste commit. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
+- **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-integral-atual.log`; sem commit adicional: 2 testes de tempo real, patch Vite 8.3.8 e ampliação da conferência publicada. Nenhuma migration aplicada, Edge publicada ou push ainda.
+- **Próximo passo exato:** concluir `npm test` atual; capturar publicado `--antes`; dry-run das 4 migrations, aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -65,7 +64,9 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | V54 | Média | Foto sem `width` nos cartões, repetidas, miniaturas e bipagem baixava o original inteiro da Shopify. | Limitar miniaturas a 600 px, preservar tamanhos menores explícitos e manter ampliação em 1200 px; outras origens intactas. | `7819cb8` | HTML realmente renderizado falhou sem width antes; passa com limite e preservação de tamanho/host. Layout preservado. |
 | V55 | Média | Falha na leitura de Expedição, Vendas, Arquivo, Clube, Repetidas ou Feedbacks aparecia como lista vazia (ou sem conteúdo). | Aviso comum com Tentar novamente; na falha de atualização mantém os dados anteriores com aviso. Sem lista vazia falsa na falha inicial. | `b20a113` | Reprodução HTTP 500 falhou no código anterior; recuperação e axe passaram em 24 situações (6 listas × 2 temas × celular/PC). Capturas nas quatro combinações inspecionadas. |
 
-| V56 | Média | Axe nas listas preenchidas de Vendas/Repetidas encontrou links diretamente sob `role=list`, sem listitem. | Grupo como `ul` e cada linha como `li`, mantendo navegação e aparência. | Neste commit | 6 verificações axe falharam antes; matriz ampliada de 12 rotas × 3 larguras × 2 temas passou (72 situações). Capturas de ambas as listas em 390/1280, claro/escuro, inspecionadas. |
+| V56 | Média | Axe nas listas preenchidas de Vendas/Repetidas encontrou links diretamente sob `role=list`, sem listitem. | Grupo como `ul` e cada linha como `li`, mantendo navegação e aparência. | `be5212a` | 6 verificações axe falharam antes; matriz ampliada de 12 rotas × 3 larguras × 2 temas passou (72 situações). Capturas de ambas as listas em 390/1280, claro/escuro, inspecionadas. |
+
+| V57 | Alta | Ao perder a resposta após salvar “Achei”, a etapa dependia de outra requisição: peça encontrada e pedido ainda Novo; falta parcial também podia ficar sem desvio. | RPC `alterar_item` com bloqueio do pedido grava peça/etapa juntas; `marcar_falta` conclui o desvio na própria transação, preservando origem. Remove segunda gravação do navegador. Sem alteração retroativa de dados. | Neste commit | Browser reproduziu peça encontrada com pedido Novo e 3 casos SQL falharam antes. Agora 6 regressões SQL e 6 casos e2e de duplo clique, resposta perdida e entradas longas/HTML passam em celular/PC. Rede nega RPC real nos testes. |
 
 ## Decisões tomadas sem o Gustavo
 

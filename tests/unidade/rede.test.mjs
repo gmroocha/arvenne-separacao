@@ -6,7 +6,7 @@ test.each([
   ["/rest/v1/pedido_itens", "PATCH"], ["/rest/v1/pedidos", "DELETE"],
   ["/functions/v1/catalogo-sync", "POST"], ["/functions/v1/catalogo-sync", "GET"],
   ["/storage/v1/object/fotos/clube/teste.webp", "POST"], ["/auth/v1/token", "POST"],
-  ["/rest/v1/rpc/somar_venda", "POST"], ["/rest/v1/rpc/somar_venda", "GET"],
+  ["/rest/v1/rpc/alterar_item", "POST"], ["/rest/v1/rpc/somar_venda", "POST"], ["/rest/v1/rpc/somar_venda", "GET"],
   ["/rest/v1/rpc/troca_carrinho", "POST"], ["/rest/v1/uma_tabela_nova", "GET"],
 ])("V31: bloqueia %s (%s)", (path, metodo) => {
   expect(permitirLeitura(opcoes.supabaseUrl + path, metodo, opcoes)).toBe(false)

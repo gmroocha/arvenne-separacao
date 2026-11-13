@@ -1,6 +1,6 @@
 // GERADO por npm run tipos:local a partir das migrations posteriores a 20261120090000.
 // Não editar à mão. O arquivo database.types.ts é gerado pelo Supabase CLI.
-import type { Database as Remoto } from './database.types'
+import type { Database as Remoto, Json } from './database.types'
 
 type Adicoes = {
   Tables: {
@@ -10,7 +10,7 @@ type Adicoes = {
 
   }
   Functions: {
-
+    alterar_item: { Args: { p_item: string | null; p_campos: Json | null }; Returns: undefined | null }
   }
 }
 

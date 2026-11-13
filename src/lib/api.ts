@@ -535,29 +535,11 @@ export function usePatchPedido(pedidoId: string) {
   })
 }
 
-// Sai do desvio "avisar/aguardando cliente" (função sair_do_desvio): o banco leva o pedido de volta à etapa de
-// onde ele veio, ou à Separação quando ainda sobra peça pendente, em falta ou com defeito.
-export function useSairDoDesvio() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (pedidoId: string) => {
-      await esperarFilaDoPedido(qc, pedidoId)
-      const { error } = await supabase.rpc("sair_do_desvio", { p_pedido: pedidoId })
-      if (error) throw error
-    },
-    onError: (e) => toast.error(msgBanco(e)),
-    onSettled: (_, __, pedidoId) => {
-      if (qc.isMutating({ mutationKey: ["item", pedidoId] }) === 0) qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
-      ;[["pedidos"], ["acerto"], ["etiquetar"], ["troca"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
-    },
-  })
-}
-
 const ESTADOS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "conferencia", "etiquetagem", "bipagem"]
 const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa: false, qtd_bipada: 0, bipado_em: null } as const
 
 // Todas as ações numa peça (achei, conferida, etiquetada, bipada, desfazer, falta, defeito...).
-// A peça muda na tela na hora; o banco confirma em seguida, uma gravação por vez por pedido.
+// A peça muda na tela na hora; alterar_item confirma peça e etapa juntas, uma gravação por vez por pedido.
 // Efeitos no pedido (nada disso trava o clique):
 //  - falta/defeito leva o pedido a "avisar cliente" (o banco guarda de qual etapa);
 //  - resolvidos os problemas, ele volta à etapa de origem (ou à separação, se sobra peça pendente);
@@ -565,8 +547,6 @@ const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa:
 //  - ao completar a etapa, chama aoCompletar (a tela abre o Dialog; quem muda de etapa é a pessoa).
 export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedido) => void) {
   const qc = useQueryClient()
-  const mudarStatus = useMudarStatus()
-  const sairDoDesvio = useSairDoDesvio()
   const chave = ["item", pedidoId]
 
   const gravar = useMutation({
@@ -587,8 +567,8 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
       }
       // Gravar o mesmo campo de novo não muda nada: se o banco estourou o tempo (57014), tenta mais uma vez
       // antes de desfazer na tela. Bipagem e +1/-1 acima somam e por isso não repetem.
-      let { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
-      if (error?.code === "57014") ({ error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId))
+      let { error } = await supabase.rpc("alterar_item", { p_item: itemId, p_campos: campos })
+      if (error?.code === "57014") ({ error } = await supabase.rpc("alterar_item", { p_item: itemId, p_campos: campos }))
       if (error) throw error
       return null
     },
@@ -632,13 +612,11 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
         destino = "avisar_cliente"
         toast.info("Avise a cliente sobre a peça em falta")
       } else if (!problemas && (estado === "avisar_cliente" || estado === "aguardando_cliente")) {
-        // V37: o banco decide para onde volta (a etapa de origem do desvio, ou a Separação se ainda sobra peça pendente).
-        sairDoDesvio.mutate(pedidoId)
+        // Só antecipa o diálogo de conclusão. A etapa é confirmada pela mesma RPC que grava a peça.
         estado = atual.etapa_antes_desvio ?? "separacao"
       } else if (estado === "novo" && campos.status === "encontrado") destino = "separacao"
       if (destino) {
         estado = destino
-        mudarStatus.mutate({ pedidoId, para: destino, silencioso: true })
       }
     }
     if (etapaCompleta(estado, depois) && !etapaCompleta(estado, antes)) aoCompletar?.(estado)
@@ -651,7 +629,6 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
 // a primeira peça em falta leva o pedido a "avisar cliente".
 export function useMarcarFalta(pedidoId: string) {
   const qc = useQueryClient()
-  const mudarStatus = useMudarStatus()
   return useMutation({
     mutationKey: ["item", pedidoId],
     scope: { id: `pedido-${pedidoId}` },
@@ -663,7 +640,6 @@ export function useMarcarFalta(pedidoId: string) {
       const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
       if (atual && ESTADOS_DE_PECAS.includes(atual.status)) {
         toast.info("Avise a cliente sobre a peça em falta")
-        mudarStatus.mutate({ pedidoId, para: "avisar_cliente", silencioso: true })
       }
     },
     onError: (e) => toast.error(msgBanco(e)),
