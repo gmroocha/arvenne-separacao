@@ -104,11 +104,11 @@ async function conferir(id, cfg) {
   }
 }
 
-const peca = fc.record({ preco: fc.integer({ min: 1, max: 300 }), qtd: fc.integer({ min: 1, max: 3 }) })
+const peca = fc.record({ preco: fc.oneof(fc.integer({ min: 1, max: 300 }), fc.integer({ min: 1, max: 30_000 }).map(c => c / 100)), qtd: fc.integer({ min: 1, max: 3 }) })
 const operacao = fc.oneof(
   fc.record({ tipo: fc.constant("remover"), k: fc.nat(9) }),
   fc.record({ tipo: fc.constant("falta"), k: fc.nat(9) }),
-  fc.record({ tipo: fc.constant("trocar"), k: fc.nat(9), preco: fc.integer({ min: 1, max: 400 }), cobertura: fc.integer({ min: 0, max: 50 }), credito: fc.boolean() }),
+  fc.record({ tipo: fc.constant("trocar"), k: fc.nat(9), preco: fc.oneof(fc.integer({ min: 1, max: 400 }), fc.integer({ min: 1, max: 40_000 }).map(c => c / 100)), cobertura: fc.oneof(fc.integer({ min: 0, max: 50 }), fc.integer({ min: 0, max: 5_000 }).map(c => c / 100)), credito: fc.boolean() }),
   fc.record({ tipo: fc.constant("receber") }),
   fc.record({ tipo: fc.constant("devolver") }),
   fc.record({ tipo: fc.constant("desfazer") }),

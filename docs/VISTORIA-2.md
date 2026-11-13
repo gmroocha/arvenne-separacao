@@ -135,3 +135,5 @@ Lighthouse do login publicado (móvel, emulação/throttling padrão): desempenh
 Decisão de design: os tokens claros de aviso/sucesso/erro/texto secundário são escurecidos só o necessário para WCAG AA sobre fundos suaves. Inter Tight, peso máximo semibold, cores semânticas e tema escuro preservados. Antes: axe apontou contraste 3,24–4,42:1 em selos/avisos; abas sem painel e progresso sem nome. Nenhuma regra do axe será desabilitada para passar.
 
 Validação visual/acessibilidade: `npx playwright test tests/e2e/semantica.spec.mjs tests/e2e/acessibilidade.spec.mjs`: **12 testes verdes**, 3,6 min, 54 situações de telas e 18 situações com troca de aba por teclado. Artefatos locais em `capturas/vistoria2/`, ignorados pelo git. Deno check das quatro Edges também passou (só análise de tipos, sem execução remota).
+
+Propriedades financeiras permanentes reforçadas: `conservacao.test.mjs` agora combina preços inteiros e fracionados em centavos e coberturas em centavos; não mantém cópia duplicada do teste. 300 sequências adicionais na seed 45 passaram em 96,34 s após ampliar o gerador.
