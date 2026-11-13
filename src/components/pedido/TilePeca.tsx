@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Progress } from "@/components/ui/progress"
+import { useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
 import { numeroTamanho, separarTamanho, codigoModelo } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
@@ -39,11 +40,12 @@ function SelosPeca({ item }: { item: Item }) {
 // Peça em bloco: foto grande, código, variante e quantidade legíveis no celular. O nome fica pequeno.
 // Instrução e ações ficam juntas no rodapé (mt-auto), para os blocos da mesma linha alinharem por baixo.
 export function TilePeca({ item, instrucao, contador, piscando, esmaecida, children }: TileProps) {
+  const { abrir } = useAlteracoesDoPedido()
   return (
     <div
       style={{ viewTransitionName: `peca-${item.id}` }}
       className={cn(
-        "flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300",
+        "flex flex-col gap-2 rounded-xl bg-card p-2 ring-(length:--traco) ring-foreground/10 transition-shadow duration-300",
         piscando && "ring-2 ring-primary",
         esmaecida && "bg-muted/40",
       )}
@@ -60,7 +62,14 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
         </div>
         {item.variante && <div className="text-sm leading-tight font-medium">{item.variante}</div>}
         <div className="line-clamp-1 text-xs text-muted-foreground">{item.nome}</div>
-        {item.observacao && <div className="text-xs text-muted-foreground">{item.observacao}</div>}
+        {item.observacao &&
+          (abrir && item.troca_peca_origem_id ? (
+            <button type="button" className="w-fit text-left text-xs text-muted-foreground underline underline-offset-4" onClick={() => abrir({ foco: item.id, comValores: false })}>
+              {item.observacao}
+            </button>
+          ) : (
+            <div className="text-xs text-muted-foreground">{item.observacao}</div>
+          ))}
       </div>
       {(instrucao || children) && (
         <div className="mt-auto flex flex-col gap-2">
@@ -80,7 +89,7 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
   const total = ordenados.reduce((n, i) => n + i.qtd, 0)
   const variacao = separarTamanho(base.variante).base
   return (
-    <div style={{ viewTransitionName: `peca-${base.id}` }} className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300">
+    <div style={{ viewTransitionName: `peca-${base.id}` }} className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-(length:--traco) ring-foreground/10 transition-shadow duration-300">
       <div className="relative">
         <Foto url={base.foto_url} alt={base.nome} ampliar className="w-full" />
         <SelosPeca item={base} />
@@ -165,6 +174,7 @@ type FaixaProps = {
 
 // Faixa recolhível das peças já feitas: miniaturas pequenas com Desfazer.
 export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesfazer, aoReimprimir, nota, abertaInicial = true, aoDesfazerTudo }: FaixaProps) {
+  const { abrir } = useAlteracoesDoPedido()
   const [aberta, setAberta] = useState(abertaInicial)
   const [confirmarTudo, setConfirmarTudo] = useState(false)
   if (itens.length === 0) return null
@@ -213,8 +223,9 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
             tamanho="md"
             semBorda
             entrando
-            className="gap-2 rounded-xl bg-success/5 p-2 ring-1 ring-success/30"
+            className="gap-2 rounded-xl bg-success/5 p-2 ring-(length:--traco) ring-success/30"
             inicio={<MarcaCheck />}
+            aoClicarObservacao={abrir && i.troca_peca_origem_id ? () => abrir({ foco: i.id, comValores: false }) : undefined}
           >
             {aoReimprimir && (
               <Button variant="ghost" size="toque" aria-label="Reimprimir" className="shrink-0" onClick={() => aoReimprimir(i)}>

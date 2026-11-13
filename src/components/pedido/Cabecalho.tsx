@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router"
-import { ArrowLeft, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, ArrowLeftRight, MoreHorizontal } from "lucide-react"
 import MenuAcoes from "@/components/MenuAcoes"
+import { contarAlteracoes, useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
 import { useAcoesPedido } from "@/components/pedido/useAcoesPedido"
 import Prazo from "@/components/pedido/Prazo"
 import { ehDesvio } from "@/lib/selo"
@@ -13,9 +14,12 @@ import { tempoDesde } from "@/lib/status"
 type Props = {
   pedido: PedidoDetalhe
   aoVerDados?: () => void // só nas etapas de foco, onde a lateral de dados some
+  semValores?: boolean // etapas de peças: o diálogo das peças trocadas abre sem dinheiro
 }
 
-export default function Cabecalho({ pedido, aoVerDados }: Props) {
+export default function Cabecalho({ pedido, aoVerDados, semValores }: Props) {
+  const { alteracoes, abrir } = useAlteracoesDoPedido()
+  const { trocadas } = contarAlteracoes(alteracoes)
   const navegar = useNavigate()
   const { grupos, dialogos } = useAcoesPedido(pedido, { aoVerDados, aoCancelado: () => navegar("/") })
   return (
@@ -33,6 +37,11 @@ export default function Cabecalho({ pedido, aoVerDados }: Props) {
             <span aria-hidden>·</span>
             <OrigemBadge origem={pedido.origem} />
             {pedido.fase === "expedicao" && <Prazo prazo={pedido.prazo} horasUteis={pedido.prazo_horas_uteis} />}
+            {alteracoes.length > 0 && abrir && (
+              <Button variant="outline" size="xs" onClick={() => abrir({ comValores: !semValores })}>
+                <ArrowLeftRight /> {trocadas > 0 ? "Peças trocadas" : "Peças alteradas"}
+              </Button>
+            )}
           </div>
           {/* Selo único: só no PC; no celular fica ao lado de "Etapa X de 8". */}
           {ehDesvio(pedido.status) && <SeloStatus status={pedido.status} className="mt-1 hidden w-fit lg:inline-flex" />}

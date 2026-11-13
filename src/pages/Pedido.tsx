@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
+import AlteracoesDialog from "@/components/pedido/AlteracoesDialog"
+import { AlteracoesContexto } from "@/components/pedido/alteracoesContexto"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
 import Cabecalho from "@/components/pedido/Cabecalho"
 import DadosCliente from "@/components/pedido/DadosCliente"
@@ -11,7 +13,7 @@ import AdicionarPecas from "@/components/AdicionarPecas"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAcoesItem, useSubstituirItem, useMudarStatus, usePatchPedido, usePedido, type PedidoDetalhe } from "@/lib/api"
+import { useAcoesItem, useSubstituirItem, useMudarStatus, usePatchPedido, useAlteracoes, usePedido, type PedidoDetalhe } from "@/lib/api"
 import { ETAPAS_DE_PECAS } from "@/lib/etapa"
 import { etapaAtual, type StatusPedido } from "@/lib/status"
 import type { Item, NovoItem } from "@/lib/tipos"
@@ -41,6 +43,8 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   const substituirItem = useSubstituirItem()
   const [adicionando, setAdicionando] = useState(false)
   const [trocando, setTrocando] = useState<Item | null>(null)
+  const alteracoes = useAlteracoes(pedido.id).data ?? []
+  const [verAlteracoes, setVerAlteracoes] = useState<{ foco: string | null; comValores: boolean } | null>(null)
 
   const aoAdicionar = (novos: NovoItem[]) => {
     if (!trocando) return
@@ -49,10 +53,14 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   }
 
   return (
+    <AlteracoesContexto.Provider
+      value={{ alteracoes, abrir: (o) => setVerAlteracoes({ foco: o?.foco ?? null, comValores: o?.comValores ?? true }) }}
+    >
     <div className="flex flex-col gap-4">
       <Cabecalho
         pedido={pedido}
         aoVerDados={foco ? () => setVerDados(true) : undefined}
+        semValores={foco}
       />
       {pedido.pedido_eventos.some((e) => e.tipo === "shopify_alterado") && (
         <Alert variant="warning">
@@ -112,7 +120,15 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           .filter((i) => i.status !== "removido")
           .map((i) => ({ sku: i.sku, shopify_variant_id: i.shopify_variant_id, peca_clube_id: i.peca_clube_id, qtd: i.qtd }))}
       />
+      <AlteracoesDialog
+        aberto={!!verAlteracoes}
+        aoMudar={(a) => !a && setVerAlteracoes(null)}
+        alteracoes={alteracoes}
+        foco={verAlteracoes?.foco}
+        semValores={verAlteracoes ? !verAlteracoes.comValores : false}
+      />
     </div>
+    </AlteracoesContexto.Provider>
   )
 }
 

@@ -1,52 +1,39 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ChevronDown, Copy, IdCard, Mail, Phone } from "lucide-react"
+import { ChevronDown, ChevronRight, Copy, History, IdCard, Mail, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useAdicionarNota, useAtualizarPedido, type PedidoDetalhe } from "@/lib/api"
+import { useAtualizarPedido, type PedidoDetalhe } from "@/lib/api"
 import { copiar } from "@/lib/copiar"
 import { digitos, linkWhatsApp, mascaraDocumento, mascaraTelefone, quando, reais } from "@/lib/formato"
-import { NOME_ETAPA, NOME_ITEM, type StatusItem } from "@/lib/status"
+import { rotuloDesconto } from "@/lib/desconto"
+import HistoricoDialog from "@/components/pedido/HistoricoDialog"
+import { contarAlteracoes, useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
 import { textoEndereco } from "@/lib/endereco"
-import type { Evento } from "@/lib/tipos"
 import { useIsMobile } from "@/hooks/use-mobile"
-
-const ROTULO_EVENTO: Record<string, string> = {
-  conferida: "Peça conferida", desconferida: "Conferência desfeita", etiquetada: "Peça etiquetada",
-  desetiquetada: "Etiqueta desfeita", bipada: "Peça bipada", qtd: "Quantidade alterada", preco: "Preço alterado",
-  nota_emitida: "Nota emitida", nota_desfeita: "Nota desfeita", frete_gerado: "Frete gerado", frete_desfeito: "Frete desfeito",
-  pedido_lr: "Pedido ao fornecedor (LR)", pedido_lr_desfeito: "Pedido ao fornecedor desfeito",
-  embalado: "Embalado", desembalado: "Embalagem desfeita", postado: "Postado", desfeito_postagem: "Postagem desfeita",
-  pago: "Pagamento registrado", rastreio_enviado: "Rastreio enviado à cliente", reiniciado: "Reiniciado",
-  devolvido: "Valor devolvido à cliente", devolvido_desfeito: "Devolução desfeita", shopify_alerta: "Aviso da Shopify",
-  troca_enviada: "Troca enviada à cliente", troca_respondida: "Cliente respondeu a troca", troca_concluida: "Troca concluída",
-  troca_acerto: "Acerto da troca", troca_carrinho: "Carrinho da troca", venda_somada: "Venda somada",
-  shopify_alterado: "Peças alteradas na Shopify",
-}
-
-function descreverEvento(e: Evento) {
-  if (ROTULO_EVENTO[e.tipo]) return [ROTULO_EVENTO[e.tipo], e.texto].filter(Boolean).join(" · ")
-  if (e.tipo === "nota") return e.texto ?? ""
-  if (e.tipo === "criado") return "Pedido criado"
-  if (e.tipo === "status")
-    return `${NOME_ETAPA[e.de as keyof typeof NOME_ETAPA] ?? e.de} → ${NOME_ETAPA[e.para as keyof typeof NOME_ETAPA] ?? e.para}`
-  return `Peça ${e.texto ?? ""} → ${NOME_ITEM[e.para as StatusItem] ?? e.para}`
-}
 
 // "Pix · R$ 90,00 · 10/11 14:32": uma parte do pagamento (o pedido ou uma venda somada).
 const textoPagamento = (forma: string | null, valor: number | null, pagoEm: string | null) =>
   [forma, valor != null ? reais(valor) : null, pagoEm ? quando(pagoEm) : null].filter(Boolean).join(" · ") || "—"
 
-function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
+function Linha({ rotulo, children }: { rotulo: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-3 text-sm">
       <span className="text-muted-foreground">{rotulo}</span>
       <span className="text-right tabular-nums">{children}</span>
     </div>
+  )
+}
+
+// Linha que abre o diálogo das peças trocadas/removidas.
+function LinhaAlteracao({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => void }) {
+  return (
+    <Button variant="ghost" size="sm" className="-mx-2 justify-between px-2 text-sm font-normal" onClick={aoClicar}>
+      {rotulo} <ChevronRight className="text-muted-foreground" />
+    </Button>
   )
 }
 
@@ -76,8 +63,11 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
   const celular = useIsMobile() && !semRecolher
   const [aberto, setAberto] = useState(false)
   const salvar = useAtualizarPedido([["pedido"]])
-  const nota = useAdicionarNota()
-  const [texto, setTexto] = useState("")
+  const [historico, setHistorico] = useState(false)
+  const { alteracoes, abrir } = useAlteracoesDoPedido()
+  const { trocadas, removidas } = contarAlteracoes(alteracoes)
+  const desc = rotuloDesconto(pedido)
+  const descLongo = desc.motivo != null && `${desc.base} · ${desc.motivo}`.length > 28
   const [obs, setObs] = useState(pedido.observacoes ?? "")
   const wa = linkWhatsApp(pedido.cliente_telefone, "")
   const partes = pedido.partes ?? []
@@ -145,7 +135,27 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
 
             <div className="flex flex-col gap-1.5 border-t pt-3">
               <Linha rotulo="Subtotal">{reais(pedido.subtotal)}</Linha>
-              {pedido.desconto > 0 && <Linha rotulo={pedido.cupom ? `Desconto (${pedido.cupom})` : "Desconto"}>− {reais(pedido.desconto)}</Linha>}
+              {pedido.desconto_sem_cobertura > 0 && (
+                <Linha
+                  rotulo={
+                    descLongo ? (
+                      <span className="flex flex-col">
+                        {desc.base}
+                        <span className="text-xs">{desc.motivo}</span>
+                      </span>
+                    ) : (
+                      [desc.base, desc.motivo].filter(Boolean).join(" · ")
+                    )
+                  }
+                >
+                  − {reais(pedido.desconto_sem_cobertura)}
+                </Linha>
+              )}
+              {pedido.troca_coberto > 0 && (
+                <Linha rotulo="Arvenne cobriu na troca">
+                  <span className="text-warning">− {reais(pedido.troca_coberto)}</span>
+                </Linha>
+              )}
               {pedido.desconto_pix > 0 && <Linha rotulo="Desconto Pix (10%)">− {reais(pedido.desconto_pix)}</Linha>}
               {pedido.frete_tipo && (
                 <Linha rotulo={`Frete ${pedido.frete_tipo}${pedido.frete_pago_por === "arvenne" ? " (Arvenne paga)" : ""}`}>
@@ -166,6 +176,13 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                 </Linha>
               )}
             </div>
+
+            {alteracoes.length > 0 && abrir && (
+              <div className="flex flex-col border-t pt-2">
+                {trocadas > 0 && <LinhaAlteracao rotulo={`Peças trocadas (${trocadas})`} aoClicar={() => abrir({ comValores: true })} />}
+                {removidas > 0 && <LinhaAlteracao rotulo={`Peças removidas (${removidas})`} aoClicar={() => abrir({ comValores: true })} />}
+              </div>
+            )}
 
             {partes.length > 0 && (
               <div className="flex flex-col gap-1.5 border-t pt-3">
@@ -205,38 +222,10 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
               />
             </Field>
 
-            <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="-ml-2">
-                  Histórico <ChevronDown />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="flex flex-col gap-3 pt-2">
-                <form
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    if (!texto.trim()) return
-                    nota.mutate({ pedidoId: pedido.id, texto: texto.trim() }, { onSuccess: () => setTexto("") })
-                  }}
-                >
-                  <Input aria-label="Nova nota" placeholder="Adicionar nota" value={texto} onChange={(e) => setTexto(e.target.value)} />
-                  <Button type="submit" variant="outline">
-                    Adicionar
-                  </Button>
-                </form>
-                <ul className="flex flex-col gap-1.5 text-sm">
-                  {pedido.pedido_eventos.map((e) => (
-                    <li key={e.id}>
-                      <span className="text-muted-foreground">
-                        {quando(e.created_at)} · {e.usuario_email ?? "sistema"} ·{" "}
-                      </span>
-                      {descreverEvento(e)}
-                    </li>
-                  ))}
-                </ul>
-              </CollapsibleContent>
-            </Collapsible>
+            <Button variant="outline" size="sm" className="w-fit" onClick={() => setHistorico(true)}>
+              <History /> Histórico
+            </Button>
+            <HistoricoDialog aberto={historico} aoMudar={setHistorico} pedidoId={pedido.id} eventos={pedido.pedido_eventos} />
           </CardContent>
         </CollapsibleContent>
       </Card>
