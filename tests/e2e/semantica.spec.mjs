@@ -28,3 +28,17 @@ for(const tema of ['light','dark']){
   }
  })
 }
+
+for(const tema of ['light','dark']){
+ test(`V59: login tem região principal para leitores de tela (${tema})`,async({context,page,baseURL},info)=>{
+  await context.addInitScript(t=>localStorage.setItem('theme',t),tema)
+  sim=await criarSimulacao();await sim.instalar(context,baseURL)
+  await page.goto('/login');await page.waitForLoadState('networkidle')
+  const r=await new AxeBuilder({page}).withRules(['landmark-one-main']).analyze()
+  expect(r.violations).toEqual([])
+  await expect(page.getByRole('main')).toContainText('Separação Arvenne')
+  mkdirSync('capturas/vistoria2',{recursive:true})
+  await page.screenshot({path:`capturas/vistoria2/login-landmark-${info.project.name}-${tema}.png`,fullPage:true,animations:'disabled'})
+  expect(sim.bloqueadas).toEqual([])
+ })
+}

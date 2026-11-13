@@ -24,7 +24,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-4">
+    <main className="flex min-h-svh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Separação Arvenne</CardTitle>
@@ -47,6 +47,6 @@ export default function Login() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }
