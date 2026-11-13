@@ -58,16 +58,20 @@ type Produto = {
   variants: { pageInfo: Pagina; nodes: Omit<Variante, "product">[] };
 };
 
-export async function completarVariantes(p: Produto) {
+export async function completarVariantes(p: Produto, limite = Date.now() + 90_000) {
   let pagina = p.variants.pageInfo;
+  const cursores = new Set<string>();
   while (pagina?.hasNextPage) {
+    if (!pagina.endCursor || cursores.has(pagina.endCursor)) throw new Error("A paginação das variantes não avançou. Tente atualizar o catálogo novamente.");
+    if (Date.now() >= limite) throw new Error("O tempo para ler todas as variantes acabou. Tente atualizar o catálogo novamente.");
+    cursores.add(pagina.endCursor);
     const data: { product: { variants: { pageInfo: Pagina; nodes: Omit<Variante, "product">[] } } | null } = await consulta(
       `query($id: ID!, $cursor: String) {
          product(id: $id) { variants(first: 100, after: $cursor) { pageInfo { hasNextPage endCursor } nodes { ${CAMPOS_VARIANTE} } } }
        }`,
       { id: p.id, cursor: pagina.endCursor },
     );
-    if (!data.product) break;
+    if (!data.product) throw new Error("Não foi possível ler todas as variantes do produto. Tente atualizar o catálogo novamente.");
     p.variants.nodes.push(...data.product.variants.nodes);
     pagina = data.product.variants.pageInfo;
   }
@@ -92,11 +96,13 @@ Deno.serve(async (req) => {
       desde?: string;
     };
     const agora = new Date().toISOString();
+    const limite = Date.now() + 90_000;
 
     if (variantIds?.length) {
       let total = 0;
       let removidas = 0;
       for (let i = 0; i < variantIds.length; i += 100) {
+        if (Date.now() >= limite) throw new Error("O tempo para ler as variantes acabou. Tente novamente.");
         const lote = variantIds.slice(i, i + 100).map((id) => `gid://shopify/ProductVariant/${id}`);
         const data = await consulta<{ nodes: (Variante | null)[] }>(
           `query($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { ${CAMPOS} } } }`,
@@ -132,14 +138,16 @@ Deno.serve(async (req) => {
     let total = 0;
     for (const f of filtros) {
       let cursor: string | null = null;
+      const cursores = new Set<string>();
       do {
+        if (Date.now() >= limite) throw new Error("O tempo para ler o catálogo acabou. Tente atualizar novamente.");
         let variantes: Variante[];
         let pagina: { hasNextPage: boolean; endCursor: string | null };
         if (f.produtos) {
           const data: { products: { pageInfo: Pagina; nodes: Produto[] } } =
             await consulta(
               `query($cursor: String, $q: String) {
-                 products(first: 25, after: $cursor, query: $q) {
+                 products(first: 3, after: $cursor, query: $q) {
                    pageInfo { hasNextPage endCursor }
                    nodes {
                      id legacyResourceId title status featuredMedia { preview { image { url } } }
@@ -150,7 +158,7 @@ Deno.serve(async (req) => {
               { cursor, q: f.consulta },
             );
           // V26: produto com mais de 100 variantes: busca as páginas seguintes dessas variantes.
-          for (const p of data.products.nodes) await completarVariantes(p);
+          for (const p of data.products.nodes) await completarVariantes(p, limite);
           variantes = data.products.nodes.flatMap((p) =>
             p.variants.nodes.map((v) => ({
               ...v,
@@ -175,7 +183,11 @@ Deno.serve(async (req) => {
         const linhas = variantes.map((n) => linha(n, agora));
         await gravar(linhas);
         total += linhas.length;
+        if (pagina.hasNextPage && (!pagina.endCursor || cursores.has(pagina.endCursor))) {
+          throw new Error("A paginação do catálogo não avançou. Tente atualizar novamente.");
+        }
         cursor = pagina.hasNextPage ? pagina.endCursor : null;
+        if (cursor) cursores.add(cursor);
       } while (cursor);
     }
 

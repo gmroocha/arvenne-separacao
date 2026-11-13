@@ -54,3 +54,33 @@ test("V26 e V23: produto com mais de 100 variantes lê todas as páginas e só e
   expect(sim.marcador.modo).toBe("incremental")
   expect(sim.marcador.variantes).toBe(101)
 })
+
+test.each([
+ ['produto desapareceu',null],
+ ['cursor repetido',{variants:{nodes:[variante(101)],pageInfo:{hasNextPage:true,endCursor:'c1'}}}],
+ ['cursor ausente',{variants:{nodes:[variante(101)],pageInfo:{hasNextPage:true,endCursor:null}}}],
+])('V46: não avança o marcador do catálogo quando %s na paginação',async(_nome,proxima)=>{
+ sim.gravado=[];sim.marcador=null;sim.respostas=[]
+ sim.respostas.push(()=>({productVariants:{pageInfo:{hasNextPage:false,endCursor:null},nodes:[]}}))
+ sim.respostas.push(()=>({products:{pageInfo:{hasNextPage:false,endCursor:null},nodes:[{
+  id:'gid://shopify/Product/1',...produto,variants:{pageInfo:{hasNextPage:true,endCursor:'c1'},nodes:[variante(1)]}
+ }]}}))
+ sim.respostas.push(()=>({product:proxima}))
+ sim.respostas.push(()=>({product:null})) // a implementação antiga quebrava o loop como se tivesse terminado
+ const r=await chamar({desde:'2026-11-12T10:00:00Z'})
+ expect(r.erro).toMatch(/variantes|paginação/)
+ expect(sim.marcador).toBeNull()
+ expect(sim.gravado).toEqual([])
+})
+
+test('V46: incremental não aninha 25 produtos por 100 variantes em uma consulta',async()=>{
+ sim.marcador=null;sim.respostas=[]
+ sim.respostas.push(()=>({productVariants:{pageInfo:{hasNextPage:false,endCursor:null},nodes:[]}}))
+ sim.respostas.push(q=>{
+  expect(q).toMatch(/products\(first: 3,/)
+  return {products:{pageInfo:{hasNextPage:false,endCursor:null},nodes:[]}}
+ })
+ const r=await chamar({desde:'2026-11-12T10:00:00Z'})
+ expect(r.erro).toBeUndefined()
+ expect(sim.marcador).not.toBeNull()
+})
