@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFeedbacks, useResolverFeedback } from "@/lib/api"
 import { quando } from "@/lib/formato"
 import type { Feedback } from "@/lib/tipos"
@@ -22,13 +22,12 @@ export default function Feedbacks() {
   const lista = (data ?? []).filter((f) => (aba === "abertos" ? !f.resolvido_em : Boolean(f.resolvido_em)))
 
   return (
-    <div className="flex flex-col gap-4">
-      <Tabs value={aba} onValueChange={(v) => setAba(v as typeof aba)}>
+    <Tabs value={aba} onValueChange={(v) => setAba(v as typeof aba)} className="flex flex-col gap-4">
         <TabsList variant="line">
           <TabsTrigger value="abertos">Abertos</TabsTrigger>
           <TabsTrigger value="resolvidos">Resolvidos</TabsTrigger>
         </TabsList>
-      </Tabs>
+      <TabsContent value={aba} className="flex flex-col gap-4">
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -80,6 +79,7 @@ export default function Feedbacks() {
           })}
         </div>
       )}
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }

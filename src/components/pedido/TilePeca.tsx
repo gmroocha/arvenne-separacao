@@ -153,7 +153,7 @@ export function ProgressoEtapa({ titulo, feitas, total, unidade }: { titulo: str
           {feitas} de {total} {unidade}
         </span>
       </div>
-      <Progress value={total ? (feitas / total) * 100 : 0} />
+      <Progress aria-label={titulo} value={total ? (feitas / total) * 100 : 0} />
     </div>
   )
 }

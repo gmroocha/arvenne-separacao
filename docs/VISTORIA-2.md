@@ -65,6 +65,8 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 
 | V51 | Média | Cliente HTTP Shopify não repetia HTTP 429 e seis tentativas podiam ultrapassar o teto da Edge, mesmo com tempo por chamada. | Prazo compartilhado entre token, requests e espera; cada Edge repassa seu prazo absoluto; 429 recuperável; erro claro ao esgotar o tempo. | Commit desta correção | 2 contratos falharam antes (429 e prazo de 5 s); 22 contratos de HTTP/Edges verdes após. Erro permanente não é repetido. |
 
+| V49 | Média | Abas de Vendas/Feedbacks apontavam para painéis inexistentes; barra de peças sem nome e sem valor ARIA. | Painéis TabsContent ligados às abas; progresso com título e percentual repassado à raiz Radix. | Commit desta correção | Axe/teclado falharam antes e passaram depois em 390/768/1280, dois temas. Capturas inspecionadas antes do commit. |
+
 ## Decisões tomadas sem o Gustavo
 
 - Preservar comportamentos e decisões de produto documentados; nenhuma limpeza de dados antigos e nenhuma sincronização real durante testes.

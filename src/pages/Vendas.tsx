@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { ItemGroup } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useDebounce } from "@/lib/useDebounce"
 import { LIMITE_LISTA, usePedidosFase } from "@/lib/api"
 import { digitos } from "@/lib/formato"
@@ -35,7 +35,7 @@ export default function Vendas() {
   const lista = da(aba)
 
   return (
-    <div className="flex flex-col gap-4">
+    <Tabs value={aba} onValueChange={(v) => setParams(v === "em_aberto" ? {} : { aba: "aguardando" }, { replace: true })} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <CampoBusca className="min-w-48 flex-1" valor={busca} aoMudar={setBusca} placeholder="Número, cliente ou telefone" />
         <Button asChild size="toque">
@@ -45,7 +45,6 @@ export default function Vendas() {
         </Button>
       </div>
 
-      <Tabs value={aba} onValueChange={(v) => setParams(v === "em_aberto" ? {} : { aba: "aguardando" }, { replace: true })}>
         <TabsList variant="line" className="max-w-full overflow-x-auto sem-barra justify-start">
           <TabsTrigger value="em_aberto">
             Em aberto <Badge variant="secondary">{da("em_aberto").length}</Badge>
@@ -54,7 +53,7 @@ export default function Vendas() {
             Aguardando pagamento <Badge variant="secondary">{da("aguardando_pagamento").length}</Badge>
           </TabsTrigger>
         </TabsList>
-      </Tabs>
+      <TabsContent value={aba} className="flex flex-col gap-4">
 
       {(data?.length ?? 0) >= LIMITE_LISTA && (
         <p className="text-xs text-muted-foreground">Mostrando as {LIMITE_LISTA} vendas mais recentes: pode haver mais. Use a busca.</p>
@@ -82,6 +81,7 @@ export default function Vendas() {
           ))}
         </ItemGroup>
       )}
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }
