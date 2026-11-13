@@ -2,11 +2,12 @@
 
 ## Retomar daqui
 
-- **Fase/item atual:** validação integral final antes da publicação.
+- **Fase/item atual:** Fase 4 — aplicar e publicar após suíte integral verde.
 - **Base:** `3ce7b4a`; inventário/medidas em `f1f793e`.
 - **Concluído:** V42–V58 commitados. Primeira suíte integral: **134 unidade, 173 banco, 52 e2e**, tipos/lint/build verdes. Complemento: 72 situações axe sem violações e 6 e2e de concorrência/queda/HTML verdes; 6 testes atômicos SQL verdes. Capturas de V56 inspecionadas nas quatro combinações.
+- **Resultado final:** `npm test` verde: **137 unidade, 180 banco, 58 e2e (7,4 min)**, tipos, lint sem avisos e build. Scanner do build final: 2 valores privados conhecidos ausentes, chave anon/publishable.
 - **Em andamento:** suíte completa atual em `/tmp/arvenne-vistoria2-validacao-final.log`; Tempo real, patch Vite 8.3.8 e conferência publicada ampliada commitados; inventário e medição remota em revisão. V37/V57 atualizado e verde em celular/PC; nenhuma migration aplicada, Edge publicada ou push ainda.
-- **Próximo passo exato:** concluir `npm test` atual (inclui V58 e contrato de transporte V37/V57 atualizado); publicado `--antes` e dry-run das 5 migrations já concluídos; aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
+- **Próximo passo exato:** suíte integral verde; publicado `--antes` e dry-run das 5 migrations concluídos; aplicar, tipos, 4 Edges, push. Repetir leituras/medidas/console publicados e fechar relatórios/inventário.
 - **Ao continuar:** ler esta seção, `git status`, `git log -10`; concluir alterações pendentes antes de iniciar outro defeito.
 
 ### Checklist do inventário
@@ -22,7 +23,7 @@
 - [x] Fase 2: segurança, permissões e páginas públicas.
 - [x] Fase 2: design, acessibilidade e estados nas três larguras e dois temas.
 - [x] Fase 2: desempenho, código e dependências (medições finais remotas na Fase 4).
-- [ ] Fase 3: propriedades, contratos Edge, e2e, visual, axe e desempenho.
+- [x] Fase 3: propriedades, contratos Edge, e2e, visual, axe e desempenho.
 - [ ] Fase 4: testes finais, migrations/tipos/Edges necessários, push e conferência publicada.
 - [ ] Entrega: Estado atual, métricas antes/depois, pendências e resumo em português.
 
@@ -54,20 +55,17 @@ Os avisos de ARV-1273/1274/1276/1277 e W0001/W0006/W0007/W0008 são históricos 
 | V44 | Média | Conferência segura recusava `troca_painel` e `v_pedido_alteracoes`; CLI sem EXECUTE no painel/sugestões. | Lista explícita de novas leituras na barreira; EXECUTE só em funções leitoras para conta de auditoria, mantendo anon e gravações bloqueados. | `447774f` | 2 casos de rede e 1 de banco falharam antes; 13 de rede e 9 de permissão verdes. |
 | V45 | Média | Quatro definers usavam `search_path=public` sem `pg_temp` no fim. Tabela temporária `pedido_eventos` desviava o histórico da escolha para fora da tabela real. | Fixar `public, pg_temp` nas quatro funções, em migration nova. | `4ea876f` | 2 reproduções falharam antes (histórico real = 0); 5 verificações de segurança verdes após. |
 | V46 | Alta | Catálogo marcava sincronização concluída após produto sumir/paginação incompleta; consulta incremental aninhava 25×100 variantes. | Recusar paginação interrompida/repetida, preservar marcador, limitar tempo e reduzir lote de produtos para 3 (continua paginando todos). | `2a3ad25` | 4 regressões falharam antes; 6 contratos verdes depois, incluindo >100 variantes. |
-| V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | `e4f026e` | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
 | V47 | Alta | Na venda, digitar CNPJ, trocar para CPF e só então receber a resposta antiga preenchia empresa/endereço da cliente anterior. | Versão única para buscas CEP/CNPJ e seleção de cliente; respostas/erros antigos não alteram o formulário nem o indicador de carregamento. | `cc438cf` | E2E reproduziu empresa/endereço antigos; passou em 390 e 1280 após a correção. |
-| V51 | Média | Cliente HTTP Shopify não repetia HTTP 429 e seis tentativas podiam ultrapassar o teto da Edge, mesmo com tempo por chamada. | Prazo compartilhado entre token, requests e espera; cada Edge repassa seu prazo absoluto; 429 recuperável; erro claro ao esgotar o tempo. | `b6eb0af` | 2 contratos falharam antes (429 e prazo de 5 s); 22 contratos de HTTP/Edges verdes após. Erro permanente não é repetido. |
+| V48 | Média | Advisor e catálogo confirmaram 5 FKs sem índice cobrindo a ordem de suas colunas. | Cinco índices de apoio, preservando todos os existentes. | `e4f026e` | Verificação genérica de cobertura de todas as FKs falhou com os mesmos 5 casos e passou após. Considera os índices parciais `IS NOT NULL` que já cobriam as outras relações. |
 | V49 | Média | Abas de Vendas/Feedbacks apontavam para painéis inexistentes; barra de peças sem nome e sem valor ARIA. | Painéis TabsContent ligados às abas; progresso com título e percentual repassado à raiz Radix. | `108341f` | Axe/teclado falharam antes e passaram depois em 390/768/1280, dois temas. Capturas inspecionadas antes do commit. |
 | V50 | Média | Avisos, selos de sucesso e textos secundários no claro tinham contraste de 3,24–4,42:1. | Ajustar quatro tokens claros, preservando funções semânticas e tema escuro. | `15239f1` | Axe sem violações WCAG A/AA nas 9 telas × 3 larguras × 2 temas (54 situações). Capturas de celular/PC claro/escuro inspecionadas. |
+| V51 | Média | Cliente HTTP Shopify não repetia HTTP 429 e seis tentativas podiam ultrapassar o teto da Edge, mesmo com tempo por chamada. | Prazo compartilhado entre token, requests e espera; cada Edge repassa seu prazo absoluto; 429 recuperável; erro claro ao esgotar o tempo. | `b6eb0af` | 2 contratos falharam antes (429 e prazo de 5 s); 22 contratos de HTTP/Edges verdes após. Erro permanente não é repetido. |
 | V52 | Média | ViaCEP/CNPJá/BrasilAPI sem limite: serviço sem resposta deixava a busca e o formulário esperando indefinidamente. | AbortSignal de 10 s por serviço; CNPJ ainda tenta a reserva e termina em até 20 s de rede. | `ea54493` | 2 reproduções de rede parada falharam antes e passaram após; contrato de CEP inválido/inexistente/válido mantido. |
 | V53 | Média | Falha temporária no RPC do romaneio virava `null` e dizia “não encontrado”. | Distinguir falha de rede de link inexistente; erro claro e botão Tentar novamente. Token malformado continua como inexistente. | `dbd7182` | Regressão falhou antes e passou em celular/PC, claro/escuro; recuperação real com RPC fictícia, sem recarregar a página. Capturas inspecionadas. |
 | V54 | Média | Foto sem `width` nos cartões, repetidas, miniaturas e bipagem baixava o original inteiro da Shopify. | Limitar miniaturas a 600 px, preservar tamanhos menores explícitos e manter ampliação em 1200 px; outras origens intactas. | `7819cb8` | HTML realmente renderizado falhou sem width antes; passa com limite e preservação de tamanho/host. Layout preservado. |
 | V55 | Média | Falha na leitura de Expedição, Vendas, Arquivo, Clube, Repetidas ou Feedbacks aparecia como lista vazia (ou sem conteúdo). | Aviso comum com Tentar novamente; na falha de atualização mantém os dados anteriores com aviso. Sem lista vazia falsa na falha inicial. | `b20a113` | Reprodução HTTP 500 falhou no código anterior; recuperação e axe passaram em 24 situações (6 listas × 2 temas × celular/PC). Capturas nas quatro combinações inspecionadas. |
-
 | V56 | Média | Axe nas listas preenchidas de Vendas/Repetidas encontrou links diretamente sob `role=list`, sem listitem. | Grupo como `ul` e cada linha como `li`, mantendo navegação e aparência. | `be5212a` | 6 verificações axe falharam antes; matriz ampliada de 12 rotas × 3 larguras × 2 temas passou (72 situações). Capturas de ambas as listas em 390/1280, claro/escuro, inspecionadas. |
-
 | V57 | Alta | Ao perder a resposta após salvar “Achei”, a etapa dependia de outra requisição: peça encontrada e pedido ainda Novo; falta parcial também podia ficar sem desvio. | RPC `alterar_item` com bloqueio do pedido grava peça/etapa juntas; `marcar_falta` conclui o desvio na própria transação, preservando origem. Remove segunda gravação do navegador. Sem alteração retroativa de dados. | `f9d3d17` | Browser reproduziu peça encontrada com pedido Novo e 3 casos SQL falharam antes. Agora 6 regressões SQL e 6 casos e2e de duplo clique, resposta perdida e entradas longas/HTML passam em celular/PC. Rede nega RPC real nos testes. |
-
 | V58 | Média | Nome da cliente preenchido como e-mail era devolvido integralmente por `romaneio_publico`, embora o campo separado de e-mail já fosse omitido. | Omitir nome com `@` no romaneio, como já faz `troca_publica`; preservar primeiro nome nos demais casos. Migration nova, sem editar dados. | `067309a` + `6b86f0c` | Teste novo recebeu `privado@ficticio.test` antes e passou com `null` após; 6 testes de segurança verdes. |
 
 ## Decisões tomadas sem o Gustavo

@@ -1,0 +1,391 @@
+{
+  "ambientePrivadoVerificado": 2,
+  "chaveFrontend": "anon/publishable",
+  "arquivos": [
+    {
+      "arquivo": "AdicionarPecas-D2GxfO4I.js",
+      "bytes": 27109,
+      "gzipBytes": 9191
+    },
+    {
+      "arquivo": "Arquivo-gpwtnTdz.js",
+      "bytes": 1515,
+      "gzipBytes": 818
+    },
+    {
+      "arquivo": "CampoBusca-DaNdONOH.js",
+      "bytes": 3570,
+      "gzipBytes": 1372
+    },
+    {
+      "arquivo": "Clube-BuM8sS7u.js",
+      "bytes": 3021,
+      "gzipBytes": 1303
+    },
+    {
+      "arquivo": "ErroConsulta-B7uW3UGm.js",
+      "bytes": 672,
+      "gzipBytes": 421
+    },
+    {
+      "arquivo": "Expedicao-xnB3AbuI.js",
+      "bytes": 32179,
+      "gzipBytes": 10357
+    },
+    {
+      "arquivo": "Feedbacks-31gu0cF1.js",
+      "bytes": 2540,
+      "gzipBytes": 1154
+    },
+    {
+      "arquivo": "Foto-D_WAUwVk.js",
+      "bytes": 3185,
+      "gzipBytes": 1560
+    },
+    {
+      "arquivo": "JsBarcode-Dftosdkr.js",
+      "bytes": 64142,
+      "gzipBytes": 11187
+    },
+    {
+      "arquivo": "Layout-BpgipQeE.js",
+      "bytes": 16737,
+      "gzipBytes": 5784
+    },
+    {
+      "arquivo": "LinhaPedido-MLaswmpl.js",
+      "bytes": 1835,
+      "gzipBytes": 810
+    },
+    {
+      "arquivo": "LinhaValor-C6UXEgn4.js",
+      "bytes": 463,
+      "gzipBytes": 288
+    },
+    {
+      "arquivo": "Login-DXE_dgLO.js",
+      "bytes": 1576,
+      "gzipBytes": 766
+    },
+    {
+      "arquivo": "NovaVenda-C-gbpaSo.js",
+      "bytes": 552,
+      "gzipBytes": 381
+    },
+    {
+      "arquivo": "PaginaPublica-Dz8vBmEh.js",
+      "bytes": 730,
+      "gzipBytes": 395
+    },
+    {
+      "arquivo": "Peca-v7tLOe8R.js",
+      "bytes": 1887,
+      "gzipBytes": 880
+    },
+    {
+      "arquivo": "PecaClubeForm-D3_npX20.js",
+      "bytes": 5567,
+      "gzipBytes": 2431
+    },
+    {
+      "arquivo": "Pedido-De-_9j4s.js",
+      "bytes": 149506,
+      "gzipBytes": 41657
+    },
+    {
+      "arquivo": "Prazo-pLDeYpmM.js",
+      "bytes": 640,
+      "gzipBytes": 420
+    },
+    {
+      "arquivo": "Protegido-emDSU386.js",
+      "bytes": 657,
+      "gzipBytes": 429
+    },
+    {
+      "arquivo": "Quantidade-C0bdfv5V.js",
+      "bytes": 3677,
+      "gzipBytes": 1686
+    },
+    {
+      "arquivo": "Repetidas-B19P0cvW.js",
+      "bytes": 3206,
+      "gzipBytes": 1360
+    },
+    {
+      "arquivo": "RespDialog-OR9Xq3V5.js",
+      "bytes": 32558,
+      "gzipBytes": 9641
+    },
+    {
+      "arquivo": "Romaneio-BPfAx8GY.js",
+      "bytes": 4045,
+      "gzipBytes": 1506
+    },
+    {
+      "arquivo": "SeloAcerto-BxyPEweP.js",
+      "bytes": 733,
+      "gzipBytes": 434
+    },
+    {
+      "arquivo": "Troca-AfrGdoy2.js",
+      "bytes": 20522,
+      "gzipBytes": 6250
+    },
+    {
+      "arquivo": "Vazio-jw3y9SAe.js",
+      "bytes": 674,
+      "gzipBytes": 411
+    },
+    {
+      "arquivo": "Venda-BckdltO8.js",
+      "bytes": 31829,
+      "gzipBytes": 9465
+    },
+    {
+      "arquivo": "Vendas-CIaC__fO.js",
+      "bytes": 2789,
+      "gzipBytes": 1320
+    },
+    {
+      "arquivo": "api-CQiz8L2q.js",
+      "bytes": 49170,
+      "gzipBytes": 15184
+    },
+    {
+      "arquivo": "archive-Ra5T5u2m.js",
+      "bytes": 281,
+      "gzipBytes": 226
+    },
+    {
+      "arquivo": "badge-CrLu1gUy.js",
+      "bytes": 1862,
+      "gzipBytes": 793
+    },
+    {
+      "arquivo": "button-DAvy-_uR.js",
+      "bytes": 7867,
+      "gzipBytes": 3020
+    },
+    {
+      "arquivo": "card-DLK0D8yZ.js",
+      "bytes": 1507,
+      "gzipBytes": 633
+    },
+    {
+      "arquivo": "chevron-right-Dry-jqAd.js",
+      "bytes": 158,
+      "gzipBytes": 157
+    },
+    {
+      "arquivo": "components-DZhbDO6R.js",
+      "bytes": 8886,
+      "gzipBytes": 3614
+    },
+    {
+      "arquivo": "dialog-iKM1OAO9.js",
+      "bytes": 20400,
+      "gzipBytes": 7474
+    },
+    {
+      "arquivo": "dist-0d1vmCSe.js",
+      "bytes": 37334,
+      "gzipBytes": 10555
+    },
+    {
+      "arquivo": "dist-3ARq8Wji.js",
+      "bytes": 12732,
+      "gzipBytes": 4520
+    },
+    {
+      "arquivo": "dist-CIibxg4o.js",
+      "bytes": 786,
+      "gzipBytes": 474
+    },
+    {
+      "arquivo": "dist-DF4c47GO.js",
+      "bytes": 9343,
+      "gzipBytes": 3585
+    },
+    {
+      "arquivo": "dist-DgVBvFz3.js",
+      "bytes": 37030,
+      "gzipBytes": 14960
+    },
+    {
+      "arquivo": "empty-CZJ3tZ3s.js",
+      "bytes": 1646,
+      "gzipBytes": 733
+    },
+    {
+      "arquivo": "field-QbHcCNyF.js",
+      "bytes": 2725,
+      "gzipBytes": 1022
+    },
+    {
+      "arquivo": "formato-DR6Eubrl.js",
+      "bytes": 2511,
+      "gzipBytes": 1099
+    },
+    {
+      "arquivo": "hand-coins-CxS0078-.js",
+      "bytes": 443,
+      "gzipBytes": 305
+    },
+    {
+      "arquivo": "hooks-Klqp3Si9.js",
+      "bytes": 21376,
+      "gzipBytes": 8081
+    },
+    {
+      "arquivo": "index-B4BWZfhE.css",
+      "bytes": 144203,
+      "gzipBytes": 21726
+    },
+    {
+      "arquivo": "index-CrVpaqnx.js",
+      "bytes": 301321,
+      "gzipBytes": 95696
+    },
+    {
+      "arquivo": "input-CjGNap2P.js",
+      "bytes": 887,
+      "gzipBytes": 456
+    },
+    {
+      "arquivo": "inter-tight-cyrillic-ext-wght-normal-okcGN4Nq.woff2",
+      "bytes": 26660,
+      "gzipBytes": 26688
+    },
+    {
+      "arquivo": "inter-tight-cyrillic-wght-normal-BS41q_Tv.woff2",
+      "bytes": 16996,
+      "gzipBytes": 17024
+    },
+    {
+      "arquivo": "inter-tight-greek-ext-wght-normal-DQgQPNk4.woff2",
+      "bytes": 11700,
+      "gzipBytes": 11723
+    },
+    {
+      "arquivo": "inter-tight-greek-wght-normal-sS1B39LI.woff2",
+      "bytes": 22192,
+      "gzipBytes": 22220
+    },
+    {
+      "arquivo": "inter-tight-latin-ext-wght-normal-B4u9PlvR.woff2",
+      "bytes": 89800,
+      "gzipBytes": 89842
+    },
+    {
+      "arquivo": "inter-tight-latin-wght-normal-DX-nOvPD.woff2",
+      "bytes": 44872,
+      "gzipBytes": 44873
+    },
+    {
+      "arquivo": "inter-tight-vietnamese-wght-normal-TKKdAiBA.woff2",
+      "bytes": 10480,
+      "gzipBytes": 10503
+    },
+    {
+      "arquivo": "item-C6Ci6OQH.js",
+      "bytes": 2664,
+      "gzipBytes": 1011
+    },
+    {
+      "arquivo": "logo-pratas-branca-DYZrrVGt.svg",
+      "bytes": 5050,
+      "gzipBytes": 2116
+    },
+    {
+      "arquivo": "logo-pratas-preta-BsoOMQBF.svg",
+      "bytes": 5050,
+      "gzipBytes": 2124
+    },
+    {
+      "arquivo": "message-circle-Csf9G9is.js",
+      "bytes": 269,
+      "gzipBytes": 227
+    },
+    {
+      "arquivo": "message-square-CqEpovAB.js",
+      "bytes": 261,
+      "gzipBytes": 217
+    },
+    {
+      "arquivo": "plus-BC3bfs7M.js",
+      "bytes": 181,
+      "gzipBytes": 165
+    },
+    {
+      "arquivo": "receipt-jqdB5fXS.js",
+      "bytes": 682,
+      "gzipBytes": 298
+    },
+    {
+      "arquivo": "rolldown-runtime-WkwZ5CU-.js",
+      "bytes": 599,
+      "gzipBytes": 368
+    },
+    {
+      "arquivo": "search-x-CthOpW7e.js",
+      "bytes": 285,
+      "gzipBytes": 216
+    },
+    {
+      "arquivo": "separator-kAmBGdLo.js",
+      "bytes": 916,
+      "gzipBytes": 519
+    },
+    {
+      "arquivo": "sheet-CjRFicnF.js",
+      "bytes": 2711,
+      "gzipBytes": 917
+    },
+    {
+      "arquivo": "skeleton-D0pbO-Hu.js",
+      "bytes": 201,
+      "gzipBytes": 176
+    },
+    {
+      "arquivo": "supabase-DJhU87rz.js",
+      "bytes": 216728,
+      "gzipBytes": 55528
+    },
+    {
+      "arquivo": "switch-a8R1WNLJ.js",
+      "bytes": 5176,
+      "gzipBytes": 2042
+    },
+    {
+      "arquivo": "tabs-C0OmcjDH.js",
+      "bytes": 5134,
+      "gzipBytes": 1930
+    },
+    {
+      "arquivo": "textarea-tRVYwry-.js",
+      "bytes": 762,
+      "gzipBytes": 419
+    },
+    {
+      "arquivo": "toggle-Dsz0c6Yy.js",
+      "bytes": 3503,
+      "gzipBytes": 1352
+    },
+    {
+      "arquivo": "trocaTexto-JcNw9OgH.js",
+      "bytes": 4735,
+      "gzipBytes": 2071
+    },
+    {
+      "arquivo": "useDebounce-BA3d24sL.js",
+      "bytes": 1992,
+      "gzipBytes": 933
+    },
+    {
+      "arquivo": "useImprimirEtiquetas-BvXEnF7r.js",
+      "bytes": 19707,
+      "gzipBytes": 7855
+    }
+  ]
+}
