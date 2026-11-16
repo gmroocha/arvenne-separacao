@@ -239,7 +239,7 @@ export default function Expedicao() {
       {/* Celular: faixa da esteira, uma etapa por ícone ligada por linha. Toque filtra a lista. */}
       <div className="lg:hidden">
         <FaixaRolavel chave={selecionada}>
-          <ol className="flex w-max items-start pb-3" aria-label="Esteira">
+          <ol className="flex w-max items-start pt-2 pb-3" aria-label="Esteira">
             {porColuna.map((c, i) => {
               const Icone = ICONE_ETAPA[c.icone]
               const ativa = !busca.trim() && c.id === selecionada

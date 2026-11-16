@@ -7,6 +7,12 @@ import "./index.css"
 import App from "./App.tsx"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { recarregarUmaVez } from "@/lib/versaoNova"
+
+// Versão nova publicada com a aba aberta: o pacote antigo não existe mais. Recarrega uma vez (V65).
+window.addEventListener("vite:preloadError", (e) => {
+  if (recarregarUmaVez()) e.preventDefault()
+})
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: true, retry: 1 } },

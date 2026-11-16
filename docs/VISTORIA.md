@@ -397,6 +397,7 @@ foram conferidas e etiquetadas, mas a tela ficou atrasada. Só app (sem migratio
 | V63 | Média | Toques rápidos em "Etiquetada"/"Conferida": durante a animação das peças o navegador entrega o toque à página inteira, não ao botão. A tela parecia travada e peças ficavam sem marcar (2 de 4 no teste). | Toque engolido pela animação encerra a animação e vai para o botão que está ali; toques seguidos (menos de 0,7 s) trocam direto, sem animar. |
 
 | V64 | Média | Bipagem: toques em "Contar 1" mais rápidos que o redesenho da tela contavam a partir do número antigo (a peça ficava em 1/3) e a próxima etapa só aparecia quando a fila de gravações acabava. | A contagem na tela parte do valor atual do pedido em memória (+1/−1 e leitura de código), não do número do botão. |
+| V65 | Média | Depois de cada publicação, trocar de página numa aba já aberta mostrava "Algo deu errado nesta tela": a aba pedia o pacote da versão antiga, que não existe mais. | O app recarrega sozinho uma vez (`src/lib/versaoNova.ts`, evento `vite:preloadError` e ErrorBoundary); se falhar de novo em 30 s, mostra o aviso, agora com espaçamento certo. Testes `tests/unidade/versaoNova.test.ts` e `tests/e2e/versao-nova.spec.mjs`. |
 
 Também: no diálogo "Pedidos para separar" (Peças repetidas), só a lista rola; filtros e "Pronto" ficam fixos.
 
