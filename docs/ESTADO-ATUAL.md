@@ -73,6 +73,14 @@ tipos regenerados (`baseAplicada` = `20261119180000`); commits no GitHub.
 Conferido com dados reais (sem gravar): W0007 abre com venda somada, desconto Pix na nota e frete com o
 valor do pacote inteiro (R$ 732,62).
 
+**Publicado em 16/11/2026 (com o "sim" do Gustavo):** migrations `20261121090000_repetidas_selecao`
+(Peças repetidas por seleção de pedidos, com prazo em cada pedido) e `20261121100000_creditos_cliente`
+(crédito da troca com destino: reembolso pendente → Reembolsado, ou crédito guardado que aparece no próximo
+pedido da mesma cliente até ser usado). Também: clique direito no cartão da venda, foto ampliada com moldura,
+barra de avisos só na Expedição, mensagem da troca no texto aprovado (com asteriscos), botões Oferecer
+alinhados, histórico na margem do título, sem "Reenviar", junção única nos botões agrupados.
+Pendente: decidir "excluir venda de teste" (opção 1: só venda do WhatsApp não paga; opção 2: só "perdida").
+
 **Reset feito em 16/11/2026 (com o "sim" do Gustavo):** `SHOPIFY_IMPORTAR_DESDE` = `2026-11-06` e
 `scripts/zerar-testes.sql` (reescrito com TRUNCATE, testado em `tests/banco/zerar.test.mjs`) rodado no remoto:
 0 pedidos, catálogo e feriados mantidos. A partir daqui os pedidos são reais.
