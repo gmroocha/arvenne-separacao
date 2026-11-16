@@ -200,6 +200,125 @@ export type Database = {
         }
         Relationships: []
       }
+      creditos_cliente: {
+        Row: {
+          cancelado_em: string | null
+          destino: string
+          id: string
+          pedido_id: string
+          reembolsado_em: string | null
+          reembolsado_por: string | null
+          registrado_em: string
+          registrado_por: string | null
+          troca_id: string
+          usado_em: string | null
+          usado_pedido_id: string | null
+          usado_por: string | null
+          valor: number
+        }
+        Insert: {
+          cancelado_em?: string | null
+          destino: string
+          id?: string
+          pedido_id: string
+          reembolsado_em?: string | null
+          reembolsado_por?: string | null
+          registrado_em?: string
+          registrado_por?: string | null
+          troca_id: string
+          usado_em?: string | null
+          usado_pedido_id?: string | null
+          usado_por?: string | null
+          valor: number
+        }
+        Update: {
+          cancelado_em?: string | null
+          destino?: string
+          id?: string
+          pedido_id?: string
+          reembolsado_em?: string | null
+          reembolsado_por?: string | null
+          registrado_em?: string
+          registrado_por?: string | null
+          troca_id?: string
+          usado_em?: string | null
+          usado_pedido_id?: string | null
+          usado_por?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "trocas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedido_acerto"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_resumo"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           created_at: string
@@ -1253,6 +1372,98 @@ export type Database = {
           },
         ]
       }
+      v_creditos_cliente: {
+        Row: {
+          cliente_nome: string | null
+          destino: string | null
+          id: string | null
+          numero: string | null
+          pedido_id: string | null
+          reembolsado_em: string | null
+          reembolsado_por: string | null
+          registrado_em: string | null
+          registrado_por: string | null
+          situacao: string | null
+          troca_id: string | null
+          usado_em: string | null
+          usado_numero: string | null
+          usado_pedido_id: string | null
+          usado_por: string | null
+          valor: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "trocas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedido_acerto"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_resumo"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_item_liquido: {
         Row: {
           coberto: number | null
@@ -1756,6 +1967,18 @@ export type Database = {
           total: number
         }[]
       }
+      creditos_do_pedido: {
+        Args: { p_pedido: string }
+        Returns: {
+          id: string
+          numero: string
+          pedido_id: string
+          registrado_em: string
+          situacao: string
+          usado_aqui: boolean
+          valor: number
+        }[]
+      }
       criar_venda: {
         Args: { p?: Json }
         Returns: {
@@ -1790,6 +2013,17 @@ export type Database = {
         Args: { p_item: string; p_qtd: number; p_status?: string }
         Returns: string
       }
+      marcar_reembolsado: {
+        Args: { p_credito: string; p_desfazer?: boolean }
+        Returns: undefined
+      }
+      mesma_cliente: {
+        Args: {
+          a: Database["public"]["Tables"]["pedidos"]["Row"]
+          b: Database["public"]["Tables"]["pedidos"]["Row"]
+        }
+        Returns: boolean
+      }
       normalizar_descontos: { Args: { p_bruto: Json }; Returns: Json }
       pascoa: { Args: { p_ano: number }; Returns: string }
       pecas_repetidas: {
@@ -1810,6 +2044,10 @@ export type Database = {
       reconciliar_acertos: {
         Args: { p_pedido: string; p_priorizar?: string }
         Returns: undefined
+      }
+      registrar_credito: {
+        Args: { p_destino: string; p_troca: string }
+        Returns: string
       }
       registrar_movimento_troca: {
         Args: { p_anterior: string; p_novo: string; p_troca: string }
@@ -1927,6 +2165,10 @@ export type Database = {
           valor_pago: number
           valor_pago_unit: number
         }[]
+      }
+      usar_credito: {
+        Args: { p_credito: string; p_desfazer?: boolean; p_pedido: string }
+        Returns: undefined
       }
       usuario_atual_email: { Args: never; Returns: string }
       valor_linha_shopify: {
