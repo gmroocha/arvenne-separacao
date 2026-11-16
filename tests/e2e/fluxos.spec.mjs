@@ -247,6 +247,48 @@ test("foto ampliada tem moldura com espaço e o X fica dentro da foto", async ({
   await semQuebra(page)
 })
 
+test("peças repetidas: seleciona os pedidos do dia e mostra o prazo de cada pedido", async ({ page, context, baseURL }, info) => {
+  await iniciar(context, baseURL, { status: "novo" })
+  // Três pedidos com o anel AN-1; o brinco BR-9 só nos pedidos da Bruna e da Carla. A Carla está atrasada.
+  for (const [nome, pago] of [["Bruna Teste", "now() - interval '1 hour'"], ["Carla Atrasada", "now() - interval '10 days'"]]) {
+    const p = await sim.one(`insert into pedidos(origem,status,cliente_nome,pago_em) values ('whatsapp','novo',$1,${pago}) returning id`, [nome])
+    await sim.banco.query(`insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,status,ordem)
+      values ($1,'avulso','Anel de teste','AN-1',1,50,'pendente',0),($1,'avulso','Brinco','BR-9',1,30,'pendente',1)`, [p.id])
+  }
+  await page.goto("/repetidas")
+  const anel = page.getByText("AN-1", { exact: true })
+  const brinco = page.getByText("BR-9", { exact: true })
+  await expect(anel).toBeVisible()
+  await expect(brinco).toBeVisible()
+  // Prazo em cada pedido: o da Carla aparece como atrasado.
+  await expect(page.getByRole("link", { name: /Carla Atrasada/ }).first().getByText(/atrasado/)).toBeVisible()
+
+  await page.getByRole("button", { name: /Selecionar pedidos/ }).click()
+  const escolha = page.getByRole("dialog", { name: "Pedidos para separar" })
+  await expect(escolha.getByText("Carla Atrasada")).toBeVisible()
+  await escolha.getByRole("checkbox").nth(0).waitFor()
+  await escolha.locator("label").filter({ hasText: "Cliente de teste" }).getByRole("checkbox").click()
+  await escolha.locator("label").filter({ hasText: "Bruna Teste" }).getByRole("checkbox").click()
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/repetidas-selecao-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+  await escolha.getByRole("button", { name: "Pronto", exact: true }).click()
+  await expect(escolha).toBeHidden()
+
+  await expect(page.getByText("Repetidas entre 2 de 3 pedidos.")).toBeVisible()
+  await expect(anel).toBeVisible()
+  await expect(brinco).toHaveCount(0) // só a Bruna tem o brinco entre os escolhidos
+  await expect(page.getByText("2 pedidos", { exact: false })).toBeVisible()
+  await page.screenshot({ path: `capturas/repetidas-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+
+  // A seleção do dia continua depois de recarregar; "Ver todos" volta a mostrar tudo.
+  await page.reload()
+  await expect(page.getByText("Repetidas entre 2 de 3 pedidos.")).toBeVisible()
+  await page.getByRole("button", { name: "Ver todos", exact: true }).click()
+  await expect(brinco).toBeVisible()
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
 test("V33: Clube carrega mais peças além das 30 primeiras", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL)
   await sim.banco.query(`insert into pecas_clube(codigo,nome,preco,created_at)

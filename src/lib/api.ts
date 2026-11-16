@@ -180,13 +180,15 @@ export function useRomaneio(token: string | undefined) {
   })
 }
 
-export function useRepetidas() {
+// Peças repetidas entre os pedidos escolhidos (null = todos em Novo/Separação). Contagens e prazo vêm do banco.
+export function useRepetidas(selecao: string[] | null = null, habilitado = true) {
   return useQuery({
-    queryKey: ["repetidas"],
+    queryKey: ["repetidas", "lista", selecao],
+    enabled: habilitado,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_pecas_em_varios_pedidos")
-        .select("*")
+        .rpc("pecas_repetidas", { p_pedidos: selecao })
         .order("qtd_pedidos", { ascending: false })
       if (error) throw error
       return data as PecaRepetida[]

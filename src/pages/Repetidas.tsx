@@ -1,20 +1,139 @@
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
+import { useMemo, useState } from "react"
 import { Link } from "react-router"
-import { ChevronRight, PackageCheck } from "lucide-react"
+import { ChevronRight, ListChecks, PackageCheck } from "lucide-react"
 import Foto from "@/components/Foto"
+import Prazo from "@/components/pedido/Prazo"
+import RespDialog from "@/components/RespDialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useRepetidas } from "@/lib/api"
+import { usePedidosFase, useRepetidas } from "@/lib/api"
+import { formatarPrazo } from "@/lib/formato"
+import type { Pedido } from "@/lib/tipos"
+
+// Seleção do dia fica neste aparelho (conveniência): some sozinha quando os pedidos saem da separação.
+const CHAVE = "repetidas:selecao"
+function lerSelecao(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE) ?? "[]")
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []
+  } catch {
+    return []
+  }
+}
+function gravarSelecao(ids: string[]) {
+  try {
+    if (ids.length) localStorage.setItem(CHAVE, JSON.stringify(ids))
+    else localStorage.removeItem(CHAVE)
+  } catch {
+    /* sem armazenamento: a seleção vale só nesta visita */
+  }
+}
+
+const EM_SEPARACAO = new Set(["novo", "separacao"])
+const atrasado = (p: Pick<Pedido, "prazo" | "prazo_horas_uteis">) => formatarPrazo(p.prazo, p.prazo_horas_uteis).atrasado
 
 // Peças pendentes que estão em mais de um pedido: pega o saco uma vez e separa para todas.
 // O que importa para achar no estoque é foto, código, variante e quantidade; o nome fica pequeno.
 export default function Repetidas() {
-  const { data, isLoading, isError, isFetching, refetch } = useRepetidas()
+  const [selecao, setSelecao] = useState<string[]>(lerSelecao)
+  const [escolhendo, setEscolhendo] = useState(false)
+  const expedicao = usePedidosFase("expedicao")
+  // Pedidos que podem ser separados, do prazo mais curto ao mais longo (a consulta já vem nessa ordem).
+  const candidatos = useMemo(() => (expedicao.data ?? []).filter((p) => EM_SEPARACAO.has(p.status)), [expedicao.data])
+  // Só vale o que ainda está na separação; se nada sobrar, volta a mostrar todos.
+  const efetiva = useMemo(() => {
+    if (!expedicao.data) return selecao.length ? [...selecao].sort() : null
+    const ids = new Set(candidatos.map((p) => p.id))
+    const validos = selecao.filter((id) => ids.has(id)).sort()
+    return validos.length ? validos : null
+  }, [selecao, candidatos, expedicao.data])
+  const { data, isLoading, isError, isFetching, refetch } = useRepetidas(efetiva, !selecao.length || !expedicao.isLoading)
+
+  function mudar(ids: string[]) {
+    setSelecao(ids)
+    gravarSelecao(ids)
+  }
+  const marcado = new Set(efetiva ?? [])
+  const qtdAtrasados = candidatos.filter(atrasado).length
+
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground">Pegue o saco uma vez e separe para todos os pedidos.</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="min-w-48 flex-1 text-sm text-muted-foreground">
+          {efetiva
+            ? `Repetidas entre ${efetiva.length} de ${candidatos.length} pedidos.`
+            : "Pegue o saco uma vez e separe para todos os pedidos."}
+        </p>
+        {efetiva && (
+          <Button variant="ghost" size="toque" onClick={() => mudar([])}>
+            Ver todos
+          </Button>
+        )}
+        <Button variant="outline" size="toque" onClick={() => setEscolhendo(true)}>
+          <ListChecks /> Selecionar pedidos
+          {efetiva && <Badge variant="secondary" className="tabular-nums">{efetiva.length}</Badge>}
+        </Button>
+      </div>
+
+      <RespDialog
+        aberto={escolhendo}
+        aoMudar={setEscolhendo}
+        titulo="Pedidos para separar"
+        descricao="Marque os pedidos que vão ser separados agora. Só as peças repetidas entre eles aparecem."
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => mudar(candidatos.map((p) => p.id))}>
+              Todos
+            </Button>
+            <Button variant="outline" size="sm" disabled={!qtdAtrasados} onClick={() => mudar(candidatos.filter(atrasado).map((p) => p.id))}>
+              Atrasados <Badge variant="secondary" className="tabular-nums">{qtdAtrasados}</Badge>
+            </Button>
+            <Button variant="ghost" size="sm" disabled={!marcado.size} onClick={() => mudar([])}>
+              Limpar
+            </Button>
+            <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+              {marcado.size ? `${marcado.size} marcados` : "Nenhum marcado: mostra todos"}
+            </span>
+          </div>
+          {expedicao.isError && <ErroConsulta aoTentar={() => void expedicao.refetch()} carregando={expedicao.isFetching} comDados={!!expedicao.data} />}
+          {expedicao.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : !candidatos.length ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">Nenhum pedido esperando separação.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {candidatos.map((p) => (
+                <li key={p.id}>
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl p-3 ring-1 ring-foreground/10 has-data-checked:bg-muted/60 has-data-checked:ring-foreground/25">
+                    <Checkbox
+                      checked={marcado.has(p.id)}
+                      onCheckedChange={(c) => mudar(c ? [...marcado, p.id] : [...marcado].filter((id) => id !== p.id))}
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm font-semibold">{p.cliente_nome ?? "Sem nome"}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {p.numero.replace(/^#/, "")} · {p.qtd_pecas} {p.qtd_pecas === 1 ? "peça" : "peças"}
+                      </span>
+                      <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} className="mt-1 self-start" />
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button size="toque" onClick={() => setEscolhendo(false)}>
+            Pronto
+          </Button>
+        </div>
+      </RespDialog>
+
       {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
       {isLoading ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -29,7 +148,11 @@ export default function Repetidas() {
               <PackageCheck />
             </EmptyMedia>
             <EmptyTitle>Nenhuma peça repetida</EmptyTitle>
-            <EmptyDescription>Aparecem aqui peças pendentes que estão em mais de um pedido.</EmptyDescription>
+            <EmptyDescription>
+              {efetiva
+                ? "Nenhuma peça se repete entre os pedidos escolhidos."
+                : "Aparecem aqui peças pendentes que estão em mais de um pedido."}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -56,7 +179,10 @@ export default function Repetidas() {
                       <Link to={`/pedidos/${p.pedido_id}`}>
                         <ItemContent>
                           <ItemTitle>{p.cliente ?? "Sem nome"}</ItemTitle>
-                          <ItemDescription className="tabular-nums">{p.numero.replace(/^#/, "")}</ItemDescription>
+                          <ItemDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+                            {p.numero.replace(/^#/, "")}
+                            <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+                          </ItemDescription>
                         </ItemContent>
                         <span className="text-sm text-muted-foreground tabular-nums">{p.qtd}×</span>
                         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

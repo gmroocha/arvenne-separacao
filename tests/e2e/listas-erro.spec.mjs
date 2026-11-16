@@ -19,7 +19,8 @@ for(const tema of ['light','dark']){
    if(u.origin==='http://localhost:9100'&&u.pathname==='/default')return {json:{}}
    if(u.origin!==sb)return null
    if(u.pathname==='/auth/v1/user')return {json:user,headers}
-   if(u.pathname.startsWith('/rest/v1/')&&['GET','HEAD'].includes(req.method())){
+   const rpc=req.method()==='POST'&&u.pathname.startsWith('/rest/v1/rpc/')
+   if(u.pathname.startsWith('/rest/v1/')&&(['GET','HEAD'].includes(req.method())||rpc)){
     if(falhar&&u.pathname===`/rest/v1/${tabela}`)return {status:500,json:{message:'Falha fictícia de conexão'},headers}
     return req.method()==='HEAD'?{body:'',headers}:{json:[],headers}
    }
@@ -29,7 +30,7 @@ for(const tema of ['light','dark']){
   for(const [nome,rota,fonte,vazio] of [
    ['expedicao','/','v_pedidos','Nenhum pedido'],['vendas','/vendas','v_pedidos','Nenhuma venda aqui'],
    ['arquivo','/arquivo','v_pedidos','Nenhum pedido encontrado'],['clube','/clube','pecas_clube','Nenhuma peça do Clube'],
-   ['repetidas','/repetidas','v_pecas_em_varios_pedidos','Nenhuma peça repetida'],['feedbacks','/feedbacks','feedbacks','Nenhum feedback aberto'],
+   ['repetidas','/repetidas','rpc/pecas_repetidas','Nenhuma peça repetida'],['feedbacks','/feedbacks','feedbacks','Nenhum feedback aberto'],
   ]){
    falhar=true;tabela=fonte;await page.goto(rota)
    const aviso=page.getByRole('alert').filter({hasText:'Não foi possível carregar'})
