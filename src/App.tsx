@@ -20,6 +20,7 @@ const Troca = lazy(() => import("@/pages/Troca"))
 const Pedido = lazy(() => import("@/pages/Pedido"))
 const Repetidas = lazy(() => import("@/pages/Repetidas"))
 const Clube = lazy(() => import("@/pages/Clube"))
+const Catalogo = lazy(() => import("@/pages/Catalogo"))
 const Feedbacks = lazy(() => import("@/pages/Feedbacks"))
 
 function Configure() {
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="arquivo" element={<Arquivo />} />
           <Route path="repetidas" element={<Repetidas />} />
           <Route path="clube" element={<Clube />} />
+          <Route path="catalogo" element={<Catalogo />} />
           <Route path="feedbacks" element={<Feedbacks />} />
         </Route>
       </Route>

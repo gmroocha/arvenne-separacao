@@ -278,6 +278,32 @@ export function useBuscaSite(termo: string) {
   })
 }
 
+// Página Catálogo: todas as variantes ativas copiadas da Shopify, lidas uma vez (em blocos de 1000) e filtradas
+// na tela. Guardadas por 30 min; "Atualizar da Shopify" e a atualização automática renovam.
+export type PecaCatalogo = { variant_id: number; sku: string | null; produto: string; variante: string | null; preco: number | null; foto_url: string | null; atualizado_em: string | null }
+export function useCatalogoCompleto() {
+  return useQuery({
+    queryKey: ["catalogo-completo"],
+    staleTime: 30 * 60_000,
+    queryFn: async () => {
+      const linhas: PecaCatalogo[] = []
+      for (let de = 0; ; de += 1000) {
+        const { data, error } = await supabase
+          .from("catalogo_site")
+          .select("variant_id, sku, produto, variante, preco, foto_url, atualizado_em")
+          .or("status.is.null,status.eq.ACTIVE")
+          .order("produto")
+          .order("variant_id")
+          .range(de, de + 999)
+        if (error) throw error
+        linhas.push(...((data ?? []) as PecaCatalogo[]))
+        if ((data ?? []).length < 1000) break
+      }
+      return linhas
+    },
+  })
+}
+
 // Resolve as variantes do carrinho. Antes de ler, pede à Shopify (via catalogo-sync) as variantes
 // do carrinho, para preço e foto virem atuais. Se a Shopify não responder (credencial ausente,
 // fora do ar), usa a cópia do banco. IDs que faltam voltam em "faltando".
@@ -374,7 +400,7 @@ async function sincronizarCatalogo(completo = false) {
 }
 
 export function useAtualizarCatalogo() {
-  return useAcao((opcoes?: { completo?: boolean }) => sincronizarCatalogo(opcoes?.completo), [["busca-site"], ["catalogo-total"], ["catalogo-info"], ["sugestoes"]])
+  return useAcao((opcoes?: { completo?: boolean }) => sincronizarCatalogo(opcoes?.completo), [["busca-site"], ["catalogo-total"], ["catalogo-info"], ["sugestoes"], ["catalogo-completo"]])
 }
 
 // Atualização automática em segundo plano: ao abrir uma tela de busca/troca, se o catálogo está parado há mais
@@ -393,7 +419,7 @@ export function useAtualizacaoAutomaticaCatalogo(ativo: boolean) {
       if (idade < ATUALIZACAO_VELHA_MS || Date.now() - ultimaTentativaCatalogo < ATUALIZACAO_VELHA_MS) return
       ultimaTentativaCatalogo = Date.now()
       await sincronizarCatalogo().catch(() => {})
-      for (const k of ["busca-site", "sugestoes", "catalogo-total", "catalogo-info"]) qc.invalidateQueries({ queryKey: [k] })
+      for (const k of ["busca-site", "sugestoes", "catalogo-total", "catalogo-info", "catalogo-completo"]) qc.invalidateQueries({ queryKey: [k] })
     })()
     return () => {
       vivo = false

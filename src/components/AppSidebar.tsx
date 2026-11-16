@@ -1,7 +1,7 @@
 import { useSidebar } from "@/components/ui/sidebar-context"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
-import { Archive, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
+import { Archive, BookOpen, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
 import { useTheme } from "next-themes"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
@@ -44,6 +44,7 @@ export default function AppSidebar() {
       alerta: true,
     },
     { to: "/repetidas", nome: "Peças repetidas", icone: Repeat, ativo: pathname === "/repetidas", badge: repetidas },
+    { to: "/catalogo", nome: "Catálogo", icone: BookOpen, ativo: pathname === "/catalogo" },
     { to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
     { to: "/arquivo", nome: "Arquivo", icone: Archive, ativo: pathname === "/arquivo" },
     { to: "/feedbacks", nome: "Feedbacks", icone: MessageSquare, ativo: pathname === "/feedbacks", badge: abertos },

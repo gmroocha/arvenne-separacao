@@ -14,6 +14,11 @@ por pedido (marca as peças daquela cliente em todos os cartões, guardado neste
 cliente": "Copiar link", "Pago" e a situação "Em aberto / Aguardando pagamento". Testes de tela em paralelo
 (4 ao mesmo tempo): `npm test` caiu de ~15 para ~8 min.
 
+**Catálogo (16/11):** página `/catalogo` com as peças ativas copiadas da Shopify (`catalogo_site`, lidas uma vez
+em blocos de 1000): busca, categoria pelo nome, ordem, seleção com quantidade de etiquetas e impressão numa fila
+só (Zebra ou navegador). "Atualizar da Shopify" chama a `catalogo-sync` pelo app. Teste `tests/e2e/catalogo.spec.mjs`.
+A barra "Concluir etapa" ganhou nome próprio na transição das peças (não pisca a cada toque).
+
 **Lentidão do banco (análise só leitura, 16/11):** picos de 4 a 10 s em consultas que levam 50 a 250 ms em
 média (inclusive um simples "mudar etapa"), e `troca_painel` com 0,5 s de média. O tempo limite do app é 8 s:
 acima disso aparece "O banco demorou para responder". Sinais de máquina pequena e compartilhada; o tempo real
