@@ -9,8 +9,14 @@ Em Linux sem bibliotecas do navegador: `npx playwright install --with-deps chrom
 - `npm run test:e2e`: fluxos em celular e PC, com matriz de acessibilidade também em tablet; inicia e encerra um servidor próprio.
 - `npm run test:watch`: unidade em observação durante a edição.
 
-Durante uma correção: `npm run test:rapido` e só o arquivo de tela do assunto
-(`npx playwright test tests/e2e/<arquivo>.spec.mjs`). `npm test` completo uma vez, antes do commit/push.
+Quanto testar antes de publicar (o GitHub roda `npm test` completo a cada push, sozinho):
+
+| Mudança | Antes do push, aqui |
+| --- | --- |
+| Texto, cor, espaçamento, ícone | `npm run verificar` (~1 min) + captura da tela mexida |
+| Lógica de tela (etapas, cliques, cache) | `npm run verificar` + o arquivo de tela do assunto (`npx playwright test tests/e2e/<arquivo>.spec.mjs`) |
+| SQL, migration, dinheiro | `npm test` completo aqui antes do push (inclui `conservacao.test.mjs`) |
+
 Os testes de tela rodam 4 ao mesmo tempo (2 no GitHub); cada um tem o próprio banco em memória.
 
 Nenhum desses comandos precisa de Supabase, Docker, conta, senha ou segredo. O lint está sem avisos;

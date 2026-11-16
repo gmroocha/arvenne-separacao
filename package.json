@@ -11,6 +11,7 @@
     "capturas": "node scripts/capturas.mjs",
     "test": "npm run tipos:conferir && npm run test:rapido && npm run test:banco && npm run test:e2e && npm run build",
     "test:rapido": "npm run typecheck && npm run lint && vitest run --project unidade",
+    "verificar": "npm run tipos:conferir && npm run test:rapido && vite build",
     "typecheck": "tsc -b && tsc -p tsconfig.testes.json --noEmit",
     "test:banco": "vitest run --project banco",
     "test:e2e": "playwright test",

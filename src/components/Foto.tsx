@@ -22,8 +22,9 @@ function Imagem({ url, alt, className }: { url: string | null; alt: string; clas
   return url ? (
     <img draggable={false} src={url} alt={alt} loading="lazy" className={cn("size-full rounded-md object-cover", className)} />
   ) : (
-    <div className={cn("flex size-full items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
-      <Gem className="size-1/3" />
+    <div className={cn("@container flex size-full items-center justify-center rounded-md bg-muted text-muted-foreground", className)}>
+      {/* Em miniatura (até 48 px) o ícone a 1/3 ficava com 12 px e o traço virava borrão: lá ele ocupa metade. */}
+      <Gem className="size-1/3 @max-[3rem]:size-1/2" />
     </div>
   )
 }
