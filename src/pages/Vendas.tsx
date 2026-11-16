@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router"
 import { Plus, Receipt } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import LinhaPedido from "@/components/LinhaPedido"
+import MenuContextoVenda from "@/components/MenuContextoVenda"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -79,7 +80,9 @@ export default function Vendas() {
       ) : (
         <ItemGroup className="gap-2">
           {lista.map((p) => (
-            <LinhaPedido key={p.id} p={p} />
+            <MenuContextoVenda key={p.id} pedido={p}>
+              <LinhaPedido p={p} />
+            </MenuContextoVenda>
           ))}
         </ItemGroup>
       )}

@@ -31,6 +31,26 @@ test("venda paga entra na expedição com o valor calculado pelo banco", async (
   await semQuebra(page)
 })
 
+test("clique direito no cartão da venda abre as ações e marca como perdida", async ({ page, context, baseURL }, info) => {
+  await iniciar(context, baseURL, { status: "em_aberto" })
+  await page.goto("/vendas")
+  const cartao = page.getByRole("link", { name: /Cliente de teste/ })
+  await cartao.click({ button: "right" })
+  const menu = page.getByRole("menu")
+  await expect(menu.getByRole("menuitem", { name: "Abrir venda", exact: true })).toBeVisible()
+  await expect(menu.getByRole("menuitem", { name: "Abrir em nova aba", exact: true })).toBeVisible()
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/venda-menu-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+  await menu.getByRole("menuitem", { name: "Marcar como perdida", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Marcar como perdida?", exact: true })
+  await dialog.getByRole("button", { name: "Marcar como perdida", exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("perdida")
+  await expect(page.getByText("Nenhuma venda aqui")).toBeVisible()
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
 test("separação, conferência, etiqueta e bipagem preservam as duas unidades", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL, { status: "novo" })
   await page.goto(`/pedidos/${sim.pedido.id}`)

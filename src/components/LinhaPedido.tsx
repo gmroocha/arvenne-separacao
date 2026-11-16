@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react"
 import { Link } from "react-router"
 import Miniaturas from "@/components/Miniaturas"
 import Prazo from "@/components/pedido/Prazo"
@@ -8,10 +9,11 @@ import { quando, reais } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
 
-export default function LinhaPedido({ p }: { p: Pedido }) {
+// `resto` vai para o <li>: permite envolver a linha num menu de clique direito (asChild).
+export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentProps<"li">) {
   const pecas = `${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`
   return (
-    <li>
+    <li {...resto}>
     <Item variant="outline" asChild>
       <Link to={p.fase === "venda" ? `/vendas/${p.id}` : `/pedidos/${p.id}`}>
         <ItemMedia>
