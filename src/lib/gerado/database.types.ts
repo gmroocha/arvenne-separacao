@@ -1792,6 +1792,19 @@ export type Database = {
       }
       normalizar_descontos: { Args: { p_bruto: Json }; Returns: Json }
       pascoa: { Args: { p_ano: number }; Returns: string }
+      pecas_repetidas: {
+        Args: { p_pedidos?: string[] }
+        Returns: {
+          chave: string
+          foto_url: string
+          nome: string
+          pedidos: Json
+          qtd_pedidos: number
+          qtd_total: number
+          sku: string
+          variante: string
+        }[]
+      }
       prazo_envio: { Args: { pago: string }; Returns: string }
       reavaliar_etapa: { Args: { p_pedido: string }; Returns: undefined }
       reconciliar_acertos: {
