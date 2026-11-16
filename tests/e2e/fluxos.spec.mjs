@@ -217,6 +217,36 @@ test("V31: Edge, Storage e RPC de escrita nunca chegam à rede real", async ({ p
   expect(sim.bloqueadas).toHaveLength(2)
 })
 
+test("foto ampliada tem moldura com espaço e o X fica dentro da foto", async ({ page, context, baseURL }, info) => {
+  await iniciar(context, baseURL)
+  // Foto retrangular de propósito: o X deve ficar dentro da imagem visível, não no canto do diálogo.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000"><rect width="800" height="1000" fill="#eee"/></svg>`
+  await sim.banco.query("insert into pecas_clube(codigo,nome,preco,foto_url) values ('CL-FOTO','Anel corações',10,$1)", [`data:image/svg+xml,${encodeURIComponent(svg)}`])
+  await page.goto("/clube")
+  await page.getByRole("button").filter({ has: page.getByRole("img", { name: "Anel corações" }) }).click()
+  const dialog = page.getByRole("dialog", { name: "Anel corações" })
+  const foto = dialog.getByRole("img", { name: "Anel corações" })
+  await expect(foto).toBeVisible()
+  await expect.poll(() => foto.evaluate((i) => i.complete && i.naturalWidth > 0)).toBe(true)
+  const [d, f, x] = await Promise.all([dialog.boundingBox(), foto.boundingBox(), dialog.getByRole("button", { name: "Fechar" }).boundingBox()])
+  // Moldura: a foto não encosta na borda do diálogo.
+  expect(f.x - d.x).toBeGreaterThanOrEqual(6)
+  expect(d.x + d.width - (f.x + f.width)).toBeGreaterThanOrEqual(6)
+  expect(f.y - d.y).toBeGreaterThanOrEqual(6)
+  expect(d.y + d.height - (f.y + f.height)).toBeGreaterThanOrEqual(6)
+  // X inteiro dentro da área da foto.
+  expect(x.x).toBeGreaterThanOrEqual(f.x)
+  expect(x.y).toBeGreaterThanOrEqual(f.y)
+  expect(x.x + x.width).toBeLessThanOrEqual(f.x + f.width)
+  expect(x.y + x.height).toBeLessThanOrEqual(f.y + f.height)
+  // A foto ocupa o espaço disponível (limitada pela largura ou pela altura da tela), sem encolher.
+  const { width: vw, height: vh } = page.viewportSize()
+  expect(Math.max(f.width / Math.min(vw - 56, 648), f.height / (vh * 0.85 - 24))).toBeGreaterThan(0.95)
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/foto-ampliada-${info.project.name}.png`, animations: "disabled" })
+  await semQuebra(page)
+})
+
 test("V33: Clube carrega mais peças além das 30 primeiras", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL)
   await sim.banco.query(`insert into pecas_clube(codigo,nome,preco,created_at)

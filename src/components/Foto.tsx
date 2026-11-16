@@ -42,17 +42,20 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
         {quadro}
       </button>
       <Dialog open={aberta} onOpenChange={setAberta}>
-        <DialogContent showCloseButton={false} className="w-full max-w-[calc(100%-2rem)] gap-0 rounded-xl border-0 bg-transparent p-0 shadow-none ring-0 sm:max-w-2xl">
+        {/* Moldura do tema (contorno + espaço) do tamanho da foto; o X fica preso no canto da própria foto. */}
+        <DialogContent showCloseButton={false} className="w-fit max-w-[calc(100%-2rem)] gap-0 p-2 sm:max-w-2xl sm:p-3">
           <DialogTitle className="sr-only">{alt || "Foto da peça"}</DialogTitle>
           <DialogDescription className="sr-only">Foto ampliada</DialogDescription>
-          {/* Ampliada: pede a foto grande à Shopify (a miniatura vem com width pequeno). */}
-          <img draggable={false} src={fotoTamanho(url, 1200) ?? url} alt={alt} className="mx-auto max-h-[85svh] w-full rounded-xl object-contain" />
-          <DialogClose asChild>
-            <Button size="icon" variant="ghost" className="absolute top-2 right-2 rounded-full bg-background/80 text-foreground shadow backdrop-blur hover:bg-background">
-              <X />
-              <span className="sr-only">Fechar</span>
-            </Button>
-          </DialogClose>
+          <div className="relative mx-auto w-fit">
+            {/* Ampliada: pede a foto grande à Shopify (a miniatura vem com width pequeno). */}
+            <img draggable={false} src={fotoTamanho(url, 1200) ?? url} alt={alt} className="block h-auto max-h-[calc(85svh-1.5rem)] w-auto max-w-[calc(100vw-3rem)] rounded-lg sm:max-w-[min(calc(100vw-3.5rem),40.5rem)]" />
+            <DialogClose asChild>
+              <Button size="icon" variant="ghost" className="absolute top-2 right-2 rounded-full bg-background/80 text-foreground shadow backdrop-blur hover:bg-background">
+                <X />
+                <span className="sr-only">Fechar</span>
+              </Button>
+            </DialogClose>
+          </div>
         </DialogContent>
       </Dialog>
     </>
