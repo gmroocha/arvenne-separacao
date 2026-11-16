@@ -48,26 +48,34 @@ test("V38: texto das opções e do carrinho não chama a diferença coberta de '
   // Sem cobertura, o texto antigo continua igual.
   expect(textoSituacao(valor({ situacao: "paga_diferenca", diferenca: 40, coberto_previsto: 0, cliente_paga_previsto: 40 }))).toMatch(/^\+R\$\s*40,00 a pagar$/)
 })
-test("V38: a mensagem para a cliente diz 'cobre a diferença' quando a loja cobre tudo", () => {
+test("V38: a mensagem para a cliente diz que a loja cobre a diferença sem mostrar o número gigante", () => {
   const pedido = { numero: "ARV-1", cliente_nome: "Ana Souza" } as Pedido
   const itens = [{ id: "i" }] as Item[]
-  expect(mensagemTroca(pedido, itens, "https://x/t/1", COBRIR_TUDO)).toContain("A loja cobre a diferença")
+  expect(mensagemTroca(pedido, itens, "https://x/t/1", COBRIR_TUDO)).toContain("Se ela custar mais, a diferença fica por nossa conta")
   expect(mensagemTroca(pedido, itens, "https://x/t/1", COBRIR_TUDO)).not.toContain("99")
-  expect(mensagemTroca(pedido, itens, "https://x/t/1", 15)).toMatch(/A loja cobre até R\$\s*15,00 da diferença/)
-  expect(mensagemTroca(pedido, itens, "https://x/t/1", 0)).not.toContain("loja cobre")
+  expect(mensagemTroca(pedido, itens, "https://x/t/1", 15)).toMatch(/Se ela custar mais, cobrimos até R\$\s*15,00 da diferença/)
+  expect(mensagemTroca(pedido, itens, "https://x/t/1", 0)).toContain("Se ela custar mais, você paga só a diferença")
 })
-test("mensagem da troca: link em linha própria e passo a passo curto de como funciona", () => {
+test("mensagem da troca: texto aprovado, com negrito do WhatsApp (asteriscos) e link em linha própria", () => {
   const pedido = { numero: "ARV-1277", cliente_nome: "Karolyne Maciel" } as Pedido
-  const itens = [{ id: "i", nome: "Brinco Esplendor", variante: null }] as Item[]
-  const m = mensagemTroca(pedido, itens, "https://x/t/1")
-  const linhas = m.split("\n")
-  expect(linhas[0]).toMatch(/^Oi, Karolyne!/)
-  expect(m).toContain("*Brinco Esplendor*")
-  expect(m).toContain("ARV-1277")
-  expect(linhas.some((l) => l.trim().endsWith("https://x/t/1") && l.length < 30)).toBe(true)
-  expect(m).toMatch(/Como funciona/)
-  expect(m).toMatch(/1\..*Quero esta/)
-  expect(m).toMatch(/2\..*diferença/)
-  expect(m).toMatch(/3\..*Prefiro crédito/)
-  expect(linhas.length).toBeLessThanOrEqual(14) // sucinta
+  const uma = mensagemTroca(pedido, [{ id: "i", nome: "Brinco Esplendor", variante: null }] as Item[], "https://x/t/1")
+  expect(uma).toBe([
+    "Oi, Karolyne! Tudo bem? Aqui é do *time da expedição da Arvenne Pratas* 📦",
+    "",
+    "Durante a separação do seu pedido, vimos que uma peça não está disponível no nosso estoque 😕 Separamos algumas opções para você escolher a que mais gostar:",
+    "",
+    "👉🏻 https://x/t/1",
+    "",
+    "*Como funciona:*",
+    "",
+    '1️⃣ Abra o link e toque em "*Quero esta*" na peça que gostar. Se ela custar mais, você paga só a diferença. Se custar menos, a diferença vira crédito',
+    '2️⃣ Se não quiser trocar, toque em "*Prefiro crédito*"',
+    "3️⃣ Se preferir o reembolso ou outra opção, é só me falar por aqui",
+    "",
+    "Qualquer dúvida, pode me chamar 🤍",
+  ].join("\n"))
+  expect(uma).not.toContain("Brinco Esplendor") // não cita a peça
+  const varias = mensagemTroca(pedido, [{ id: "a" }, { id: "b" }] as Item[], "https://x/t/1")
+  expect(varias).toContain("vimos que algumas peças não estão disponíveis no nosso estoque 😕 Separamos algumas opções para você escolher as que mais gostar:")
+  expect(mensagemTroca({ numero: "ARV-2", cliente_nome: null } as Pedido, [{ id: "a" }] as Item[], "l")).toMatch(/^Oi! Tudo bem\?/)
 })

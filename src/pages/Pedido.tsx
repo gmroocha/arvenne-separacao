@@ -4,6 +4,7 @@ import { Navigate, useParams } from "react-router"
 import AlteracoesDialog from "@/components/pedido/AlteracoesDialog"
 import { AlteracoesContexto } from "@/components/pedido/alteracoesContexto"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
+import AvisoCredito from "@/components/pedido/AvisoCredito"
 import Cabecalho from "@/components/pedido/Cabecalho"
 import DadosCliente from "@/components/pedido/DadosCliente"
 import Etapas from "@/components/pedido/Etapas"
@@ -72,6 +73,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
       <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} vista={vista} aoVer={setVista} />
       {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota e frete em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
+      {!foco && <AvisoCredito pedidoId={pedido.id} />}
       <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
         <PainelEtapa
           pedido={pedido}

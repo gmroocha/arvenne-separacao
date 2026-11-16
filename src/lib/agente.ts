@@ -36,26 +36,28 @@ const primeiroNome = (p: Pedido) => {
 
 const descricaoPeca = (i: Item) => [i.nome, i.variante].filter(Boolean).join(", ")
 
-// Mensagem para a cliente com o link da troca: peça em falta, o link sozinho na linha e um passo a passo
-// curto do que ela faz na página (escolher, diferença, crédito).
+// Mensagem para a cliente com o link da troca, no texto aprovado pelo Gustavo em 16/11/2026.
+// Os asteriscos são o negrito do WhatsApp e vão literais no texto copiado. Não cita o nome das peças.
 export function mensagemTroca(pedido: Pedido, itens: Item[], link: string, cobrirAte = 0): string {
   const nome = primeiroNome(pedido)
   const plural = itens.length > 1
-  const pecas = itens.map((i) => descricaoPeca(i)).filter(Boolean).map((d) => `*${d}*`).join(" e ")
-  const cobre = cobrirAte > 0 ? (cobreTudo(cobrirAte) ? "A loja cobre a diferença 💛" : `A loja cobre até ${reais(cobrirAte)} da diferença 💛`) : null
+  const maisCara = cobrirAte > 0
+    ? (cobreTudo(cobrirAte) ? "Se ela custar mais, a diferença fica por nossa conta" : `Se ela custar mais, cobrimos até ${reais(cobrirAte)} da diferença`)
+    : "Se ela custar mais, você paga só a diferença"
   return [
-    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas.`,
-    `${plural ? "As peças" : "A peça"}${pecas ? ` ${pecas}` : ""} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕 Separamos opções para você escolher:`,
+    `Oi${nome ? `, ${nome}` : ""}! Tudo bem? Aqui é do *time da expedição da Arvenne Pratas* 📦`,
     "",
-    `👉 ${link}`,
+    `Durante a separação do seu pedido, vimos que ${plural ? "algumas peças não estão disponíveis" : "uma peça não está disponível"} no nosso estoque 😕 Separamos algumas opções para você escolher ${plural ? "as" : "a"} que mais gostar:`,
     "",
-    "*Como funciona*",
-    "1. Abra o link e toque em *Quero esta* na peça que preferir",
-    "2. Custou mais, você paga só a diferença. Custou menos, a diferença vira crédito",
-    "3. Se não quiser trocar, toque em *Prefiro crédito*",
-    ...(cobre ? ["", cobre] : []),
+    `👉🏻 ${link}`,
     "",
-    "Qualquer dúvida é só responder aqui.",
+    "*Como funciona:*",
+    "",
+    `1️⃣ Abra o link e toque em "*Quero esta*" na peça que gostar. ${maisCara}. Se custar menos, a diferença vira crédito`,
+    '2️⃣ Se não quiser trocar, toque em "*Prefiro crédito*"',
+    "3️⃣ Se preferir o reembolso ou outra opção, é só me falar por aqui",
+    "",
+    "Qualquer dúvida, pode me chamar 🤍",
   ].join("\n")
 }
 

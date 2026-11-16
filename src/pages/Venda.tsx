@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { ArrowLeft, ChevronUp } from "lucide-react"
+import AvisoCredito from "@/components/pedido/AvisoCredito"
 import ClienteCard from "@/components/venda/ClienteCard"
 import PagoDialog, { type DadosPagamento } from "@/components/venda/PagoDialog"
 import PecasVenda from "@/components/venda/PecasVenda"
@@ -281,6 +282,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
+          <AvisoCredito pedidoId={pedido.id} />
           <PecasVenda pedido={pedido} />
           <SomarPedido form={form} aoMudar={mudar} />
           {!form.somar_em && <ClienteCard form={form} aoMudar={mudar} aoSalvarCliente={aoSalvarCliente} />}

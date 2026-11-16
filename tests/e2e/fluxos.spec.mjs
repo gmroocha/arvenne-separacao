@@ -316,6 +316,82 @@ test("V34: busca de vendas acha pedido além dos primeiros da lista", async ({ p
   expect(sim.bloqueadas).toEqual([])
 })
 
+test("troca enviada: sem botão Reenviar e botões de copiar com contorno único no meio", async ({ page, context, baseURL }, info) => {
+  sim = await criarSimulacao({ troca: true })
+  await sim.instalar(context, baseURL, { logado: true })
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await expect(page.getByText(/aguardando escolha desta peça/)).toBeVisible()
+  await expect(page.getByRole("button", { name: "Reenviar" })).toHaveCount(0)
+  // Os contornos dos dois botões se sobrepõem na junção (uma linha só, não duas somadas).
+  const msg = await page.getByRole("button", { name: "Copiar mensagem" }).boundingBox()
+  const link = await page.getByRole("button", { name: "Copiar link" }).boundingBox()
+  const traco = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--traco")) || 1)
+  expect(msg.x + msg.width - link.x).toBeGreaterThanOrEqual(traco - 0.01)
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/copiar-grupo-${info.project.name}.png`, clip: { x: msg.x - 4, y: msg.y - 4, width: msg.width + link.width + 8, height: msg.height + 8 } })
+  await page.screenshot({ path: `capturas/troca-enviada-${info.project.name}.png`, animations: "disabled" })
+  expect(sim.bloqueadas).toEqual([])
+})
+
+// Troca concluída como crédito: saldo a favor da cliente, acerto pendente, pedido em Nota e frete.
+async function trocaComCredito(context, baseURL) {
+  sim = await criarSimulacao({ troca: true })
+  await sim.instalar(context, baseURL, { logado: true })
+  // Uma segunda peça continua no pedido (só o anel vira crédito), para ele poder seguir para Nota e frete.
+  await sim.banco.query("insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,status,ordem) values ($1,'avulso','Colar','CO-9',1,10,'pendente',5)", [sim.pedido.id])
+  const tp = (await sim.banco.query("select id from troca_pecas limit 1")).rows[0].id
+  await sim.banco.query("select troca_aprovar($1,$2,'credito',null)", [sim.troca.id, tp])
+  await sim.banco.query("update pedido_itens set status='encontrado',conferido_em=now(),etiquetado_em=now(),qtd_bipada=qtd,bipado_em=now() where pedido_id=$1 and status in ('pendente','falta')", [sim.pedido.id])
+  await sim.banco.query("update pedidos set status='faturamento', cliente_email='ana@example.test' where id=$1", [sim.pedido.id])
+}
+const mostrarDados = async (page) => { if ((page.viewportSize()?.width ?? 0) < 1024) await page.getByRole("button", { name: "Mostrar ou esconder" }).click() }
+
+test("crédito da troca: reembolso fica pendente com selo até marcar Reembolsado", async ({ page, context, baseURL }, info) => {
+  await trocaComCredito(context, baseURL)
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await expect(page.getByText("Pergunte à cliente se prefere o reembolso")).toBeVisible()
+  await mostrarDados(page)
+  await expect(page.getByText("A definir")).toBeVisible()
+  await page.getByRole("button", { name: "Reembolsar", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Reembolsado", exact: true })).toBeVisible()
+  await expect(page.getByText("Reembolso pendente").first()).toBeVisible()
+  expect((await sim.one("select situacao from v_creditos_cliente where pedido_id=$1", [sim.pedido.id])).situacao).toBe("reembolso_pendente")
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/credito-reembolso-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+  // Selo no cartão da Expedição para cobrar a equipe.
+  await page.goto("/")
+  const cartao = page.getByRole("link", { name: /Cliente de teste/ }).first()
+  await cartao.scrollIntoViewIfNeeded()
+  await expect(cartao.getByText("Reembolso pendente")).toBeVisible()
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await page.getByRole("button", { name: "Reembolsado", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Desfazer reembolso" })).toBeVisible()
+  expect((await sim.one("select situacao from v_creditos_cliente where pedido_id=$1", [sim.pedido.id])).situacao).toBe("reembolsado")
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
+test("crédito guardado aparece na próxima venda da mesma cliente e é marcado como usado", async ({ page, context, baseURL }, info) => {
+  await trocaComCredito(context, baseURL)
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await page.getByRole("button", { name: "Guardar para o próximo pedido" }).click()
+  await expect(page.getByText("Fica na ficha da cliente")).toBeVisible()
+  await mostrarDados(page)
+  await expect(page.getByText("Crédito guardado").first()).toBeVisible()
+  const venda = await sim.one("insert into pedidos(origem,status,cliente_nome,cliente_email) values ('whatsapp','em_aberto','Ana','ana@example.test') returning id")
+  await page.goto(`/vendas/${venda.id}`)
+  const aviso = page.getByRole("alert").filter({ hasText: "de crédito" })
+  await expect(aviso).toBeVisible()
+  await page.screenshot({ path: `capturas/credito-proximo-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+  await aviso.getByRole("button", { name: "Usar neste pedido" }).click()
+  await page.getByRole("dialog", { name: "Usar o crédito neste pedido?" }).getByRole("button", { name: "Usar crédito" }).click()
+  await expect(page.getByText(/usado neste pedido/)).toBeVisible()
+  const c = await sim.one("select situacao, usado_pedido_id from v_creditos_cliente where pedido_id=$1", [sim.pedido.id])
+  expect([c.situacao, c.usado_pedido_id]).toEqual(["credito_usado", venda.id])
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
 test("peças trocadas: selo, diálogo com valores do banco e histórico por filtros", async ({ page, context, baseURL }, info) => {
   sim = await criarSimulacao({ troca: true })
   await sim.instalar(context, baseURL, { logado: true })

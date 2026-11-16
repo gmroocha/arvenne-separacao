@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageX, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react"
+import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageX, Trash2, TriangleAlert, Undo2 } from "lucide-react"
 import { LinhaPeca as LinhaPecaComum } from "@/components/comum/Peca"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,9 +30,6 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
     return (
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>Troca enviada há {tempoDesde(troca.enviada_em ?? troca.created_at)} · aguardando escolha desta peça</span>
-        <Button variant="ghost" size="toque" onClick={aoAbrir}>
-          <Send /> Reenviar
-        </Button>
       </div>
     )
 

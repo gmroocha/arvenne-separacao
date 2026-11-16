@@ -1,13 +1,13 @@
-import { ArrowRight, Check, HandCoins, Undo2 } from "lucide-react"
+import { ArrowRight, Banknote, Check, HandCoins, PiggyBank, Undo2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
-import { useAcerto, useMarcarAcerto, useMarcarDevolvido } from "@/lib/api"
+import { useAcerto, useCreditosPedido, useMarcarAcerto, useMarcarDevolvido, useMarcarReembolsado, useRegistrarCredito } from "@/lib/api"
 import { quando, reais } from "@/lib/formato"
-import { COR_SELO } from "@/lib/selo"
-import type { AcertoPeca } from "@/lib/tipos"
+import { COR_SELO, ROTULO_CREDITO } from "@/lib/selo"
+import type { AcertoPeca, CreditoCliente } from "@/lib/tipos"
 
 function Linha({ rotulo, children, forte }: { rotulo: string; children: React.ReactNode; forte?: boolean }) {
   return (
@@ -45,6 +45,43 @@ function LinhaTroca({ p }: { p: AcertoPeca }) {
   )
 }
 
+// O que falta (ou já foi feito) com o crédito registrado: reembolsar, ou guardado/usado no próximo pedido.
+function SituacaoCreditoAcerto({ credito: c }: { credito: CreditoCliente }) {
+  const reembolso = useMarcarReembolsado()
+  if (c.situacao === "reembolso_pendente")
+    return (
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm">
+          Reembolsar <span className="font-semibold tabular-nums">{reais(c.valor)}</span> à cliente.
+        </p>
+        <Button className="h-10 w-full text-sm sm:w-auto" disabled={reembolso.isPending} onClick={() => reembolso.mutate({ creditoId: c.id })}>
+          {reembolso.isPending ? <Spinner /> : <Check />} Reembolsado
+        </Button>
+      </div>
+    )
+  if (c.situacao === "reembolsado")
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>
+          Reembolsado {reais(c.valor)}
+          {c.reembolsado_por ? ` por ${c.reembolsado_por}` : ""}
+          {c.reembolsado_em ? ` em ${quando(c.reembolsado_em)}` : ""}
+        </span>
+        <Button variant="ghost" size="sm" className="h-8" disabled={reembolso.isPending} onClick={() => reembolso.mutate({ creditoId: c.id, desfazer: true })}>
+          <Undo2 /> Desfazer reembolso
+        </Button>
+      </div>
+    )
+  if (c.situacao === "credito_guardado")
+    return <p className="text-sm text-muted-foreground">Fica na ficha da cliente e aparece no próximo pedido dela.</p>
+  return (
+    <p className="text-sm text-muted-foreground">
+      Usado no pedido {c.usado_numero}
+      {c.usado_em ? ` em ${quando(c.usado_em)}` : ""}.
+    </p>
+  )
+}
+
 // Acerto de dinheiro depois da troca de peças: quanto pagou, cada troca, o saldo e se já foi acertado.
 // Todos os valores vêm da view v_pedido_acerto.
 // Peças tiradas depois do pagamento: dinheiro a devolver à cliente, mesmo sem troca.
@@ -69,19 +106,24 @@ function ADevolver({ pedidoId, valor }: { pedidoId: string; valor: number }) {
 export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: string; aDevolver?: number | null }) {
   const { data: a } = useAcerto(pedidoId)
   const marcar = useMarcarAcerto()
+  const registrar = useRegistrarCredito()
+  const { data: creditos } = useCreditosPedido(pedidoId)
   const devolver = aDevolver != null && aDevolver > 0 ? <ADevolver pedidoId={pedidoId} valor={aDevolver} /> : null
   if (!a || a.pecas.length === 0) return devolver
 
   const trocaId = a.troca_id
   const pendente = a.acerto_status === "pendente"
   const feito = a.acerto_status === "recebido" || a.acerto_status === "credito_registrado"
+  const credito = a.acerto_status === "credito_registrado" ? creditos?.find((c) => c.troca_id === trocaId) : undefined
+  // Reembolso feito ou crédito já usado: o banco não deixa desfazer o acerto antes de desfazer isso.
+  const travado = credito?.situacao === "reembolsado" || credito?.situacao === "credito_usado"
   const bloqueio = a.bloqueio ?? (a.total_pago_atual === undefined ? "Atualize o banco para conferir o saldo final antes de registrar o acerto." : null)
   const ajustar = (status: "recebido" | "credito_registrado" | "pendente") => trocaId && marcar.mutate({ trocaId, status })
 
   return (
     <>
     {devolver}
-    <Card size="sm" tom={pendente ? "warning" : undefined}>
+    <Card size="sm" tom={pendente || credito?.situacao === "reembolso_pendente" ? "warning" : undefined}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <HandCoins className="size-4" />
@@ -92,8 +134,11 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
             </Badge>
           )}
           {feito && (
-            <Badge variant="secondary" className="h-6 px-2 text-xs font-medium">
-              {a.acerto_status === "recebido" ? "Diferença recebida" : "Crédito registrado"}
+            <Badge
+              variant="secondary"
+              className={`h-6 px-2 text-xs font-medium ${credito?.situacao === "reembolso_pendente" ? `border-transparent ${COR_SELO.aguardando_cliente}` : ""}`}
+            >
+              {a.acerto_status === "recebido" ? "Diferença recebida" : credito ? ROTULO_CREDITO[credito.situacao] : "Crédito registrado"}
             </Badge>
           )}
           {a.acerto_status === "sem_diferenca" && (
@@ -127,21 +172,32 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
               </Button>
             )}
             {a.saldo < 0 && (
-              <Button className="h-10 w-full text-sm sm:w-auto" disabled={marcar.isPending} onClick={() => ajustar("credito_registrado")}>
-                {marcar.isPending ? <Spinner /> : <Check />} Crédito registrado
-              </Button>
+              <>
+                <Button className="h-10 w-full text-sm sm:w-auto" disabled={registrar.isPending} onClick={() => registrar.mutate({ trocaId, destino: "reembolso" })}>
+                  {registrar.isPending ? <Spinner /> : <Banknote />} Reembolsar
+                </Button>
+                <Button variant="outline" className="h-10 w-full text-sm sm:w-auto" disabled={registrar.isPending} onClick={() => registrar.mutate({ trocaId, destino: "proximo_pedido" })}>
+                  {registrar.isPending ? <Spinner /> : <PiggyBank />} Guardar para o próximo pedido
+                </Button>
+              </>
             )}
           </div>
         )}
+        {pendente && a.saldo < 0 && !bloqueio && (
+          <p className="text-xs text-muted-foreground">Pergunte à cliente se prefere o reembolso ou usar o crédito no próximo pedido.</p>
+        )}
+        {credito && <SituacaoCreditoAcerto credito={credito} />}
         {feito && trocaId && (
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>
               Marcado{a.acerto_por ? ` por ${a.acerto_por}` : ""}
               {a.acerto_em ? ` em ${quando(a.acerto_em)}` : ""}
             </span>
-            <Button variant="ghost" size="sm" className="h-8" disabled={marcar.isPending || !!bloqueio} onClick={() => ajustar("pendente")}>
-              <Undo2 /> Desfazer
-            </Button>
+            {!travado && (
+              <Button variant="ghost" size="sm" className="h-8" disabled={marcar.isPending || !!bloqueio} onClick={() => ajustar("pendente")}>
+                <Undo2 /> Desfazer
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

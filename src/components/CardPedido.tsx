@@ -4,11 +4,13 @@ import Miniaturas from "@/components/Miniaturas"
 import MenuContexto from "@/components/MenuContexto"
 import Prazo from "@/components/pedido/Prazo"
 import { SeloAcerto } from "@/components/SeloAcerto"
+import { useReembolsosPendentes } from "@/lib/api"
 import { OrigemBadge } from "@/components/StatusBadge"
 import type { Pedido } from "@/lib/tipos"
 
 // Cartão do pedido na esteira: a cliente em destaque, o número pequeno. Clique direito (ou toque longo) abre as ações.
 export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: string | null }) {
+  const reembolsar = useReembolsosPendentes().data?.has(p.id) ?? false
   return (
     <MenuContexto pedido={p}>
       <Card size="sm" className="transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
@@ -26,6 +28,7 @@ export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: st
         <div className="flex flex-wrap items-center gap-1.5">
           <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
           {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
+          {reembolsar && !p.acerto_pendente && <SeloAcerto reembolsar />}
         </div>
         </Link>
       </Card>

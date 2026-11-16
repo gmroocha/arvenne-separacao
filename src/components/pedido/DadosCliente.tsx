@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import { useAtualizarPedido, type PedidoDetalhe } from "@/lib/api"
+import { Badge } from "@/components/ui/badge"
+import { useAcerto, useAtualizarPedido, useCreditosPedido, type PedidoDetalhe } from "@/lib/api"
+import { COR_SELO, ROTULO_CREDITO } from "@/lib/selo"
 import { copiar } from "@/lib/copiar"
 import { digitos, linkWhatsApp, mascaraDocumento, mascaraTelefone, quando, reais } from "@/lib/formato"
 import { rotuloDesconto } from "@/lib/desconto"
@@ -29,6 +31,34 @@ function Linha({ rotulo, children }: { rotulo: React.ReactNode; children: React.
 }
 
 // Linha que abre o diálogo das peças trocadas/removidas.
+// Crédito da cliente no resumo: o valor que sai do "pago" (reembolso ou próximo pedido), com a situação.
+// Antes de a equipe escolher o destino, o saldo a favor aparece como "A definir". Valores vêm do banco.
+function CreditoResumo({ pedidoId }: { pedidoId: string }) {
+  const { data: creditos } = useCreditosPedido(pedidoId)
+  const { data: acerto } = useAcerto(pedidoId)
+  const aDefinir = acerto?.acerto_status === "pendente" && acerto.saldo < 0 && !acerto.bloqueio ? -acerto.saldo : 0
+  if (!creditos?.length && !aDefinir) return null
+  const selo = (texto: string, aviso: boolean) => (
+    <Badge variant="secondary" className={`h-5 px-1.5 text-[11px] font-medium ${aviso ? `border-transparent ${COR_SELO.aguardando_cliente}` : ""}`}>
+      {texto}
+    </Badge>
+  )
+  return (
+    <div className="flex flex-col gap-1.5 border-t pt-3">
+      {creditos?.map((c) => (
+        <Linha key={c.id} rotulo={<span className="flex flex-wrap items-center gap-1.5">Crédito da cliente {selo(ROTULO_CREDITO[c.situacao], c.situacao === "reembolso_pendente")}</span>}>
+          − {reais(c.valor)}
+        </Linha>
+      ))}
+      {aDefinir > 0 && (
+        <Linha rotulo={<span className="flex flex-wrap items-center gap-1.5">Crédito da cliente {selo("A definir", true)}</span>}>
+          − {reais(aDefinir)}
+        </Linha>
+      )}
+    </div>
+  )
+}
+
 function LinhaAlteracao({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => void }) {
   return (
     <Button variant="ghost" size="sm" className="-mx-2 justify-between px-2 text-sm font-normal" onClick={aoClicar}>
@@ -208,6 +238,8 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                 {pedido.pago_em && <Linha rotulo="Pago em">{quando(pedido.pago_em)}</Linha>}
               </div>
             )}
+
+            <CreditoResumo pedidoId={pedido.id} />
 
             <Field>
               <FieldLabel htmlFor="obs">Observações</FieldLabel>

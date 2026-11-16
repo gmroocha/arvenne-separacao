@@ -3,6 +3,7 @@ import { Link } from "react-router"
 import Miniaturas from "@/components/Miniaturas"
 import Prazo from "@/components/pedido/Prazo"
 import { SeloAcerto } from "@/components/SeloAcerto"
+import { useReembolsosPendentes } from "@/lib/api"
 import { OrigemBadge, StatusBadge } from "@/components/StatusBadge"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { quando, reais } from "@/lib/formato"
@@ -11,6 +12,7 @@ import type { Pedido } from "@/lib/tipos"
 
 // `resto` vai para o <li>: permite envolver a linha num menu de clique direito (asChild).
 export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentProps<"li">) {
+  const reembolsar = useReembolsosPendentes().data?.has(p.id) ?? false
   const pecas = `${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`
   return (
     <li {...resto}>
@@ -41,6 +43,7 @@ export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentPr
               <StatusBadge status={p.status} somadaA={p.somada_a_numero} />
               <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
               {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
+              {reembolsar && !p.acerto_pendente && <SeloAcerto reembolsar />}
             </>
           )}
           {p.fase === "venda" && <span className="text-xs text-muted-foreground">há {tempoDesde(p.status_desde)}</span>}
@@ -48,6 +51,7 @@ export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentPr
             <>
               <StatusBadge status={p.status} somadaA={p.somada_a_numero} />
               <OrigemBadge origem={p.origem} />
+              {reembolsar && <SeloAcerto reembolsar />}
               <span className="text-xs text-muted-foreground">{quando(p.status_desde)}</span>
             </>
           )}

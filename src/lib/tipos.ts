@@ -338,3 +338,27 @@ export type Alteracao = {
   a_devolver: number | null
   devolvido_em: string | null
 }
+
+// Crédito da cliente depois da troca (v_creditos_cliente). Valor vem do movimento financeiro, no banco.
+export type SituacaoCredito = "reembolso_pendente" | "reembolsado" | "credito_guardado" | "credito_usado"
+export type DestinoCredito = "reembolso" | "proximo_pedido"
+export type CreditoCliente = {
+  id: string
+  troca_id: string
+  pedido_id: string
+  numero: string
+  cliente_nome: string | null
+  destino: DestinoCredito
+  valor: number
+  situacao: SituacaoCredito
+  registrado_em: string
+  registrado_por: string | null
+  reembolsado_em: string | null
+  reembolsado_por: string | null
+  usado_em: string | null
+  usado_pedido_id: string | null
+  usado_numero: string | null
+  usado_por: string | null
+}
+// Crédito guardado de outro pedido da mesma cliente (creditos_do_pedido); usado_aqui = já usado neste pedido.
+export type CreditoDisponivel = { id: string; pedido_id: string; numero: string; valor: number; situacao: SituacaoCredito; registrado_em: string; usado_aqui: boolean }

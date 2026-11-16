@@ -10,7 +10,7 @@ import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 // Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
@@ -1371,6 +1371,83 @@ export function useMarcarAcerto() {
       if (error) throw error
     },
     [["acerto"], ["pedido"], ["pedidos"]],
+  )
+}
+
+// Créditos da cliente registrados neste pedido (reembolso ou próximo pedido), com a situação pronta do banco.
+export function useCreditosPedido(pedidoId: string | undefined) {
+  return useQuery({
+    queryKey: ["creditos", "pedido", pedidoId],
+    enabled: !!pedidoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_creditos_cliente").select("*").eq("pedido_id", pedidoId!).order("registrado_em")
+      if (error) throw error
+      return data as CreditoCliente[]
+    },
+  })
+}
+
+// Pedidos com reembolso ainda não feito: só para o selo nos cartões (não traz valores).
+export function useReembolsosPendentes() {
+  return useQuery({
+    queryKey: ["creditos", "reembolsos"],
+    refetchInterval: intervaloListas,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_creditos_cliente").select("pedido_id").eq("situacao", "reembolso_pendente")
+      if (error) throw error
+      return new Set((data ?? []).flatMap((c) => (c.pedido_id ? [c.pedido_id] : [])))
+    },
+  })
+}
+
+// Créditos guardados de outros pedidos da mesma cliente (e os já usados neste pedido).
+export function useCreditosDisponiveis(pedidoId: string | undefined) {
+  return useQuery({
+    queryKey: ["creditos", "disponiveis", pedidoId],
+    enabled: !!pedidoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("creditos_do_pedido", { p_pedido: pedidoId! })
+      if (error) throw error
+      return (data ?? []) as CreditoDisponivel[]
+    },
+  })
+}
+
+const CREDITOS = [["creditos"], ["acerto"], ["pedido"], ["pedidos"]]
+
+// Registra o saldo a favor da cliente com o destino: reembolso (fica pendente) ou crédito para o próximo pedido.
+export function useRegistrarCredito() {
+  return useAcao(
+    async ({ trocaId, destino }: { trocaId: string; destino: DestinoCredito }) => {
+      const { error } = await supabase.rpc("registrar_credito", { p_troca: trocaId, p_destino: destino })
+      if (error) throw error
+    },
+    CREDITOS,
+    (_, a) => toast.success(a.destino === "reembolso" ? "Reembolso pendente registrado" : "Crédito guardado para o próximo pedido"),
+  )
+}
+
+// Reembolso feito (ou desfeito).
+export function useMarcarReembolsado() {
+  return useAcao(
+    async ({ creditoId, desfazer }: { creditoId: string; desfazer?: boolean }) => {
+      const { error } = await supabase.rpc("marcar_reembolsado", { p_credito: creditoId, p_desfazer: !!desfazer })
+      if (error) throw error
+    },
+    CREDITOS,
+    (_, a) => toast.success(a.desfazer ? "Reembolso desfeito" : "Reembolso registrado"),
+  )
+}
+
+// Usa o crédito guardado neste pedido da mesma cliente (ou desfaz).
+export function useUsarCredito() {
+  return useAcao(
+    async ({ creditoId, pedidoId, desfazer }: { creditoId: string; pedidoId: string; desfazer?: boolean }) => {
+      const { error } = await supabase.rpc("usar_credito", { p_credito: creditoId, p_pedido: pedidoId, p_desfazer: !!desfazer })
+      if (error) throw error
+    },
+    CREDITOS,
+    (_, a) => toast.success(a.desfazer ? "Uso do crédito desfeito" : "Crédito marcado como usado"),
   )
 }
 
