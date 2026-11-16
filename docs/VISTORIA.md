@@ -382,6 +382,22 @@ pela cliente e quantidades reduzidas depois do pagamento, com quem fez, coberto,
 ou valor), preenchido por gatilho a partir de `discountApplications`, que a função `shopify-sync` passou a buscar numa
 consulta à parte e tolerante (se falhar, o pedido entra sem o motivo).
 
+## Achados do teste da esteira no ARV-1273 (V60 a V63, 16/11/2026)
+
+O Gustavo concluiu a Separação, confirmou "Ir para Conferência" e a tela voltou para a Separação; depois conferiu
+tudo e a próxima etapa não apareceu. O banco confirmou: o pedido foi para a Conferência às 17:21:05 e as peças
+foram conferidas e etiquetadas, mas a tela ficou atrasada. Só app (sem migration). Testes em
+`tests/e2e/etapa-fila.spec.mjs`, que falhavam antes e passam depois.
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V60 | Alta | Confirmar a próxima etapa com a última peça ainda gravando: a fila recarregava o pedido antes de a nova etapa chegar ao banco e a etapa antiga voltava por cima ("foi e voltou"). | `useMudarStatus` ganhou a chave `["status"]`; enquanto a mudança está a caminho, a leitura do pedido (`usePedido`) mantém a etapa nova; ao terminar, lê de novo do banco. |
+| V61 | Alta | Com a tela atrasada, tocar na etapa seguinte e "Ver mesmo assim" deixava a etapa atual marcada como "vista": as peças funcionavam, mas o diálogo de concluir nunca abria. | A tela trata a etapa vista igual à atual como a atual (`Pedido.tsx`). |
+| V62 | Média | O diálogo da próxima etapa só abria no toque que completava a etapa. Pedido aberto com a etapa já toda feita (outra tela, tela atrasada, V61) ficava parado sem oferecer a próxima. | O diálogo nasce do estado do pedido: etapa atual completa, vendo a atual e sem mudança em andamento. "Ficar aqui" vale até a etapa deixar de estar completa. |
+| V63 | Média | Toques rápidos em "Etiquetada"/"Conferida": durante a animação das peças o navegador entrega o toque à página inteira, não ao botão. A tela parecia travada e peças ficavam sem marcar (2 de 4 no teste). | Toque engolido pela animação encerra a animação e vai para o botão que está ali; toques seguidos (menos de 0,7 s) trocam direto, sem animar. |
+
+Também: no diálogo "Pedidos para separar" (Peças repetidas), só a lista rola; filtros e "Pronto" ficam fixos.
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na

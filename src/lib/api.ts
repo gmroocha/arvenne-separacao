@@ -4,7 +4,6 @@ import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import type { Database } from "@/lib/banco"
-import { etapaCompleta } from "@/lib/etapa"
 import { juntarLidos, lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
 import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
@@ -147,7 +146,18 @@ export function usePedidoResumo(id: string | null | undefined) {
   })
 }
 
+// Mudança de etapa ainda a caminho do banco para este pedido (a mais recente), ou nada.
+function etapaPendente(qc: QueryClient, pedidoId: string) {
+  const m = qc
+    .getMutationCache()
+    .findAll({ mutationKey: ["status"], status: "pending" })
+    .filter((x) => (x.state.variables as { pedidoId?: string } | undefined)?.pedidoId === pedidoId)
+    .at(-1)
+  return m?.state.variables as { para: StatusPedido; campos?: CamposPedido } | undefined
+}
+
 export function usePedido(id: string | undefined) {
+  const qc = useQueryClient()
   return useQuery({
     queryKey: ["pedido", id],
     enabled: !!id,
@@ -160,7 +170,12 @@ export function usePedido(id: string | undefined) {
       if (p.error) throw p.error
       if (i.error) throw i.error
       if (e.error) throw e.error
-      return { ...(p.data as Pedido), pedido_itens: i.data as Item[], pedido_eventos: e.data as Evento[] } as PedidoDetalhe
+      const detalhe = { ...(p.data as Pedido), pedido_itens: i.data as Item[], pedido_eventos: e.data as Evento[] } as PedidoDetalhe
+      // V60: leitura feita antes de a nova etapa chegar ao banco traria a etapa antiga por cima da que a
+      // pessoa acabou de confirmar (a tela "voltava"). Enquanto a mudança está a caminho, vale a nova;
+      // quando ela termina, o pedido é lido de novo do banco.
+      const pendente = etapaPendente(qc, id!)
+      return pendente ? { ...detalhe, ...pendente.campos, status: pendente.para } : detalhe
     },
   })
 }
@@ -408,16 +423,51 @@ const chavePedido = (id: string) => ["pedido", id]
 
 // Troca de cache com transição suave (os blocos deslizam para o lugar em vez de pular).
 // Sem suporte do navegador, ou com "reduzir movimento", troca direto como sempre.
+// V63: durante a animação o navegador entrega o toque à página inteira (<html>), não ao botão: com toques
+// rápidos em "Etiquetada"/"Conferida" a tela parecia travada e peças ficavam sem marcar. Um toque assim
+// encerra a animação e vai para o botão que está ali; toques seguidos trocam direto, sem animar.
+type Transicao = { skipTransition?: () => void; finished?: Promise<unknown> }
+let ultimaTransicao = 0
+let transicaoAtiva: Transicao | null = null
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "click",
+    (e) => {
+      if (!transicaoAtiva || e.target !== document.documentElement) return
+      e.stopPropagation()
+      transicaoAtiva.skipTransition?.()
+      transicaoAtiva = null
+      const { clientX: x, clientY: y } = e
+      requestAnimationFrame(() => {
+        const alvo = document.elementFromPoint(x, y)
+        if (alvo instanceof HTMLElement && alvo !== document.documentElement) alvo.click()
+      })
+    },
+    true,
+  )
+}
 function comTransicao(trocar: () => void) {
-  const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown }
+  const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => Transicao }
   const reduzir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-  if (typeof doc.startViewTransition !== "function" || reduzir) return trocar()
+  const agora = performance.now()
+  const seguido = agora - ultimaTransicao < 700
+  ultimaTransicao = agora
+  if (typeof doc.startViewTransition !== "function" || reduzir || seguido) {
+    // Corta a animação anterior: senão ela continua mostrando a tela de antes por cima da nova.
+    transicaoAtiva?.skipTransition?.()
+    transicaoAtiva = null
+    return trocar()
+  }
   try {
-    doc.startViewTransition(async () => {
+    const t = doc.startViewTransition(async () => {
       flushSync(trocar)
       // O TanStack avisa a tela num setTimeout(0): dá um respiro para o React desenhar o novo estado.
       await new Promise((r) => setTimeout(r, 30))
     })
+    transicaoAtiva = t
+    t.finished?.finally(() => {
+      if (transicaoAtiva === t) transicaoAtiva = null
+    }).catch(() => {})
   } catch {
     trocar()
   }
@@ -443,6 +493,7 @@ export async function esperarFilaDoPedido(qc: QueryClient, pedidoId: string, lim
 export function useMudarStatus() {
   const qc = useQueryClient()
   return useMutation({
+    mutationKey: ["status"],
     mutationFn: async ({ pedidoId, para, campos }: { pedidoId: string; para: StatusPedido; campos?: CamposPedido; silencioso?: boolean }) => {
       await esperarFilaDoPedido(qc, pedidoId)
       const { error } = await supabase.from("pedidos").update({ status: para, ...campos }).eq("id", pedidoId)
@@ -546,8 +597,8 @@ const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa:
 //  - falta/defeito leva o pedido a "avisar cliente" (o banco guarda de qual etapa);
 //  - resolvidos os problemas, ele volta à etapa de origem (ou à separação, se sobra peça pendente);
 //  - primeira peça achada tira o pedido de "novo";
-//  - ao completar a etapa, chama aoCompletar (a tela abre o Dialog; quem muda de etapa é a pessoa).
-export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedido) => void) {
+//  - a etapa completa é percebida pela tela do pedido (abre o Dialog; quem muda de etapa é a pessoa).
+export function useAcoesItem(pedidoId: string) {
   const qc = useQueryClient()
   const chave = ["item", pedidoId]
 
@@ -594,35 +645,19 @@ export function useAcoesItem(pedidoId: string, aoCompletar?: (etapa: StatusPedid
     const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
     if (!atual) return
     const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
-    const antes = atual.pedido_itens
-    const depois = antes.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
+    const depois = atual.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
     // Cancela uma leitura em andamento (ela traria o estado velho de volta) e grava sobre o que está no cache agora.
     void qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
+    if (campos.status) {
+      const problemas = depois.some((i) => i.status === "falta" || i.status === "defeito")
+      if (problemas && ESTADOS_DE_PECAS.includes(atual.status)) toast.info("Avise a cliente sobre a peça em falta")
+    }
     comTransicao(() =>
       qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) =>
         old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i)) } : old,
       ),
     )
-    const resultado = gravar.mutateAsync({ itemId: item.id, campos: patch, codigo, delta }).catch(() => null)
-
-    let estado = atual.status
-    if (campos.status) {
-      const vivos = depois.filter((i) => i.status !== "removido")
-      const problemas = vivos.some((i) => i.status === "falta" || i.status === "defeito")
-      let destino: StatusPedido | null = null
-      if (problemas && ESTADOS_DE_PECAS.includes(estado)) {
-        destino = "avisar_cliente"
-        toast.info("Avise a cliente sobre a peça em falta")
-      } else if (!problemas && (estado === "avisar_cliente" || estado === "aguardando_cliente")) {
-        // Só antecipa o diálogo de conclusão. A etapa é confirmada pela mesma RPC que grava a peça.
-        estado = atual.etapa_antes_desvio ?? "separacao"
-      } else if (estado === "novo" && campos.status === "encontrado") destino = "separacao"
-      if (destino) {
-        estado = destino
-      }
-    }
-    if (etapaCompleta(estado, depois) && !etapaCompleta(estado, antes)) aoCompletar?.(estado)
-    return resultado
+    return gravar.mutateAsync({ itemId: item.id, campos: patch, codigo, delta }).catch(() => null)
   }
 }
 

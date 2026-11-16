@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
 import AlteracoesDialog from "@/components/pedido/AlteracoesDialog"
@@ -15,8 +15,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAcoesItem, useSubstituirItem, useMudarStatus, usePatchPedido, useAlteracoes, usePedido, type PedidoDetalhe } from "@/lib/api"
-import { ETAPAS_DE_PECAS } from "@/lib/etapa"
-import { etapaAtual, type StatusPedido } from "@/lib/status"
+import { ETAPAS_DE_PECAS, etapaCompleta } from "@/lib/etapa"
+import { etapaAtual, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
 import type { Item, NovoItem } from "@/lib/tipos"
 
 function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
@@ -24,15 +24,11 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   const patch = usePatchPedido(pedido.id)
   const [concluida, setConcluida] = useState<StatusPedido | null>(null) // etapa que abriu o Dialog
   const [verDados, setVerDados] = useState(false)
-  const [vista, setVista] = useState<StatusPedido | null>(null) // etapa vista na esteira (null = a atual)
-  const vistaRef = useRef(vista)
-  useEffect(() => {
-    vistaRef.current = vista
-  }, [vista])
-  // O Dialog de concluir só abre a partir da etapa atual: vendo outra, as ações das peças não o disparam.
-  const acao = useAcoesItem(pedido.id, (e) => {
-    if (vistaRef.current === null) setConcluida(e)
-  })
+  const [vistaEscolhida, setVista] = useState<StatusPedido | null>(null) // etapa vista na esteira (null = a atual)
+  // V61: "Ver mesmo assim" numa etapa à frente que, nesse meio-tempo, virou a atual é a própria etapa atual.
+  // Tratada como "outra etapa", ela escondia o diálogo de concluir.
+  const vista = vistaEscolhida !== null && passoDe(vistaEscolhida) === passoAtual(pedido) ? null : vistaEscolhida
+  const acao = useAcoesItem(pedido.id)
   // Mudou a etapa do pedido: volta a mostrar a atual (ajuste durante a renderização, sem efeito). Falta marcada
   // na Conferência ou na Etiquetagem não muda a etapa que a tela mostra: o desvio guarda a etapa de origem (V37).
   const [statusVisto, setStatusVisto] = useState(pedido.status)
@@ -40,6 +36,14 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
     setStatusVisto(pedido.status)
     setVista(null)
   }
+  // Etapa atual com tudo feito: oferece a próxima (V62). Vale para o toque que fecha a etapa e também para o
+  // pedido que já chega completo (feito noutra tela ou com a tela atrasada). Só a partir da etapa atual.
+  // "Ficar aqui" vale até a etapa deixar de estar completa (um "Desfazer", por exemplo).
+  const etapa = etapaAtual(pedido)
+  const completa = etapaCompleta(etapa, pedido.pedido_itens)
+  const [dispensada, setDispensada] = useState<StatusPedido | null>(null)
+  if (dispensada !== null && (!completa || dispensada !== etapa)) setDispensada(null)
+  const automatica = completa && vista === null && dispensada !== etapa && !mudarStatus.isPending ? etapa : null
   const foco = ETAPAS_DE_PECAS.includes(pedido.status)
   const substituirItem = useSubstituirItem()
   const [adicionando, setAdicionando] = useState(false)
@@ -91,8 +95,11 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
       </div>
 
       <DialogEtapa
-        etapa={concluida}
-        aoFechar={() => setConcluida(null)}
+        etapa={concluida ?? automatica}
+        aoFechar={() => {
+          setConcluida(null)
+          setDispensada(etapa)
+        }}
         aoConfirmar={(para) => {
           mudarStatus.mutate({ pedidoId: pedido.id, para, silencioso: true })
           setConcluida(null)

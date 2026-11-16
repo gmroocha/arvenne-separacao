@@ -1,4 +1,12 @@
-# Estado atual (atualizado em 13/11/2026)
+# Estado atual (atualizado em 16/11/2026)
+
+## Esteira sem "voltar" de etapa (16/11/2026, só app)
+
+V60 a V63 em [`VISTORIA.md`](VISTORIA.md): confirmar a próxima etapa com peça ainda gravando não volta mais
+para a etapa anterior; o diálogo da próxima etapa abre sempre que a etapa atual está toda feita (inclusive ao
+abrir o pedido); toques rápidos em "Etiquetada"/"Conferida" não se perdem na animação. "Pedidos para separar"
+com filtros e "Pronto" fixos. ARV-1273 está na Conferência com tudo conferido e etiquetado: ao abrir, o app
+oferece "Ir para Etiquetagem".
 
 ## Vistoria 2 — aplicada e publicada
 

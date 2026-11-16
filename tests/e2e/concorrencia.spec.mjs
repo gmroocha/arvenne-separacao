@@ -1,6 +1,9 @@
 import {test,expect} from '@playwright/test'
 import {criarSimulacao,SUPABASE_FICTICIO} from '../../scripts/simulacao/banco.mjs'
 let sim
+
+// V62: com a separação completa, o pedido aberto oferece a Conferência; a pessoa fica para ver as peças.
+async function ficar(pagina){const d=pagina.getByRole('dialog',{name:'Separação concluída'});await expect(d).toBeVisible();await d.getByRole('button',{name:'Ficar aqui'}).click();await expect(d).toBeHidden()}
 let outro
 test.afterEach(async()=>{await outro?.close();outro=null;await sim?.fechar();sim=null})
 
@@ -16,6 +19,7 @@ test('duplo clique em dois navegadores conserva a peça e registra a ação uma 
  expect(item).toEqual({status:'encontrado',qtd:2,qtd_bipada:0})
  expect(Number((await sim.one("select count(*) n from pedido_eventos where item_id=$1 and tipo='item' and para='encontrado'",[sim.item.id])).n)).toBe(1)
  await Promise.all([page.reload(),segunda.reload()])
+ await ficar(page);await ficar(segunda)
  await expect(page.getByRole('button',{name:/^Encontradas \(1\)$/})).toBeVisible()
  await expect(segunda.getByRole('button',{name:/^Encontradas \(1\)$/})).toBeVisible()
  expect(sim.bloqueadas).toEqual([])
@@ -46,7 +50,7 @@ test('V57: resposta perdida depois da gravação recupera o estado ao recarregar
  })
  await page.getByRole('button',{name:'Achei',exact:true}).click()
  await expect.poll(()=>perdeu).toBe(true)
- await page.reload();liberarResposta();await expect(page.getByRole('button',{name:/^Encontradas \(1\)$/})).toBeVisible()
+ await page.reload();liberarResposta();await ficar(page);await expect(page.getByRole('button',{name:/^Encontradas \(1\)$/})).toBeVisible()
  expect((await sim.one('select status from pedidos where id=$1',[sim.pedido.id])).status).toBe('separacao')
  expect((await sim.one('select qtd from pedido_itens where id=$1',[sim.item.id])).qtd).toBe(2)
  expect(Number((await sim.one("select count(*) n from pedido_eventos where item_id=$1 and tipo='item' and para='encontrado'",[sim.item.id])).n)).toBe(1)

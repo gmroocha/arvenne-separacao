@@ -108,7 +108,8 @@ export default function Repetidas() {
           ) : !candidatos.length ? (
             <p className="py-4 text-center text-sm text-muted-foreground">Nenhum pedido esperando separação.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            // Só a lista rola: filtros em cima e "Pronto" embaixo ficam sempre à vista.
+            <ul className="-mx-0.5 flex max-h-[calc(80svh-17rem)] min-h-24 flex-col gap-2 overflow-y-auto overscroll-contain p-0.5 sm:max-h-[calc(94svh-15rem)]">
               {candidatos.map((p) => (
                 <li key={p.id}>
                   <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl p-3 ring-1 ring-foreground/10 has-data-checked:bg-muted/60 has-data-checked:ring-foreground/25">
