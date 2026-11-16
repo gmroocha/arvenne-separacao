@@ -73,7 +73,9 @@ tipos regenerados (`baseAplicada` = `20261119180000`); commits no GitHub.
 Conferido com dados reais (sem gravar): W0007 abre com venda somada, desconto Pix na nota e frete com o
 valor do pacote inteiro (R$ 732,62).
 
-Pedidos atuais são de teste e o Gustavo vai zerar o app; os avisos do vigia sobre eles são esperados.
+**Reset feito em 16/11/2026 (com o "sim" do Gustavo):** `SHOPIFY_IMPORTAR_DESDE` = `2026-11-06` e
+`scripts/zerar-testes.sql` (reescrito com TRUNCATE, testado em `tests/banco/zerar.test.mjs`) rodado no remoto:
+0 pedidos, catálogo e feriados mantidos. A partir daqui os pedidos são reais.
 
 Próxima ação (Gustavo, no painel do Supabase): Authentication → ligar a proteção contra senhas vazadas
 (se o plano permitir) e confirmar que o cadastro público está desligado. Depois do reset, clicar em
@@ -281,8 +283,7 @@ Aplicadas em 11/11/2026 (auditoria de 10/11): `20261112180000_sugestoes_preco`,
   registrado) e selo "Acerto pendente" na Expedição.
 - `shopify-sync` republicada (v6). Falta conferir na tela: confirmação de Aprovar, card de acerto e faixa
   "Troca confirmada" (nenhuma troca concluída ainda).
-- **Antes de começar de verdade:** `scripts/zerar-testes.sql` apaga pedidos, trocas e clientes de teste
-  (não rodado). Antes, ajustar o segredo `SHOPIFY_IMPORTAR_DESDE`.
+- **Reset de testes:** feito em 16/11/2026 (ver Próxima ação).
 
 ## Auditoria de 10/11/2026: corrigida em 11/11/2026
 
