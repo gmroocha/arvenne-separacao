@@ -1,5 +1,9 @@
 # Estado atual (atualizado em 16/11/2026)
 
+**Banco zerado em 16/11/2026** (com o "sim" do Gustavo, `scripts/zerar-testes.sql`): 0 pedidos, peças, trocas,
+eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
+Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
+
 ## Esteira sem "voltar" de etapa (16/11/2026, só app)
 
 V60 a V63 em [`VISTORIA.md`](VISTORIA.md): confirmar a próxima etapa com peça ainda gravando não volta mais
