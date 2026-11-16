@@ -8,6 +8,18 @@ abrir o pedido); toques rápidos em "Etiquetada"/"Conferida" não se perdem na a
 com filtros e "Pronto" fixos. ARV-1273 está na Conferência com tudo conferido e etiquetado: ao abrir, o app
 oferece "Ir para Etiquetagem".
 
+Na mesma data: V64 (bipagem com toques rápidos conta na hora); "Concluir etapa" preso no rodapé da tela;
+Peças repetidas com busca (peça, código, cliente), categoria pelo nome da peça, ordenação e caixa "destacar"
+por pedido (marca as peças daquela cliente em todos os cartões, guardado neste aparelho); venda sem "Enviar à
+cliente": "Copiar link", "Pago" e a situação "Em aberto / Aguardando pagamento". Testes de tela em paralelo
+(4 ao mesmo tempo): `npm test` caiu de ~15 para ~8 min.
+
+**Lentidão do banco (análise só leitura, 16/11):** picos de 4 a 10 s em consultas que levam 50 a 250 ms em
+média (inclusive um simples "mudar etapa"), e `troca_painel` com 0,5 s de média. O tempo limite do app é 8 s:
+acima disso aparece "O banco demorou para responder". Sinais de máquina pequena e compartilhada; o tempo real
+(Realtime) é a consulta mais chamada. Próximo passo sugerido: conferir o plano/compute no painel e, com o "sim"
+do Gustavo, otimizar `troca_painel`/`garantir_troca`.
+
 ## Vistoria 2 — aplicada e publicada
 
 Relatório e evidências em [`VISTORIA-2.md`](VISTORIA-2.md), com **18 correções V42–V59** e inventário efetivo. Esta seção é o estado atual; as seções seguintes preservam o histórico de novembro.

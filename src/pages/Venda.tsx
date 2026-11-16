@@ -19,7 +19,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { atualizarPedido, salvarCliente, somarVenda, usePedido, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
-import { linkWhatsApp, reais } from "@/lib/formato"
+import { reais } from "@/lib/formato"
 import { StatusBadge } from "@/components/StatusBadge"
 
 type Estado = "salvo" | "pendente" | "salvando" | "erro"
@@ -105,11 +105,9 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
   const [pagando, setPagando] = useState(false)
   const [pagto, setPagto] = useState<{ total: number; forma: string }>({ total: pedido.total, forma: pedido.forma_pagamento ?? "Pix" })
   const [perdendo, setPerdendo] = useState(false)
-  const [enviando, setEnviando] = useState(false)
 
   const mudar = useCallback((parcial: Partial<FormVenda>) => setForm((f) => ({ ...f, ...parcial })), [])
   const link = `${window.location.origin}/r/${pedido.token_publico}`
-  const pecas = pedido.qtd_linhas
 
   // Cria ou atualiza a cliente no cadastro e devolve o id.
   async function garantirCliente(): Promise<string | null> {
@@ -137,31 +135,6 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
   async function aoSalvarCliente() {
     const id = await garantirCliente()
     await gravar({ cliente_id: id })
-  }
-
-  async function enviar() {
-    if (pecas === 0) return toast.error("Adicione ao menos uma peça")
-    const primeiro = form.cliente_nome.trim().split(" ")[0]
-    const texto = `Olá${primeiro ? `, ${primeiro}` : ""}! Segue o resumo do seu pedido ${pedido.numero} da Arvenne: ${link}\nQualquer dúvida é só responder por aqui.`
-    const wa = linkWhatsApp(form.cliente_telefone, texto)
-    // Abre a janela já no clique, antes das chamadas ao banco (senão o navegador bloqueia).
-    const janela = wa ? window.open("about:blank", "_blank") : null
-    setEnviando(true)
-    try {
-      const id = await garantirCliente()
-      await gravar({ cliente_id: id, ...(pedido.status === "em_aberto" ? { status: "aguardando_pagamento" } : {}) })
-      if (wa && janela) janela.location.href = wa
-      else {
-        janela?.close()
-        await navigator.clipboard.writeText(link).catch(() => {})
-        toast.info("Sem telefone válido: o link foi copiado para você enviar")
-      }
-    } catch (e) {
-      janela?.close()
-      toast.error(e instanceof Error ? e.message : "Não foi possível enviar")
-    } finally {
-      setEnviando(false)
-    }
   }
 
   async function copiar() {
@@ -248,17 +221,13 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
       form={form}
       aoMudar={mudar}
       aoForma={(forma) => void gravar({ forma_pagamento: forma }).catch(() => {})}
-      aoEnviar={() => {
-        setResumoAberto(false)
-        void enviar()
-      }}
       aoCopiar={copiar}
       aoPago={() => void pedirPagamento()}
       aoPerdida={() => {
         setResumoAberto(false)
         setPerdendo(true)
       }}
-      enviando={enviando}
+      aoSituacao={(status) => void gravar({ status }).then(() => toast.success(status === "aguardando_pagamento" ? "Aguardando pagamento" : "Venda em aberto")).catch(() => {})}
       prefixo={prefixo}
     />
   )

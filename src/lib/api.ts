@@ -652,9 +652,14 @@ export function useAcoesItem(pedidoId: string) {
       const problemas = depois.some((i) => i.status === "falta" || i.status === "defeito")
       if (problemas && ESTADOS_DE_PECAS.includes(atual.status)) toast.info("Avise a cliente sobre a peça em falta")
     }
+    // Contagem (+1/-1 e leitura do código) parte do número que está na tela agora, não do toque: com toques
+    // rápidos o botão ainda trazia a contagem antiga e a peça ficava "1/3" até a fila acabar (V64).
+    const passo = codigo ? 1 : (delta ?? 0)
+    const aplicar = (i: Item): Item =>
+      passo && patch.qtd_bipada !== undefined ? { ...i, ...patch, qtd_bipada: Math.min(i.qtd, Math.max(0, i.qtd_bipada + passo)) } : { ...i, ...patch }
     comTransicao(() =>
       qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) =>
-        old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i)) } : old,
+        old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? aplicar(i) : i)) } : old,
       ),
     )
     return gravar.mutateAsync({ itemId: item.id, campos: patch, codigo, delta }).catch(() => null)

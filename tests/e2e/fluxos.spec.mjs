@@ -18,7 +18,7 @@ test("venda paga entra na expedição com o valor calculado pelo banco", async (
   await page.goto(`/vendas/${sim.pedido.id}`)
   await expect(page.getByRole("textbox", { name: "Nome", exact: true })).toHaveValue("Cliente de teste")
   if ((page.viewportSize()?.width ?? 0) < 1024) await page.getByRole("button", { name: "Resumo", exact: true }).click()
-  await page.getByRole("button", { name: "Marcar como pago", exact: true }).filter({ visible: true }).click()
+  await page.getByRole("button", { name: "Pago", exact: true }).filter({ visible: true }).click()
   const dialog = page.getByRole("dialog", { name: "Marcar como pago", exact: true })
   await expect(dialog).toBeVisible()
   await dialog.getByRole("button", { name: "Confirmar pagamento" }).click()

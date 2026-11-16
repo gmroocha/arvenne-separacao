@@ -5,8 +5,9 @@ export default defineConfig({
   testMatch: "**/*.spec.mjs",
   timeout: 45_000,
   expect: { timeout: 8_000 },
-  fullyParallel: false,
-  workers: 1,
+  // Cada teste tem o próprio banco em memória: dá para rodar vários ao mesmo tempo.
+  fullyParallel: true,
+  workers: process.env.CI ? 2 : 4,
   retries: 0,
   forbidOnly: true,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",

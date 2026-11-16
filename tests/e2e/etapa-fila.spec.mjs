@@ -113,3 +113,26 @@ test("V63: toques rápidos seguidos marcam todas as peças", async ({ page, cont
   await expect.poll(async () => Number((await sim.one("select count(*) n from pedido_itens where pedido_id=$1 and etiquetado_em is not null", [sim.pedido.id])).n)).toBe(4)
   expect(sim.bloqueadas).toEqual([])
 })
+
+// V64: "Contar 1" tocado rápido na mesma peça (3×): a tela contava a partir do número antigo do botão,
+// ficava em 1/3 e a próxima etapa só aparecia quando a fila de gravações acabava.
+test("V64: toques rápidos em Contar 1 contam na hora e oferecem a próxima etapa", async ({ page, context, baseURL }) => {
+  sim = await criarSimulacao({ status: "novo" })
+  await sim.banco.query("update pedido_itens set status='encontrado', qtd=3, conferido_em=now(), etiquetado_em=now() where id=$1", [sim.item.id])
+  await sim.banco.query("update pedidos set status='bipagem' where id=$1", [sim.pedido.id])
+  await sim.instalar(context, baseURL)
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await page.waitForLoadState("networkidle")
+  await context.route((u) => u.origin === SUPABASE_FICTICIO && u.pathname === "/rest/v1/rpc/bipar_ajustar", async (route) => {
+    await new Promise((r) => setTimeout(r, 700))
+    await route.fallback()
+  })
+  const contar = page.getByRole("button", { name: "Contar 1", exact: true })
+  await expect(contar).toBeVisible()
+  // Três toques antes de a tela redesenhar (aparelho lento ou toques muito rápidos).
+  await contar.evaluate((b) => { b.click(); b.click(); b.click() })
+  // A fila leva ~2 s para gravar as três; a tela não espera por ela.
+  await expect(page.getByRole("dialog").getByText("Bipagem concluída")).toBeVisible({ timeout: 1200 })
+  await expect.poll(async () => Number((await sim.one("select qtd_bipada from pedido_itens where id=$1", [sim.item.id])).qtd_bipada)).toBe(3)
+  expect(sim.bloqueadas).toEqual([])
+})

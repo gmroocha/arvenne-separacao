@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Copy, Send, Store, User, Wallet, XCircle } from "lucide-react"
+import { Check, Copy, Store, User, XCircle } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { Button } from "@/components/ui/button"
 import { FormaPagamento } from "@/components/comum/FormaPagamento"
@@ -7,7 +7,6 @@ import { LinhaValor } from "@/components/comum/LinhaValor"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
-import { Spinner } from "@/components/ui/spinner"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { reais } from "@/lib/formato"
 import { COR_PAC, COR_SEDEX } from "@/lib/selo"
@@ -19,11 +18,10 @@ type Props = {
   form: FormVenda
   aoMudar: (parcial: Partial<FormVenda>) => void
   aoForma: (forma: string | null) => void
-  aoEnviar: () => void
   aoCopiar: () => void
   aoPago: () => void
   aoPerdida: () => void
-  enviando: boolean
+  aoSituacao: (status: "em_aberto" | "aguardando_pagamento") => void
   prefixo: string
 }
 
@@ -40,11 +38,12 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 // PAC e SEDEX moram em lib/selo; reexportados para a Nota e frete.
 export { COR_PAC, COR_SEDEX }
 
-export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, aoCopiar, aoPago, aoPerdida, enviando, prefixo }: Props) {
+export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, aoPago, aoPerdida, aoSituacao, prefixo }: Props) {
   const p = (s: string) => `${prefixo}-${s}`
   // A forma muda na hora na tela; o banco grava em seguida (o total com Pix vem dele depois).
   const [formaLocal, setFormaLocal] = useState<string | null | undefined>(undefined)
   const forma = formaLocal !== undefined ? formaLocal : pedido.forma_pagamento
+  const [situacaoLocal, setSituacaoLocal] = useState<string | undefined>(undefined)
   return (
     <div className="flex flex-col gap-4">
       <Field>
@@ -157,16 +156,35 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoEnviar, 
         <LinhaValor total rotulo="Total" valor={reais(pedido.total)} />
       </div>
 
+      <Field>
+        <FieldLabel>Situação</FieldLabel>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          className="w-full"
+          value={situacaoLocal ?? pedido.status}
+          onValueChange={(v) => {
+            if (v !== "em_aberto" && v !== "aguardando_pagamento") return
+            setSituacaoLocal(v)
+            aoSituacao(v)
+          }}
+        >
+          <ToggleGroupItem value="em_aberto" className="flex-1">
+            Em aberto
+          </ToggleGroupItem>
+          <ToggleGroupItem value="aguardando_pagamento" className="flex-1">
+            Aguardando pagamento
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </Field>
+
       <div className="flex flex-col gap-2">
-        <Button size="xl" onClick={aoEnviar} disabled={enviando}>
-          {enviando ? <Spinner /> : <Send />} Enviar à cliente
-        </Button>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" size="xl" onClick={aoCopiar}>
             <Copy /> Copiar link
           </Button>
-          <Button variant="outline" size="xl" onClick={aoPago}>
-            <Wallet /> Marcar como pago
+          <Button size="xl" onClick={aoPago}>
+            <Check /> Pago
           </Button>
         </div>
         <Button variant="ghost" size="toque" className="text-muted-foreground" onClick={aoPerdida}>

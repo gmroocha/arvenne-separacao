@@ -1,7 +1,7 @@
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { useMemo, useState } from "react"
 import { Link } from "react-router"
-import { ChevronRight, ListChecks, PackageCheck } from "lucide-react"
+import { ChevronRight, ListChecks, PackageCheck, SearchX } from "lucide-react"
 import Foto from "@/components/Foto"
 import Prazo from "@/components/pedido/Prazo"
 import RespDialog from "@/components/RespDialog"
@@ -9,30 +9,52 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { CampoBusca } from "@/components/comum/CampoBusca"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePedidosFase, useRepetidas } from "@/lib/api"
 import { formatarPrazo } from "@/lib/formato"
-import type { Pedido } from "@/lib/tipos"
+import { categoriaDoNome, paraBusca } from "@/lib/categoria"
+import type { PecaRepetida, Pedido } from "@/lib/tipos"
+import { cn } from "@/lib/utils"
 
-// Seleção do dia fica neste aparelho (conveniência): some sozinha quando os pedidos saem da separação.
+// Seleção e destaques do dia ficam neste aparelho (conveniência): somem sozinhos quando os pedidos saem da separação.
 const CHAVE = "repetidas:selecao"
-function lerSelecao(): string[] {
+const CHAVE_DESTAQUE = "repetidas:destaque"
+function lerLista(chave: string): string[] {
   try {
-    const v = JSON.parse(localStorage.getItem(CHAVE) ?? "[]")
+    const v = JSON.parse(localStorage.getItem(chave) ?? "[]")
     return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []
   } catch {
     return []
   }
 }
-function gravarSelecao(ids: string[]) {
+function gravarLista(chave: string, ids: string[]) {
   try {
-    if (ids.length) localStorage.setItem(CHAVE, JSON.stringify(ids))
-    else localStorage.removeItem(CHAVE)
+    if (ids.length) localStorage.setItem(chave, JSON.stringify(ids))
+    else localStorage.removeItem(chave)
   } catch {
-    /* sem armazenamento: a seleção vale só nesta visita */
+    /* sem armazenamento: vale só nesta visita */
   }
+}
+const lerSelecao = () => lerLista(CHAVE)
+
+type Ordem = "pedidos" | "prazo" | "unidades" | "codigo"
+const ORDENS: { valor: Ordem; rotulo: string }[] = [
+  { valor: "pedidos", rotulo: "Mais pedidos" },
+  { valor: "prazo", rotulo: "Prazo mais curto" },
+  { valor: "unidades", rotulo: "Mais unidades" },
+  { valor: "codigo", rotulo: "Código (A–Z)" },
+]
+// Prazo mais curto entre os pedidos da peça (sem prazo vai para o fim).
+const prazoDe = (r: PecaRepetida) => Math.min(...r.pedidos.map((p) => (p.prazo ? Date.parse(p.prazo) : Infinity)))
+const COMPARAR: Record<Ordem, (a: PecaRepetida, b: PecaRepetida) => number> = {
+  pedidos: (a, b) => b.qtd_pedidos - a.qtd_pedidos || b.qtd_total - a.qtd_total,
+  prazo: (a, b) => prazoDe(a) - prazoDe(b) || b.qtd_pedidos - a.qtd_pedidos,
+  unidades: (a, b) => b.qtd_total - a.qtd_total || b.qtd_pedidos - a.qtd_pedidos,
+  codigo: (a, b) => (a.sku ?? "~").localeCompare(b.sku ?? "~", "pt-BR", { numeric: true }),
 }
 
 const EM_SEPARACAO = new Set(["novo", "separacao"])
@@ -54,10 +76,29 @@ export default function Repetidas() {
     return validos.length ? validos : null
   }, [selecao, candidatos, expedicao.data])
   const { data, isLoading, isError, isFetching, refetch } = useRepetidas(efetiva, !selecao.length || !expedicao.isLoading)
+  const [busca, setBusca] = useState("")
+  const [categoria, setCategoria] = useState("todas")
+  const [ordem, setOrdem] = useState<Ordem>("pedidos")
+  // Pedidos destacados: as peças dessas clientes ficam marcadas em todos os cartões.
+  const [destaque, setDestaque] = useState<string[]>(() => lerLista(CHAVE_DESTAQUE))
+  const destacados = new Set(destaque)
+  function destacar(id: string, sim: boolean) {
+    const ids = sim ? [...new Set([...destaque, id])] : destaque.filter((x) => x !== id)
+    setDestaque(ids)
+    gravarLista(CHAVE_DESTAQUE, ids)
+  }
+  const categorias = useMemo(() => [...new Set((data ?? []).map((r) => categoriaDoNome(r.nome)))].sort((a, b) => a.localeCompare(b, "pt-BR")), [data])
+  const visiveis = useMemo(() => {
+    const termo = paraBusca(busca.trim())
+    return (data ?? [])
+      .filter((r) => categoria === "todas" || categoriaDoNome(r.nome) === categoria)
+      .filter((r) => !termo || [r.sku, r.nome, r.variante, ...r.pedidos.map((p) => p.cliente)].some((t) => paraBusca(t).includes(termo)))
+      .sort(COMPARAR[ordem])
+  }, [data, busca, categoria, ordem])
 
   function mudar(ids: string[]) {
     setSelecao(ids)
-    gravarSelecao(ids)
+    gravarLista(CHAVE, ids)
   }
   const marcado = new Set(efetiva ?? [])
   const qtdAtrasados = candidatos.filter(atrasado).length
@@ -136,6 +177,38 @@ export default function Repetidas() {
       </RespDialog>
 
       {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
+      {!!data?.length && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <CampoBusca valor={busca} aoMudar={setBusca} placeholder="Buscar peça, código ou cliente" className="sm:max-w-sm" />
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <Select value={categoria} onValueChange={setCategoria}>
+              <SelectTrigger className="h-11 w-full sm:w-44 lg:h-9" aria-label="Categoria">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as categorias</SelectItem>
+                {categorias.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={ordem} onValueChange={(v) => setOrdem(v as Ordem)}>
+              <SelectTrigger className="h-11 w-full sm:w-44 lg:h-9" aria-label="Ordenar">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ORDENS.map((o) => (
+                  <SelectItem key={o.valor} value={o.valor}>
+                    {o.rotulo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
       {isLoading ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -156,10 +229,20 @@ export default function Repetidas() {
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : !visiveis.length ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchX />
+            </EmptyMedia>
+            <EmptyTitle>Nenhuma peça encontrada</EmptyTitle>
+            <EmptyDescription>Mude a busca ou a categoria.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((r) => (
-            <Card key={r.chave} size="sm">
+          {visiveis.map((r) => (
+            <Card key={r.chave} size="sm" className={cn(r.pedidos.some((p) => destacados.has(p.pedido_id)) && "ring-2 ring-primary")}>
               <CardContent className="flex flex-col gap-3">
                 <div className="flex gap-3">
                   <Foto url={r.foto_url} alt={r.nome} ampliar className="size-28 shrink-0 sm:size-32" />
@@ -174,23 +257,34 @@ export default function Repetidas() {
                   </div>
                 </div>
                 <ItemGroup className="gap-2">
-                  {r.pedidos.map((p) => (
-                    <li key={p.pedido_id}>
-                    <Item variant="outline" size="sm" asChild>
-                      <Link to={`/pedidos/${p.pedido_id}`}>
-                        <ItemContent>
-                          <ItemTitle>{p.cliente ?? "Sem nome"}</ItemTitle>
-                          <ItemDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
-                            {p.numero.replace(/^#/, "")}
-                            <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
-                          </ItemDescription>
-                        </ItemContent>
-                        <span className="text-sm text-muted-foreground tabular-nums">{p.qtd}×</span>
-                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                      </Link>
-                    </Item>
-                    </li>
-                  ))}
+                  {r.pedidos.map((p) => {
+                    const marcado = destacados.has(p.pedido_id)
+                    return (
+                      <li key={p.pedido_id} className="flex items-center gap-1">
+                        {/* Destacar: marca as peças desta cliente em todos os cartões da página. */}
+                        <label className="flex size-11 shrink-0 cursor-pointer items-center justify-center" title="Destacar as peças desta cliente">
+                          <Checkbox
+                            checked={marcado}
+                            aria-label={`Destacar peças de ${p.cliente ?? p.numero}`}
+                            onCheckedChange={(c) => destacar(p.pedido_id, c === true)}
+                          />
+                        </label>
+                        <Item variant="outline" size="sm" asChild className={cn("min-w-0 flex-1", marcado && "bg-muted ring-2 ring-primary")}>
+                          <Link to={`/pedidos/${p.pedido_id}`}>
+                            <ItemContent>
+                              <ItemTitle>{p.cliente ?? "Sem nome"}</ItemTitle>
+                              <ItemDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+                                {p.numero.replace(/^#/, "")}
+                                <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+                              </ItemDescription>
+                            </ItemContent>
+                            <span className="text-sm text-muted-foreground tabular-nums">{p.qtd}×</span>
+                            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                          </Link>
+                        </Item>
+                      </li>
+                    )
+                  })}
                 </ItemGroup>
               </CardContent>
             </Card>
