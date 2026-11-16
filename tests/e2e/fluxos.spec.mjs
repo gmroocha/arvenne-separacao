@@ -180,6 +180,12 @@ test("vigia avisa sem alterar o pedido e mostra o detalhe", async ({ page, conte
   mkdirSync("capturas", { recursive: true })
   await page.screenshot({ path: `capturas/vigia-${info.project.name}.png`, fullPage: true, animations: "disabled" })
   await semQuebra(page)
+  // A barra de avisos fica só na Expedição; nas outras listas o foco é o trabalho daquela página.
+  for (const [caminho, titulo] of [["/vendas", "Vendas"], ["/arquivo", "Arquivo"], ["/clube", "Clube"]]) {
+    await page.goto(caminho)
+    await expect(page.getByRole("heading", { level: 1, name: titulo, exact: true })).toBeVisible()
+    await expect(page.getByText(/aviso.*para conferir nos pedidos/)).toHaveCount(0)
+  }
 })
 
 test("V31: Edge, Storage e RPC de escrita nunca chegam à rede real", async ({ page, context, baseURL }) => {
