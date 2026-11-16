@@ -77,7 +77,7 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
         )}
         {preco && <div className="flex min-w-0 flex-col gap-0.5">{preco}</div>}
         {comChips && (
-          <div className="mt-1 grid grid-cols-3 gap-1" role="group" aria-label={rotuloChips}>
+          <div className="mt-auto grid grid-cols-3 gap-1 pt-1" role="group" aria-label={rotuloChips}>
             {chips.map((c) => (
               <Toggle
                 key={c.id}
@@ -95,22 +95,25 @@ export default function CartaoCatalogo({ foto, alt, codigo, variante, nome, selo
           </div>
         )}
         {acao && !comChips && quantidade && (
-          <div className="mt-1 flex justify-center">
+          <div className="mt-auto flex justify-center pt-1">
             <Quantidade valor={quantidade.valor} min={0} aoMudar={quantidade.aoMudar} rotulo={codigo} />
           </div>
         )}
         {acao && !comChips && !quantidade && (
-          <Button
-            type="button"
-            size="bloco"
-            variant="outline"
-            aria-pressed={!!selecionado}
-            onClick={onCard}
-            className={cn("mt-1 w-full", selecionado && "border-foreground/50 bg-muted text-foreground hover:bg-muted")}
-          >
-            {selecionado ? <Check /> : <Plus />}
-            {selecionado ? acao.rotuloMarcado : acao.rotulo}
-          </Button>
+          // mt-auto: o botão fica no rodapé, alinhado entre cartões da mesma linha (com ou sem variante).
+          <div className="mt-auto pt-1">
+            <Button
+              type="button"
+              size="bloco"
+              variant="outline"
+              aria-pressed={!!selecionado}
+              onClick={onCard}
+              className={cn("w-full", selecionado && "border-foreground/50 bg-muted text-foreground hover:bg-muted")}
+            >
+              {selecionado ? <Check /> : <Plus />}
+              {selecionado ? acao.rotuloMarcado : acao.rotulo}
+            </Button>
+          </div>
         )}
         {children && <div className="mt-1">{children}</div>}
       </div>

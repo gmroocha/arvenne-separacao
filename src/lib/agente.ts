@@ -36,18 +36,29 @@ const primeiroNome = (p: Pedido) => {
 
 const descricaoPeca = (i: Item) => [i.nome, i.variante].filter(Boolean).join(", ")
 
-// Mensagem para a cliente com o link da troca. Não lista peças: o link mostra tudo.
+// Mensagem para a cliente com o link da troca: peça em falta, o link sozinho na linha e um passo a passo
+// curto do que ela faz na página (escolher, diferença, crédito).
 export function mensagemTroca(pedido: Pedido, itens: Item[], link: string, cobrirAte = 0): string {
   const nome = primeiroNome(pedido)
   const plural = itens.length > 1
+  const pecas = itens.map((i) => descricaoPeca(i)).filter(Boolean).map((d) => `*${d}*`).join(" e ")
+  const cobre = cobrirAte > 0 ? (cobreTudo(cobrirAte) ? "A loja cobre a diferença 💛" : `A loja cobre até ${reais(cobrirAte)} da diferença 💛`) : null
   return [
-    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas. Infelizmente ${plural ? "algumas peças" : "uma peça"} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕 Separamos opções para você escolher, com fotos e valores${cobrirAte > 0 ? (cobreTudo(cobrirAte) ? ". A loja cobre a diferença" : `. A loja cobre até ${reais(cobrirAte)} da diferença`) : ""}, neste link:`,
-    link,
+    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas.`,
+    `${plural ? "As peças" : "A peça"}${pecas ? ` ${pecas}` : ""} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕 Separamos opções para você escolher:`,
+    "",
+    `👉 ${link}`,
+    "",
+    "*Como funciona*",
+    "1. Abra o link e toque em *Quero esta* na peça que preferir",
+    "2. Custou mais, você paga só a diferença. Custou menos, a diferença vira crédito",
+    "3. Se não quiser trocar, toque em *Prefiro crédito*",
+    ...(cobre ? ["", cobre] : []),
+    "",
     "Qualquer dúvida é só responder aqui.",
   ].join("\n")
 }
 
-// Sem troca montada: aviso simples para a cliente, sem link.
 export function mensagemFaltaSimples(pedido: Pedido, itens: Item[]): string {
   const nome = primeiroNome(pedido)
   const faltas = itens.filter((i) => i.status === "falta" || i.status === "defeito")

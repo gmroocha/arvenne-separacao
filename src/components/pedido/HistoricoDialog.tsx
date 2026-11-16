@@ -21,8 +21,8 @@ export default function HistoricoDialog({ aberto, aoMudar, pedidoId, eventos }: 
   const grupos = useMemo(() => agruparPorDia(filtrarHistorico(itens, filtro)), [itens, filtro])
 
   return (
-    <RespDialog aberto={aberto} aoMudar={aoMudar} titulo="Histórico do pedido" descricao="Tudo o que aconteceu, do mais novo para o mais antigo." largo>
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+    <RespDialog aberto={aberto} aoMudar={aoMudar} titulo="Histórico do pedido" descricao="Tudo o que aconteceu, do mais novo para o mais antigo." medio>
+      <div className="flex w-full flex-col gap-6">
         <form
           className="flex gap-2"
           onSubmit={(e) => {

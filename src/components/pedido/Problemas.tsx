@@ -125,7 +125,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
   // Mensagem para a cliente: com troca montada leva o link; sem troca, aviso simples.
   const textoCliente = () => {
     if (!troca || naTroca.length === 0 || !trocaPronta) return mensagemFaltaSimples(pedido, itens)
-    return mensagemTroca(pedido, naTroca, linkTroca)
+    return mensagemTroca(pedido, naTroca, linkTroca, troca.cobrir_ate ?? 0)
   }
 
   // Copiar link/mensagem com troca pronta: a página da cliente só abre troca enviada, então marca como enviada.

@@ -350,6 +350,9 @@ test("peças trocadas: selo, diálogo com valores do banco e histórico por filt
   await historico.getByRole("radio", { name: "Notas" }).click()
   await expect(historico.getByText("Troca concluída")).toHaveCount(0)
   await expect(historico.getByText("Embalar para presente")).toBeVisible()
+  // O conteúdo começa na mesma margem do título (antes ficava centralizado longe do título no PC).
+  const [titulo, campo] = await Promise.all([historico.getByRole("heading", { name: "Histórico do pedido" }).boundingBox(), historico.getByRole("textbox", { name: "Nova nota" }).boundingBox()])
+  expect(Math.abs(titulo.x - campo.x)).toBeLessThanOrEqual(2)
   await page.screenshot({ path: `capturas/historico-${info.project.name}.png`, animations: "disabled" })
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)

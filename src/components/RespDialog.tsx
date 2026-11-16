@@ -10,13 +10,15 @@ type Props = {
   descricao?: string
   // Só a largura (PC: sm:max-w-6xl; celular: gaveta mais alta). A rolagem continua do diálogo.
   largo?: boolean
+  // Largura média (PC: sm:max-w-2xl), para leitura em coluna como o histórico; no celular, gaveta alta.
+  medio?: boolean
   // O conteúdo cuida da própria rolagem (ex.: TrocaDialog): sem rolagem/respiro extra do diálogo.
   rolagemPropria?: boolean
   children: ReactNode
 }
 
 // Dialog no PC, Drawer (gaveta de baixo) no celular.
-export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, rolagemPropria, children }: Props) {
+export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, medio, rolagemPropria, children }: Props) {
   const celular = useIsMobile()
   if (celular)
     return (
@@ -26,7 +28,7 @@ export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, 
             // Rolagem própria (TrocaDialog): altura fixa, para a gaveta não crescer/encolher ao trocar de aba.
             rolagemPropria
               ? "data-[vaul-drawer-direction=bottom]:h-[94svh] data-[vaul-drawer-direction=bottom]:max-h-[94svh]"
-              : largo
+              : largo || medio
                 ? "data-[vaul-drawer-direction=bottom]:max-h-[94svh]"
                 : undefined
           }
@@ -42,7 +44,7 @@ export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, 
     )
   return (
     <Dialog open={aberto} onOpenChange={aoMudar}>
-      <DialogContent className={`max-h-[94svh] overflow-x-hidden ${rolagemPropria ? "overflow-y-hidden" : "overflow-y-auto"} ${largo ? "sm:max-w-6xl" : "sm:max-w-lg"}`}>
+      <DialogContent className={`max-h-[94svh] overflow-x-hidden ${rolagemPropria ? "overflow-y-hidden" : "overflow-y-auto"} ${largo ? "sm:max-w-6xl" : medio ? "sm:max-w-2xl" : "sm:max-w-lg"}`}>
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription className={descricao ? undefined : "sr-only"}>{descricao ?? titulo}</DialogDescription>

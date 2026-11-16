@@ -56,3 +56,18 @@ test("V38: a mensagem para a cliente diz 'cobre a diferença' quando a loja cobr
   expect(mensagemTroca(pedido, itens, "https://x/t/1", 15)).toMatch(/A loja cobre até R\$\s*15,00 da diferença/)
   expect(mensagemTroca(pedido, itens, "https://x/t/1", 0)).not.toContain("loja cobre")
 })
+test("mensagem da troca: link em linha própria e passo a passo curto de como funciona", () => {
+  const pedido = { numero: "ARV-1277", cliente_nome: "Karolyne Maciel" } as Pedido
+  const itens = [{ id: "i", nome: "Brinco Esplendor", variante: null }] as Item[]
+  const m = mensagemTroca(pedido, itens, "https://x/t/1")
+  const linhas = m.split("\n")
+  expect(linhas[0]).toMatch(/^Oi, Karolyne!/)
+  expect(m).toContain("*Brinco Esplendor*")
+  expect(m).toContain("ARV-1277")
+  expect(linhas.some((l) => l.trim().endsWith("https://x/t/1") && l.length < 30)).toBe(true)
+  expect(m).toMatch(/Como funciona/)
+  expect(m).toMatch(/1\..*Quero esta/)
+  expect(m).toMatch(/2\..*diferença/)
+  expect(m).toMatch(/3\..*Prefiro crédito/)
+  expect(linhas.length).toBeLessThanOrEqual(14) // sucinta
+})
