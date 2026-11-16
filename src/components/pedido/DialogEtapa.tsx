@@ -28,12 +28,14 @@ export default function DialogEtapa({ etapa, aoConfirmar, aoFechar }: Props) {
               <DialogTitle className="text-lg">{nomeConcluida(etapa)} concluída</DialogTitle>
               <DialogDescription>Próxima: {NOME_ETAPA[destino]}</DialogDescription>
             </DialogHeader>
-            {destino === "conferencia" && <AvisoConferencia />}
+            {/* A conferência traz o passo a passo completo no aviso; as outras, a lista curta. */}
+            {destino === "conferencia" ? <AvisoConferencia /> : (
             <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
               {(DESCRICAO_ETAPA[destino] ?? []).map((t) => (
                 <li key={t}>{t}</li>
               ))}
             </ul>
+            )}
             <DialogFooter className="gap-2 sm:gap-2">
               <Button variant="outline" className="h-11" onClick={aoFechar}>
                 Ficar aqui
