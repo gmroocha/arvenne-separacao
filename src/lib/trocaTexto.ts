@@ -92,3 +92,10 @@ export function listaEscolhida(peca: TrocaPeca): { opcao: TrocaOpcao; qtd: numbe
   const o = peca.opcoes.find((x) => x.id === peca.escolha_opcao_id)
   return o ? [{ opcao: o, qtd: 0 }] : []
 }
+
+// Aviso depois de "Reembolso ou crédito": o destino só é registrado na hora quando a troca toda já fechou.
+export function avisoCredito(destino: "reembolso" | "proximo_pedido" | null | undefined, registrou: boolean): string {
+  if (!destino) return "Troca feita"
+  if (registrou) return destino === "reembolso" ? "Reembolso pendente registrado" : "Crédito guardado para o próximo pedido"
+  return "Valor da peça a favor da cliente. Escolha reembolsar ou guardar no Acerto do pedido, quando a troca terminar."
+}

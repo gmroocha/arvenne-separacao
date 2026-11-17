@@ -10,6 +10,7 @@ import { MarcaCheck, SeloFoto } from "@/components/comum/Bolha"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
 import ConfirmarTroca from "@/components/pedido/ConfirmarTroca"
+import { avisoCredito } from "@/lib/trocaTexto"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -28,7 +29,7 @@ import { chaveModelo, codigoDoModelo, numeroTamanho, separarTamanho } from "@/li
 import { fotoTamanho } from "@/lib/foto"
 import { COR_TEXTO_AVISO } from "@/lib/selo"
 import { COBRIR_TUDO, cobreTudo, listaEscolhida, rotuloPagamento, textoSituacao, valorDaOpcao } from "@/lib/trocaTexto"
-import type { CategoriaCatalogo, Item, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca, ValorPago } from "@/lib/tipos"
+import type { CategoriaCatalogo, DestinoCredito, Item, NovoItem, Sugestao, Troca, TrocaOpcao, TrocaPeca, ValorPago } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -347,7 +348,7 @@ function EscolhaCliente({ item, peca, ocupado, tudo, aoAprovar }: { item: Item; 
 }
 
 // Opções já escolhidas, agrupadas por peça em falta. Cada opção tem o valor e o botão "Aprovar";
-// a peça tem "Dar crédito". As peças já resolvidas aparecem como "Aprovada"/"Trocada" com o resultado.
+// a peça tem "Reembolso ou crédito". As peças já resolvidas aparecem como "Aprovada"/"Trocada" com o resultado.
 function PainelOpcoes({
   itens,
   pedidoItens,
@@ -407,7 +408,7 @@ function PainelOpcoes({
             )}
             {peca && (
               <Button variant="outline" className="h-9 w-full text-sm" disabled={ocupado} onClick={() => aoAprovar(item, peca, null)}>
-                <HandCoins /> Dar crédito
+                <HandCoins /> Reembolso ou crédito
               </Button>
             )}
           </section>
@@ -832,6 +833,12 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
         <>
           <ChipsPecas itens={ativos} troca={troca} atualId={item.id} aoEscolher={setItemId} />
           <CabecalhoPeca item={item} pago={pagoQ.data} />
+          {peca && !preparando(item.id) && (
+            // Sem peça para trocar: o valor da peça fica a favor da cliente (reembolso ou crédito no próximo pedido).
+            <Button variant="outline" size="toque" className="w-full sm:w-fit" disabled={aprovar.isPending} onClick={() => setConf({ item, peca, opcao: null })}>
+              <HandCoins /> Reembolso ou crédito
+            </Button>
+          )}
           {preparando(item.id) ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
               <Spinner /> Preparando esta peça…
@@ -886,7 +893,7 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
   )
   // O que entra na confirmação: o carrinho todo, uma opção, ou nada (crédito).
   const entraConf = !conf ? [] : conf.carrinho ? listaEscolhida(conf.peca) : conf.opcao ? [{ opcao: conf.opcao, qtd: 0 }] : []
-  function confirmarAprovacao() {
+  function confirmarAprovacao(destino?: DestinoCredito) {
     if (!troca || !conf) return
     const { peca: p, opcao } = conf
     if (conf.carrinho) {
@@ -902,11 +909,11 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       return
     }
     aprovar.mutate(
-      { troca, peca: p, tipo: opcao ? "opcao" : "credito", opcaoId: opcao?.id },
+      { troca, peca: p, tipo: opcao ? "opcao" : "credito", opcaoId: opcao?.id, destino: opcao ? undefined : destino },
       {
-        onSuccess: () => {
+        onSuccess: (registrou) => {
           setConf(null)
-          toast.success(opcao ? "Troca feita" : "Crédito registrado")
+          toast.success(avisoCredito(opcao ? null : destino, registrou))
         },
       },
     )

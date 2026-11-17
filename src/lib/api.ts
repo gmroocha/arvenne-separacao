@@ -1346,10 +1346,24 @@ export function useEnviarTroca() {
 // Fecha UMA peça da troca: a peça nova entra no pedido (opção) ou fica só o crédito; a antiga sai como
 // removida. Com todas as peças fechadas, a troca fica concluída. Resolvidos os problemas, o pedido volta
 // para "Separação" (igual a useAcoesItem).
+// Reembolso ou crédito escolhido junto com a peça: se o acerto do pedido ficou pendente com saldo a favor da
+// cliente (troca toda resolvida), registra o destino na hora (registrar_credito, valor do banco). Senão o
+// destino fica para o cartão "Acerto do pedido" (outras peças da troca ainda abertas). true = registrou.
+async function registrarDestinoSePuder(pedidoId: string, destino: DestinoCredito | undefined): Promise<boolean> {
+  if (!destino) return false
+  const { data, error } = await supabase.from("v_pedido_acerto").select("*").eq("pedido_id", pedidoId).maybeSingle()
+  if (error) throw error
+  const a = data as AcertoPedido | null
+  if (!a?.troca_id || a.acerto_status !== "pendente" || !(a.saldo < 0) || a.bloqueio) return false
+  const { error: e2 } = await supabase.rpc("registrar_credito", { p_troca: a.troca_id, p_destino: destino })
+  if (e2) throw e2
+  return true
+}
+
 export function useConcluirTroca() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ troca, peca, tipo }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito" }) => {
+    mutationFn: async ({ troca, peca, tipo, destino }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito"; destino?: DestinoCredito }) => {
       // Uma transação no banco: repetir após uma falha de rede não duplica a peça.
       // A escolha esperada evita confirmar uma opção que a cliente acabou de mudar.
       const { error } = await supabase.rpc("troca_concluir_peca", {
@@ -1362,9 +1376,10 @@ export function useConcluirTroca() {
         ...(peca.respondida_em ? { p_versao: peca.respondida_em } : {}),
       })
       if (error) throw error
+      return tipo === "credito" ? registrarDestinoSePuder(troca.pedido_id, destino) : false
     },
     // Recarrega também se a cliente mudou a escolha ou se a resposta da rede se perdeu.
-    onSettled: () => Promise.all(TROCAS_TUDO.map((queryKey) => qc.invalidateQueries({ queryKey }))),
+    onSettled: () => Promise.all([...TROCAS_TUDO, ["creditos"]].map((queryKey) => qc.invalidateQueries({ queryKey }))),
     onError: (e) => toast.error(msgBanco(e)),
   })
 }
@@ -1374,7 +1389,7 @@ export function useConcluirTroca() {
 export function useAprovarTroca() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ troca, peca, tipo, opcaoId }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito"; opcaoId?: string | null }) => {
+    mutationFn: async ({ troca, peca, tipo, opcaoId, destino }: { troca: Troca; peca: TrocaPeca; tipo: "opcao" | "credito"; opcaoId?: string | null; destino?: DestinoCredito }) => {
       const { error } = await supabase.rpc("troca_aprovar", {
         p_troca: troca.id,
         p_peca: peca.id,
@@ -1382,8 +1397,9 @@ export function useAprovarTroca() {
         p_opcao: tipo === "opcao" ? (opcaoId ?? null) : null,
       })
       if (error) throw error
+      return tipo === "credito" ? registrarDestinoSePuder(troca.pedido_id, destino) : false
     },
-    onSettled: () => Promise.all([...TROCAS_TUDO, ["acerto"]].map((queryKey) => qc.invalidateQueries({ queryKey }))),
+    onSettled: () => Promise.all([...TROCAS_TUDO, ["acerto"], ["creditos"]].map((queryKey) => qc.invalidateQueries({ queryKey }))),
     onError: (e) => toast.error(msg(e)),
   })
 }

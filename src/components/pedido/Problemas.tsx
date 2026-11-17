@@ -12,10 +12,10 @@ import { useConcluirTroca, useEnviarTroca, useMudarStatus, useTroca, type AcaoIt
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp } from "@/lib/formato"
 import { tempoDesde } from "@/lib/status"
-import type { Item, Troca, TrocaPeca } from "@/lib/tipos"
+import type { DestinoCredito, Item, Troca, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import ConfirmarTroca from "./ConfirmarTroca"
-import { listaEscolhida } from "@/lib/trocaTexto"
+import { avisoCredito, listaEscolhida } from "@/lib/trocaTexto"
 import LinhaPeca from "./LinhaPeca"
 import { useFeedbackPeca } from "./useFeedbackPeca"
 import { useNotaPeca } from "@/components/pedido/useNotaPeca"
@@ -37,7 +37,16 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
 
   // Carrinho da cliente: todas as peças que ela escolheu (ou só a opção, em banco antigo).
   const lista = peca.escolha_tipo === "opcao" ? listaEscolhida(peca) : []
-  const fazer = (tipo: "opcao" | "credito") => concluir.mutate({ troca, peca, tipo }, { onSuccess: () => setConfirmar(null) })
+  const fazer = (tipo: "opcao" | "credito", destino?: DestinoCredito) =>
+    concluir.mutate(
+      { troca, peca, tipo, destino: tipo === "credito" ? destino : undefined },
+      {
+        onSuccess: (registrou) => {
+          setConfirmar(null)
+          if (tipo === "credito") toast.success(avisoCredito(destino, registrou))
+        },
+      },
+    )
   return (
     // Celular: escolha em cima, botões embaixo lado a lado. PC: escolha à esquerda, botões à direita.
     <div className="flex flex-col gap-2 rounded-lg bg-success/10 p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
@@ -62,7 +71,7 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
         {/* Ela escolheu uma peça: a ação é fazer a troca. Mudar para crédito fica em "Editar troca". */}
         {peca.escolha_tipo !== "opcao" && (
           <Button variant={peca.escolha_tipo === "credito" ? "default" : "secondary"} size="bloco" disabled={concluir.isPending} onClick={() => setConfirmar("credito")}>
-            <HandCoins /> Dar crédito
+            <HandCoins /> Reembolso ou crédito
           </Button>
         )}
         {peca.escolha_tipo === "whatsapp" && (
@@ -87,7 +96,7 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
         peca={peca}
         entra={confirmar === "opcao" ? lista : []}
         pendente={concluir.isPending}
-        aoConfirmar={() => confirmar && fazer(confirmar)}
+        aoConfirmar={(destino) => confirmar && fazer(confirmar, destino)}
       />
     </div>
   )

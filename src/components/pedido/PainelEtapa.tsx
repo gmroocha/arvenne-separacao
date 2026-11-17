@@ -1,4 +1,7 @@
+import { useState } from "react"
 import { Eye } from "lucide-react"
+import { CampoBusca } from "@/components/comum/CampoBusca"
+import { Vazio } from "@/components/comum/Vazio"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AcaoItem, CamposPedido, PedidoDetalhe } from "@/lib/api"
@@ -12,6 +15,8 @@ import Problemas from "./Problemas"
 import { Embalagem, Enviado, Postagem } from "./Fechamento"
 import NotaFrete from "./NotaFrete"
 import Separacao from "./Separacao"
+import { BuscaPecaContexto } from "./buscaPecaContexto"
+import { combinaBusca } from "@/lib/buscaPeca"
 
 type Props = {
   pedido: PedidoDetalhe
@@ -31,6 +36,7 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
   const somenteVer = vista !== null && vistaIdx !== atualIdx
   const concluir = somenteVer ? undefined : aoConcluir
   const etapa = vistaIdx >= 0 ? PASSOS[vistaIdx].id : null
+  const [busca, setBusca] = useState("")
 
   const painel = () => {
     switch (etapa) {
@@ -62,9 +68,18 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
   // O cartão "Avise a cliente" mora nas etapas de peças. Desvio vindo de uma etapa sem ele (Bipagem, Nota e
   // frete, Embalagem, Postagem) mostra o cartão aqui em cima, para a falta não ficar escondida.
   const cartaoDoDesvio = ehDesvio(pedido.status) && !somenteVer && ["bipagem", "faturamento", "embalagem", "pronto_envio"].includes(etapa ?? "")
+  // Busca de peça nas etapas de peças (a bipagem já tem o próprio campo de código).
+  const comBusca = ["separacao", "conferencia", "etiquetagem"].includes(etapa ?? "") || cartaoDoDesvio
+  const vivas = pedido.pedido_itens.filter((i) => i.status !== "removido")
+  const nenhuma = comBusca && busca.trim() !== "" && !pedido.pedido_itens.some((i) => combinaBusca(i, busca))
 
   return (
+    <BuscaPecaContexto.Provider value={comBusca ? busca : ""}>
     <div className="flex flex-col gap-4">
+      {comBusca && vivas.length > 1 && (
+        <CampoBusca valor={busca} aoMudar={setBusca} placeholder="Buscar peça: código, nome ou variante" />
+      )}
+      {nenhuma && <Vazio>Nenhuma peça com “{busca.trim()}” neste pedido.</Vazio>}
       {cartaoDoDesvio && <Problemas pedido={pedido} acao={acao} aoTrocar={aoTrocar} />}
       {somenteVer && (
         <Alert className="sm:items-center sm:*:[svg]:translate-y-0">
@@ -83,5 +98,6 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
       )}
       {painel()}
     </div>
+    </BuscaPecaContexto.Provider>
   )
 }

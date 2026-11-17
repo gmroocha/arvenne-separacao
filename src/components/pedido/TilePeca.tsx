@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Progress } from "@/components/ui/progress"
 import { useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
-import { NotaNaPeca } from "@/components/pedido/useNotaPeca"
+import { NotaNaPeca } from "@/components/pedido/NotaNaPeca"
+import { useCombinaBusca } from "@/components/pedido/buscaPecaContexto"
 import { numeroTamanho, separarTamanho, codigoModelo } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
@@ -42,6 +43,8 @@ function SelosPeca({ item }: { item: Item }) {
 // Instrução e ações ficam juntas no rodapé (mt-auto), para os blocos da mesma linha alinharem por baixo.
 export function TilePeca({ item, instrucao, contador, piscando, esmaecida, children }: TileProps) {
   const { abrir } = useAlteracoesDoPedido()
+  const combina = useCombinaBusca()
+  if (!combina(item)) return null
   return (
     <div
       className={cn(
@@ -85,6 +88,8 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
 // Vários tamanhos do mesmo modelo num bloco só: uma foto, o código do modelo e os tamanhos com a quantidade de cada.
 // Na loja o modelo fica numa sacola só: achou o modelo, achou todos os tamanhos.
 export function TileModelo({ itens, children }: { itens: Item[]; children?: ReactNode }) {
+  const combina = useCombinaBusca()
+  if (!itens.some(combina)) return null
   const ordenados = [...itens].sort((a, b) => numeroTamanho(separarTamanho(a.variante).tamanho) - numeroTamanho(separarTamanho(b.variante).tamanho))
   const base = ordenados[0]
   const total = ordenados.reduce((n, i) => n + i.qtd, 0)
@@ -181,7 +186,10 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
   const { abrir } = useAlteracoesDoPedido()
   const [aberta, setAberta] = useState(abertaInicial)
   const [confirmarTudo, setConfirmarTudo] = useState(false)
-  if (itens.length === 0) return null
+  const combina = useCombinaBusca()
+  // Com busca, só as peças que combinam (o título continua com o total da faixa).
+  const visiveis = itens.filter(combina)
+  if (visiveis.length === 0) return null
   return (
     <Collapsible open={aberta} onOpenChange={setAberta}>
       <div className="flex items-center justify-between gap-2">
@@ -220,7 +228,7 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
         </RespDialog>
       )}
       <CollapsibleContent className="grid gap-1.5 pt-1 sm:grid-cols-2">
-        {itens.map((i) => (
+        {visiveis.map((i) => (
           <LinhaPeca
             key={i.id}
             item={{ ...i, variante: [i.variante, nota?.(i)].filter(Boolean).join(" · ") || null }}

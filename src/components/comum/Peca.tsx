@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import Foto from "@/components/Foto"
-import { NotaNaPeca } from "@/components/pedido/useNotaPeca"
+import { NotaNaPeca } from "@/components/pedido/NotaNaPeca"
 import { Badge } from "@/components/ui/badge"
 import { fotoTamanho } from "@/lib/foto"
 import { cn } from "@/lib/utils"

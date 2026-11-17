@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { LinhaPeca as LinhaPecaComum } from "@/components/comum/Peca"
 import { useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
+import { useCombinaBusca } from "@/components/pedido/buscaPecaContexto"
 import type { Item } from "@/lib/tipos"
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
 // Linha de peça da separação: usa a linha comum (compacta = foto pequena; padrão = foto grande, variante em destaque).
 export default function LinhaPeca({ item, compacta, saindo, entrando, esmaecida, semNome, children }: Props) {
   const { abrir } = useAlteracoesDoPedido()
+  const combina = useCombinaBusca()
+  if (!combina(item)) return null
   const aoClicarObservacao = abrir && item.troca_peca_origem_id ? () => abrir({ foco: item.id, comValores: false }) : undefined
   return (
     <LinhaPecaComum

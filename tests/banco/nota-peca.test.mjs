@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { pedidoWhats, prepararEtapa, recusa } from './fixtures.mjs'
+import { pedidoWhats, recusa } from './fixtures.mjs'
 
 const itemDe = async (pedidoId) => one('select id from pedido_itens where pedido_id = $1 order by ordem limit 1', [pedidoId])
 

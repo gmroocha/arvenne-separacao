@@ -1,4 +1,4 @@
-import { ArrowDown, Check, HandCoins } from "lucide-react"
+import { ArrowDown, Banknote, Check, HandCoins, PiggyBank } from "lucide-react"
 import { LinhaPeca, type PecaBasica } from "@/components/comum/Peca"
 import RespDialog from "@/components/RespDialog"
 import { Badge } from "@/components/ui/badge"
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { reais } from "@/lib/formato"
 import { fraseDiferencaCarrinho, fraseSituacao, valorDaOpcao, valorPagoPeca } from "@/lib/trocaTexto"
-import type { TrocaOpcao, TrocaPeca } from "@/lib/tipos"
+import type { DestinoCredito, TrocaOpcao, TrocaPeca } from "@/lib/tipos"
 
 type Props = {
   aberto: boolean
@@ -17,7 +17,8 @@ type Props = {
   // O que entra: uma opção, o carrinho inteiro da cliente, ou nada (crédito).
   entra: { opcao: TrocaOpcao; qtd: number }[]
   pendente?: boolean
-  aoConfirmar: () => void
+  // Crédito: a equipe já diz o destino (reembolsar ou guardar para o próximo pedido).
+  aoConfirmar: (destino?: DestinoCredito) => void
 }
 
 // Confirmação antes de trocar a peça (ou dar crédito), desenhada como "sai ↓ entra": foto e código de cada
@@ -28,7 +29,7 @@ export default function ConfirmarTroca({ aberto, aoMudar, sai, peca, entra, pend
   const valor = !peca
     ? ""
     : credito
-      ? `Cliente fica com ${reais(valorPagoPeca(peca))} de crédito`
+      ? `${reais(valorPagoPeca(peca))} a favor da cliente`
       : entra.length > 1 || (peca.carrinho?.itens.length ?? 0) > 1
         ? fraseDiferencaCarrinho(peca.carrinho?.diferenca, peca.carrinho?.coberto_previsto, peca.carrinho?.cliente_paga_previsto)
         : fraseSituacao(valorDaOpcao(peca, entra[0].opcao))
@@ -36,8 +37,8 @@ export default function ConfirmarTroca({ aberto, aoMudar, sai, peca, entra, pend
     <RespDialog
       aberto={aberto}
       aoMudar={aoMudar}
-      titulo={credito ? "Dar crédito?" : "Fazer a troca?"}
-      descricao={credito ? "A peça sai do pedido e o valor dela vira crédito." : "A peça nova entra no pedido e a antiga sai."}
+      titulo={credito ? "Reembolso ou crédito?" : "Fazer a troca?"}
+      descricao={credito ? "A peça sai do pedido e o valor dela fica a favor da cliente: reembolsar ou guardar para o próximo pedido?" : "A peça nova entra no pedido e a antiga sai."}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
@@ -48,7 +49,7 @@ export default function ConfirmarTroca({ aberto, aoMudar, sai, peca, entra, pend
           {credito ? (
             <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
               <HandCoins className="size-5 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-medium">Crédito de {reais(peca ? valorPagoPeca(peca) : 0)}</span>
+              <span className="text-sm font-medium">Valor da peça: {reais(peca ? valorPagoPeca(peca) : 0)}</span>
             </div>
           ) : (
             entra.map(({ opcao, qtd }) => <LinhaPeca key={opcao.id} item={{ ...opcao, qtd: qtd || sai?.qtd || 1 }} tamanho="md" />)
@@ -63,9 +64,20 @@ export default function ConfirmarTroca({ aberto, aoMudar, sai, peca, entra, pend
           <Button variant="outline" className="h-10 w-full text-sm sm:w-auto" onClick={() => aoMudar(false)}>
             Cancelar
           </Button>
-          <Button className="h-10 w-full text-sm sm:w-auto" disabled={pendente} onClick={aoConfirmar}>
-            {pendente ? <Spinner /> : <Check />} Confirmar
-          </Button>
+          {credito ? (
+            <>
+              <Button variant="outline" className="h-10 w-full text-sm sm:w-auto" disabled={pendente} onClick={() => aoConfirmar("proximo_pedido")}>
+                {pendente ? <Spinner /> : <PiggyBank />} Guardar para o próximo pedido
+              </Button>
+              <Button className="h-10 w-full text-sm sm:w-auto" disabled={pendente} onClick={() => aoConfirmar("reembolso")}>
+                {pendente ? <Spinner /> : <Banknote />} Reembolsar
+              </Button>
+            </>
+          ) : (
+            <Button className="h-10 w-full text-sm sm:w-auto" disabled={pendente} onClick={() => aoConfirmar()}>
+              {pendente ? <Spinner /> : <Check />} Confirmar
+            </Button>
+          )}
         </div>
       </div>
     </RespDialog>

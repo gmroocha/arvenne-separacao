@@ -4,6 +4,17 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Busca de peça nas etapas e "Reembolso ou crédito" na troca (17/11/2026, só app)
+
+- **Busca de peça:** campo "Buscar peça" em Separação, Conferência e Etiquetagem (e no cartão de falta): filtra
+  cartões, peças feitas e removidas por código (com ou sem hífen), nome, variante ou nota, sem acento. Só esconde:
+  progresso e "concluir etapa" continuam contando o pedido inteiro (`src/lib/buscaPeca.ts`, contexto em
+  `PainelEtapa`).
+- **Troca:** botão "Reembolso ou crédito" logo abaixo da peça na janela da troca (antes "Dar crédito" só no painel
+  de opções, recolhido no celular). A confirmação já pergunta o destino: **Reembolsar** ou **Guardar para o próximo
+  pedido**. Com a troca toda resolvida, o app registra o destino na hora (`registrar_credito`, valor do banco); com
+  outras peças ainda abertas, o destino fica para o cartão "Acerto do pedido". Mesmo botão nas faltas (Problemas).
+
 ## Nota na peça (17/11/2026)
 
 Menu "…" das peças (separação, conferência, etiquetagem, faltas) ganhou **Nota** ("Editar nota" quando já tem):
