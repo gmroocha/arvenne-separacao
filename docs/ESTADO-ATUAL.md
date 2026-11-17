@@ -11,8 +11,9 @@ Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data grav
   dos botões do resumo. Cliente no topo (nome e telefone à vista; documento, e-mail e endereço recolhidos com
   resumo), depois o cartão Peças com "Adicionar peça" e "Colar carrinho" em cima e as peças numa caixa com
   rolagem própria.
-- **Clube:** "Editar" nos cartões do Clube (em Adicionar peça e na página Clube). Variante por tipo: tamanho,
-  cor, cor e tamanho ou outra; grava no formato do site ("Verde / N°20").
+- **Clube:** "Editar" nos cartões do Clube (em Adicionar peça e na página Clube). Variante em linhas (17/11):
+  "Adicionar variante" soma quantas quiser (tamanho, cor, outra); grava no formato do site, tamanho por último
+  ("Verde / N°20"). Só texto, sem mudança no banco.
 - **Página da cliente (`/r/...`):** cabeçalho Arvenne fixo; peças em cartões com foto grande; tocar no cartão abre
   o carrossel (foto, código, variante, quantidade, valor unitário e total da peça; arrasta para o lado ou setas no
   PC); resumo preso no rodapé (total sempre, detalhes ao tocar ou no fim da página).

@@ -141,8 +141,8 @@ test("romaneio: carrossel das peças com valores do banco e resumo fixo", async 
   expect(sim.bloqueadas).toEqual([])
 })
 
-// Peça do Clube: editar pelo cartão em "Adicionar peça" e escolher o tipo de variante (cor e tamanho).
-test("Clube: editar peça e montar a variante por tipo", async ({ page, context, baseURL }) => {
+// Peça do Clube: editar pelo cartão em "Adicionar peça" e somar uma segunda variante (tamanho e cor).
+test("Clube: editar peça com mais de uma variante", async ({ page, context, baseURL }) => {
   sim = await criarSimulacao({ status: "em_aberto" })
   const peca = await sim.one("insert into pecas_clube (codigo, nome, variante, preco) values ('anf804am', 'Meia Aliança Colorida', '20', 97.17) returning id")
   await sim.instalar(context, baseURL)
@@ -151,10 +151,10 @@ test("Clube: editar peça e montar a variante por tipo", async ({ page, context,
   const janela = page.getByRole("dialog", { name: "Adicionar peça" })
   await janela.getByRole("tab", { name: "Clube" }).click()
   await janela.getByRole("button", { name: "Editar" }).click()
-  await expect(janela.getByLabel("Tamanho")).toHaveValue("20")
-  await janela.getByRole("combobox", { name: "Variante" }).click()
-  await page.getByRole("option", { name: "Cor e tamanho" }).click()
-  await janela.getByLabel("Cor").fill("Verde")
+  await expect(janela.getByLabel("Tamanho", { exact: true })).toHaveValue("20")
+  // Mais de uma variante na mesma peça: tamanho e cor.
+  await janela.getByRole("button", { name: "Adicionar outra variante" }).click()
+  await janela.getByLabel("Cor", { exact: true }).fill("Verde")
   await expect(janela.getByText("Verde / N°20")).toBeVisible()
   await janela.getByRole("button", { name: "Salvar alterações" }).click()
   await expect.poll(async () => (await sim.one("select variante from pecas_clube where id=$1", [peca.id])).variante).toBe("Verde / N°20")

@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { toast } from "sonner"
-import { ExternalLink, ImagePlus, RefreshCw, Sparkles, X } from "lucide-react"
+import { ExternalLink, ImagePlus, Plus, RefreshCw, Sparkles, X } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { useAtualizarPecaClube, useCriarPecaClube } from "@/lib/api"
 import { enviarFoto } from "@/lib/foto"
 import { lerNumero, numeroParaTexto } from "@/lib/formato"
-import { lerVariante, montarVariante, TIPOS_VARIANTE, type PartesVariante, type TipoVariante } from "@/lib/varianteClube"
+import { lerVariante, montarVariante, proximoTipo, TIPOS_PARTE, type ParteVariante, type TipoParte } from "@/lib/varianteClube"
 import type { PecaClube } from "@/lib/tipos"
 
 // Endereço do agente do GPT que melhora as fotos. Fica em .env.local / Cloudflare, para trocar sem código.
@@ -34,10 +34,13 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
   const [fotoAtual, setFotoAtual] = useState<string | null>(peca?.foto_url ?? null)
   const [codigo, setCodigo] = useState(peca?.codigo ?? "")
   const [nome, setNome] = useState(peca?.nome ?? "")
-  const [variante, setVariante] = useState<PartesVariante>(() => lerVariante(peca?.variante))
+  const [partes, setPartes] = useState<ParteVariante[]>(() => lerVariante(peca?.variante))
   const [preco, setPreco] = useState(numeroParaTexto(peca?.preco ?? null))
   const [enviando, setEnviando] = useState(false)
-  const mudarVariante = (parcial: Partial<PartesVariante>) => setVariante((v) => ({ ...v, ...parcial }))
+  const mudarParte = (i: number, parcial: Partial<ParteVariante>) =>
+    setPartes((ps) => ps.map((p, n) => (n === i ? { ...p, ...parcial } : p)))
+  const adicionarParte = () => setPartes((ps) => [...ps, { tipo: proximoTipo(ps), valor: "" }])
+  const removerParte = (i: number) => setPartes((ps) => ps.filter((_, n) => n !== i))
 
   const novaPrevia = useMemo(() => (arquivo ? URL.createObjectURL(arquivo) : null), [arquivo])
   const previa = novaPrevia ?? fotoAtual
@@ -67,7 +70,7 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
       return
     }
     try {
-      const dados = { codigo: codigo.trim(), nome: nome.trim(), variante: montarVariante(variante), preco: precoLido, foto_url }
+      const dados = { codigo: codigo.trim(), nome: nome.trim(), variante: montarVariante(partes), preco: precoLido, foto_url }
       const salva = peca ? await atualizar.mutateAsync({ id: peca.id, ...dados }) : await criar.mutateAsync(dados)
       toast.success(peca ? "Peça do Clube atualizada" : "Peça salva no Clube")
       aoSalvar(salva)
@@ -135,56 +138,53 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
             <Input id="codigo" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="tipo-variante">Variante</FieldLabel>
-            <Select value={variante.tipo} onValueChange={(tipo) => mudarVariante({ tipo: tipo as TipoVariante })}>
-              <SelectTrigger id="tipo-variante" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIPOS_VARIANTE.map((t) => (
-                  <SelectItem key={t.valor} value={t.valor}>
-                    {t.rotulo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        </div>
-        {variante.tipo !== "nenhuma" && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(variante.tipo === "cor" || variante.tipo === "tamanho_cor") && (
-              <Field>
-                <FieldLabel htmlFor="cor">Cor</FieldLabel>
-                <Input id="cor" placeholder="Ex.: Verde" value={variante.cor} onChange={(e) => mudarVariante({ cor: e.target.value })} />
-              </Field>
-            )}
-            {(variante.tipo === "tamanho" || variante.tipo === "tamanho_cor") && (
-              <Field>
-                <FieldLabel htmlFor="tamanho">Tamanho</FieldLabel>
-                <Input id="tamanho" placeholder="Ex.: 16 ou P" value={variante.tamanho} onChange={(e) => mudarVariante({ tamanho: e.target.value })} />
-              </Field>
-            )}
-            {variante.tipo === "outra" && (
-              <Field>
-                <FieldLabel htmlFor="variante">Qual</FieldLabel>
-                <Input id="variante" placeholder="Ex.: 5 mm" value={variante.outra} onChange={(e) => mudarVariante({ outra: e.target.value })} />
-              </Field>
-            )}
-            <p className="self-end pb-2 text-sm text-muted-foreground sm:col-span-2">
-              Fica assim: <span className="font-medium text-foreground">{montarVariante(variante) ?? "—"}</span>
-            </p>
-          </div>
-        )}
-        <Field>
-          <FieldLabel htmlFor="nome">Nome</FieldLabel>
-          <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
             <FieldLabel htmlFor="preco">Preço</FieldLabel>
             <CampoReais id="preco" value={preco} onValueChange={setPreco} />
           </Field>
         </div>
+        <Field>
+          <FieldLabel htmlFor="nome">Nome</FieldLabel>
+          <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
+        </Field>
+        <FieldSet className="gap-3">
+          <FieldLegend variant="label">Variante</FieldLegend>
+          {partes.map((parte, i) => {
+            const tipo = TIPOS_PARTE.find((t) => t.valor === parte.tipo) ?? TIPOS_PARTE[0]
+            return (
+              <div key={i} className="flex items-center gap-2">
+                <Select value={parte.tipo} onValueChange={(t) => mudarParte(i, { tipo: t as TipoParte })}>
+                  <SelectTrigger aria-label={`Tipo da variante ${i + 1}`} className="w-32 shrink-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_PARTE.map((t) => (
+                      <SelectItem key={t.valor} value={t.valor}>
+                        {t.rotulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  aria-label={tipo.rotulo}
+                  placeholder={tipo.exemplo}
+                  value={parte.valor}
+                  onChange={(e) => mudarParte(i, { valor: e.target.value })}
+                />
+                <Button type="button" variant="ghost" size="icon-toque" aria-label={`Remover ${tipo.rotulo.toLowerCase()}`} onClick={() => removerParte(i)}>
+                  <X />
+                </Button>
+              </div>
+            )
+          })}
+          <Button type="button" variant="outline" size="sm" className="self-start" onClick={adicionarParte}>
+            <Plus /> {partes.length ? "Adicionar outra variante" : "Adicionar variante"}
+          </Button>
+          {partes.length > 0 && (
+            <FieldDescription>
+              Fica assim: <span className="font-medium text-foreground">{montarVariante(partes) ?? "—"}</span>
+            </FieldDescription>
+          )}
+        </FieldSet>
         <Button type="submit" disabled={enviando}>
           {enviando && <Spinner />} {peca ? "Salvar alterações" : "Salvar peça"}
         </Button>

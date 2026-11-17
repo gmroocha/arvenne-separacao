@@ -1,16 +1,14 @@
-// Variante das peças do Clube montada por tipo (tamanho, cor), no mesmo formato do site: "VERDE / N°20".
-// Só texto: grava em pecas_clube.variante, como antes.
+// Variante das peças do Clube montada por partes (tamanho, cor, outra), no mesmo formato do site: "VERDE / N°20".
+// Uma peça pode ter várias partes (cor e tamanho, por exemplo). Só texto: grava em pecas_clube.variante, como antes.
 import { separarTamanho } from "@/lib/variante"
 
-export type TipoVariante = "nenhuma" | "tamanho" | "cor" | "tamanho_cor" | "outra"
-export type PartesVariante = { tipo: TipoVariante; tamanho: string; cor: string; outra: string }
+export type TipoParte = "tamanho" | "cor" | "outra"
+export type ParteVariante = { tipo: TipoParte; valor: string }
 
-export const TIPOS_VARIANTE: { valor: TipoVariante; rotulo: string }[] = [
-  { valor: "nenhuma", rotulo: "Sem variante" },
-  { valor: "tamanho", rotulo: "Tamanho" },
-  { valor: "cor", rotulo: "Cor" },
-  { valor: "tamanho_cor", rotulo: "Cor e tamanho" },
-  { valor: "outra", rotulo: "Outra" },
+export const TIPOS_PARTE: { valor: TipoParte; rotulo: string; exemplo: string }[] = [
+  { valor: "tamanho", rotulo: "Tamanho", exemplo: "Ex.: 16 ou P" },
+  { valor: "cor", rotulo: "Cor", exemplo: "Ex.: Verde" },
+  { valor: "outra", rotulo: "Outra", exemplo: "Ex.: 5 mm" },
 ]
 
 // Tamanho só com número vira "N°16" (como no site); "P", "Grande" ficam como foram escritos.
@@ -19,22 +17,30 @@ function tamanhoFormatado(t: string): string {
   return /^\d{1,2}$/.test(v) ? `N°${v}` : v
 }
 
-export function montarVariante(p: PartesVariante): string | null {
-  const tam = tamanhoFormatado(p.tamanho)
-  const cor = p.cor.trim()
-  const texto =
-    p.tipo === "tamanho" ? tam : p.tipo === "cor" ? cor : p.tipo === "tamanho_cor" ? [cor, tam].filter(Boolean).join(" / ") : p.tipo === "outra" ? p.outra.trim() : ""
+// Junta as partes como no site: o tamanho vai por último ("Verde / N°20"); as outras ficam na ordem escrita.
+export function montarVariante(partes: ParteVariante[]): string | null {
+  const preenchidas = partes.filter((p) => p.valor.trim())
+  const texto = [
+    ...preenchidas.filter((p) => p.tipo !== "tamanho").map((p) => p.valor.trim()),
+    ...preenchidas.filter((p) => p.tipo === "tamanho").map((p) => tamanhoFormatado(p.valor)),
+  ].join(" / ")
   return texto || null
 }
 
-// Variante gravada → partes do formulário (para editar). Texto sem tamanho reconhecível fica em "Outra".
-export function lerVariante(variante: string | null | undefined): PartesVariante {
-  const vazio = { tamanho: "", cor: "", outra: "" }
+// Próximo tipo sugerido ao adicionar uma parte: tamanho, depois cor, depois "outra".
+export function proximoTipo(partes: ParteVariante[]): TipoParte {
+  const usados = new Set(partes.map((p) => p.tipo))
+  return usados.has("tamanho") ? (usados.has("cor") ? "outra" : "cor") : "tamanho"
+}
+
+// Variante gravada → partes do formulário (para editar). Tamanho reconhecido vira "Tamanho"; texto com número
+// (ex.: "5 mm") vira "Outra"; o resto vira "Cor".
+export function lerVariante(variante: string | null | undefined): ParteVariante[] {
   const v = (variante ?? "").trim()
-  if (!v) return { tipo: "nenhuma", ...vazio }
-  const { base, tamanho } = separarTamanho(v)
-  const num = (tamanho ?? "").match(/\d+/)?.[0] ?? tamanho ?? ""
-  if (tamanho && base) return { ...vazio, tipo: "tamanho_cor", tamanho: num, cor: base }
-  if (tamanho) return { ...vazio, tipo: "tamanho", tamanho: num }
-  return { ...vazio, tipo: "outra", outra: v }
+  if (!v) return []
+  return v.split(/\s*\/\s*/).filter(Boolean).map((parte): ParteVariante => {
+    const { tamanho } = separarTamanho(parte)
+    if (tamanho) return { tipo: "tamanho", valor: tamanho.match(/\d+/)?.[0] ?? tamanho }
+    return { tipo: /\d/.test(parte) ? "outra" : "cor", valor: parte }
+  })
 }
