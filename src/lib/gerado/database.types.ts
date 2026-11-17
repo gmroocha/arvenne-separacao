@@ -2036,6 +2036,15 @@ export type Database = {
         }[]
       }
       contagem_repetidas: { Args: never; Returns: number }
+      corrigir_frete_pedido: {
+        Args: {
+          p_cobrado?: number
+          p_dados?: Json
+          p_pago_por: string
+          p_pedido: string
+        }
+        Returns: undefined
+      }
       creditos_do_pedido: {
         Args: { p_pedido: string }
         Returns: {
@@ -2068,6 +2077,7 @@ export type Database = {
       }
       enviar_troca: { Args: { p_troca: string }; Returns: undefined }
       excluir_pedido: { Args: { p_pedido: string }; Returns: undefined }
+      faltas_para_pagar: { Args: { p: Json }; Returns: string[] }
       fator_pedido: { Args: { p_pedido: string }; Returns: number }
       fechar_financeiro: { Args: { p_pedido: string }; Returns: undefined }
       feriados_ate: { Args: never; Returns: string }

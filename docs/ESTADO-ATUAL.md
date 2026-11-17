@@ -6,7 +6,7 @@ Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data grav
 
 ## Pagamento imediato, Arquivo sem somadas e correção do frete (17/11/2026) — local, aguarda autorização
 
-Retomada dos quatro pontos deixados pelo Claude. Migration **nova e ainda não aplicada**:
+Retomada dos quatro pontos deixados pelo Claude. Migration **aplicada em 17/11 com o "sim" do Gustavo** (dry-run antes; `baseAplicada = 20261122150000`):
 `20261122150000_venda_completa_frete.sql`. Nenhuma escrita remota, publicação ou alteração na W0006 nesta retomada.
 
 - **Marcar como pago:** a janela abre sem aguardar a fila de gravações. Mostra “Recalculando…” e só libera
