@@ -55,7 +55,9 @@ chave certa via `core.sshCommand` já configurado neste repositório.
   conferência e verde nas peças já feitas. Não usar a logo dos Correios.
 - A **separação de pedidos é o coração do app.** Na separação, conferência, etiquetagem e bipagem o que
   importa é foto, código (SKU), variante e quantidade; nome da cliente em destaque; nada de valores.
-- Guardar todos os dados, sem jogar nada fora (futuras análises).
+- Guardar o que serve para métricas e conferência (tempo de cada etapa, separação, pagamento, trocas, mudanças
+  depois de pago). Testes e ajustes feitos **montando uma venda** (antes de marcar como paga) não vão para o
+  histórico (decisão de 17/11/2026).
 
 ## Comandos
 

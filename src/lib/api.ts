@@ -836,17 +836,14 @@ export function useAdicionarItens() {
   )
 }
 
+export async function registrarNota(pedidoId: string, texto: string) {
+  const { data: u } = await supabase.auth.getUser()
+  const { error } = await supabase.from("pedido_eventos").insert({ pedido_id: pedidoId, tipo: "nota", texto, usuario_email: u.user?.email ?? null })
+  if (error) throw error
+}
+
 export function useAdicionarNota() {
-  return useAcao(
-    async ({ pedidoId, texto }: { pedidoId: string; texto: string }) => {
-      const { data: u } = await supabase.auth.getUser()
-      const { error } = await supabase
-        .from("pedido_eventos")
-        .insert({ pedido_id: pedidoId, tipo: "nota", texto, usuario_email: u.user?.email ?? null })
-      if (error) throw error
-    },
-    [["pedido"]],
-  )
+  return useAcao(({ pedidoId, texto }: { pedidoId: string; texto: string }) => registrarNota(pedidoId, texto), [["pedido"]])
 }
 
 export function useCriarVenda() {

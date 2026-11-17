@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ChevronDown, ChevronRight, Copy, History, IdCard, Mail, Phone } from "lucide-react"
+import { ChevronDown, ChevronRight, Copy, History, IdCard, Mail, Pencil, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,6 +13,7 @@ import { copiar } from "@/lib/copiar"
 import { digitos, linkWhatsApp, mascaraDocumento, mascaraTelefone, quando, reais } from "@/lib/formato"
 import { rotuloDesconto } from "@/lib/desconto"
 import HistoricoDialog from "@/components/pedido/HistoricoDialog"
+import EditarDadosPedido from "@/components/pedido/EditarDadosPedido"
 import { contarAlteracoes, useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
 import { textoEndereco } from "@/lib/endereco"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -94,6 +95,7 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
   const [aberto, setAberto] = useState(false)
   const salvar = useAtualizarPedido([["pedido"]])
   const [historico, setHistorico] = useState(false)
+  const [editando, setEditando] = useState(false)
   const { alteracoes, abrir } = useAlteracoesDoPedido()
   const { trocadas, removidas } = contarAlteracoes(alteracoes)
   const desc = rotuloDesconto(pedido)
@@ -107,8 +109,11 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
     <Collapsible open={celular ? aberto : true} onOpenChange={setAberto}>
       <Card size="sm">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Cliente e valores
+          <CardTitle>Cliente e valores</CardTitle>
+          <CardAction className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setEditando(true)}>
+              <Pencil /> Editar
+            </Button>
             {celular && (
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" aria-label="Mostrar ou esconder">
@@ -116,7 +121,7 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                 </Button>
               </CollapsibleTrigger>
             )}
-          </CardTitle>
+          </CardAction>
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="flex flex-col gap-4">
@@ -192,6 +197,12 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                   {reais(pedido.frete_na_conta)}
                 </Linha>
               )}
+              {/* Custo real maior que o frete cobrado: a diferença é da Arvenne (v_pedidos.frete_diferenca). */}
+              {pedido.frete_custo != null && pedido.frete_diferenca != null && pedido.frete_diferenca < 0 && (
+                <Linha rotulo="Arvenne paga a diferença do frete">
+                  <span className="text-warning">{reais(-pedido.frete_diferenca)}</span>
+                </Linha>
+              )}
               <Linha rotulo={partes.length ? "Total do pedido" : "Total"}>
                 <strong>{reais(pedido.total)}</strong>
               </Linha>
@@ -261,6 +272,8 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
           </CardContent>
         </CollapsibleContent>
       </Card>
+      {/* Fora do conteúdo recolhível: no celular abre mesmo com o cartão fechado. */}
+      <EditarDadosPedido pedido={pedido} aberto={editando} aoMudar={setEditando} />
     </Collapsible>
   )
 }

@@ -4,6 +4,17 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Histórico só do essencial e "Editar" nos dados do pedido (17/11/2026)
+
+- **Histórico:** venda em aberto/aguardando pagamento não registra eventos de peça (quantidade, preço, retirada);
+  depois de marcada como paga, registra tudo. Etapas, status e pagamento sempre. "Peças trocadas e removidas"
+  só conta quantidade reduzida depois de **marcar** como paga, na venda onde a mudança aconteceu (antes, ajustes
+  da montagem de uma venda somada apareciam no pedido principal, como no ARV-1284/W0004). A migration
+  `20261122130000_historico_essencial.sql` também apaga esse ruído antigo (38 eventos: W0001 e W0004).
+- **Editar dados do pedido:** botão "Editar" no cartão "Cliente e valores": cliente, endereço e frete (tipo e
+  custo real). O que a cliente pagou não muda; com custo maior, aparece "Arvenne paga a diferença do frete"
+  (`v_pedidos.frete_diferenca`) e a troca do frete vai para o histórico como nota.
+
 ## Continuar no Free: tempo real leve, contagem leve e cópia semanal (17/11/2026)
 
 Decisão do Gustavo: ficar no plano Free (Nano). Para aliviar o banco:
