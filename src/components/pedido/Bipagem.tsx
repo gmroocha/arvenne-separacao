@@ -203,7 +203,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
       {ultima && (
         <div
           key={`${ultima.id}-${ultima.qtd_bipada}`}
-          className="flex items-center gap-3 rounded-xl bg-success/5 p-2 ring-1 ring-success/30 animate-in fade-in zoom-in-95 duration-200"
+          className="flex items-center gap-3 rounded-xl bg-success/5 p-2 ring-(length:--traco) ring-success/30 animate-in fade-in zoom-in-95 duration-200"
           aria-live="polite"
         >
           <Foto url={ultima.foto_url} alt={ultima.nome} className="size-16 shrink-0" />

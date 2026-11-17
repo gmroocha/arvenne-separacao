@@ -1,9 +1,10 @@
 import { useRef, useState } from "react"
 import { toast } from "sonner"
-import { Check, TriangleAlert, UserPlus } from "lucide-react"
+import { Check, ChevronDown, TriangleAlert, UserPlus } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
@@ -15,6 +16,7 @@ import type { Cliente, ClienteShopify } from "@/lib/tipos"
 import { useDebounce } from "@/lib/useDebounce"
 import { buscarCnpj } from "@/lib/cnpj"
 import { buscarCep } from "@/lib/viacep"
+import { cn } from "@/lib/utils"
 import type { FormVenda } from "./form"
 
 type Props = {
@@ -62,6 +64,15 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
   const [busca, setBusca] = useState("")
   const [mostrar, setMostrar] = useState(Boolean(form.cliente_nome || form.cliente_telefone))
   const [salvando, setSalvando] = useState(false)
+  const resumoEndereco = [
+    [form.entrega_logradouro, form.entrega_numero].filter((x) => x.trim()).join(", "),
+    [form.entrega_cidade, form.entrega_uf].filter((x) => x.trim()).join("/"),
+  ]
+    .filter(Boolean)
+    .join(" · ")
+  const resumoDados = [form.cliente_cpf, form.cliente_email, resumoEndereco].filter((x) => x.trim()).join(" · ")
+  // Recolhido de início: o cartão da cliente fica curto no topo da venda (nome e telefone à vista).
+  const [verEndereco, setVerEndereco] = useState(false)
   const [buscandoCep, setBuscandoCep] = useState(false)
   const consultaAtual = useRef(0)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
@@ -188,11 +199,11 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
           </Button>
         ) : (
           <FieldGroup className="gap-3">
-            <Field>
-              <FieldLabel htmlFor="c-nome">Nome</FieldLabel>
-              <Input id="c-nome" value={form.cliente_nome} onChange={(e) => aoMudar({ cliente_nome: e.target.value })} />
-            </Field>
             <div className="grid gap-3 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="c-nome">Nome</FieldLabel>
+                <Input id="c-nome" value={form.cliente_nome} onChange={(e) => aoMudar({ cliente_nome: e.target.value })} />
+              </Field>
               <Field>
                 <FieldLabel htmlFor="c-tel">Telefone</FieldLabel>
                 <Input
@@ -203,86 +214,101 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
                   onChange={(e) => aoMudar({ cliente_telefone: mascaraTelefone(e.target.value) })}
                 />
               </Field>
-              <Field>
-                <FieldLabel htmlFor="c-cpf">CPF ou CNPJ</FieldLabel>
-                <InputGroup>
-                  <InputGroupInput id="c-cpf" inputMode="numeric" value={form.cliente_cpf} onChange={(e) => mudarDocumento(e.target.value)} />
-                  {buscandoCnpj && (
-                    <InputGroupAddon align="inline-end">
-                      <Spinner />
-                    </InputGroupAddon>
-                  )}
-                </InputGroup>
-              </Field>
             </div>
-            {situacao && situacao !== "ATIVA" && (
-              <p className="flex items-center gap-2 text-sm text-warning">
-                <TriangleAlert className="size-4 shrink-0" /> Situação cadastral do CNPJ: {situacao.toLowerCase()}
-              </p>
-            )}
-            {(digitos(form.cliente_cpf).length === 14 || form.cliente_razao_social || form.cliente_ie) && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="c-razao">Razão social</FieldLabel>
-                  <Input id="c-razao" value={form.cliente_razao_social} onChange={(e) => aoMudar({ cliente_razao_social: e.target.value })} />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="c-ie">Inscrição estadual (opcional)</FieldLabel>
-                  <Input id="c-ie" value={form.cliente_ie} onChange={(e) => aoMudar({ cliente_ie: e.target.value })} />
-                </Field>
-              </div>
-            )}
-            <Field>
-              <FieldLabel htmlFor="c-email">E-mail</FieldLabel>
-              <Input id="c-email" type="email" value={form.cliente_email} onChange={(e) => aoMudar({ cliente_email: e.target.value })} />
-            </Field>
-
-            <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
-              <Field>
-                <FieldLabel htmlFor="c-cep">CEP</FieldLabel>
-                <InputGroup>
-                  <InputGroupInput id="c-cep" inputMode="numeric" value={form.entrega_cep} onChange={(e) => mudarCep(e.target.value)} />
-                  {buscandoCep && (
-                    <InputGroupAddon align="inline-end">
-                      <Spinner />
-                    </InputGroupAddon>
-                  )}
-                </InputGroup>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="c-rua">Rua</FieldLabel>
-                <Input id="c-rua" value={form.entrega_logradouro} onChange={(e) => aoMudar({ entrega_logradouro: e.target.value })} />
-              </Field>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-[100px_1fr]">
-              <Field>
-                <FieldLabel htmlFor="c-num">Número</FieldLabel>
-                <Input id="c-num" value={form.entrega_numero} onChange={(e) => aoMudar({ entrega_numero: e.target.value })} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="c-comp">Complemento</FieldLabel>
-                <Input id="c-comp" value={form.entrega_complemento} onChange={(e) => aoMudar({ entrega_complemento: e.target.value })} />
-              </Field>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_70px]">
-              <Field>
-                <FieldLabel htmlFor="c-bairro">Bairro</FieldLabel>
-                <Input id="c-bairro" value={form.entrega_bairro} onChange={(e) => aoMudar({ entrega_bairro: e.target.value })} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="c-cidade">Cidade</FieldLabel>
-                <Input id="c-cidade" value={form.entrega_cidade} onChange={(e) => aoMudar({ entrega_cidade: e.target.value })} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="c-uf">UF</FieldLabel>
-                <Input
-                  id="c-uf"
-                  maxLength={2}
-                  value={form.entrega_uf}
-                  onChange={(e) => aoMudar({ entrega_uf: e.target.value.toUpperCase() })}
-                />
-              </Field>
-            </div>
+            {/* Documento, e-mail e endereço recolhidos, com o resumo do que já foi preenchido. */}
+            <Collapsible open={verEndereco} onOpenChange={setVerEndereco} className="flex flex-col gap-3">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="-mx-2.5 h-auto min-h-9 justify-between gap-2 px-2.5 py-1.5 text-left font-normal">
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium">Documento, e-mail e endereço</span>
+                    {!verEndereco && <span className="truncate text-xs text-muted-foreground">{resumoDados || "Não preenchido"}</span>}
+                  </span>
+                  <ChevronDown className={cn("shrink-0 transition-transform", verEndereco && "rotate-180")} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex flex-col gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="c-cpf">CPF ou CNPJ</FieldLabel>
+                    <InputGroup>
+                      <InputGroupInput id="c-cpf" inputMode="numeric" value={form.cliente_cpf} onChange={(e) => mudarDocumento(e.target.value)} />
+                      {buscandoCnpj && (
+                        <InputGroupAddon align="inline-end">
+                          <Spinner />
+                        </InputGroupAddon>
+                      )}
+                    </InputGroup>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="c-email">E-mail</FieldLabel>
+                    <Input id="c-email" type="email" value={form.cliente_email} onChange={(e) => aoMudar({ cliente_email: e.target.value })} />
+                  </Field>
+                </div>
+                {situacao && situacao !== "ATIVA" && (
+                  <p className="flex items-center gap-2 text-sm text-warning">
+                    <TriangleAlert className="size-4 shrink-0" /> Situação cadastral do CNPJ: {situacao.toLowerCase()}
+                  </p>
+                )}
+                {(digitos(form.cliente_cpf).length === 14 || form.cliente_razao_social || form.cliente_ie) && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="c-razao">Razão social</FieldLabel>
+                      <Input id="c-razao" value={form.cliente_razao_social} onChange={(e) => aoMudar({ cliente_razao_social: e.target.value })} />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="c-ie">Inscrição estadual (opcional)</FieldLabel>
+                      <Input id="c-ie" value={form.cliente_ie} onChange={(e) => aoMudar({ cliente_ie: e.target.value })} />
+                    </Field>
+                  </div>
+                )}
+                <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+                  <Field>
+                    <FieldLabel htmlFor="c-cep">CEP</FieldLabel>
+                    <InputGroup>
+                      <InputGroupInput id="c-cep" inputMode="numeric" value={form.entrega_cep} onChange={(e) => mudarCep(e.target.value)} />
+                      {buscandoCep && (
+                        <InputGroupAddon align="inline-end">
+                          <Spinner />
+                        </InputGroupAddon>
+                      )}
+                    </InputGroup>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="c-rua">Rua</FieldLabel>
+                    <Input id="c-rua" value={form.entrega_logradouro} onChange={(e) => aoMudar({ entrega_logradouro: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[100px_1fr]">
+                  <Field>
+                    <FieldLabel htmlFor="c-num">Número</FieldLabel>
+                    <Input id="c-num" value={form.entrega_numero} onChange={(e) => aoMudar({ entrega_numero: e.target.value })} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="c-comp">Complemento</FieldLabel>
+                    <Input id="c-comp" value={form.entrega_complemento} onChange={(e) => aoMudar({ entrega_complemento: e.target.value })} />
+                  </Field>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[1fr_1fr_70px]">
+                  <Field>
+                    <FieldLabel htmlFor="c-bairro">Bairro</FieldLabel>
+                    <Input id="c-bairro" value={form.entrega_bairro} onChange={(e) => aoMudar({ entrega_bairro: e.target.value })} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="c-cidade">Cidade</FieldLabel>
+                    <Input id="c-cidade" value={form.entrega_cidade} onChange={(e) => aoMudar({ entrega_cidade: e.target.value })} />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="c-uf">UF</FieldLabel>
+                    <Input
+                      id="c-uf"
+                      maxLength={2}
+                      value={form.entrega_uf}
+                      onChange={(e) => aoMudar({ entrega_uf: e.target.value.toUpperCase() })}
+                    />
+                  </Field>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
             <Button variant="outline" className="w-fit" onClick={salvar} disabled={salvando}>
               {salvando ? <Spinner /> : <Check />} Salvar no cadastro de clientes
             </Button>

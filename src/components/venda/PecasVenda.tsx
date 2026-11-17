@@ -6,9 +6,10 @@ import CampoReais from "@/components/CampoReais"
 import { ColarCarrinho } from "@/components/comum/ColarCarrinho"
 import { LinhaPeca } from "@/components/comum/Peca"
 import { Quantidade } from "@/components/comum/Quantidade"
-import { TituloSecao } from "@/components/comum/TituloSecao"
+import { AreaRolavel } from "@/components/comum/AreaRolavel"
 import { Vazio } from "@/components/comum/Vazio"
 import { Button } from "@/components/ui/button"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAcoesItemVenda, useAdicionarItens, type PedidoDetalhe } from "@/lib/api"
 import { numeroParaTexto } from "@/lib/formato"
 import type { Item, NovoItem } from "@/lib/tipos"
@@ -17,7 +18,7 @@ function PrecoInput({ item, aoSalvar }: { item: Item; aoSalvar: (preco: number |
   const [v, setV] = useState(numeroParaTexto(item.preco))
   return (
     <CampoReais
-      className="h-8 w-28"
+      className="h-8 w-24 sm:w-28"
       aria-label="Preço"
       inputClassName="text-right"
       value={v}
@@ -87,24 +88,36 @@ export default function PecasVenda({ pedido }: Props) {
   )
 
   return (
-    <div className="flex flex-col gap-3">
-      <TituloSecao contagem={pedido.qtd_pecas}>Peças</TituloSecao>
-
-      {itens.length === 0 && <Vazio>Nenhuma peça ainda. Adicione do site ou do Clube.</Vazio>}
-
-      <Grupo titulo={comGrupos ? "Do carrinho da cliente" : undefined} icone={ShoppingBag} pecas={doCarrinho}>
-        {linha}
-      </Grupo>
-      <Grupo titulo={comGrupos ? "Adicionadas à mão" : undefined} icone={Hand} pecas={aMao}>
-        {linha}
-      </Grupo>
-
-      <div className="flex flex-col gap-2">
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>
+          Peças <span className="font-normal text-muted-foreground tabular-nums">({pedido.qtd_pecas})</span>
+        </CardTitle>
+        <CardAction>
+          <Button variant="outline" size="toque" onClick={() => setAdicionando(true)}>
+            <Plus /> Adicionar peça
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
         <ColarCarrinho aoLer={adicionarLidas} />
-        <Button variant="outline" size="toque" className="w-fit" onClick={() => setAdicionando(true)}>
-          <Plus /> Adicionar peça
-        </Button>
-      </div>
+
+        {itens.length === 0 ? (
+          <Vazio>Nenhuma peça ainda. Cole o carrinho da cliente ou adicione do site ou do Clube.</Vazio>
+        ) : (
+          // Peças numa caixa com rolagem própria: a tela não cresce sem fim com pedido grande.
+          <AreaRolavel className="-mx-1 max-h-[min(60svh,34rem)] px-1">
+            <div className="flex flex-col gap-3 py-0.5">
+              <Grupo titulo={comGrupos ? "Do carrinho da cliente" : undefined} icone={ShoppingBag} pecas={doCarrinho}>
+                {linha}
+              </Grupo>
+              <Grupo titulo={comGrupos ? "Adicionadas à mão" : undefined} icone={Hand} pecas={aMao}>
+                {linha}
+              </Grupo>
+            </div>
+          </AreaRolavel>
+        )}
+      </CardContent>
 
       <AdicionarPecas
         comPreco
@@ -112,7 +125,7 @@ export default function PecasVenda({ pedido }: Props) {
         aoMudar={setAdicionando}
         aoAdicionar={(novos) => adicionar.mutate({ pedidoId: pedido.id, itens: novos.map((i) => ({ ...i, entrada: "manual" as const })), somar: true })}
       />
-    </div>
+    </Card>
   )
 }
 

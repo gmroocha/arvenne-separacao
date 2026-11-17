@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { atualizarPedido, salvarCliente, somarVenda, usePedido, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
 import { reais } from "@/lib/formato"
-import { StatusBadge } from "@/components/StatusBadge"
+import SituacaoVenda from "@/components/venda/SituacaoVenda"
 
 type Estado = "salvo" | "pendente" | "salvando" | "erro"
 
@@ -223,18 +223,13 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
       aoForma={(forma) => void gravar({ forma_pagamento: forma }).catch(() => {})}
       aoCopiar={copiar}
       aoPago={() => void pedirPagamento()}
-      aoPerdida={() => {
-        setResumoAberto(false)
-        setPerdendo(true)
-      }}
-      aoSituacao={(status) => void gravar({ status }).then(() => toast.success(status === "aguardando_pagamento" ? "Aguardando pagamento" : "Venda em aberto")).catch(() => {})}
       prefixo={prefixo}
     />
   )
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="toque" asChild>
             <Link to="/vendas">
@@ -242,9 +237,16 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
             </Link>
           </Button>
           <h2 className="font-heading text-xl font-semibold">#{pedido.numero.replace(/^#/, "")}</h2>
-          <StatusBadge status={pedido.status} somadaA={pedido.somada_a_numero} />
         </div>
-        <span className="text-xs text-muted-foreground" aria-live="polite">
+        <div className="flex min-w-0 flex-1 justify-end sm:flex-none">
+          <SituacaoVenda
+            status={pedido.status}
+            aoSituacao={(status) => void gravar({ status }).then(() => toast.success(status === "aguardando_pagamento" ? "Aguardando pagamento" : "Venda em aberto")).catch(() => {})}
+            aoPago={() => void pedirPagamento()}
+            aoPerdida={() => setPerdendo(true)}
+          />
+        </div>
+        <span className="text-xs text-muted-foreground sm:ml-auto" aria-live="polite">
           {estado === "salvo" ? "Salvo" : estado === "erro" ? "Não salvou" : "Salvando…"}
         </span>
       </div>
@@ -252,9 +254,10 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           <AvisoCredito pedidoId={pedido.id} />
-          <PecasVenda pedido={pedido} />
+          {/* Cliente no topo (ou o pedido em que a venda vai somar), logo depois as peças. */}
           <SomarPedido form={form} aoMudar={mudar} />
           {!form.somar_em && <ClienteCard form={form} aoMudar={mudar} aoSalvarCliente={aoSalvarCliente} />}
+          <PecasVenda pedido={pedido} />
           <Field>
             <FieldLabel htmlFor="v-obs">Observações</FieldLabel>
             <Textarea id="v-obs" value={form.observacoes} onChange={(e) => mudar({ observacoes: e.target.value })} />

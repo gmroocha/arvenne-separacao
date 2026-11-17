@@ -26,7 +26,7 @@ export function Embalagem({ patch, aoConcluir }: Props) {
       <ul className="flex flex-col gap-2">
         {ITENS_EMBALAGEM.map((t, n) => (
           <li key={t}>
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl p-3 text-sm ring-1 ring-foreground/10 has-data-checked:bg-success/5 has-data-checked:text-muted-foreground has-data-checked:ring-success/30">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl p-3 text-sm ring-1 ring-foreground/10 has-data-checked:bg-success/5 has-data-checked:text-muted-foreground has-data-checked:ring-(length:--traco) has-data-checked:ring-success/30">
               <Checkbox
                 variant="success"
                 checked={marcados.has(n)}

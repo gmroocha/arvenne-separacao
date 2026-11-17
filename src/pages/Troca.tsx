@@ -214,7 +214,7 @@ function CartaoModelo({
 // Quanto ela já escolheu em relação ao que pagou (os dois valores vêm do banco; aqui só se compara para o texto).
 function LinhaEscolhido({ escolhido, pago }: { escolhido: number; pago: number }) {
   return (
-    <div className="sticky top-0 z-10 flex flex-col gap-1.5 rounded-xl border bg-background/95 p-3 backdrop-blur" role="status">
+    <div className="sticky top-[calc(var(--topo-publico)+0.5rem)] z-10 flex flex-col gap-1.5 rounded-xl border bg-background/95 p-3 backdrop-blur" role="status">
       <div className="flex items-baseline justify-between gap-2 text-sm font-semibold tabular-nums">
         <span>
           Você escolheu {reais(escolhido)} de {reais(pago)}
@@ -516,7 +516,7 @@ export default function Troca() {
                   </div>
                 )}
                 {/* Peça que faltou */}
-                <Alert variant="destructive" className="flex flex-col gap-2 border-destructive/30 bg-destructive/10 p-3">
+                <Alert variant="destructive" className="flex flex-col gap-2 border-destructive/30 inset-ring-[0.5px] inset-ring-destructive/30 bg-destructive/10 p-3">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-destructive">
                     <PackageX className="size-3.5" />
                     Ficou sem estoque
@@ -601,7 +601,7 @@ export default function Troca() {
                     )}
                     {p.escolha_tipo === "credito" ? (
                       // Já escolhido: aparece como estado (sem cara de botão). Para trocar, basta tocar numa peça acima.
-                      <div role="status" className="flex items-center gap-3 rounded-xl border border-success/40 bg-success/10 px-4 py-3 animate-in fade-in duration-300">
+                      <div role="status" className="flex items-center gap-3 rounded-xl border border-success/40 inset-ring-[0.5px] inset-ring-success/40 bg-success/10 px-4 py-3 animate-in fade-in duration-300">
                         <CircleCheck className="size-5 shrink-0 text-success" />
                         <div className="flex min-w-0 flex-col">
                           <span className="font-semibold text-success">Crédito de {reais(p.valor_pago)} escolhido</span>

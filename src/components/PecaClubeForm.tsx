@@ -7,10 +7,12 @@ import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { useCriarPecaClube } from "@/lib/api"
+import { useAtualizarPecaClube, useCriarPecaClube } from "@/lib/api"
 import { enviarFoto } from "@/lib/foto"
-import { lerNumero } from "@/lib/formato"
+import { lerNumero, numeroParaTexto } from "@/lib/formato"
+import { lerVariante, montarVariante, TIPOS_VARIANTE, type PartesVariante, type TipoVariante } from "@/lib/varianteClube"
 import type { PecaClube } from "@/lib/tipos"
 
 // Endereço do agente do GPT que melhora as fotos. Fica em .env.local / Cloudflare, para trocar sem código.
@@ -23,25 +25,31 @@ function mensagem(err: unknown, padrao: string): string {
   return padrao
 }
 
-export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube) => void }) {
+// Sem "peca": cadastra uma nova. Com "peca": edita aquela (a foto atual fica, a menos que troque ou remova).
+export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; aoSalvar: (peca: PecaClube) => void }) {
   const criar = useCriarPecaClube()
+  const atualizar = useAtualizarPecaClube()
   const entrada = useRef<HTMLInputElement>(null)
   const [arquivo, setArquivo] = useState<File | null>(null)
-  const [codigo, setCodigo] = useState("")
-  const [nome, setNome] = useState("")
-  const [variante, setVariante] = useState("")
-  const [preco, setPreco] = useState("")
+  const [fotoAtual, setFotoAtual] = useState<string | null>(peca?.foto_url ?? null)
+  const [codigo, setCodigo] = useState(peca?.codigo ?? "")
+  const [nome, setNome] = useState(peca?.nome ?? "")
+  const [variante, setVariante] = useState<PartesVariante>(() => lerVariante(peca?.variante))
+  const [preco, setPreco] = useState(numeroParaTexto(peca?.preco ?? null))
   const [enviando, setEnviando] = useState(false)
+  const mudarVariante = (parcial: Partial<PartesVariante>) => setVariante((v) => ({ ...v, ...parcial }))
 
-  const previa = useMemo(() => (arquivo ? URL.createObjectURL(arquivo) : null), [arquivo])
+  const novaPrevia = useMemo(() => (arquivo ? URL.createObjectURL(arquivo) : null), [arquivo])
+  const previa = novaPrevia ?? fotoAtual
   useEffect(() => {
     return () => {
-      if (previa) URL.revokeObjectURL(previa)
+      if (novaPrevia) URL.revokeObjectURL(novaPrevia)
     }
-  }, [previa])
+  }, [novaPrevia])
 
   function remover() {
     setArquivo(null)
+    setFotoAtual(null)
     if (entrada.current) entrada.current.value = ""
   }
 
@@ -50,7 +58,7 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
     const precoLido = preco.trim() ? lerNumero(preco) : null
     if (preco.trim() && precoLido == null) return void toast.error("Preço não entendido. Use, por exemplo, 49,90")
     setEnviando(true)
-    let foto_url: string | null = null
+    let foto_url: string | null = fotoAtual
     try {
       if (arquivo) foto_url = await enviarFoto(arquivo)
     } catch (err) {
@@ -59,15 +67,10 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
       return
     }
     try {
-      const peca = await criar.mutateAsync({
-        codigo: codigo.trim(),
-        nome: nome.trim(),
-        variante: variante.trim() || null,
-        preco: precoLido,
-        foto_url,
-      })
-      toast.success("Peça salva no Clube")
-      aoSalvar(peca)
+      const dados = { codigo: codigo.trim(), nome: nome.trim(), variante: montarVariante(variante), preco: precoLido, foto_url }
+      const salva = peca ? await atualizar.mutateAsync({ id: peca.id, ...dados }) : await criar.mutateAsync(dados)
+      toast.success(peca ? "Peça do Clube atualizada" : "Peça salva no Clube")
+      aoSalvar(salva)
     } catch (err) {
       toast.error(`Não foi possível salvar a peça: ${mensagem(err, "erro desconhecido")}`)
     } finally {
@@ -132,10 +135,46 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
             <Input id="codigo" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="variante">Variante</FieldLabel>
-            <Input id="variante" placeholder="Ex.: aro 16" value={variante} onChange={(e) => setVariante(e.target.value)} />
+            <FieldLabel htmlFor="tipo-variante">Variante</FieldLabel>
+            <Select value={variante.tipo} onValueChange={(tipo) => mudarVariante({ tipo: tipo as TipoVariante })}>
+              <SelectTrigger id="tipo-variante" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIPOS_VARIANTE.map((t) => (
+                  <SelectItem key={t.valor} value={t.valor}>
+                    {t.rotulo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </div>
+        {variante.tipo !== "nenhuma" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(variante.tipo === "cor" || variante.tipo === "tamanho_cor") && (
+              <Field>
+                <FieldLabel htmlFor="cor">Cor</FieldLabel>
+                <Input id="cor" placeholder="Ex.: Verde" value={variante.cor} onChange={(e) => mudarVariante({ cor: e.target.value })} />
+              </Field>
+            )}
+            {(variante.tipo === "tamanho" || variante.tipo === "tamanho_cor") && (
+              <Field>
+                <FieldLabel htmlFor="tamanho">Tamanho</FieldLabel>
+                <Input id="tamanho" placeholder="Ex.: 16 ou P" value={variante.tamanho} onChange={(e) => mudarVariante({ tamanho: e.target.value })} />
+              </Field>
+            )}
+            {variante.tipo === "outra" && (
+              <Field>
+                <FieldLabel htmlFor="variante">Qual</FieldLabel>
+                <Input id="variante" placeholder="Ex.: 5 mm" value={variante.outra} onChange={(e) => mudarVariante({ outra: e.target.value })} />
+              </Field>
+            )}
+            <p className="self-end pb-2 text-sm text-muted-foreground sm:col-span-2">
+              Fica assim: <span className="font-medium text-foreground">{montarVariante(variante) ?? "—"}</span>
+            </p>
+          </div>
+        )}
         <Field>
           <FieldLabel htmlFor="nome">Nome</FieldLabel>
           <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
@@ -147,7 +186,7 @@ export default function PecaClubeForm({ aoSalvar }: { aoSalvar: (peca: PecaClube
           </Field>
         </div>
         <Button type="submit" disabled={enviando}>
-          {enviando && <Spinner />} Salvar peça
+          {enviando && <Spinner />} {peca ? "Salvar alterações" : "Salvar peça"}
         </Button>
       </FieldGroup>
     </form>

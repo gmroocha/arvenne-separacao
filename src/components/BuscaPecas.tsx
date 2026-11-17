@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Plus, RefreshCw, Search, SearchX } from "lucide-react"
+import { ArrowLeft, Pencil, Plus, RefreshCw, Search, SearchX } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import CartaoCatalogo from "@/components/catalogo/CartaoCatalogo"
 import { SeloFoto } from "@/components/comum/Bolha"
@@ -13,7 +13,7 @@ import { useAtualizarCatalogo, useBuscaSite, useAtualizacaoAutomaticaCatalogo, u
 import { reais } from "@/lib/formato"
 import { useDebounce } from "@/lib/useDebounce"
 import { itemDoClube, itemDoSite } from "@/lib/itens"
-import type { NovoItem } from "@/lib/tipos"
+import type { NovoItem, PecaClube } from "@/lib/tipos"
 import { agruparPorTamanho, codigoDoModelo, separarTamanho } from "@/lib/variante"
 
 export type Tocar = (item: NovoItem) => void
@@ -88,7 +88,8 @@ function Selos({ noCarrinho, jaNoPedido, qtdNoPedido }: { noCarrinho: number; ja
 }
 
 // Grade de cartões: tamanhos do mesmo modelo juntos (só Site); variante de outro tipo fica em cartão próprio.
-function GradeResultados({ itens, agrupar, aoTocar, quantidade, aoMudarQtd, selecionada, noPedido, qtdNoPedido, notaPreco, comPreco }: { itens: NovoItem[]; agrupar?: boolean } & Pick<Marcas, "quantidade" | "aoMudarQtd" | "selecionada" | "noPedido" | "qtdNoPedido" | "notaPreco" | "comPreco"> & { aoTocar: Tocar }) {
+// aoEditar (só Clube): botão "Editar" no pé do cartão.
+function GradeResultados({ itens, agrupar, aoTocar, aoEditar, quantidade, aoMudarQtd, selecionada, noPedido, qtdNoPedido, notaPreco, comPreco }: { itens: NovoItem[]; agrupar?: boolean; aoEditar?: (item: NovoItem) => void } & Pick<Marcas, "quantidade" | "aoMudarQtd" | "selecionada" | "noPedido" | "qtdNoPedido" | "notaPreco" | "comPreco"> & { aoTocar: Tocar }) {
   const qtd = (i: NovoItem) => quantidade?.(i) ?? 0
   const marcada = (i: NovoItem) => selecionada?.(i) ?? false
   const nped = (i: NovoItem) => qtdNoPedido?.(i) ?? 0
@@ -115,7 +116,13 @@ function GradeResultados({ itens, agrupar, aoTocar, quantidade, aoMudarQtd, sele
               preco={comPreco ? <PrecoCartao item={i} notaPreco={notaPreco} /> : undefined}
               acao={acao}
               onCard={() => aoTocar(i)}
-            />
+            >
+              {aoEditar && (
+                <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => aoEditar(i)}>
+                  <Pencil /> Editar
+                </Button>
+              )}
+            </CartaoCatalogo>
           )
         }
         const primeiro = g.tamanhos[0].item
@@ -226,17 +233,27 @@ function AbaSite({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPe
 function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoTocar: Tocar } & Marcas) {
   const [termo, setTermo] = useState("")
   const [novo, setNovo] = useState(false)
+  const [editando, setEditando] = useState<PecaClube | null>(null)
   const busca = useDebounce(termo.trim(), 300)
   const { data, isFetching } = usePecasClube(busca)
 
-  if (novo)
+  if (novo || editando)
     return (
-      <PecaClubeForm
-        aoSalvar={(peca) => {
-          aoTocar(itemDoClube(peca))
-          setNovo(false)
-        }}
-      />
+      <div className="flex flex-col gap-3">
+        <Button type="button" variant="ghost" size="sm" className="-ml-2 w-fit text-muted-foreground" onClick={() => (setNovo(false), setEditando(null))}>
+          <ArrowLeft /> Voltar ao Clube
+        </Button>
+        <PecaClubeForm
+          key={editando?.id ?? "nova"}
+          peca={editando ?? undefined}
+          aoSalvar={(peca) => {
+            // Peça nova já entra no carrinho; a editada só volta para a lista (já atualizada).
+            if (!editando) aoTocar(itemDoClube(peca))
+            setNovo(false)
+            setEditando(null)
+          }}
+        />
+      </div>
     )
 
   return (
@@ -246,7 +263,7 @@ function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noP
         <Plus /> Nova peça do Clube
       </Button>
       {!isFetching && data?.length === 0 && <SemResultado />}
-      {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} aoTocar={aoTocar} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
+      {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} aoTocar={aoTocar} aoEditar={(i) => setEditando(data.find((p) => p.id === i.peca_clube_id) ?? null)} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
     </div>
   )
 }

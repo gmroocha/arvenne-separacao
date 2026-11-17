@@ -43,12 +43,13 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
   const qtd = item.qtd ?? 1
   const codigo = <div className={cn("truncate font-mono font-semibold", tamanho === "sm" ? "text-sm" : "text-base leading-tight", emLinha && "shrink-0", riscada && "line-through")}>{item.sku ?? "sem código"}</div>
   const variante = item.variante && (
-    <div className={cn(destaque ? "text-base leading-tight font-medium" : "text-sm", emLinha && "min-w-0 truncate leading-tight font-medium", !esmaecida && "text-foreground", riscada && "line-through")}>{item.variante}</div>
+    <div className={cn(destaque ? "text-base leading-tight font-medium" : "text-sm", emLinha && "min-w-0 leading-tight font-medium break-words", !esmaecida && "text-foreground", riscada && "line-through")}>{item.variante}</div>
   )
   const textos = (
     <div className="min-w-0 flex-1">
       {emLinha ? (
-        <div className="flex min-w-0 items-baseline gap-3">
+        // Variante ao lado do código; sem espaço (celular, código longo), desce para a linha de baixo.
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3">
           {codigo}
           {variante}
         </div>

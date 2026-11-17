@@ -107,12 +107,15 @@ export type ClienteShopify = {
   uf: string | null
 }
 
+export type PecaRomaneio = { nome: string; variante: string | null; sku: string | null; foto_url: string | null; qtd: number; preco: number | null; total?: number | null }
+
 export type Romaneio = {
   numero: string
   cliente: string | null
   fase: Fase
   status: StatusPedido
-  itens: { nome: string; variante: string | null; sku: string | null; foto_url: string | null; qtd: number; preco: number | null }[]
+  // total: qtd × preço da linha, calculado no banco (migration 20261121130000; antes dela, ausente).
+  itens: PecaRomaneio[]
   subtotal: number
   desconto: number
   desconto_pix?: number
@@ -120,7 +123,7 @@ export type Romaneio = {
   frete_tipo: FreteTipo | null
   frete_cobrado: number
   total: number
-  adicionais?: { nome: string; variante: string | null; sku: string | null; foto_url: string | null; qtd: number; preco: number | null }[]
+  adicionais?: PecaRomaneio[]
   valor_somado?: number
   total_geral?: number
   somada_a?: string | null

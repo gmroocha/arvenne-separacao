@@ -1,6 +1,6 @@
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { useState } from "react"
-import { Gem, Plus } from "lucide-react"
+import { Gem, Pencil, Plus } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import Foto from "@/components/Foto"
 import PecaClubeForm from "@/components/PecaClubeForm"
@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { useAtivarPecaClube, usePecasClube } from "@/lib/api"
 import { reais } from "@/lib/formato"
+import type { PecaClube } from "@/lib/tipos"
 
 const PASSO = 30
 
@@ -23,6 +24,7 @@ export default function Clube() {
   const [limite, setLimite] = useState(PASSO)
   const { data, isLoading, isError, isFetching, refetch } = usePecasClube(busca, inativas, limite)
   const ativar = useAtivarPecaClube()
+  const [editando, setEditando] = useState<PecaClube | null>(null)
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,6 +83,9 @@ export default function Clube() {
                   <div className="text-sm font-medium tabular-nums">{reais(p.preco)}</div>
                 </div>
                 <div className="flex items-center justify-end gap-2">
+                  <Button variant="ghost" size="sm" className="mr-auto -ml-2 text-muted-foreground" onClick={() => setEditando(p)}>
+                    <Pencil /> Editar
+                  </Button>
                   <Label htmlFor={`a-${p.id}`} className="text-xs">
                     Ativa
                   </Label>
@@ -99,6 +104,10 @@ export default function Clube() {
 
       <RespDialog aberto={novo} aoMudar={setNovo} titulo="Nova peça do Clube" largo>
         <PecaClubeForm aoSalvar={() => setNovo(false)} />
+      </RespDialog>
+
+      <RespDialog aberto={!!editando} aoMudar={(a) => !a && setEditando(null)} titulo="Editar peça do Clube" largo>
+        {editando && <PecaClubeForm key={editando.id} peca={editando} aoSalvar={() => setEditando(null)} />}
       </RespDialog>
     </div>
   )

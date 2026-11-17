@@ -12,7 +12,7 @@ export function MarcaCheck({ solida, pequena, className }: { solida?: boolean; p
       className={cn(
         "z-10 flex shrink-0 items-center justify-center rounded-full",
         pequena ? "size-6 [&>svg]:size-3.5" : "size-7 [&>svg]:size-4",
-        solida ? "bg-success text-success-foreground shadow-sm ring-2 ring-card" : "bg-success/15 text-success ring-1 ring-inset ring-success/30",
+        solida ? "bg-success text-success-foreground shadow-sm ring-2 ring-card" : "bg-success/15 text-success inset-ring-(length:--traco) inset-ring-success/30",
         className,
       )}
     >

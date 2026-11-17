@@ -15,6 +15,7 @@ test('V47: resposta atrasada do CNPJ não troca os dados de uma cliente já alte
   await route.fulfill({json:{company:{name:'Empresa antiga'},status:{text:'ATIVA'},address:{zip:'01001000',street:'Rua antiga',city:'São Paulo',state:'SP'}}})
  })
  await page.goto(`/vendas/${sim.pedido.id}`)
+ await page.getByRole('button',{name:/Documento, e-mail e endereço/}).click()
  const doc=page.getByRole('textbox',{name:'CPF ou CNPJ',exact:true})
  await doc.fill('11222333000181');await iniciada
  await doc.fill('12345678901')

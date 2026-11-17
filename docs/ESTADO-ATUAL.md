@@ -4,6 +4,22 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Venda reorganizada, página da cliente com carrossel e Clube editável (16/11/2026)
+
+- **Contorno:** 1,5 px (`--traco`) só nos contornos coloridos (verde, amarelo, vermelho); cinza volta ao 1 px do shadcn.
+- **Venda:** situação no topo numa lista (📝 Em aberto, ⏳ Aguardando pagamento, ✅ Pago…, ❌ Perdida…), no lugar
+  dos botões do resumo. Cliente no topo (nome e telefone à vista; documento, e-mail e endereço recolhidos com
+  resumo), depois o cartão Peças com "Adicionar peça" e "Colar carrinho" em cima e as peças numa caixa com
+  rolagem própria.
+- **Clube:** "Editar" nos cartões do Clube (em Adicionar peça e na página Clube). Variante por tipo: tamanho,
+  cor, cor e tamanho ou outra; grava no formato do site ("Verde / N°20").
+- **Página da cliente (`/r/...`):** cabeçalho Arvenne fixo; peças em cartões com foto grande; tocar no cartão abre
+  o carrossel (foto, código, variante, quantidade, valor unitário e total da peça; arrasta para o lado ou setas no
+  PC); resumo preso no rodapé (total sempre, detalhes ao tocar ou no fim da página).
+- **Foto ampliada:** abre no tamanho final com a miniatura na hora; não aparece mais o quadro vazio com o X.
+- Migration `20261121130000_romaneio_total_peca.sql` (total de cada peça no romaneio, calculado no banco):
+  **falta aplicar** com o "sim" do Gustavo. Sem ela, o carrossel só não mostra a linha "Total da peça".
+
 ## Feedback da peça, venda por origem e ajustes visuais (16/11/2026)
 
 - **Feedback da peça:** menu "…" das peças (separação, conferência, etiquetagem, faltas) tem "Feedback": campo
@@ -88,7 +104,7 @@ composição em ARV-1273/1274/1276/1277: pedidos de teste antigos, mexidos antes
 - **Dados do pedido:** desconto com percentual e motivo ("Desconto · 25% · cupom PIX25", vindo de `descontos`), linha "Arvenne cobriu na troca" e linhas "Peças trocadas (N)" / "Peças removidas (N)" que abrem o diálogo das alterações.
 - **AlteracoesDialog** (`v_pedido_alteracoes`): cada alteração como "sai ↓ entra", valores do banco e quem/quando. Abre pelo selo "Peças trocadas" no cabeçalho, pelos dados do pedido e pelo texto "troca de X" da peça (focado nessa troca, sem valores nas etapas de peças).
 - **Histórico** virou diálogo grande (`HistoricoDialog`): nota no topo, filtros, linha do tempo por dia. Rótulos em `src/lib/historico.ts`.
-- **Traço médio** dos contornos pelo token `--traco` (1,5 px, como sombra: o Chrome só desenha borda de 1 ou 2 px); barra de progresso h-1.5, ligações das etapas h-0.5.
+- **Traço médio** (`--traco`, 1,5 px) só nos contornos coloridos (verde, amarelo, vermelho); cinza volta ao padrão do shadcn (16/11). Barra de progresso h-1.5, ligações das etapas h-0.5.
 - **Troca:** abas sem tranco (V40) e "Cobrir diferença" com "Tudo" | "Até R$ X". **Página da cliente concluída:** cartão com foto e código de cada lado e a diferença dentro dele; logo maior.
 
 ## Vistoria e proteções automáticas — referência atual

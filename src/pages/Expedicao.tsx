@@ -66,13 +66,13 @@ const COR_ALERTA = {
   vermelho: {
     coluna: "bg-destructive/10",
     icone: "text-destructive",
-    anel: "border-destructive/40 bg-destructive/10 text-destructive",
+    anel: "border-destructive/40 inset-ring-[0.5px] inset-ring-destructive/40 bg-destructive/10 text-destructive",
     contador: "destructive",
   },
   amarelo: {
     coluna: "bg-warning/10",
     icone: "text-warning",
-    anel: "border-warning/40 bg-warning/15 text-warning",
+    anel: "border-warning/40 inset-ring-[0.5px] inset-ring-warning/40 bg-warning/15 text-warning",
     contador: "warning",
   },
 } as const
@@ -214,7 +214,7 @@ export default function Expedicao() {
           size="xl"
           pressed={soAtrasados}
           onPressedChange={(on) => atualizar({ atrasados: on ? "1" : null })}
-          className="shrink-0 lg:h-8 data-[state=on]:border-destructive data-[state=on]:bg-destructive/10 data-[state=on]:text-destructive data-[state=on]:hover:bg-destructive/20 data-[state=on]:hover:text-destructive"
+          className="shrink-0 lg:h-8 data-[state=on]:border-destructive data-[state=on]:inset-ring-[0.5px] data-[state=on]:inset-ring-destructive data-[state=on]:bg-destructive/10 data-[state=on]:text-destructive data-[state=on]:hover:bg-destructive/20 data-[state=on]:hover:text-destructive"
         >
           Atrasados <Badge variant={totalAtrasados ? "destructive" : "secondary"}>{totalAtrasados}</Badge>
         </Toggle>

@@ -44,7 +44,7 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-xl bg-card p-2 ring-(length:--traco) ring-foreground/10 transition-shadow duration-300",
+        "flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300",
         piscando && "ring-2 ring-primary",
         esmaecida && "bg-muted/40",
       )}
@@ -88,7 +88,7 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
   const total = ordenados.reduce((n, i) => n + i.qtd, 0)
   const variacao = separarTamanho(base.variante).base
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-(length:--traco) ring-foreground/10 transition-shadow duration-300">
+    <div className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300">
       <div className="relative">
         <Foto url={base.foto_url} alt={base.nome} ampliar className="w-full" />
         <SelosPeca item={base} />

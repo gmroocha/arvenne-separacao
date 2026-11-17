@@ -319,7 +319,7 @@ function EscolhaCliente({ item, peca, ocupado, tudo, aoAprovar }: { item: Item; 
   if (peca.concluida_em || linhas.length === 0) return null
   const c = peca.carrinho
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-lg bg-success/5 p-2 ring-1 ring-success/40" aria-label={`Escolha da cliente: ${item.sku ?? item.nome}`}>
+    <div className="flex min-w-0 flex-col gap-2 rounded-lg bg-success/5 p-2 ring-(length:--traco) ring-success/40" aria-label={`Escolha da cliente: ${item.sku ?? item.nome}`}>
       <div className="text-xs font-semibold">Escolha da cliente</div>
       {linhas.map(({ o, qtd }) => (
         <div key={o.id} className="flex min-w-0 items-center gap-2">

@@ -322,11 +322,13 @@ test("troca enviada: sem botão Reenviar e botões de copiar com contorno único
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect(page.getByText(/aguardando escolha desta peça/)).toBeVisible()
   await expect(page.getByRole("button", { name: "Reenviar" })).toHaveCount(0)
-  // Os contornos dos dois botões se sobrepõem na junção (uma linha só, não duas somadas).
+  // Contorno cinza é a borda de 1 px do shadcn: na junção só a borda do primeiro (o segundo fica sem a esquerda).
   const msg = await page.getByRole("button", { name: "Copiar mensagem" }).boundingBox()
   const link = await page.getByRole("button", { name: "Copiar link" }).boundingBox()
-  const traco = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--traco")) || 1)
-  expect(msg.x + msg.width - link.x).toBeGreaterThanOrEqual(traco - 0.01)
+  const bordaDireita = await page.getByRole("button", { name: "Copiar mensagem" }).evaluate((b) => getComputedStyle(b).borderRightWidth)
+  const bordaEsquerda = await page.getByRole("button", { name: "Copiar link" }).evaluate((b) => getComputedStyle(b).borderLeftWidth)
+  expect([bordaDireita, bordaEsquerda]).toEqual(["1px", "0px"])
+  expect(Math.abs(msg.x + msg.width - link.x)).toBeLessThan(0.5)
   mkdirSync("capturas", { recursive: true })
   await page.screenshot({ path: `capturas/copiar-grupo-${info.project.name}.png`, clip: { x: msg.x - 4, y: msg.y - 4, width: msg.width + link.width + 8, height: msg.height + 8 } })
   await page.screenshot({ path: `capturas/troca-enviada-${info.project.name}.png`, animations: "disabled" })

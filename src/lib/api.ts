@@ -943,6 +943,18 @@ export function useCriarPecaClube() {
   )
 }
 
+// Edita uma peça do Clube (código, nome, variante, preço, foto). Peças já lançadas em pedidos não mudam.
+export function useAtualizarPecaClube() {
+  return useAcao(
+    async ({ id, ...d }: DadosPecaClube & { id: string }) => {
+      const { data, error } = await supabase.from("pecas_clube").update(d).eq("id", id).select().single()
+      if (error) throw error
+      return data as PecaClube
+    },
+    [["clube"]],
+  )
+}
+
 export function useAtivarPecaClube() {
   return useAcao(
     async ({ id, ativo }: { id: string; ativo: boolean }) => {

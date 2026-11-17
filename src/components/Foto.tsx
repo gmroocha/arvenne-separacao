@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, type MouseEvent } from "react"
+import FotoGrande from "@/components/FotoGrande"
 import { Gem, X } from "lucide-react"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,14 @@ function Imagem({ url, alt, className }: { url: string | null; alt: string; clas
 
 export default function Foto({ url, alt = "", ampliar, className }: Props) {
   const [aberta, setAberta] = useState(false)
+  // Miniatura e proporção lidas da foto que já está na tela: a ampliada abre no tamanho final na hora.
+  const [previa, setPrevia] = useState<{ src: string | null; proporcao: number }>({ src: null, proporcao: 1 })
+  function abrir(e: MouseEvent<HTMLButtonElement>) {
+    const img = e.currentTarget.querySelector("img")
+    const proporcao = img && img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : 1
+    setPrevia({ src: img?.complete ? img.currentSrc || img.src : null, proporcao })
+    setAberta(true)
+  }
   const quadro = (
     <AspectRatio ratio={1} className="overflow-hidden rounded-md bg-muted ring-1 ring-foreground/15 ring-inset">
       <Imagem url={miniatura(url)} alt={alt} />
@@ -39,7 +48,7 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
   if (!ampliar || !url) return <div className={className}>{quadro}</div>
   return (
     <>
-      <button type="button" className={cn("block w-full cursor-zoom-in", className)} onClick={() => setAberta(true)}>
+      <button type="button" className={cn("block w-full cursor-zoom-in", className)} onClick={abrir}>
         {quadro}
       </button>
       <Dialog open={aberta} onOpenChange={setAberta}>
@@ -48,8 +57,15 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
           <DialogTitle className="sr-only">{alt || "Foto da peça"}</DialogTitle>
           <DialogDescription className="sr-only">Foto ampliada</DialogDescription>
           <div className="relative mx-auto w-fit">
-            {/* Ampliada: pede a foto grande à Shopify (a miniatura vem com width pequeno). */}
-            <img draggable={false} src={fotoTamanho(url, 1200) ?? url} alt={alt} className="block h-auto max-h-[calc(85svh-1.5rem)] w-auto max-w-[calc(100vw-3rem)] rounded-lg sm:max-w-[min(calc(100vw-3.5rem),40.5rem)]" />
+            {/* Ampliada: pede a foto grande à Shopify (a miniatura vem com width pequeno). Largura pelo menor
+                limite: tela, 40,5rem no PC ou a altura disponível vezes a proporção da foto. */}
+            <FotoGrande
+              url={fotoTamanho(url, 1200) ?? url}
+              previa={previa.src}
+              proporcao={previa.proporcao}
+              alt={alt}
+              style={{ width: `min(calc(100vw - 3rem), 40.5rem, calc((85svh - 1.5rem) * ${previa.proporcao}))` }}
+            />
             <DialogClose asChild>
               <Button size="icon" variant="ghost" className="absolute top-2 right-2 rounded-full bg-background/80 text-foreground shadow backdrop-blur hover:bg-background">
                 <X />

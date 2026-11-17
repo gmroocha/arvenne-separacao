@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Check, Copy, Store, User, XCircle } from "lucide-react"
+import { Check, Copy, Store, User } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { Button } from "@/components/ui/button"
 import { FormaPagamento } from "@/components/comum/FormaPagamento"
@@ -20,8 +20,6 @@ type Props = {
   aoForma: (forma: string | null) => void
   aoCopiar: () => void
   aoPago: () => void
-  aoPerdida: () => void
-  aoSituacao: (status: "em_aberto" | "aguardando_pagamento") => void
   prefixo: string
 }
 
@@ -38,12 +36,11 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 // PAC e SEDEX moram em lib/selo; reexportados para a Nota e frete.
 export { COR_PAC, COR_SEDEX }
 
-export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, aoPago, aoPerdida, aoSituacao, prefixo }: Props) {
+export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, aoPago, prefixo }: Props) {
   const p = (s: string) => `${prefixo}-${s}`
   // A forma muda na hora na tela; o banco grava em seguida (o total com Pix vem dele depois).
   const [formaLocal, setFormaLocal] = useState<string | null | undefined>(undefined)
   const forma = formaLocal !== undefined ? formaLocal : pedido.forma_pagamento
-  const [situacaoLocal, setSituacaoLocal] = useState<string | undefined>(undefined)
   return (
     <div className="flex flex-col gap-4">
       <Field>
@@ -156,28 +153,6 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, 
         <LinhaValor total rotulo="Total" valor={reais(pedido.total)} />
       </div>
 
-      <Field>
-        <FieldLabel>Situação</FieldLabel>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          className="w-full"
-          value={situacaoLocal ?? pedido.status}
-          onValueChange={(v) => {
-            if (v !== "em_aberto" && v !== "aguardando_pagamento") return
-            setSituacaoLocal(v)
-            aoSituacao(v)
-          }}
-        >
-          <ToggleGroupItem value="em_aberto" className="flex-1">
-            Em aberto
-          </ToggleGroupItem>
-          <ToggleGroupItem value="aguardando_pagamento" className="flex-1">
-            Aguardando pagamento
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </Field>
-
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" size="xl" onClick={aoCopiar}>
@@ -187,9 +162,6 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, 
             <Check /> Pago
           </Button>
         </div>
-        <Button variant="ghost" size="toque" className="text-muted-foreground" onClick={aoPerdida}>
-          <XCircle /> Marcar como perdida
-        </Button>
       </div>
     </div>
   )
