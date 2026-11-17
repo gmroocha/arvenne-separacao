@@ -16,9 +16,9 @@ export const COR_TEXTO_AVISO = "text-warning"
 
 // Seleção de PAC (laranja) e SEDEX (verde): fundo tingido, borda e texto na cor. Vencem o "ligado" primário do Toggle.
 export const COR_PAC =
-  "data-[state=on]:border-pac data-[state=on]:bg-pac/15 data-[state=on]:text-pac data-[state=on]:ring-1 data-[state=on]:ring-pac data-[state=on]:hover:bg-pac/20 data-[state=on]:hover:text-pac"
+  "data-[state=on]:border-pac data-[state=on]:bg-pac/15 data-[state=on]:text-pac data-[state=on]:hover:bg-pac/20 data-[state=on]:hover:text-pac"
 export const COR_SEDEX =
-  "data-[state=on]:border-sedex data-[state=on]:bg-sedex/15 data-[state=on]:text-sedex data-[state=on]:ring-1 data-[state=on]:ring-sedex data-[state=on]:hover:bg-sedex/20 data-[state=on]:hover:text-sedex"
+  "data-[state=on]:border-sedex data-[state=on]:bg-sedex/15 data-[state=on]:text-sedex data-[state=on]:hover:bg-sedex/20 data-[state=on]:hover:text-sedex"
 
 // Selo do crédito registrado: reembolso pendente fica em amarelo até alguém marcar "Reembolsado".
 export const ROTULO_CREDITO: Record<SituacaoCredito, string> = {
