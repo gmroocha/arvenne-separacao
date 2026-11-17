@@ -121,3 +121,14 @@ test('feedback de peça: equipe grava peça e código; quem e quando vêm do ban
   await db.exec('set local role anon')
   await recusa(() => one(`insert into feedbacks (texto, item_id, sku) values ('x', $1, 'A')`, [item.id]), /permission denied/)
 })
+
+test('Frete e time: peso e responsáveis saem pela v_pedidos; equipe e designar só para quem tem login', async () => {
+  const cols = (await db.query("select column_name from information_schema.columns where table_name = 'v_pedidos' order by ordinal_position")).rows.map((r) => r.column_name)
+  expect(cols.slice(-2)).toEqual(['frete_peso_g', 'responsaveis'])
+  const priv = await one(`select has_table_privilege('authenticated','public.equipe','select,insert,update') as le,
+    has_table_privilege('authenticated','public.equipe','delete') as apaga,
+    has_table_privilege('anon','public.equipe','select') as anon_le,
+    has_function_privilege('authenticated','public.designar(uuid,text,uuid)','execute') as auth_designa,
+    has_function_privilege('anon','public.designar(uuid,text,uuid)','execute') as anon_designa`)
+  expect(priv).toEqual({ le: true, apaga: false, anon_le: false, auth_designa: true, anon_designa: false })
+})

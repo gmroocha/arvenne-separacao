@@ -27,6 +27,19 @@ test("o fluxo normal não pula uma etapa", () => {
   expect(proximaEtapa("enviado")).toBeNull()
   expect(proximaEtapa("aguardando_cliente")).toBe("separacao")
 })
+test("nova esteira: Nota fiscal → Embalagem → Frete → Postagem → Enviado", () => {
+  expect(proximaEtapa("faturamento")).toBe("embalagem")
+  expect(proximaEtapa("embalagem")).toBe("frete")
+  expect(proximaEtapa("frete")).toBe("pronto_envio")
+  expect(proximaEtapa("pronto_envio")).toBe("enviado")
+  expect(destinoAoConcluir("embalagem")).toBe("frete")
+  expect(PASSOS.map((p) => p.id)).toEqual([
+    "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
+  ])
+  expect(PASSOS.find((p) => p.id === "faturamento")?.nome).toBe("Nota fiscal")
+  expect(FASE_DE.frete).toBe("expedicao")
+  expect(etapaAtual({ status: "avisar_cliente", etapa_antes_desvio: "frete" })).toBe("frete")
+})
 test("peça pendente, inclusive adicional, impede completar conferência", () => {
   const pronta = peca({ conferido_em: "2026-11-12T12:00:00Z" })
   expect(etapaCompleta("conferencia", [pronta])).toBe(true)

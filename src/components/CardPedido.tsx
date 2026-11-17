@@ -4,22 +4,29 @@ import Miniaturas from "@/components/Miniaturas"
 import MenuContexto from "@/components/MenuContexto"
 import Prazo from "@/components/pedido/Prazo"
 import { SeloAcerto } from "@/components/SeloAcerto"
-import { useReembolsosPendentes } from "@/lib/api"
+import AvatarMembro from "@/components/AvatarMembro"
+import { useEquipe, useReembolsosPendentes } from "@/lib/api"
+import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { OrigemBadge } from "@/components/StatusBadge"
 import type { Pedido } from "@/lib/tipos"
 
 // Cartão do pedido na esteira: a cliente em destaque, o número pequeno. Clique direito (ou toque longo) abre as ações.
 export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: string | null }) {
   const reembolsar = useReembolsosPendentes().data?.has(p.id) ?? false
+  const membros = useEquipe().data ?? []
+  const resp = p.fase === "expedicao" ? responsavelDaEtapaAtual(p, membros) : null
   return (
     <MenuContexto pedido={p}>
       <Card size="sm" className="transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
         <Link to={`/pedidos/${p.id}`} draggable={false} className="flex flex-col gap-2 px-3 outline-none">
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-base leading-tight font-semibold">{p.cliente_nome ?? "Sem nome"}</span>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="tabular-nums">{p.numero.replace(/^#/, "")}</span> · <OrigemBadge origem={p.origem} />
-          </span>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-base leading-tight font-semibold">{p.cliente_nome ?? "Sem nome"}</span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="tabular-nums">{p.numero.replace(/^#/, "")}</span> · <OrigemBadge origem={p.origem} />
+            </span>
+          </div>
+          {resp && <AvatarMembro nome={resp.nome} className="shrink-0" />}
         </div>
         <div className="flex items-center gap-2">
           <Miniaturas fotos={p.fotos} total={p.qtd_linhas} />

@@ -13,6 +13,7 @@ import Conferencia from "./Conferencia"
 import Etiquetagem from "./Etiquetagem"
 import Problemas from "./Problemas"
 import { Embalagem, Enviado, Postagem } from "./Fechamento"
+import Frete from "./Frete"
 import NotaFrete from "./NotaFrete"
 import Separacao from "./Separacao"
 import { BuscaPecaContexto } from "./buscaPecaContexto"
@@ -52,6 +53,8 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
         return <NotaFrete pedido={pedido} patch={patch} aoConcluir={concluir} />
       case "embalagem":
         return <Embalagem pedido={pedido} patch={patch} aoConcluir={concluir} />
+      case "frete":
+        return <Frete pedido={pedido} patch={patch} aoConcluir={concluir} />
       case "pronto_envio":
         return <Postagem pedido={pedido} patch={patch} aoConcluir={concluir} />
       case "enviado":
@@ -65,9 +68,9 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
     }
   }
 
-  // O cartão "Avise a cliente" mora nas etapas de peças. Desvio vindo de uma etapa sem ele (Bipagem, Nota e
-  // frete, Embalagem, Postagem) mostra o cartão aqui em cima, para a falta não ficar escondida.
-  const cartaoDoDesvio = ehDesvio(pedido.status) && !somenteVer && ["bipagem", "faturamento", "embalagem", "pronto_envio"].includes(etapa ?? "")
+  // O cartão "Avise a cliente" mora nas etapas de peças. Desvio vindo de uma etapa sem ele (Bipagem, Nota fiscal,
+  // Embalagem, Frete, Postagem) mostra o cartão aqui em cima, para a falta não ficar escondida.
+  const cartaoDoDesvio = ehDesvio(pedido.status) && !somenteVer && ["bipagem", "faturamento", "embalagem", "frete", "pronto_envio"].includes(etapa ?? "")
   // Busca de peça nas etapas de peças (a bipagem já tem o próprio campo de código).
   const comBusca = ["separacao", "conferencia", "etiquetagem"].includes(etapa ?? "") || cartaoDoDesvio
   const vivas = pedido.pedido_itens.filter((i) => i.status !== "removido")

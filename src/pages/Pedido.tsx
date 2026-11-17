@@ -74,8 +74,8 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           <AlertDescription>Confira o pedido na Shopify antes de seguir: as quantidades não batem mais com as peças daqui.</AlertDescription>
         </Alert>
       )}
-      <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} vista={vista} aoVer={setVista} />
-      {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota e frete em diante. */}
+      <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} responsaveis={pedido.responsaveis} vista={vista} aoVer={setVista} />
+      {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota fiscal em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       {!foco && <AvisoCredito pedidoId={pedido.id} />}
       <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>

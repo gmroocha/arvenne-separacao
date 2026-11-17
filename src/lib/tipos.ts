@@ -35,7 +35,7 @@ export type DescontoShopify = {
 }
 
 // Uma linha de v_pedidos: colunas de pedidos + o que o banco calcula (a tela só formata).
-export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'status_desde' | 'pedido_em' | 'created_at' | 'token_publico' | 'subtotal' | 'desconto' | 'desconto_pix' | 'frete_na_conta' | 'total' | 'qtd_pecas' | 'qtd_linhas' | 'qtd_encontradas' | 'qtd_problemas' | 'qtd_conferidas' | 'qtd_etiquetadas' | 'qtd_bipadas' | 'valor_pecas_com_desconto' | 'acerto_pendente' | 'pendente_rastreio' | 'troca_coberto' | 'qtd_adicionais' | 'valor_somado' | 'valor_pago_somado' | 'total_geral' | 'desconto_sem_cobertura'>, 'origem' | 'status' | 'fase' | 'fotos' | 'partes' | 'desconto_tipo' | 'frete_tipo' | 'frete_pago_por' | 'etapa_antes_desvio' | 'descontos'> & {
+export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'status_desde' | 'pedido_em' | 'created_at' | 'token_publico' | 'subtotal' | 'desconto' | 'desconto_pix' | 'frete_na_conta' | 'total' | 'qtd_pecas' | 'qtd_linhas' | 'qtd_encontradas' | 'qtd_problemas' | 'qtd_conferidas' | 'qtd_etiquetadas' | 'qtd_bipadas' | 'valor_pecas_com_desconto' | 'acerto_pendente' | 'pendente_rastreio' | 'troca_coberto' | 'qtd_adicionais' | 'valor_somado' | 'valor_pago_somado' | 'total_geral' | 'desconto_sem_cobertura'>, 'origem' | 'status' | 'fase' | 'fotos' | 'partes' | 'desconto_tipo' | 'frete_tipo' | 'frete_pago_por' | 'etapa_antes_desvio' | 'descontos' | 'responsaveis'> & {
   origem: Origem; status: StatusPedido; fase: Fase
   fotos: string[]; partes: ParteSomada[]
   // V37: etapa de onde veio o desvio "avisar/aguardando cliente" (nula fora do desvio).
@@ -43,7 +43,12 @@ export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'st
   // Motivo dos descontos da Shopify (nulo = a sincronização ainda não trouxe).
   descontos: DescontoShopify[] | null
   desconto_tipo: DescontoTipo | null; frete_tipo: FreteTipo | null; frete_pago_por: FretePagoPor | null
+  // Quem faz cada etapa: { etapa: equipe.id }. Pode faltar enquanto o banco não tem a migration do time.
+  responsaveis?: Record<string, string> | null
 }
+
+// Pessoa do Time Arvenne (tabela equipe). O e-mail liga a pessoa ao login ("Comigo").
+export type Membro = Pick<Tables<'equipe'>, 'id' | 'nome' | 'email' | 'ativo'>
 
 export type Item = Omit<Tables<'pedido_itens'>, 'origem' | 'status'> & { origem: OrigemItem; status: StatusItem }
 

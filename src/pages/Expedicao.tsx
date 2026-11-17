@@ -2,13 +2,14 @@ import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
-import { ChevronRight, PackageOpen, Printer, RefreshCw } from "lucide-react"
+import { ChevronRight, PackageOpen, Printer, RefreshCw, Users } from "lucide-react"
 import CardPedido from "@/components/CardPedido"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { BolhaContador } from "@/components/comum/Bolha"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import { Vazio } from "@/components/comum/Vazio"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Toggle } from "@/components/ui/toggle"
 import FaixaRolavel from "@/components/FaixaRolavel"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
@@ -17,7 +18,8 @@ import { Spinner } from "@/components/ui/spinner"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
 import { etiquetasDe } from "@/lib/etiquetas"
 import { useDebounce } from "@/lib/useDebounce"
-import { LIMITE_LISTA, useContagens, useMudarStatus, usePecasParaEtiquetar, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
+import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePecasParaEtiquetar, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
+import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { digitos } from "@/lib/formato"
 import { destinoAoConcluir, ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
@@ -42,8 +44,9 @@ const COLUNAS: Coluna[] = [
   { id: "conferencia", nome: "Conferência", icone: "conferencia", statuses: ["conferencia"] },
   { id: "etiquetagem", nome: "Etiquetagem", icone: "etiquetagem", statuses: ["etiquetagem"] },
   { id: "bipagem", nome: "Bipagem", icone: "bipagem", statuses: ["bipagem"] },
-  { id: "faturamento", nome: "Nota e frete", icone: "faturamento", statuses: ["faturamento"] },
+  { id: "faturamento", nome: "Nota fiscal", icone: "faturamento", statuses: ["faturamento"] },
   { id: "embalagem", nome: "Embalagem", icone: "embalagem", statuses: ["embalagem"] },
+  { id: "frete", nome: "Frete", icone: "frete", statuses: ["frete"] },
   { id: "pronto_envio", nome: "Postagem", icone: "pronto_envio", statuses: ["pronto_envio"] },
   { id: "rastreio", nome: "Enviar rastreio", icone: "rastreio", statuses: ["enviado"], rastreio: true },
 ]
@@ -121,6 +124,10 @@ export default function Expedicao() {
   const [params, setParams] = useSearchParams()
   const etapa = params.get("etapa")
   const soAtrasados = params.get("atrasados") === "1"
+  // Filtro por pessoa (?pessoa=): "eu" (Comigo), "sem" (sem responsável) ou o id de alguém do time.
+  const pessoa = params.get("pessoa")
+  const membros = useEquipe().data ?? []
+  const meuMembro = useMeuMembro()
   const [busca, setBusca] = useState("")
   const termo = useDebounce(busca, 300)
   const { data, isLoading, isError, isFetching, refetch } = usePedidosFase("expedicao", termo)
@@ -188,10 +195,18 @@ export default function Expedicao() {
     )
   }, [data, rastreio.data, busca])
 
+  // Pela pessoa que faz a etapa em que o pedido está agora. A coluna "Enviar rastreio" não tem responsável.
+  const daPessoa = (p: Pedido) => {
+    if (!pessoa || p.pendente_rastreio || (pessoa === "eu" && !meuMembro)) return true // "Comigo" sem cadastro: mostra tudo
+    const resp = responsavelDaEtapaAtual(p, membros)
+    if (pessoa === "sem") return !resp
+    return !!resp && resp.id === (pessoa === "eu" ? meuMembro?.id : pessoa)
+  }
   const dentro = (c: Coluna) =>
     filtrados
       .filter((p) => (c.rastreio ? p.pendente_rastreio : !p.pendente_rastreio && c.statuses.includes(p.status)))
       .filter((p) => !soAtrasados || atrasado(p.prazo))
+      .filter(daPessoa)
   const porColuna = COLUNAS.map((c) => ({ ...c, pedidos: dentro(c) }))
   // Sem busca, o total vem do banco (conta mesmo além do limite da lista); com busca, conta os da lista filtrada.
   const totalAtrasados = busca.trim() || !contagens ? filtrados.filter((p) => !p.pendente_rastreio && atrasado(p.prazo)).length : contagens.atrasados
@@ -229,6 +244,28 @@ export default function Expedicao() {
           {sincronizar.isPending ? <Spinner /> : <RefreshCw />} <span className="hidden lg:inline">Sincronizar</span>
         </Button>
       </div>
+
+      {membros.length > 0 && (
+        <Select value={!pessoa || (pessoa === "eu" && !meuMembro) ? "todos" : pessoa} onValueChange={(v) => atualizar({ pessoa: v === "todos" ? null : v })}>
+          <SelectTrigger className="h-11 w-full sm:w-64 lg:h-8" aria-label="Filtrar por pessoa">
+            <Users className="text-muted-foreground" />
+            <SelectValue className="flex-1 text-left" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos</SelectItem>
+            {meuMembro && <SelectItem value="eu">Comigo ({meuMembro.nome})</SelectItem>}
+            {membros
+              .filter((m) => m.ativo || m.id === pessoa)
+              .map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.nome}
+                  {m.ativo ? "" : " (inativo)"}
+                </SelectItem>
+              ))}
+            <SelectItem value="sem">Sem responsável</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
 
       {(data?.length ?? 0) >= LIMITE_LISTA && (
         <p className="text-xs text-muted-foreground">Mostrando os {LIMITE_LISTA} primeiros pedidos da expedição: pode haver mais. Use a busca para achar os outros.</p>

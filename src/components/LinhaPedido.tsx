@@ -3,7 +3,9 @@ import { Link } from "react-router"
 import Miniaturas from "@/components/Miniaturas"
 import Prazo from "@/components/pedido/Prazo"
 import { SeloAcerto } from "@/components/SeloAcerto"
-import { useReembolsosPendentes } from "@/lib/api"
+import AvatarMembro from "@/components/AvatarMembro"
+import { useEquipe, useReembolsosPendentes } from "@/lib/api"
+import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { OrigemBadge, StatusBadge } from "@/components/StatusBadge"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { quando, reais } from "@/lib/formato"
@@ -13,6 +15,8 @@ import type { Pedido } from "@/lib/tipos"
 // `resto` vai para o <li>: permite envolver a linha num menu de clique direito (asChild).
 export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentProps<"li">) {
   const reembolsar = useReembolsosPendentes().data?.has(p.id) ?? false
+  const membros = useEquipe().data ?? []
+  const resp = p.fase === "expedicao" ? responsavelDaEtapaAtual(p, membros) : null
   const pecas = `${p.qtd_pecas} ${p.qtd_pecas === 1 ? "peça" : "peças"}`
   return (
     <li {...resto}>
@@ -41,6 +45,7 @@ export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentPr
           {p.fase === "expedicao" && (
             <>
               <StatusBadge status={p.status} somadaA={p.somada_a_numero} />
+              {resp && <AvatarMembro nome={resp.nome} />}
               <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
               {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
               {reembolsar && !p.acerto_pendente && <SeloAcerto reembolsar />}

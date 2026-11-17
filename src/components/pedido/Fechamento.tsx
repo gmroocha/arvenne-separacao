@@ -16,7 +16,7 @@ import CampoSalvo from "./CampoSalvo"
 type Patch = (campos: CamposPedido) => void
 type Props = { pedido: PedidoDetalhe; patch: Patch; aoConcluir?: () => void }
 
-const ITENS_EMBALAGEM = ["Caixa do tamanho certo", "Nota impressa dentro", "Etiqueta de envio colada"]
+const ITENS_EMBALAGEM = ["Caixa do tamanho certo", "Nota impressa dentro", "Caixa fechada"]
 
 export function Embalagem({ patch, aoConcluir }: Props) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set())

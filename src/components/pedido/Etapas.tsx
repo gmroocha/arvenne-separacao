@@ -4,7 +4,9 @@ import FaixaRolavel from "@/components/FaixaRolavel"
 import MenuAcoes from "@/components/MenuAcoes"
 import RespDialog from "@/components/RespDialog"
 import SeloStatus from "@/components/SeloStatus"
+import AvatarMembro from "@/components/AvatarMembro"
 import { Button } from "@/components/ui/button"
+import { useEquipe } from "@/lib/api"
 import { ehDesvio } from "@/lib/selo"
 import { quando } from "@/lib/formato"
 import { ICONE_ETAPA, PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
@@ -16,16 +18,20 @@ type Props = {
   // V37: em "avisar/aguardando cliente", a etapa de onde o pedido veio (a etapa atual na linha).
   etapaAntesDesvio?: StatusPedido | null
   eventos: Evento[]
+  responsaveis?: Record<string, string> | null // { etapa: equipe.id } (pode faltar até o banco ter o time)
   vista: StatusPedido | null // etapa que está na tela (null = a atual do pedido)
   aoVer: (vista: StatusPedido | null) => void
 }
 
 const lista = (nomes: string[]) => (nomes.length > 1 ? `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}` : nomes[0])
 
-// Esteira do pedido: Separação → Conferência → Etiquetagem → Bipagem → Nota e frete → Embalagem →
-// Postagem → Enviado. Tocar numa etapa só muda o que aparece na tela, nunca o status do pedido.
+// Esteira do pedido: Separação → Conferência → Etiquetagem → Bipagem → Nota fiscal → Embalagem →
+// Frete → Postagem → Enviado. Tocar numa etapa só muda o que aparece na tela, nunca o status do pedido.
 // Etapa à frente da atual pede aviso (Dialog) antes de abrir.
-export default function Etapas({ status, etapaAntesDesvio, eventos, vista, aoVer }: Props) {
+export default function Etapas({ status, etapaAntesDesvio, eventos, responsaveis, vista, aoVer }: Props) {
+  const membros = useEquipe().data ?? []
+  // Nome de quem faz a etapa (só etapas de trabalho; some se a pessoa não está na lista).
+  const quemFaz = (etapa: string) => membros.find((m) => m.id === (responsaveis ?? {})[etapa])?.nome
   const atual = passoAtual({ status, etapa_antes_desvio: etapaAntesDesvio })
   const vistaIdx = vista ? passoDe(vista) : atual
   const [bloqueada, setBloqueada] = useState<number | null>(null) // etapa à frente que a pessoa tentou abrir
@@ -54,7 +60,7 @@ export default function Etapas({ status, etapaAntesDesvio, eventos, vista, aoVer
               {
                 estilo: "ghost",
                 itens: PASSOS.map((p, i) => ({
-                  rotulo: i === atual ? `${p.nome} · atual` : p.nome,
+                  rotulo: [i === atual ? `${p.nome} · atual` : p.nome, quemFaz(p.id)].filter(Boolean).join(" · "),
                   icone: i < atual ? Check : ICONE_ETAPA[p.id],
                   aoClicar: () => abrir(i),
                 })),
@@ -91,6 +97,7 @@ export default function Etapas({ status, etapaAntesDesvio, eventos, vista, aoVer
             const ehAtual = i === atual
             const vendo = i === vistaIdx
             const Icone = ICONE_ETAPA[p.id]
+            const nomeResp = quemFaz(p.id)
             return (
               <li key={p.id} className="flex items-center">
                 <button
@@ -110,6 +117,7 @@ export default function Etapas({ status, etapaAntesDesvio, eventos, vista, aoVer
                   {feita ? <Check className="size-4" /> : <Icone className="size-4" />}
                   {p.nome}
                   {ehAtual && <span className="sr-only">(etapa atual)</span>}
+                  {nomeResp && <AvatarMembro nome={nomeResp} className="-mr-1.5 size-5" />}
                 </button>
                 {i < PASSOS.length - 1 && <span className={cn("h-0.5 w-4", i < atual ? "bg-success" : "bg-border")} />}
               </li>

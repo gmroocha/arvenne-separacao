@@ -181,6 +181,16 @@ Depois de imprimir, o app pergunta "Saiu tudo certo?". Se sim, marca as peças c
 Em Expedição, "Imprimir todas" imprime os pedidos que estão em Etiquetagem, com uma etiqueta separadora
 entre um pedido e outro.
 
+## Time Arvenne (depois de aplicar a migration `20261122140000_frete_e_time.sql`)
+
+Só depois que a migration estiver aplicada no Supabase (o app avisa quando eu pedir o "sim"):
+
+1. Abra o app e entre em **Time** (menu lateral).
+2. Toque em **Adicionar pessoa** e cadastre cada pessoa: nome e **o mesmo e-mail com que ela entra no app**
+   (o login criado no painel do Supabase). É esse e-mail que faz o filtro **Comigo** da Expedição funcionar.
+   O e-mail é opcional: sem ele a pessoa aparece nas listas, mas não tem "Comigo".
+3. Dentro de cada pedido, o nome da etapa atual (embaixo do número) abre **Quem faz cada etapa**.
+
 ## Token da Storefront (só se precisar)
 
 Serve para o app ler o link de carrinho compartilhado da Shopify (`/cart/c/...`). Só faça se eu avisar

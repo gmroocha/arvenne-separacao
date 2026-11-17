@@ -1,7 +1,7 @@
 import { useSidebar } from "@/components/ui/sidebar-context"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
-import { Archive, BookOpen, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck } from "lucide-react"
+import { Archive, BookOpen, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck, Users } from "lucide-react"
 import { useTheme } from "next-themes"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
@@ -47,6 +47,7 @@ export default function AppSidebar() {
     { to: "/catalogo", nome: "Catálogo", icone: BookOpen, ativo: pathname === "/catalogo" },
     { to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
     { to: "/arquivo", nome: "Arquivo", icone: Archive, ativo: pathname === "/arquivo" },
+    { to: "/time", nome: "Time", icone: Users, ativo: pathname === "/time" },
     { to: "/feedbacks", nome: "Feedbacks", icone: MessageSquare, ativo: pathname === "/feedbacks", badge: abertos },
   ]
 

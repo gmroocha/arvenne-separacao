@@ -1,5 +1,5 @@
 import {
-  Check, Eye, FileText, Inbox, ListChecks, BellRing, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck,
+  Check, Eye, FileText, Inbox, ListChecks, BellRing, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck, Weight,
   type LucideIcon,
 } from "lucide-react"
 
@@ -13,8 +13,9 @@ export const ETAPAS = [
   { id: "conferencia", nome: "Conferência" },
   { id: "etiquetagem", nome: "Etiquetagem" },
   { id: "bipagem", nome: "Bipagem" },
-  { id: "faturamento", nome: "Nota e frete" },
+  { id: "faturamento", nome: "Nota fiscal" },
   { id: "embalagem", nome: "Embalagem" },
+  { id: "frete", nome: "Frete" },
   { id: "pronto_envio", nome: "Postagem" },
   { id: "enviado", nome: "Enviado" },
   { id: "cancelado", nome: "Cancelado" },
@@ -41,6 +42,7 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
   bipagem: "expedicao",
   faturamento: "expedicao",
   embalagem: "expedicao",
+  frete: "expedicao",
   pronto_envio: "expedicao",
   enviado: "arquivo",
   cancelado: "arquivo",
@@ -54,14 +56,14 @@ export const STATUS_DA_FASE: Record<Fase, StatusPedido[]> = {
   arquivo: ["enviado", "cancelado", "perdida", "somada"],
   expedicao: [
     "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
-    "embalagem", "pronto_envio",
+    "embalagem", "frete", "pronto_envio",
   ],
 }
 
 // Etapas de expedição, na ordem em que aparecem em "Mover para…".
 export const ETAPAS_EXPEDICAO: StatusPedido[] = [
   "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
-  "embalagem", "pronto_envio", "enviado",
+  "embalagem", "frete", "pronto_envio", "enviado",
 ]
 
 // Linha de etapas da tela do pedido. "Avisar/Aguardando cliente" não são passos: é um desvio da Separação.
@@ -70,8 +72,9 @@ export const PASSOS = [
   { id: "conferencia", nome: "Conferência", statuses: ["conferencia"] },
   { id: "etiquetagem", nome: "Etiquetagem", statuses: ["etiquetagem"] },
   { id: "bipagem", nome: "Bipagem", statuses: ["bipagem"] },
-  { id: "faturamento", nome: "Nota e frete", statuses: ["faturamento"] },
+  { id: "faturamento", nome: "Nota fiscal", statuses: ["faturamento"] },
   { id: "embalagem", nome: "Embalagem", statuses: ["embalagem"] },
+  { id: "frete", nome: "Frete", statuses: ["frete"] },
   { id: "pronto_envio", nome: "Postagem", statuses: ["pronto_envio"] },
   { id: "enviado", nome: "Enviado", statuses: ["enviado"] },
 ] as const satisfies readonly { id: string; nome: string; statuses: readonly StatusPedido[] }[]
@@ -98,9 +101,18 @@ export function passoAtual(p: ComDesvio): number {
   return passoDe(etapaAtual(p))
 }
 
+// Etapas de trabalho que têm responsável (todas menos "Enviado"), na ordem da esteira.
+export const PASSOS_TRABALHO = PASSOS.filter((p) => p.id !== "enviado")
+
+// Etapa atual do pedido (o desvio usa a etapa de origem) que pode ter responsável; "enviado"/arquivo não têm.
+export function etapaDoResponsavel(p: ComDesvio): (typeof PASSOS_TRABALHO)[number]["id"] | null {
+  const passo = PASSOS_TRABALHO[passoAtual(p)]
+  return passo ? passo.id : null
+}
+
 // Caminho normal da expedição. Etapas de venda, "avisar_cliente", "aguardando_cliente" e "cancelado" ficam fora.
 const FLUXO: StatusPedido[] = [
-  "novo", "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviado",
+  "novo", "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
 ]
 
 export function proximaEtapa(s: StatusPedido): StatusPedido | null {
@@ -121,6 +133,7 @@ export const ICONE_ETAPA: Record<string, LucideIcon> = {
   bipagem: ScanBarcode,
   faturamento: FileText,
   embalagem: Package,
+  frete: Weight,
   pronto_envio: Truck,
   enviado: Check,
   rastreio: Send,
@@ -141,10 +154,15 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
   ],
   faturamento: [
     "Emita a nota fiscal com os dados do pedido.",
-    "Gere o frete na Frenet e o pedido de venda no fornecedor.",
+    "Faça o pedido de venda no fornecedor.",
   ],
   embalagem: [
     "Coloque as peças na caixa com a nota impressa.",
+    "Feche a caixa.",
+  ],
+  frete: [
+    "Pese a caixa fechada.",
+    "Gere o frete na Frenet com o peso.",
     "Cole a etiqueta de envio.",
   ],
   pronto_envio: [

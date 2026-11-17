@@ -1,8 +1,43 @@
-# Estado atual (atualizado em 16/11/2026)
+# Estado atual (atualizado em 17/11/2026)
 
 **Banco zerado em 16/11/2026** (com o "sim" do Gustavo, `scripts/zerar-testes.sql`): 0 pedidos, peças, trocas,
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
+
+## Nova esteira com etapa Frete e Time Arvenne (17/11/2026) — migration criada, AINDA NÃO aplicada
+
+**Aguarda o "sim" do Gustavo** para `npx supabase db push --remote --dry-run` e depois `--yes`; só então
+`npm run tipos:gerar`, `baseAplicada` em `scripts/tipos-pendentes.mjs` e o `git push` (o push publica o app, que
+já tolera o banco sem a migration: etapa Frete não existe lá, time vazio, filtro escondido).
+
+- **Esteira nova:** Separação → Conferência → Etiquetagem → Bipagem → **Nota fiscal** → Embalagem → **Frete** →
+  Postagem → Enviado (9 etapas). A etapa antes chamada "Nota e frete" (status `faturamento`) agora é só
+  **Nota fiscal** (nota + pedido LR do fornecedor). A **Embalagem** não pede mais a etiqueta de envio (lista:
+  caixa do tamanho certo, nota impressa dentro, caixa fechada).
+- **Frete (status `frete`):** vem depois da Embalagem, porque o frete só pode ser gerado com a caixa fechada
+  e pesada. Guarda o **peso da caixa em gramas** (`pedidos.frete_peso_g`, 1 a 30000); "Frete gerado" fica
+  desabilitado sem peso, "Concluir frete" exige frete gerado. Regras no banco: embalagem/frete/postagem exigem
+  nota e LR; frete exige embalado; postagem exige frete gerado. Reabrir trabalho volta uma etapa de cada vez
+  (`reavaliar_etapa`); reiniciar o Frete limpa frete gerado e peso; reiniciar a Nota fiscal limpa só nota e LR.
+  Shopify "despachado" só move para Enviado a partir do Frete já gerado ou da Postagem (antes disso, só alerta).
+  Endereço: nada novo (continua o "Editar" do cartão Cliente e valores).
+- **Time Arvenne:** página **Time** (`/time`): nome + e-mail opcional do login, desativar/reativar (nada é
+  apagado; `equipe` sem DELETE). Em cada pedido, a linha "Etapa: [avatar] Nome" abaixo do número abre
+  "Quem faz cada etapa" (8 etapas de trabalho); grava na hora pela função `designar` (evento `designado`).
+  Na Expedição: avatar do responsável da etapa atual no cartão/linha e filtro por pessoa (Todos, Comigo, cada
+  pessoa, Sem responsável; `?pessoa=` na URL, filtrado no navegador). `pedidos.responsaveis` (jsonb) e
+  `frete_peso_g` saem pela `v_pedidos` (colunas no fim, nenhum join novo); o tempo real avisa `equipe`.
+- **Migration `20261122140000_frete_e_time.sql`** (recria as funções da esteira a partir da última versão de
+  cada uma, com `frete` entre `embalagem` e `pronto_envio`): `pedidos_status_check`, `etapa_antes_desvio`,
+  `regras_etapas`, `reavaliar_etapa`, `tg_pedidos_antes`, `alterar_item`, `marcar_falta`, `substituir_item`,
+  `somar_venda`, `listar_inconsistencias`, `tg_etapa_antes_desvio`, `sair_do_desvio`, `reiniciar_pedido`,
+  `importar_pedido_shopify`, `tg_pedidos_depois` (peso no evento) e `v_pedidos`; mais `equipe`, `designar`,
+  evento `designado`. Nenhum pedido está em embalagem/pronto_envio no banco hoje: nada a converter.
+- **Testes:** `tests/banco/time.test.mjs` (novo), `etapas`, `maquina-estados`, `shopify`, `permissoes`,
+  `tests/unidade/etapas.test.ts`, `tempoReal.test.ts`, e2e `fluxos` (etapa Frete com peso; time) e
+  `editar-dados`.
+- **Depois da migration aplicada:** cadastrar o time em **Time** com o mesmo e-mail do login de cada pessoa
+  (`PASSO-A-PASSO.md`).
 
 ## Histórico só do essencial e "Editar" nos dados do pedido (17/11/2026)
 

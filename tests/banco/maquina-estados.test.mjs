@@ -18,16 +18,17 @@ test('propriedade: nenhuma combinação de peças ou documentos libera etapa sem
    const conferido=separado&&vivas.every(i=>i.conferida)
    const etiquetado=conferido&&vivas.every(i=>i.etiquetada)
    const bipado=etiquetado&&vivas.every(i=>i.bipada)
-   const faturado=bipado&&c.nota&&c.frete&&c.fornecedor
+   const faturado=bipado&&c.nota&&c.fornecedor
    const embalado=faturado&&c.embalado
-   const esperado={conferencia:separado,etiquetagem:conferido,bipagem:etiquetado,faturamento:bipado,embalagem:faturado,pronto_envio:embalado,enviado:embalado&&c.postado}
+   const freteGerado=embalado&&c.frete
+   const esperado={conferencia:separado,etiquetagem:conferido,bipagem:etiquetado,faturamento:bipado,embalagem:faturado,frete:embalado,pronto_envio:freteGerado,enviado:freteGerado&&c.postado}
    const regras=(await one('select etapas_permitidas e from v_pedidos where id=$1',[p.id])).e
    await db.exec('set local role authenticated')
    for(const [destino,pode]of Object.entries(esperado)){
     expect(regras[destino]===null,`${destino}: regra informada à interface`).toBe(pode)
     await db.exec('savepoint destino')
     let aceito=true
-    try{await db.query('update pedidos set status=$2 where id=$1',[p.id,destino])}catch(e){expect(e.message).toMatch(/peças|separação|Confira|Etiquete|Bipe|nota fiscal|embalagem|postagem/);aceito=false}
+    try{await db.query('update pedidos set status=$2 where id=$1',[p.id,destino])}catch(e){expect(e.message).toMatch(/peças|separação|Confira|Etiquete|Bipe|nota fiscal|embalagem|frete|postagem/);aceito=false}
     await db.exec('rollback to savepoint destino')
     expect(aceito,`${destino}: proteção real do gatilho`).toBe(pode)
    }

@@ -4,6 +4,7 @@ import MenuAcoes from "@/components/MenuAcoes"
 import { contarAlteracoes, useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
 import { useAcoesPedido } from "@/components/pedido/useAcoesPedido"
 import Prazo from "@/components/pedido/Prazo"
+import Responsaveis from "@/components/pedido/Responsaveis"
 import { ehDesvio } from "@/lib/selo"
 import SeloStatus from "@/components/SeloStatus"
 import { OrigemBadge } from "@/components/StatusBadge"
@@ -43,7 +44,8 @@ export default function Cabecalho({ pedido, aoVerDados, semValores }: Props) {
               </Button>
             )}
           </div>
-          {/* Selo único: só no PC; no celular fica ao lado de "Etapa X de 8". */}
+          <Responsaveis pedido={pedido} />
+          {/* Selo único: só no PC; no celular fica ao lado de "Etapa X de 9". */}
           {ehDesvio(pedido.status) && <SeloStatus status={pedido.status} className="mt-1 hidden w-fit lg:inline-flex" />}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">

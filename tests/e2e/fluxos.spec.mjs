@@ -78,8 +78,8 @@ test("separação, conferência, etiqueta e bipagem preservam as duas unidades",
   await expect.poll(async () => Number((await sim.one("select qtd_bipada from pedido_itens where id=$1", [sim.item.id])).qtd_bipada)).toBe(1)
   await campo.fill("AN-1"); await campo.press("Enter")
   await expect(page.getByRole("dialog").getByText("Bipagem concluída")).toBeVisible()
-  await page.getByRole("button", { name: "Ir para Nota e frete" }).click()
-  await expect(page.getByText("Nota fiscal", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Ir para Nota fiscal" }).click()
+  await expect(page.getByRole("button", { name: /^Nota fiscal: / })).toBeVisible()
   expect(Number((await sim.one("select qtd_bipada from pedido_itens where id=$1", [sim.item.id])).qtd_bipada)).toBe(2)
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
@@ -158,7 +158,7 @@ test("V37: falta na Conferência mantém o pedido na Conferência e resolver vol
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect(page.getByText("Avise a cliente", { exact: true })).toBeVisible()
   // A etapa atual da tela é a Conferência (e não a Separação), com o selo do desvio.
-  if ((page.viewportSize()?.width ?? 0) < 1024) await expect(page.getByRole("button", { name: /Etapa 2 de 8 · Conferência/ })).toBeVisible()
+  if ((page.viewportSize()?.width ?? 0) < 1024) await expect(page.getByRole("button", { name: /Etapa 2 de 9 · Conferência/ })).toBeVisible()
   else await expect(page.getByRole("listitem").filter({ hasText: "Conferência" }).getByText("(etapa atual)")).toBeAttached()
   await expect(page.getByRole("heading", { name: /A conferir/ })).toBeVisible()
   mkdirSync("capturas", { recursive: true })
@@ -335,11 +335,11 @@ test("troca enviada: sem botão Reenviar e botões de copiar com contorno único
   expect(sim.bloqueadas).toEqual([])
 })
 
-// Troca concluída como crédito: saldo a favor da cliente, acerto pendente, pedido em Nota e frete.
+// Troca concluída como crédito: saldo a favor da cliente, acerto pendente, pedido em Nota fiscal.
 async function trocaComCredito(context, baseURL) {
   sim = await criarSimulacao({ troca: true })
   await sim.instalar(context, baseURL, { logado: true })
-  // Uma segunda peça continua no pedido (só o anel vira crédito), para ele poder seguir para Nota e frete.
+  // Uma segunda peça continua no pedido (só o anel vira crédito), para ele poder seguir para Nota fiscal.
   await sim.banco.query("insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,status,ordem) values ($1,'avulso','Colar','CO-9',1,10,'pendente',5)", [sim.pedido.id])
   const tp = (await sim.banco.query("select id from troca_pecas limit 1")).rows[0].id
   await sim.banco.query("select troca_aprovar($1,$2,'credito',null)", [sim.troca.id, tp])
@@ -432,6 +432,67 @@ test("peças trocadas: selo, diálogo com valores do banco e histórico por filt
   const [titulo, campo] = await Promise.all([historico.getByRole("heading", { name: "Histórico do pedido" }).boundingBox(), historico.getByRole("textbox", { name: "Nova nota" }).boundingBox()])
   expect(Math.abs(titulo.x - campo.x)).toBeLessThanOrEqual(2)
   await page.screenshot({ path: `capturas/historico-${info.project.name}.png`, animations: "disabled" })
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
+// Nova esteira: Nota fiscal → Embalagem → Frete → Postagem. O frete só sai depois de pesar a caixa.
+test("etapa Frete: peso da caixa obrigatório antes de gerar o frete e de seguir para a Postagem", async ({ page, context, baseURL }) => {
+  await iniciar(context, baseURL, { status: "novo" })
+  await sim.banco.query("update pedido_itens set status='encontrado',conferido_em=now(),etiquetado_em=now(),qtd_bipada=qtd,bipado_em=now() where pedido_id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedidos set nf_emitida_em=now(),pedido_fornecedor_em=now(),embalado_em=now(),status='frete',entrega_cep='01001000',entrega_logradouro='Rua A',entrega_numero='1',entrega_bairro='Centro',entrega_cidade='São Paulo',entrega_uf='SP',cliente_cpf='12345678909' where id=$1", [sim.pedido.id])
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  const gerar = page.getByRole("button", { name: "Frete gerado", exact: true })
+  await expect(page.getByText("Peso da caixa fechada")).toBeVisible()
+  await expect(gerar).toBeDisabled()
+  await expect(page.getByRole("button", { name: "Concluir frete" })).toBeDisabled()
+  const peso = page.getByRole("textbox", { name: "Peso da caixa (g)" })
+  await peso.fill("0"); await peso.press("Enter")
+  await expect(gerar).toBeDisabled()
+  await peso.fill("450"); await peso.press("Enter")
+  await expect.poll(async () => (await sim.one("select frete_peso_g from pedidos where id=$1", [sim.pedido.id])).frete_peso_g).toBe(450)
+  await expect(gerar).toBeEnabled()
+  await gerar.click()
+  await expect.poll(async () => (await sim.one("select frete_gerado_em from pedidos where id=$1", [sim.pedido.id])).frete_gerado_em).not.toBeNull()
+  await page.getByRole("button", { name: "Concluir frete" }).click()
+  await page.getByRole("button", { name: "Ir para Postagem" }).click()
+  await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("pronto_envio")
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
+// Time Arvenne: cadastrar pessoas, designar por etapa, ver o avatar no cartão e filtrar na Expedição.
+test("time: cadastrar pessoa, designar a etapa do pedido e filtrar a Expedição", async ({ page, context, baseURL }) => {
+  await iniciar(context, baseURL, { status: "novo" })
+  await page.goto("/time")
+  await page.getByRole("button", { name: "Adicionar pessoa" }).click()
+  await page.getByRole("textbox", { name: "Nome" }).fill("Ana Paula")
+  await page.getByRole("textbox", { name: /E-mail do login/ }).fill("teste@example.test")
+  await page.getByRole("button", { name: "Salvar", exact: true }).click()
+  await expect(page.getByText("Ana Paula")).toBeVisible()
+  expect((await sim.one("select email, ativo from equipe where nome='Ana Paula'")).email).toBe("teste@example.test")
+  await page.getByRole("button", { name: "Adicionar pessoa" }).click()
+  await page.getByRole("textbox", { name: "Nome" }).fill("Bia")
+  await page.getByRole("button", { name: "Salvar", exact: true }).click()
+  await expect(page.getByText("Bia", { exact: true })).toBeVisible()
+  const ana = (await sim.one("select id from equipe where nome='Ana Paula'")).id
+  // Designar pela tela do pedido.
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await page.getByRole("button", { name: /Mudar responsáveis/ }).click()
+  await page.getByRole("combobox", { name: "Responsável por Separação" }).click()
+  await page.getByRole("option", { name: "Ana Paula" }).click()
+  await expect.poll(async () => (await sim.one("select responsaveis from pedidos where id=$1", [sim.pedido.id])).responsaveis).toEqual({ separacao: ana })
+  expect(Number((await sim.one("select count(*) n from pedido_eventos where tipo='designado' and pedido_id=$1", [sim.pedido.id])).n)).toBe(1)
+  await page.keyboard.press("Escape")
+  // Expedição: avatar no cartão e filtro.
+  await page.goto("/")
+  await expect(page.getByRole("link", { name: /Cliente de teste/ }).first().getByRole("img", { name: "Ana Paula" })).toBeVisible()
+  await page.getByRole("combobox", { name: "Filtrar por pessoa" }).click()
+  await page.getByRole("option", { name: "Bia" }).click()
+  await expect(page.getByRole("link", { name: /Cliente de teste/ })).toHaveCount(0)
+  await page.getByRole("combobox", { name: "Filtrar por pessoa" }).click()
+  await page.getByRole("option", { name: /^Comigo/ }).click()
+  await expect(page.getByRole("link", { name: /Cliente de teste/ }).first()).toBeVisible()
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
 })

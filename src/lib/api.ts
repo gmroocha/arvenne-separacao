@@ -8,7 +8,7 @@ import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, Membro, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 // Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
@@ -530,7 +530,7 @@ export type CamposPedido = Partial<
     | "frete_tipo" | "frete_pago_por" | "frete_cobrado" | "frete_custo"
     | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra" | "somar_em"
     | "status" | "rastreio" | "observacoes"
-    | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_servico" | "rastreio_url"
+    | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_peso_g" | "frete_servico" | "rastreio_url"
     | "pedido_fornecedor_numero" | "pedido_fornecedor_em" | "embalado_em" | "postado_em" | "rastreio_enviado_em"
   >
 >
@@ -1683,6 +1683,88 @@ export function usePecasParaEtiquetar() {
       return pedidos
         .map((p) => ({ pedidoId: p.id as string, numero: p.numero as string, cliente: (p.cliente_nome as string | null) ?? null, itens: (itens as Item[]).filter((i) => i.pedido_id === p.id) }))
         .filter((p) => p.itens.length > 0) as PecasDoPedido[]
+    },
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Time Arvenne: pessoas da equipe e quem faz cada etapa do pedido.
+// ---------------------------------------------------------------------------
+
+// Lista do time. Banco ainda sem a migration (tabela inexistente): lista vazia, sem quebrar a tela.
+export function useEquipe() {
+  return useQuery({
+    queryKey: ["equipe"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("equipe").select("id, nome, email, ativo").order("nome")
+      if (error) {
+        if (semFuncao(error)) return [] as Membro[]
+        throw error
+      }
+      return data as Membro[]
+    },
+  })
+}
+
+export function useSalvarMembro() {
+  return useAcao(
+    async (m: { id?: string; nome: string; email: string | null; ativo?: boolean }) => {
+      const dados = { nome: m.nome.trim(), email: m.email?.trim() || null, ...(m.ativo === undefined ? {} : { ativo: m.ativo }) }
+      const { error } = m.id ? await supabase.from("equipe").update(dados).eq("id", m.id) : await supabase.from("equipe").insert(dados)
+      if (error) {
+        if (error.code === "23505") throw new Error("Este e-mail já está cadastrado no time")
+        throw new Error(msgBanco(error))
+      }
+    },
+    [["equipe"]],
+  )
+}
+
+// E-mail de quem está logado (minúsculo), lido uma vez.
+function useEmailLogado() {
+  return useQuery({
+    queryKey: ["login", "email"],
+    staleTime: Infinity,
+    queryFn: async () => ((await supabase.auth.getUser()).data.user?.email ?? "").trim().toLowerCase(),
+  })
+}
+
+// A pessoa do time que tem o mesmo e-mail do login (para o filtro "Comigo"); nada se não houver.
+export function useMeuMembro(): Membro | null {
+  const email = useEmailLogado().data
+  const equipe = useEquipe().data
+  if (!email) return null
+  return equipe?.find((m) => m.ativo && m.email?.trim().toLowerCase() === email) ?? null
+}
+
+// Designa (ou tira, com membro nulo) quem faz uma etapa do pedido. A tela muda na hora e volta atrás se falhar.
+export function useDesignar(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: ["designar", pedidoId],
+    mutationFn: async ({ etapa, membro }: { etapa: string; membro: string | null }) => {
+      const { error } = await supabase.rpc("designar", { p_pedido: pedidoId, p_etapa: etapa, p_membro: membro })
+      if (error) throw new Error(msgBanco(error))
+    },
+    onMutate: async ({ etapa, membro }) => {
+      await qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
+      return {
+        anterior: aplicarNoCache(qc, pedidoId, (p) => {
+          const r = { ...(p.responsaveis ?? {}) }
+          if (membro) r[etapa] = membro
+          else delete r[etapa]
+          return { ...p, responsaveis: r }
+        }),
+      }
+    },
+    onError: (e, _a, ctx) => {
+      if (ctx?.anterior) qc.setQueryData(chavePedido(pedidoId), ctx.anterior)
+      toast.error(msg(e))
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+      qc.invalidateQueries({ queryKey: ["pedidos"] })
     },
   })
 }

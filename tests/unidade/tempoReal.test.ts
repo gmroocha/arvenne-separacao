@@ -57,3 +57,11 @@ test('tempo real: aviso de opção da troca recarrega só a troca',async()=>{
  expect(sim.invalidate).toHaveBeenCalledWith({queryKey:['troca']})
  expect(sim.invalidate.mock.calls.filter(([q])=>q?.queryKey?.[0]==='pedidos')).toHaveLength(0)
 })
+
+test('tempo real: aviso do time recarrega só a lista de pessoas, sem tocar nos pedidos',async()=>{
+ const canal=sim.inscricoes.find(x=>x.filtro.event==='mudou')!
+ canal.cb({payload:{t:'equipe',p:[]}})
+ expect(sim.invalidate).toHaveBeenCalledWith({queryKey:['equipe']})
+ await vi.advanceTimersByTimeAsync(3000)
+ expect(sim.invalidate.mock.calls.filter(([q])=>q?.queryKey?.[0]!=='equipe')).toHaveLength(0)
+})

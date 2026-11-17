@@ -67,15 +67,16 @@ export const importar = async p => (await one('select importar_pedido_shopify($1
 
 // Prepara um estado operacional válido. Testes não pulam trabalho para chegar a uma etapa.
 export async function prepararEtapa(pedidoId, status) {
-  const niveis=['novo','separacao','conferencia','etiquetagem','bipagem','faturamento','embalagem','pronto_envio','enviado']
+  const niveis=['novo','separacao','conferencia','etiquetagem','bipagem','faturamento','embalagem','frete','pronto_envio','enviado']
   const n=niveis.indexOf(status)
   if (n>=2) await db.query("update pedido_itens set status='encontrado' where pedido_id=$1 and status<>'removido'",[pedidoId])
   if (n>=3) await db.query("update pedido_itens set conferido_em=now() where pedido_id=$1 and status<>'removido'",[pedidoId])
   if (n>=4) await db.query("update pedido_itens set etiquetado_em=now() where pedido_id=$1 and status<>'removido'",[pedidoId])
   if (n>=5) await db.query("update pedido_itens set qtd_bipada=qtd,bipado_em=now() where pedido_id=$1 and status<>'removido'",[pedidoId])
-  if (n>=6) await db.query('update pedidos set nf_emitida_em=now(),frete_gerado_em=now(),pedido_fornecedor_em=now() where id=$1',[pedidoId])
+  if (n>=6) await db.query('update pedidos set nf_emitida_em=now(),pedido_fornecedor_em=now() where id=$1',[pedidoId])
   if (n>=7) await db.query('update pedidos set embalado_em=now() where id=$1',[pedidoId])
-  if (n>=8) await db.query('update pedidos set postado_em=now() where id=$1',[pedidoId])
+  if (n>=8) await db.query('update pedidos set frete_gerado_em=now(),frete_peso_g=450 where id=$1',[pedidoId])
+  if (n>=9) await db.query('update pedidos set postado_em=now() where id=$1',[pedidoId])
   await db.query('update pedidos set status=$2 where id=$1',[pedidoId,status])
 }
 
@@ -162,7 +163,7 @@ export const cart = (f, n = 0) => one('select * from v_troca_carrinho where troc
 
 export async function somaFixture({ principal = {}, venda = {} } = {}) {
   const p = await one(`insert into pedidos (origem, status, cliente_nome, desconto_tipo, desconto_valor, forma_pagamento, valor_pago, pago_em, numero)
-    values ($1, $2, 'Nathália', 'valor', 10, 'Cartão', 90, now(), 'ARV-1') returning *`, [principal.origem ?? 'whatsapp', principal.status==='perdida' ? 'em_aberto' : ['conferencia','etiquetagem','bipagem','faturamento','embalagem','pronto_envio','enviado','cancelado'].includes(principal.status) ? 'novo' : principal.status ?? 'separacao'])
+    values ($1, $2, 'Nathália', 'valor', 10, 'Cartão', 90, now(), 'ARV-1') returning *`, [principal.origem ?? 'whatsapp', principal.status==='perdida' ? 'em_aberto' : ['conferencia','etiquetagem','bipagem','faturamento','embalagem','frete','pronto_envio','enviado','cancelado'].includes(principal.status) ? 'novo' : principal.status ?? 'separacao'])
   await db.query(`insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, ordem, status)
     values ($1, 'clube', 'Anel', 'AN', 2, 50, 1, 'encontrado')`, [p.id])
   if (principal.status && principal.status !== p.status) await prepararEtapa(p.id,principal.status)

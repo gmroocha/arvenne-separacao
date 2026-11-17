@@ -70,6 +70,11 @@ export function useTempoReal() {
     // Aviso do banco (Broadcast, canal privado "pedidos"): { t: tabela, p: ids dos pedidos afetados }.
     // Peças/opções da troca são "leves" (só a troca recarrega); o resto recarrega os pedidos também.
     const anotar = ({ t, p }: Aviso) => {
+      // Mudança no time: só a lista de pessoas recarrega (nenhum pedido mudou).
+      if (t === "equipe") {
+        qc.invalidateQueries({ queryKey: ["equipe"] })
+        return
+      }
       const troca = t === "trocas" || t === "troca_pecas" || t === "troca_opcoes"
       if (t !== "troca_pecas" && t !== "troca_opcoes") {
         pesado = true

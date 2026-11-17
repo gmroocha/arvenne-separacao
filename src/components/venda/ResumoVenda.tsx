@@ -35,7 +35,7 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 }
 
 // Conteúdo do resumo: card fixo no PC, gaveta no celular. Os números vêm calculados do banco.
-// PAC e SEDEX moram em lib/selo; reexportados para a Nota e frete.
+// PAC e SEDEX moram em lib/selo; reexportados para a etapa Frete.
 export { COR_PAC, COR_SEDEX }
 
 export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, aoPago, prefixo }: Props) {
@@ -116,7 +116,7 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, 
           value={form.frete_tipo ?? ""}
           onValueChange={(v) => aoMudar({ frete_tipo: (v || null) as FreteTipo | null })}
         >
-          {/* PAC laranja, SEDEX verde (iguais às da Nota e frete). */}
+          {/* PAC laranja, SEDEX verde (iguais às da etapa Frete). */}
           <ToggleGroupItem value="PAC" className={COR_PAC}>
             PAC
           </ToggleGroupItem>

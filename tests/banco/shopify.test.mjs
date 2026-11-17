@@ -133,6 +133,27 @@ test('Shopify despachada antes da embalagem só avisa (uma vez), sem mover o ped
   assert.equal(await eventos(p.id, 'shopify_alerta'), 1)
 })
 
+test('Shopify despachada: na embalagem ou no frete ainda sem etiqueta só avisa; do frete gerado ou da postagem vai a enviado', async () => {
+  const preparar = async (shopifyId, etapa, extra = '') => {
+    await importar(payloadV2({ shopify_order_id: String(shopifyId) }))
+    const p = await pedidoDe(shopifyId)
+    await prepararEtapa(p.id, etapa)
+    if (extra) await db.query(extra, [p.id])
+    await importar(payloadV2({ shopify_order_id: String(shopifyId), despachado: true }))
+    return pedidoDe(shopifyId)
+  }
+  const embalagem = await preparar(888101, 'embalagem')
+  assert.equal(embalagem.status, 'embalagem')
+  assert.equal(await eventos(embalagem.id, 'shopify_alerta'), 1)
+  const semEtiqueta = await preparar(888102, 'frete')
+  assert.equal(semEtiqueta.status, 'frete')
+  assert.equal(await eventos(semEtiqueta.id, 'shopify_alerta'), 1)
+  const comEtiqueta = await preparar(888103, 'frete', 'update pedidos set frete_gerado_em = now(), frete_peso_g = 300 where id = $1')
+  assert.equal(comEtiqueta.status, 'enviado')
+  assert.ok(comEtiqueta.postado_em)
+  assert.equal((await preparar(888104, 'pronto_envio')).status, 'enviado')
+})
+
 // V10: unitário arredondado (3 x 33,33 = 99,99) não fechava com o total cobrado (100,00).
 test('V10: valor exato da linha fecha a composição com o total da Shopify', async () => {
   const base = { shopify_order_id: '990010', numero: 'ARV-C1', cliente_nome: 'C', valor_total: '120', valor_pago: '120',
