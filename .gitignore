@@ -29,3 +29,4 @@ capturas/
 .playwright/
 test-results/
 playwright-report/
+.claude/worktrees/
