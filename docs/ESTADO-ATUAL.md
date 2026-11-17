@@ -7,8 +7,7 @@ Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data grav
 ## CPF do cadastro da Shopify na venda (17/11/2026)
 
 V68: a busca de cliente na venda passa a trazer o CPF/CNPJ do metacampo do cadastro da Shopify (antes só do último
-pedido). Função Edge `shopify-clientes` alterada: **falta publicar** (`npx supabase functions deploy shopify-clientes`,
-com o "sim" do Gustavo).
+pedido). Função Edge `shopify-clientes` **publicada** em 17/11 com o "sim" do Gustavo.
 
 ## Venda reorganizada, página da cliente com carrossel e Clube editável (16/11/2026)
 
