@@ -319,6 +319,30 @@ export type Database = {
           },
         ]
       }
+      equipe: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       feedbacks: {
         Row: {
           created_at: string
@@ -817,6 +841,7 @@ export type Database = {
           frete_gerado_em: string | null
           frete_original: number | null
           frete_pago_por: string | null
+          frete_peso_g: number | null
           frete_servico: string | null
           frete_tipo: string | null
           id: string
@@ -834,6 +859,7 @@ export type Database = {
           rastreio: string | null
           rastreio_enviado_em: string | null
           rastreio_url: string | null
+          responsaveis: Json
           shopify_bruto: Json | null
           shopify_order_id: number | null
           shopify_url: string | null
@@ -884,6 +910,7 @@ export type Database = {
           frete_gerado_em?: string | null
           frete_original?: number | null
           frete_pago_por?: string | null
+          frete_peso_g?: number | null
           frete_servico?: string | null
           frete_tipo?: string | null
           id?: string
@@ -901,6 +928,7 @@ export type Database = {
           rastreio?: string | null
           rastreio_enviado_em?: string | null
           rastreio_url?: string | null
+          responsaveis?: Json
           shopify_bruto?: Json | null
           shopify_order_id?: number | null
           shopify_url?: string | null
@@ -951,6 +979,7 @@ export type Database = {
           frete_gerado_em?: string | null
           frete_original?: number | null
           frete_pago_por?: string | null
+          frete_peso_g?: number | null
           frete_servico?: string | null
           frete_tipo?: string | null
           id?: string
@@ -968,6 +997,7 @@ export type Database = {
           rastreio?: string | null
           rastreio_enviado_em?: string | null
           rastreio_url?: string | null
+          responsaveis?: Json
           shopify_bruto?: Json | null
           shopify_order_id?: number | null
           shopify_url?: string | null
@@ -1701,6 +1731,7 @@ export type Database = {
           frete_na_conta: number | null
           frete_original: number | null
           frete_pago_por: string | null
+          frete_peso_g: number | null
           frete_servico: string | null
           frete_tipo: string | null
           id: string | null
@@ -1729,6 +1760,7 @@ export type Database = {
           rastreio: string | null
           rastreio_enviado_em: string | null
           rastreio_url: string | null
+          responsaveis: Json | null
           shopify_order_id: number | null
           shopify_url: string | null
           somada_a_numero: string | null
@@ -2022,6 +2054,10 @@ export type Database = {
           id: string
           numero: string
         }[]
+      }
+      designar: {
+        Args: { p_etapa: string; p_membro: string; p_pedido: string }
+        Returns: undefined
       }
       duplicar_venda: {
         Args: { p_pedido: string }

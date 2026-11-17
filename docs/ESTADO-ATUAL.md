@@ -4,7 +4,7 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
-## Nova esteira com etapa Frete e Time Arvenne (17/11/2026) — migration criada, AINDA NÃO aplicada
+## Nova esteira com etapa Frete e Time Arvenne (17/11/2026) — migration aplicada em 17/11 com o "sim" do Gustavo
 
 **Aguarda o "sim" do Gustavo** para `npx supabase db push --remote --dry-run` e depois `--yes`; só então
 `npm run tipos:gerar`, `baseAplicada` em `scripts/tipos-pendentes.mjs` e o `git push` (o push publica o app, que
