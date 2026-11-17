@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { atualizarPedido, atualizarTotaisVenda, salvarCliente, somarVenda, usePedido, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
 import { reais } from "@/lib/formato"
 import SituacaoVenda from "@/components/venda/SituacaoVenda"
+import { faltasPagar } from "@/lib/faltasPagar"
 
 type Estado = "salvo" | "pendente" | "salvando" | "erro"
 
@@ -37,12 +38,12 @@ function useAutosave(pedidoId: string, form: FormVenda) {
 
   const mutacao = useMutation({
     scope: { id: `pedido-${pedidoId}` },
-    mutationFn: (campos: CamposPedido) => atualizarPedido(pedidoId, campos),
-    onSettled: async () => {
+    mutationFn: ({ campos }: { campos: CamposPedido; recalcular: boolean }) => atualizarPedido(pedidoId, campos),
+    onSettled: async (_dados, _erro, { recalcular }) => {
       if (qc.isMutating({ mutationKey: ["autosave", pedidoId] }) <= 1) {
         qc.invalidateQueries({ queryKey: ["pedidos"] })
         // Só os valores voltam do banco (o formulário já mostra o que foi digitado).
-        await atualizarTotaisVenda(qc, pedidoId)
+        if (recalcular) await atualizarTotaisVenda(qc, pedidoId)
       }
     },
     mutationKey: ["autosave", pedidoId],
@@ -50,7 +51,7 @@ function useAutosave(pedidoId: string, form: FormVenda) {
 
   const { mutateAsync } = mutacao // estável entre renders
   const gravar = useCallback(
-    async (extra?: CamposPedido) => {
+    async (extra?: CamposPedido, recalcular = true) => {
       const invalidos = dinheiroInvalido(ref.current)
       if (invalidos.length) toast.warning(`Valor de ${invalidos.join(" e ")} não entendido: não foi salvo`, { id: "dinheiro-invalido" })
       const atuais = camposDe(ref.current) as Record<string, unknown>
@@ -58,7 +59,7 @@ function useAutosave(pedidoId: string, form: FormVenda) {
       if (!extra && !Object.keys(mudados).length) return setEstado("salvo")
       setEstado("salvando")
       try {
-        await mutateAsync({ ...mudados, ...extra })
+        await mutateAsync({ campos: { ...mudados, ...extra }, recalcular })
         salvo.current = { ...salvo.current, ...mudados }
         setEstado(JSON.stringify(camposDe(ref.current)) === JSON.stringify(salvo.current) ? "salvo" : "pendente")
       } catch (e) {
@@ -104,7 +105,11 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
   const { estado, gravar } = useAutosave(pedido.id, form)
   const [resumoAberto, setResumoAberto] = useState(false)
   const [pagando, setPagando] = useState(false)
-  const [pagto, setPagto] = useState<{ total: number; forma: string }>({ total: pedido.total, forma: pedido.forma_pagamento ?? "Pix" })
+  const [formaPagto, setFormaPagto] = useState(pedido.forma_pagamento ?? "Pix")
+  const formaEscolhida = useRef(pedido.forma_pagamento ?? "Pix")
+  const [validacao, setValidacao] = useState(0)
+  const faltas = pedido.origem === "whatsapp" && !form.somar_em ? faltasPagar(camposDe(form)) : []
+  const camposFaltantes = validacao ? faltas.map((f) => f.campo) : []
   const [perdendo, setPerdendo] = useState(false)
 
   const mudar = useCallback((parcial: Partial<FormVenda>) => setForm((f) => ({ ...f, ...parcial })), [])
@@ -154,32 +159,36 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
   }
 
   // Grava a forma, recarrega o pedido e devolve o total que o banco calculou para ela.
-  async function totalComForma(forma: string): Promise<number | null> {
-    await gravar({ forma_pagamento: forma })
+  const totalComForma = useCallback(async (forma: string): Promise<number | null> => {
+    formaEscolhida.current = forma
+    await gravar({ forma_pagamento: forma }, false)
     // Só os valores (v_pedidos): uma leitura em vez de recarregar pedido, peças e histórico.
-    await atualizarTotaisVenda(qc, pedido.id)
-    return qc.getQueryData<PedidoDetalhe>(["pedido", pedido.id])?.total ?? null
+    const atualizado = await atualizarTotaisVenda(qc, pedido.id)
+    if (!atualizado) throw new Error("Não foi possível atualizar o total. Tente recalcular.")
+    return atualizado.total
+  }, [gravar, qc, pedido.id])
+
+  function dadosCompletos() {
+    if (!faltas.length) return true
+    setValidacao((v) => v + 1)
+    setResumoAberto(false)
+    return false
   }
 
-  async function pedirPagamento() {
+  function pedirPagamento() {
     const problema = problemaDasPecas()
     if (problema) {
       toast.warning(problema)
       return
     }
+    if (!dadosCompletos()) return
     setResumoAberto(false)
-    try {
-      // Grava o que ainda está na fila de digitação e a forma escolhida, para o total vir do banco.
-      const forma = pedido.forma_pagamento ?? "Pix"
-      const total = (await totalComForma(forma)) ?? pedido.total
-      setPagto({ total, forma })
-      setPagando(true)
-    } catch {
-      // o erro já foi avisado por gravar()
-    }
+    setFormaPagto(formaEscolhida.current)
+    setPagando(true)
   }
 
   async function confirmarPagamento(d: DadosPagamento) {
+    if (!dadosCompletos()) { setPagando(false); return }
     const problema = problemaDasPecas()
     if (problema) {
       toast.warning(problema)
@@ -222,10 +231,14 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
       pedido={pedido}
       form={form}
       aoMudar={mudar}
-      aoForma={(forma) => void gravar({ forma_pagamento: forma }).catch(() => {})}
+      aoForma={(forma) => {
+        formaEscolhida.current = forma ?? "Pix"
+        void gravar({ forma_pagamento: forma }).catch(() => {})
+      }}
       aoCopiar={copiar}
       aoPago={() => void pedirPagamento()}
       prefixo={prefixo}
+      faltantes={camposFaltantes}
     />
   )
 
@@ -253,12 +266,23 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         </span>
       </div>
 
+      {validacao > 0 && faltas.length > 0 && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Falta para marcar como pago: {faltas.map((f) => f.nome).join(", ")}.
+            {faltas.some((f) => f.campo.startsWith("frete_")) && (
+              <Button variant="link" className="h-auto self-start p-0 text-inherit lg:hidden" onClick={() => setResumoAberto(true)}>Completar frete</Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           <AvisoCredito pedidoId={pedido.id} />
           {/* Cliente no topo (ou o pedido em que a venda vai somar), logo depois as peças. */}
           <SomarPedido form={form} aoMudar={mudar} />
-          {!form.somar_em && <ClienteCard form={form} aoMudar={mudar} aoSalvarCliente={aoSalvarCliente} />}
+          {!form.somar_em && <ClienteCard form={form} aoMudar={mudar} aoSalvarCliente={aoSalvarCliente} validacao={validacao} faltantes={camposFaltantes} />}
           <PecasVenda pedido={pedido} />
           <Field>
             <FieldLabel htmlFor="v-obs">Observações</FieldLabel>
@@ -293,7 +317,7 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         </DrawerContent>
       </Drawer>
 
-      <PagoDialog aberto={pagando} aoMudar={setPagando} total={pagto.total} formaInicial={pagto.forma} aoMudarForma={totalComForma} aoConfirmar={confirmarPagamento} />
+      <PagoDialog aberto={pagando} aoMudar={setPagando} formaInicial={formaPagto} aoMudarForma={totalComForma} aoConfirmar={confirmarPagamento} />
 
       <Dialog open={perdendo} onOpenChange={setPerdendo}>
         <DialogContent>

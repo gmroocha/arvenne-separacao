@@ -23,6 +23,8 @@ type Props = {
   form: FormVenda
   aoMudar: (parcial: Partial<FormVenda>) => void
   aoSalvarCliente: () => Promise<void>
+  validacao?: number
+  faltantes?: readonly string[]
 }
 
 type Achada = (Cliente | ClienteShopify) & { origem: "local" | "shopify" }
@@ -60,7 +62,7 @@ function Resultado({ c, aoEscolher }: { c: Achada; aoEscolher: () => void }) {
   )
 }
 
-export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
+export default function ClienteCard({ form, aoMudar, aoSalvarCliente, validacao = 0, faltantes = [] }: Props) {
   const [busca, setBusca] = useState("")
   const [mostrar, setMostrar] = useState(Boolean(form.cliente_nome || form.cliente_telefone))
   const [salvando, setSalvando] = useState(false)
@@ -72,7 +74,10 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
     .join(" · ")
   const resumoDados = [form.cliente_cpf, form.cliente_email, resumoEndereco].filter((x) => x.trim()).join(" · ")
   // Recolhido de início: o cartão da cliente fica curto no topo da venda (nome e telefone à vista).
-  const [verEndereco, setVerEndereco] = useState(false)
+  const [endereco, setEndereco] = useState({ aberto: false, validacao: 0 })
+  const verEndereco = endereco.aberto || validacao > endereco.validacao
+  const setVerEndereco = (aberto: boolean) => setEndereco({ aberto, validacao })
+  const invalido = (campo: keyof FormVenda) => faltantes.includes(campo) || undefined
   const [buscandoCep, setBuscandoCep] = useState(false)
   const consultaAtual = useRef(0)
   const [buscandoCnpj, setBuscandoCnpj] = useState(false)
@@ -193,7 +198,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
           </div>
         )}
 
-        {!mostrar ? (
+        {!mostrar && !validacao ? (
           <Button variant="outline" size="toque" className="w-fit" onClick={() => setMostrar(true)}>
             <UserPlus /> Nova cliente
           </Button>
@@ -202,12 +207,12 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="c-nome">Nome</FieldLabel>
-                <Input id="c-nome" value={form.cliente_nome} onChange={(e) => aoMudar({ cliente_nome: e.target.value })} />
+                <Input id="c-nome" aria-invalid={invalido("cliente_nome")} value={form.cliente_nome} onChange={(e) => aoMudar({ cliente_nome: e.target.value })} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="c-tel">Telefone</FieldLabel>
                 <Input
-                  id="c-tel"
+                  id="c-tel" aria-invalid={invalido("cliente_telefone")}
                   type="tel"
                   inputMode="tel"
                   value={form.cliente_telefone}
@@ -231,7 +236,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
                   <Field>
                     <FieldLabel htmlFor="c-cpf">CPF ou CNPJ</FieldLabel>
                     <InputGroup>
-                      <InputGroupInput id="c-cpf" inputMode="numeric" value={form.cliente_cpf} onChange={(e) => mudarDocumento(e.target.value)} />
+                      <InputGroupInput id="c-cpf" aria-invalid={invalido("cliente_cpf")} inputMode="numeric" value={form.cliente_cpf} onChange={(e) => mudarDocumento(e.target.value)} />
                       {buscandoCnpj && (
                         <InputGroupAddon align="inline-end">
                           <Spinner />
@@ -265,7 +270,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
                   <Field>
                     <FieldLabel htmlFor="c-cep">CEP</FieldLabel>
                     <InputGroup>
-                      <InputGroupInput id="c-cep" inputMode="numeric" value={form.entrega_cep} onChange={(e) => mudarCep(e.target.value)} />
+                      <InputGroupInput id="c-cep" aria-invalid={invalido("entrega_cep")} inputMode="numeric" value={form.entrega_cep} onChange={(e) => mudarCep(e.target.value)} />
                       {buscandoCep && (
                         <InputGroupAddon align="inline-end">
                           <Spinner />
@@ -275,13 +280,13 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="c-rua">Rua</FieldLabel>
-                    <Input id="c-rua" value={form.entrega_logradouro} onChange={(e) => aoMudar({ entrega_logradouro: e.target.value })} />
+                    <Input id="c-rua" aria-invalid={invalido("entrega_logradouro")} value={form.entrega_logradouro} onChange={(e) => aoMudar({ entrega_logradouro: e.target.value })} />
                   </Field>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[100px_1fr]">
                   <Field>
                     <FieldLabel htmlFor="c-num">Número</FieldLabel>
-                    <Input id="c-num" value={form.entrega_numero} onChange={(e) => aoMudar({ entrega_numero: e.target.value })} />
+                    <Input id="c-num" aria-invalid={invalido("entrega_numero")} value={form.entrega_numero} onChange={(e) => aoMudar({ entrega_numero: e.target.value })} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="c-comp">Complemento</FieldLabel>
@@ -291,16 +296,16 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente }: Props) {
                 <div className="grid gap-3 sm:grid-cols-[1fr_1fr_70px]">
                   <Field>
                     <FieldLabel htmlFor="c-bairro">Bairro</FieldLabel>
-                    <Input id="c-bairro" value={form.entrega_bairro} onChange={(e) => aoMudar({ entrega_bairro: e.target.value })} />
+                    <Input id="c-bairro" aria-invalid={invalido("entrega_bairro")} value={form.entrega_bairro} onChange={(e) => aoMudar({ entrega_bairro: e.target.value })} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="c-cidade">Cidade</FieldLabel>
-                    <Input id="c-cidade" value={form.entrega_cidade} onChange={(e) => aoMudar({ entrega_cidade: e.target.value })} />
+                    <Input id="c-cidade" aria-invalid={invalido("entrega_cidade")} value={form.entrega_cidade} onChange={(e) => aoMudar({ entrega_cidade: e.target.value })} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="c-uf">UF</FieldLabel>
                     <Input
-                      id="c-uf"
+                      id="c-uf" aria-invalid={invalido("entrega_uf")}
                       maxLength={2}
                       value={form.entrega_uf}
                       onChange={(e) => aoMudar({ entrega_uf: e.target.value.toUpperCase() })}

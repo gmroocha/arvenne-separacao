@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { recusa, num, somaFixture } from './fixtures.mjs'
+import { completar, recusa, num, somaFixture } from './fixtures.mjs'
 
 test('somar_venda: peças vão para o principal como adicionais, venda vira somada e o total do principal não muda', async () => {
   const { p, w, i1 } = await somaFixture()
@@ -68,6 +68,7 @@ test('somar_venda: recusas', async () => {
   }
   await db.query("update pedidos set status = 'separacao' where id = $1", [f.p.id])
   const jaPaga=await somaFixture()
+  await completar(jaPaga.w.id)
   await db.query("update pedidos set status = 'novo' where id = $1", [jaPaga.w.id])
   await db.exec('set local role authenticated')
   await recusa(() => one("select somar_venda($1, 'Pix', 40, now())", [jaPaga.w.id]), /não está aberta/)

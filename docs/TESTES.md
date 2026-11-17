@@ -64,11 +64,15 @@ Edge, gravação em Storage, RPC desconhecida e renovação de sessão real são
 Descoberta de impressora é fictícia; nenhuma etiqueta vai para uma impressora real.
 As capturas do vigia ficam em `capturas/vigia-{celular,pc}.png`, no escuro.
 
+`npm run capturas -- --simulado` executa os cenários de pagamento e edição de frete com banco descartável,
+sem login real. Captura pagamento recalculando, campos obrigatórios e edição do frete pago em celular/PC.
+Os arquivos ficam em `capturas/{pagamento-recalculando,venda-dados-obrigatorios,editar-frete-pago}-{celular,pc}.png`.
+
 ## Tipos e implantação
 
 `npm run tipos:gerar` usa `supabase gen types --remote` para introspecção, sem aplicar SQL.
 O resultado oficial fica em `src/lib/gerado/database.types.ts`. `npm run tipos:local` gera o complemento
-`database.local.types.ts` a partir da diferença entre as migrations aplicadas até `20261120140000`
+`database.local.types.ts` a partir da diferença entre as migrations aplicadas até `20261122140000`
 e as locais. `tipos:conferir` verifica esse complemento sem escrever; não precisa de rede.
 Nunca edite os arquivos gerados à mão. Ao atualizar a base remota, regenere o oficial, ajuste a referência
 `baseAplicada` em `scripts/tipos-pendentes.mjs`, regenere o complemento e rode `npm test`.

@@ -4,11 +4,45 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Pagamento imediato, Arquivo sem somadas e correção do frete (17/11/2026) — local, aguarda autorização
+
+Retomada dos quatro pontos deixados pelo Claude. Migration **nova e ainda não aplicada**:
+`20261122150000_venda_completa_frete.sql`. Nenhuma escrita remota, publicação ou alteração na W0006 nesta retomada.
+
+- **Marcar como pago:** a janela abre sem aguardar a fila de gravações. Mostra “Recalculando…” e só libera
+  a confirmação depois de salvar os dados pendentes e ler o total do banco. Falha na leitura bloqueia a
+  confirmação e oferece “Tentar recalcular”; nunca usa o total antigo como reserva. A mudança da forma de
+  pagamento não faz mais uma leitura redundante do total. Respostas antigas de outra forma não sobrescrevem
+  a janela nem o resumo da venda.
+- **Arquivo:** a consulta exclui `status = somada` antes de limitar/paginar, inclusive na busca. A venda
+  continua guardada e visível no pedido principal e no romaneio público.
+- **Dados obrigatórios:** WhatsApp exige nome, telefone com DDD, CPF/CNPJ, tipo de frete, quem paga e valor
+  positivo quando a cliente paga pelo envio; endereço completo, exceto Retirada. A tela lista as faltas e
+  destaca campos. SQL `faltas_para_pagar` valida a saída de venda para a esteira; Shopify e `somar_venda`
+  permanecem fora. `src/lib/faltasPagar.ts` é conferido contra o SQL nos testes.
+- **Editar frete:** pedidos pagos do WhatsApp na expedição ganham “Quem paga o frete” e “Frete que a cliente
+  pagou”. RPC `corrigir_frete_pedido` ajusta `valor_pago` pela diferença e preserva saldo, devolução e acerto.
+  Cliente/endereço/tipo/custo acompanham a correção na mesma transação; falha desfaz tudo. O histórico é
+  gravado no banco. Custo da Frenet continua separado. Shopify, Arquivo, somadas, excluídas e pagamentos
+  desconhecidos recusam a correção financeira. Repetir a mesma correção não duplica o pagamento.
+- **Testes:** V71–V74 em `VISTORIA.md`; casos de banco para cadastro, permissões, saldo, Pix, descontos,
+  somadas e rollback; conservação aleatória agora inclui correção do frete. Capturas fictícias por
+  `npm run capturas -- --simulado`, sem login real.
+
+**Verificação:** `npm test` passou com 166 testes de unidade, 231 de banco e 142 de tela (539), tipos e build.
+Após reforçar o bloqueio de respostas antigas também no resumo, foram reconferidos os fluxos de venda,
+pagamento e edição do frete, além de tipos, unidade e build. O teste com resultado antigo de Cartão chegando
+depois do Pix passou em celular/PC. Capturas revisadas nos dois tamanhos; `git diff --check` limpo. Permanece
+um aviso de lint preexistente em `ErrorBoundary.tsx` (`no-did-update-set-state`), sem avisos novos.
+
+**Próxima ação:** com o “sim” do Gustavo, conferir `npx supabase db push --remote --dry-run`, aplicar somente
+a migration nova com `--yes`, regenerar os tipos remotos/locais e então publicar por `git push`. A W0006 pode
+ser corrigida pelo novo “Editar” após a publicação, com o frete efetivamente pago informado pelo Gustavo.
+
 ## Nova esteira com etapa Frete e Time Arvenne (17/11/2026) — migration aplicada em 17/11 com o "sim" do Gustavo
 
-**Aguarda o "sim" do Gustavo** para `npx supabase db push --remote --dry-run` e depois `--yes`; só então
-`npm run tipos:gerar`, `baseAplicada` em `scripts/tipos-pendentes.mjs` e o `git push` (o push publica o app, que
-já tolera o banco sem a migration: etapa Frete não existe lá, time vazio, filtro escondido).
+Migration `20261122140000_frete_e_time.sql` já aplicada; tipos remotos regenerados e `baseAplicada` atualizada
+no commit `078946a`. A autorização pendente agora é a de venda completa e correção do frete, descrita acima.
 
 - **Esteira nova:** Separação → Conferência → Etiquetagem → Bipagem → **Nota fiscal** → Embalagem → **Frete** →
   Postagem → Enviado (9 etapas). A etapa antes chamada "Nota e frete" (status `faturamento`) agora é só

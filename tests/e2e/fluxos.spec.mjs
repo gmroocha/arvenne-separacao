@@ -15,6 +15,9 @@ async function semQuebra(page) {
 
 test("venda paga entra na expedição com o valor calculado pelo banco", async ({ page, context, baseURL }) => {
   await iniciar(context, baseURL, { status: "em_aberto" })
+  await sim.banco.query(`update pedidos set cliente_telefone='11987654321',cliente_cpf='12345678909',
+    entrega_cep='01001000',entrega_logradouro='Rua de teste',entrega_numero='10',entrega_bairro='Centro',
+    entrega_cidade='São Paulo',entrega_uf='SP' where id=$1`, [sim.pedido.id])
   await page.goto(`/vendas/${sim.pedido.id}`)
   await expect(page.getByRole("textbox", { name: "Nome", exact: true })).toHaveValue("Cliente de teste")
   if ((page.viewportSize()?.width ?? 0) < 1024) await page.getByRole("button", { name: "Resumo", exact: true }).click()

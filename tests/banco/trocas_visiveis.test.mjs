@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { fixture, recusa, pedidoWhats, carrinho, cart, cobrir, importar, payload, payloadV2, num, preco, resumo } from './fixtures.mjs'
+import { completar, fixture, recusa, pedidoWhats, carrinho, cart, cobrir, importar, payload, payloadV2, num, preco, resumo } from './fixtures.mjs'
 
 const TUDO = 99999999.99
 const status = async id => (await one('select status, etapa_antes_desvio from pedidos where id = $1', [id]))
@@ -181,6 +181,7 @@ test('alterações: quantidade reduzida depois do pagamento vira linha própria;
   const iv = await one("insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, ordem) values ($1, 'avulso', 'Anel', 'A1', 4, 50, 0) returning *", [v.id])
   await db.query('update pedido_itens set qtd = 3 where id = $1', [iv.id])
   assert.equal((await db.query('select 1 from v_pedido_alteracoes where pedido_id = $1', [v.id])).rows.length, 0)
+  await completar(v.id)
   await db.query("update pedidos set status = 'novo', pago_em = now() + interval '1 hour' where id = $1", [v.id])
   assert.equal((await db.query('select 1 from v_pedido_alteracoes where pedido_id = $1', [v.id])).rows.length, 0)
   const p = await one("insert into pedidos (origem, status, cliente_nome, pago_em) values ('whatsapp', 'novo', 'Cliente', now() - interval '1 second') returning *")

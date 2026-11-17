@@ -5,6 +5,15 @@
 import { chromium } from "@playwright/test"
 import { mkdirSync, readFileSync, existsSync } from "node:fs"
 
+// Capturas com o banco descartável e a barreira de rede dos testes, sem login nem dados reais.
+// Uso: npm run capturas -- --simulado
+if (process.argv.includes("--simulado")) {
+  const { spawnSync } = await import("node:child_process")
+  const resultado = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test",
+    "tests/e2e/venda-pagamento.spec.mjs", "tests/e2e/editar-dados.spec.mjs"], { stdio: "inherit" })
+  process.exit(resultado.status ?? 1)
+}
+
 const env = {}
 if (existsSync(".env.local"))
   for (const l of readFileSync(".env.local", "utf8").split("\n")) {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { fixture, recusa, pedidoWhats, zero, eventos, num, itemQtd4, prepararEtapa, escolher, concluir } from './fixtures.mjs'
+import { completar, fixture, recusa, pedidoWhats, zero, eventos, num, itemQtd4, prepararEtapa, escolher, concluir } from './fixtures.mjs'
 
 test('venda sem peça ou com peça sem preço não entra na expedição', async () => {
   const v = await one("insert into pedidos (origem, status, cliente_nome) values ('whatsapp', 'aguardando_pagamento', 'Cliente') returning *")
@@ -9,6 +9,8 @@ test('venda sem peça ou com peça sem preço não entra na expedição', async 
   const item = await one("insert into pedido_itens (pedido_id, origem, nome, qtd, ordem) values ($1, 'avulso', 'Colar', 1, 0) returning *", [v.id])
   await recusa(() => db.query("update pedidos set status = 'novo' where id = $1", [v.id]), /sem preço/)
   await db.query('update pedido_itens set preco = 30 where id = $1', [item.id])
+  await recusa(() => db.query("update pedidos set status = 'novo' where id = $1", [v.id]), /Falta para marcar como pago/)
+  await completar(v.id)
   await db.query("update pedidos set status = 'novo' where id = $1", [v.id])
   assert.equal((await one('select status from pedidos where id = $1', [v.id])).status, 'novo')
   // Perder a venda continua possível, mesmo sem peça.

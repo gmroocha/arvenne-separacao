@@ -416,6 +416,19 @@ etiquetagem e faltas), gravada com a peça e o código (migration `2026112111000
 peças do **carrinho colado** separadas das **adicionadas à mão** (`pedido_itens.entrada`, migration
 `20261121120000_entrada_pecas_venda.sql`) e variante ao lado do código, com preço e quantidade à direita no PC.
 
+## Retomada do pagamento e frete (V71 a V74, 17/11/2026)
+
+Implementação local; migration `20261122150000_venda_completa_frete.sql` depende de autorização para aplicar.
+Nenhum pedido real foi alterado. V71/V72/V73 foram reproduzidos antes dos ajustes de tela; V74 ganhou teste
+que recusava a chamada atômica antes de completar a migration deixada pelo Claude.
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V71 | Alta | “Marcar como pago” só abria depois de aguardar as gravações e leituras em sequência; em falha, o fluxo podia consultar um total antigo do cache. | Janela imediata com confirmação bloqueada até total atualizado; erro com nova tentativa, sem reserva antiga. Leitura redundante retirada. Resposta antiga não sobrescreve a janela nem o resumo. Testes de tela retêm uma gravação, falham a leitura e alternam Pix/Cartão com resultado antigo chegando depois do mais novo. |
+| V72 | Baixa | Venda somada continuava aparecendo no Arquivo, embora já estivesse vinculada ao pedido principal. | Filtro no banco antes da paginação e busca, mantendo o vínculo e o registro. Teste de tela confere Arquivo vazio na busca da somada e sua presença no principal. |
+| V73 | Alta | Venda do WhatsApp podia entrar na expedição sem cadastro, frete e endereço suficientes. | Validação no gatilho SQL e aviso com campos destacados. Retirada dispensa endereço; Shopify e somadas ficam fora. Testes comparam aviso/SQL e conferem recusa sem gravar parcialmente o pagamento. |
+| V74 | Alta | “Editar” não corrigia quem pagou nem o frete incluído no pagamento original. | Correção transacional do frete e valor pago, com histórico no banco, saldo/devoluções/acerto preservados e custo real separado. Testes com Pix, descontos, somadas, repetição, permissões e rollback; correções entram nas sequências financeiras aleatórias. |
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na

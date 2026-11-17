@@ -80,8 +80,24 @@ export async function prepararEtapa(pedidoId, status) {
   await db.query('update pedidos set status=$2 where id=$1',[pedidoId,status])
 }
 
+// Dados que uma venda do WhatsApp precisa ter para ser marcada como paga (faltas_para_pagar).
+export const DADOS_COMPLETOS = {
+  cliente_nome: 'Cliente', cliente_telefone: '11987654321', cliente_cpf: '12345678909',
+  frete_tipo: 'PAC', frete_pago_por: 'arvenne', // frete grátis: não entra no total dos testes de dinheiro
+  entrega_cep: '01001000', entrega_logradouro: 'Praça da Sé', entrega_numero: '100', entrega_bairro: 'Sé',
+  entrega_cidade: 'São Paulo', entrega_uf: 'SP',
+}
+
+// Completa os dados de uma venda; `extra` muda algum campo.
+export async function completar(pedidoId, extra = {}) {
+  const dados = { ...DADOS_COMPLETOS, ...extra }
+  const colunas = Object.keys(dados)
+  await db.query(`update pedidos set ${colunas.map((c, i) => `${c} = $${i + 2}`).join(', ')} where id = $1`, [pedidoId, ...colunas.map((c) => dados[c])])
+}
+
 export async function pedidoWhats(status = 'novo') {
   const p = await one("insert into pedidos (origem, status, cliente_nome) values ('whatsapp', 'em_aberto', 'Cliente') returning *")
+  await completar(p.id)
   await db.query("insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, ordem) values ($1, 'avulso', 'Anel', 'A1', 1, 50, 0)", [p.id])
   await db.query("insert into pedido_itens (pedido_id, origem, nome, sku, qtd, preco, ordem) values ($1, 'avulso', 'Colar', 'C1', 1, 30, 1)", [p.id])
   if (status !== 'em_aberto') await prepararEtapa(p.id,status)

@@ -23,13 +23,14 @@ type Props = {
   aoCopiar: () => void
   aoPago: () => void
   prefixo: string
+  faltantes?: readonly string[]
 }
 
-function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; aoMudar: (v: string) => void; rotulo: string }) {
+function Dinheiro({ id, valor, aoMudar, rotulo, invalid }: { invalid?: boolean; id: string; valor: string; aoMudar: (v: string) => void; rotulo: string }) {
   return (
     <Field>
       <FieldLabel htmlFor={id}>{rotulo}</FieldLabel>
-      <CampoReais id={id} value={valor} onValueChange={aoMudar} />
+      <CampoReais id={id} invalid={invalid} value={valor} onValueChange={aoMudar} />
     </Field>
   )
 }
@@ -38,7 +39,7 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 // PAC e SEDEX moram em lib/selo; reexportados para a etapa Frete.
 export { COR_PAC, COR_SEDEX }
 
-export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, aoPago, prefixo }: Props) {
+export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, aoPago, prefixo, faltantes = [] }: Props) {
   const recalculando = useRecalculandoVenda(pedido.id)
   const p = (s: string) => `${prefixo}-${s}`
   // A forma muda na hora na tela; o banco grava em seguida (o total com Pix vem dele depois).
@@ -112,8 +113,10 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, 
           type="single"
           variant="outline"
           spacing={1}
-          className="flex-wrap"
+          className="flex-wrap aria-invalid:ring-1 aria-invalid:ring-destructive aria-invalid:rounded-lg"
           value={form.frete_tipo ?? ""}
+          aria-label="Tipo de frete"
+          aria-invalid={faltantes.includes("frete_tipo") || undefined}
           onValueChange={(v) => aoMudar({ frete_tipo: (v || null) as FreteTipo | null })}
         >
           {/* PAC laranja, SEDEX verde (iguais às da etapa Frete). */}
@@ -134,6 +137,9 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, 
                 type="single"
                 variant="outline"
                 value={form.frete_pago_por}
+                aria-label="Quem paga o frete"
+                aria-invalid={faltantes.includes("frete_pago_por") || undefined}
+                className="aria-invalid:ring-1 aria-invalid:ring-destructive"
                 onValueChange={(v) => v && aoMudar({ frete_pago_por: v as FretePagoPor })}
               >
                 <ToggleGroupItem value="cliente">
@@ -145,7 +151,7 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, 
               </ToggleGroup>
             </Field>
             {form.frete_pago_por === "cliente" && (
-              <Dinheiro id={p("frete-cobrado")} rotulo="Frete pago pela cliente" valor={form.frete_cobrado} aoMudar={(v) => aoMudar({ frete_cobrado: v })} />
+              <Dinheiro invalid={faltantes.includes("frete_cobrado")} id={p("frete-cobrado")} rotulo="Frete pago pela cliente" valor={form.frete_cobrado} aoMudar={(v) => aoMudar({ frete_cobrado: v })} />
             )}
           </>
         )}

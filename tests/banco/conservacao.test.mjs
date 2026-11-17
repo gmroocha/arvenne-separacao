@@ -1,13 +1,14 @@
 import { expect, test } from "vitest"
 import fc from "fast-check"
 import { db, one } from "./suporte.mjs"
+import { completar } from "./fixtures.mjs"
 
 // Conservação do dinheiro em sequências aleatórias de operações num mesmo pedido:
 // pedido do WhatsApp ou da Shopify, venda somada, retirada, falta parcial, troca por outra peça ou por crédito, cobertura, Pix,
-// recebimento da diferença e devolução. Em qualquer ordem:
+// recebimento da diferença, devolução e correção do frete pago. Em qualquer ordem:
 // - nenhum valor fica negativo e nunca se devolve mais do que foi pago;
 // - depois de acertar tudo (receber, dar crédito, devolver), o que foi pago é igual ao total do pacote;
-// - sem desconto, Pix e cobertura, o total do pacote é exatamente a soma das peças vivas (oráculo).
+// - sem desconto, Pix e cobertura, o total do pacote é a soma das peças vivas e do frete da cliente (oráculo).
 const c = (v) => Math.round(Number(v) * 100)
 const estado = (id) => one("select total_geral,total_pago,a_devolver,public.saldo_financeiro(id) saldo from v_pedidos where id=$1", [id])
 
@@ -25,6 +26,7 @@ async function montar(cfg) {
   } else {
     p = await one(`insert into pedidos (origem,status,cliente_nome,desconto_tipo,desconto_valor,forma_pagamento,numero)
       values ('whatsapp','em_aberto','Cliente','percentual',$1,$2,'ARV-P') returning id`, [cfg.desconto, cfg.pix ? "Pix" : "Cartão"])
+    await completar(p.id) // venda do WhatsApp só vai para paga com os dados completos
     for (const [n, i] of cfg.principal.entries())
       await db.query("insert into pedido_itens (pedido_id,origem,nome,sku,qtd,preco,ordem) values ($1,'clube','Peça',$2,$3,$4,$5)", [p.id, `P${n}`, i.qtd, i.preco, n])
     // Pagamento confirmado pelo caminho normal, com o valor que o banco calculou.
@@ -48,7 +50,7 @@ const vivas = async (id) => (await db.query(
 
 async function aplicar(id, op) {
   const lista = await vivas(id)
-  if (!lista.length && op.tipo !== "receber" && op.tipo !== "devolver") return
+  if (!lista.length && !["receber", "devolver", "frete"].includes(op.tipo)) return
   const alvo = lista[op.k % Math.max(lista.length, 1)]
   if (op.tipo === "remover") {
     await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where id=$1", [alvo.id])
@@ -76,6 +78,12 @@ async function aplicar(id, op) {
     }
   } else if (op.tipo === "devolver") {
     if (c((await estado(id)).a_devolver) > 0) await one("select marcar_devolvido($1)", [id])
+  } else if (op.tipo === "frete") {
+    if ((await one('select origem from pedidos where id=$1', [id])).origem === 'shopify') return
+    const antes = await estado(id)
+    await one('select corrigir_frete_pedido($1,$2,$3)', [id, op.gratis ? 'arvenne' : 'cliente', op.valor])
+    const depois = await estado(id)
+    expect([c(depois.saldo), c(depois.a_devolver)]).toEqual([c(antes.saldo), c(antes.a_devolver)])
   }
 }
 
@@ -100,7 +108,8 @@ async function conferir(id, cfg) {
   expect(c(e.a_devolver)).toBeLessThanOrEqual(c(e.total_pago))
   if (cfg.simples) {
     const soma = (await db.query("select coalesce(sum(qtd*preco),0) v from pedido_itens where pedido_id=$1 and status<>'removido'", [id])).rows[0].v
-    expect(c(e.total_geral), "total do pacote = soma das peças vivas").toBe(c(soma))
+    const frete = await one('select frete_pago_por,frete_cobrado from pedidos where id=$1', [id])
+    expect(c(e.total_geral), "total do pacote = soma das peças vivas + frete da cliente").toBe(c(soma) + (frete.frete_pago_por === 'cliente' ? c(frete.frete_cobrado ?? 0) : 0))
   }
 }
 
@@ -112,6 +121,7 @@ const operacao = fc.oneof(
   fc.record({ tipo: fc.constant("receber") }),
   fc.record({ tipo: fc.constant("devolver") }),
   fc.record({ tipo: fc.constant("desfazer") }),
+  fc.record({ tipo: fc.constant("frete"), gratis: fc.boolean(), valor: fc.integer({ min: 1, max: 10_000 }).map((v) => v / 100) }),
 )
 const cenario = fc.record({
   simples: fc.boolean(), shopify: fc.boolean(),
@@ -124,7 +134,7 @@ const cenario = fc.record({
   ? { ...x, desconto: 0, pix: false, descontoSomada: 0, pixSomada: false, ops: x.ops.map((o) => o.tipo === "trocar" ? { ...o, cobertura: 0 } : o) }
   : x)
 
-test("propriedade: dinheiro se conserva em qualquer sequência de somada, troca, retirada e acerto", async () => {
+test("propriedade: dinheiro se conserva em qualquer sequência de somada, troca, retirada, frete e acerto", async () => {
   await fc.assert(fc.asyncProperty(cenario, async (cfg) => {
     await db.exec("savepoint conservacao")
     try {

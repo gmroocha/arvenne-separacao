@@ -83,6 +83,7 @@ export function useArquivo(busca: string, limite: number) {
         .from("v_pedidos")
         .select("*")
         .in("status", STATUS_DA_FASE.arquivo)
+        .neq("status", "somada")
         .order("status_desde", { ascending: false })
         .limit(limite)
       const filtro = filtroBuscaPedidos(busca)
@@ -547,6 +548,11 @@ export async function atualizarPedido(pedidoId: string, campos: CamposPedido) {
   if (error) throw error
 }
 
+export async function corrigirFretePedido(pedidoId: string, pagoPor: "cliente" | "arvenne", cobrado: number | null, dados: CamposPedido) {
+  const { error } = await supabase.rpc("corrigir_frete_pedido", { p_pedido: pedidoId, p_pago_por: pagoPor, p_cobrado: cobrado, p_dados: dados })
+  if (error) throw new Error(msgBanco(error))
+}
+
 export function useAtualizarPedido(invalidar: unknown[][] = TODAS) {
   return useAcao(({ pedidoId, campos }: { pedidoId: string; campos: CamposPedido }) => atualizarPedido(pedidoId, campos), invalidar)
 }
@@ -722,10 +728,22 @@ export function useAtualizarItem() {
 // O total continua vindo do banco (v_pedidos) e atualiza quando a fila esvazia.
 // Depois de gravar na venda, só os valores (v_pedidos, calculados no banco) voltam: as peças já estão certas no
 // cache. Uma leitura em vez de três (pedido, peças e histórico); o histórico chega pelo tempo real.
+const leiturasTotais = new WeakMap<QueryClient, Map<string, number>>()
 export async function atualizarTotaisVenda(qc: QueryClient, pedidoId: string) {
-  const { data, error } = await supabase.from("v_pedidos").select("*").eq("id", pedidoId).single()
-  if (error) return void qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
-  qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (p) => (p ? { ...p, ...(data as Pedido) } : p))
+  let leituras = leiturasTotais.get(qc)
+  if (!leituras) { leituras = new Map(); leiturasTotais.set(qc, leituras) }
+  const versao = (leituras.get(pedidoId) ?? 0) + 1
+  leituras.set(pedidoId, versao)
+  // Uma tentativa: em falha, o cache é recarregado e o pagamento oferece "Tentar recalcular".
+  const { data, error } = await supabase.from("v_pedidos").select("*").eq("id", pedidoId).single().retry(false)
+  if (error || !data) {
+    if (leituras.get(pedidoId) === versao) void qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+    return null
+  }
+  // Uma leitura anterior de Cartão não pode sobrescrever a resposta mais nova de Pix no resumo.
+  if (leituras.get(pedidoId) === versao)
+    qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (p) => (p ? { ...p, ...(data as Pedido) } : p))
+  return data as Pedido
 }
 
 // Quantas gravações da venda ainda estão a caminho (peças ou campos): o total mostra "recalculando".
