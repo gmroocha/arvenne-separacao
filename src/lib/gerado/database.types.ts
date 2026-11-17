@@ -624,6 +624,7 @@ export type Database = {
           foto_url: string | null
           id: string
           nome: string
+          nota: string | null
           observacao: string | null
           ordem: number
           origem: string
@@ -657,6 +658,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nome: string
+          nota?: string | null
           observacao?: string | null
           ordem?: number
           origem: string
@@ -690,6 +692,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nome?: string
+          nota?: string | null
           observacao?: string | null
           ordem?: number
           origem?: string
@@ -1979,6 +1982,10 @@ export type Database = {
       }
       alterar_item: {
         Args: { p_campos: Json; p_item: string }
+        Returns: undefined
+      }
+      anotar_item: {
+        Args: { p_item: string; p_nota: string }
         Returns: undefined
       }
       bipar: {

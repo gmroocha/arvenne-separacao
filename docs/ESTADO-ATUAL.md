@@ -38,8 +38,8 @@ indicador enquanto recalcula. O preço da linha já era só desta venda (não mu
 Menu "…" das peças (separação, conferência, etiquetagem, faltas) ganhou **Nota** ("Editar nota" quando já tem):
 recado sobre a peça (ex.: "peça de montagem: temos, falta montar") que aparece no cartão em todas as etapas.
 `pedido_itens.nota` + função `anotar_item` (vazio apaga; cada mudança fica em `pedido_eventos`). Migration
-`20261122110000_nota_peca.sql`: **falta aplicar** (aguardando o "sim" do Gustavo; depois `npm run tipos:gerar` e
-`baseAplicada = 20261122110000`).
+`20261122110000_nota_peca.sql` **aplicada** em 17/11 com o "sim" do Gustavo (dry-run antes); tipos regenerados,
+`baseAplicada = 20261122110000`.
 
 ## Excluir e duplicar pedidos (17/11/2026)
 
