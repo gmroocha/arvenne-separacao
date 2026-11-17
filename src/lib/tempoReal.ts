@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 let canalAtivo = false
 export const intervaloListas = () => (canalAtivo ? 300_000 : 60_000)
 
-type Payload = { new?: Record<string, unknown>; old?: Record<string, unknown> }
+type Aviso = { t?: string; p?: unknown }
 const idDe = (v: unknown) => (typeof v === "string" ? v : null)
 const escondida = () => typeof document !== "undefined" && document.hidden
 
@@ -67,25 +67,27 @@ export function useTempoReal() {
       qc.invalidateQueries({ queryKey: ["repetidas"] })
     }
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", aoMostrar)
-    // leve: só peças/opções da troca. Os demais eventos pedem recarregar pedidos também.
-    const anotar = (campo: "id" | "pedido_id", troca: boolean, leve = false) => (p: Payload) => {
-      const id = idDe(p.new?.[campo]) ?? idDe(p.old?.[campo])
-      if (!leve) {
+    // Aviso do banco (Broadcast, canal privado "pedidos"): { t: tabela, p: ids dos pedidos afetados }.
+    // Peças/opções da troca são "leves" (só a troca recarrega); o resto recarrega os pedidos também.
+    const anotar = ({ t, p }: Aviso) => {
+      const troca = t === "trocas" || t === "troca_pecas" || t === "troca_opcoes"
+      if (t !== "troca_pecas" && t !== "troca_opcoes") {
         pesado = true
-        if (id) pedidos.add(id)
+        const ids = (Array.isArray(p) ? p : []).map(idDe).filter((x): x is string => !!x)
+        if (ids.length) ids.forEach((id) => pedidos.add(id))
         else tudo = true
       }
       if (troca) trocas = true
       agendar()
     }
-    const canal = supabase
-      .channel("tempo-real")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, anotar("id", false))
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedido_itens" }, anotar("pedido_id", false))
-      .on("postgres_changes", { event: "*", schema: "public", table: "trocas" }, anotar("pedido_id", true))
-      .on("postgres_changes", { event: "*", schema: "public", table: "troca_pecas" }, anotar("pedido_id", true, true))
-      .on("postgres_changes", { event: "*", schema: "public", table: "troca_opcoes" }, anotar("pedido_id", true, true))
-      .subscribe((status) => {
+    let ativo = true
+    // Canal privado: a autorização do Realtime confere o login (política em realtime.messages).
+    const canal = supabase.channel("pedidos", { config: { private: true } }).on("broadcast", { event: "mudou" }, (m: { payload?: Aviso }) => {
+      if (m.payload) anotar(m.payload)
+    })
+    const assinar = () => {
+      if (!ativo) return
+      canal.subscribe((status) => {
         canalAtivo = status === "SUBSCRIBED"
         // Voltou depois de uma queda: pode ter perdido eventos, então recarrega tudo uma vez.
         if (canalAtivo && teveQueda) {
@@ -94,7 +96,13 @@ export function useTempoReal() {
           else qc.invalidateQueries()
         } else if (!canalAtivo) teveQueda = true
       })
+    }
+    void Promise.resolve()
+      .then(() => supabase.realtime.setAuth())
+      .catch(() => {})
+      .then(assinar)
     return () => {
+      ativo = false
       if (typeof document !== "undefined") document.removeEventListener("visibilitychange", aoMostrar)
       clearTimeout(espera)
       canalAtivo = false

@@ -115,6 +115,26 @@ Pode ficar para outro dia: o app já funciona sem isso, só os pedidos da loja n
 Conferir: no app, botão **Sincronizar** traz os pedidos pagos da loja, com foto. Rodar de novo não
 duplica nada.
 
+## Cópia do banco (toda semana, no GitHub)
+
+O plano Free do Supabase não guarda cópia. O robô `.github/workflows/backup.yml` copia o banco todo domingo
+(3h), cifrada com uma senha sua, e guarda por 90 dias no GitHub. Configuração (uma vez só, no navegador):
+
+1. **Endereço do banco.** No painel do Supabase, projeto **Arvenne Orders** → botão **Connect** (no topo) →
+   aba **Connection string** → tipo **URI** → escolha **Session pooler**. Copie o endereço e troque
+   `[YOUR-PASSWORD]` pela senha do banco (se não lembrar: **Database** → **Settings** → **Reset database password**;
+   o app não usa essa senha, nada para de funcionar).
+2. **No GitHub**, repositório `gmroocha/arvenne-separacao` → **Settings** → **Secrets and variables** →
+   **Actions** → **New repository secret**:
+   - Nome `SUPABASE_DB_URL`, valor: o endereço do passo 1.
+   - Nome `BACKUP_SENHA`, valor: uma senha nova, forte, só para a cópia. **Guarde num lugar seguro**: sem ela a
+     cópia não abre.
+3. **Testar:** aba **Actions** → **Cópia do banco** → **Run workflow**. Em ~2 min aparece verde, e o arquivo
+   `banco-AAAA-MM-DD.dump.gpg` fica em **Artifacts** no fim da página da execução.
+
+Não cole o endereço nem as senhas no chat. As fotos (Storage) não entram na cópia; ficam no Supabase.
+Para restaurar, peça ao Claude (precisa da `BACKUP_SENHA`).
+
 ## Cuidados
 
 - A chave `service_role` e o `CRON_SECRET` ficam só no Supabase. Não vão para o GitHub, nem para o

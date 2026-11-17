@@ -4,6 +4,19 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Continuar no Free: tempo real leve, contagem leve e cópia semanal (17/11/2026)
+
+Decisão do Gustavo: ficar no plano Free (Nano). Para aliviar o banco:
+- **Tempo real por Broadcast:** gatilhos por comando em `pedidos`, `pedido_itens`, `trocas`, `troca_pecas` e
+  `troca_opcoes` mandam `{t: tabela, p: [pedidos]}` no canal privado `pedidos` (`realtime.send`); política
+  `equipe_recebe_pedidos` em `realtime.messages` (só `authenticated`). As tabelas saíram da publicação
+  `supabase_realtime` (fim do `postgres_changes`). App: `src/lib/tempoReal.ts`.
+- **Selo de Repetidas:** função `contagem_repetidas()` (só conta, sem prazo de cada peça).
+- Migration `20261122120000_tempo_real_leve.sql`. Testes: `tests/banco/tempo-real.test.mjs` (o banco de teste
+  simula só a infraestrutura `realtime.send`/`realtime.messages`).
+- **Cópia semanal:** `.github/workflows/backup.yml` (pg_dump do schema public, cifrado, 90 dias como artefato).
+  Falta o Gustavo gravar `SUPABASE_DB_URL` e `BACKUP_SENHA` no GitHub (roteiro em `PASSO-A-PASSO.md`).
+
 ## Banco sobrecarregado em 17/11 (10:40–10:52) e alívio no app
 
 Logs do Postgres (Management API, só leitura): 37 `57014` (tempo limite de 8 s) em leituras da `v_pedidos` e

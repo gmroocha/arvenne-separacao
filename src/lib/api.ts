@@ -228,9 +228,10 @@ export function useContagemRepetidas() {
     staleTime: 60_000,
     refetchInterval: 120_000,
     queryFn: async () => {
-      const { count, error } = await supabase.from("v_pecas_em_varios_pedidos").select("chave", { count: "exact", head: true })
+      // Só a contagem (função leve): a view completa calcula o prazo de cada peça.
+      const { data, error } = await supabase.rpc("contagem_repetidas")
       if (error) throw error
-      return count ?? 0
+      return data ?? 0
     },
   })
 }

@@ -10,7 +10,8 @@ type Adicoes = {
 
   }
   Functions: {
-
+    contagem_repetidas: { Args: Record<PropertyKey, never>; Returns: number | null }
+    tg_avisar_mudanca: { Args: Record<PropertyKey, never>; Returns: string | null }
   }
 }
 

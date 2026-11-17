@@ -12,6 +12,14 @@ export async function criarBanco({ ate, antesDe, prepararAntes } = {}) {
     create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
     create table storage.objects (id uuid primary key, bucket_id text);
     grant usage on schema public to anon;
+    create schema realtime;
+    create table realtime.messages (id uuid primary key default gen_random_uuid(), payload jsonb, event text, topic text,
+      private boolean, extension text, inserted_at timestamptz default clock_timestamp());
+    alter table realtime.messages enable row level security;
+    grant usage on schema realtime to anon, authenticated; grant select on realtime.messages to anon, authenticated;
+    create function realtime.topic() returns text language sql stable as $$ select current_setting('realtime.topic', true) $$;
+    create function realtime.send(payload jsonb, event text, topic text, private boolean default true) returns void
+      language sql as $$ insert into realtime.messages (payload, event, topic, private, extension) values (payload, event, topic, private, 'broadcast') $$;
     create schema cron;
     create table cron.job (jobid bigint generated always as identity primary key, jobname text unique, schedule text, command text);
     create function cron.schedule(text,text,text) returns bigint language sql as $$
