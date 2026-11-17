@@ -36,3 +36,15 @@ test('tempo real: agrupa eventos de outra pessoa e aguarda a fila local antes de
  expect(sim.invalidate).toHaveBeenCalledWith({queryKey:['pedido','pedido-ficticio']})
  expect(sim.invalidate.mock.calls.filter(([q])=>q?.queryKey?.[0]==='pedidos')).toHaveLength(1)
 })
+test('tempo real: aba escondida não recarrega; recarrega ao voltar a aparecer',async()=>{
+ limpar()
+ let oculto=true;const ouvintes:Record<string,()=>void>={}
+ vi.stubGlobal('document',{get hidden(){return oculto},addEventListener:(n:string,f:()=>void)=>{ouvintes[n]=f},removeEventListener:()=>{}})
+ sim.inscricoes=[];limpar=sim.efeito!()
+ const itens=sim.inscricoes.find(x=>x.filtro.table==='pedido_itens')!
+ itens.cb({new:{pedido_id:'pedido-ficticio'}})
+ await vi.advanceTimersByTimeAsync(2000);expect(sim.invalidate).not.toHaveBeenCalled()
+ oculto=false;ouvintes.visibilitychange()
+ expect(sim.invalidate).toHaveBeenCalledWith({queryKey:['pedido']})
+ vi.unstubAllGlobals()
+})

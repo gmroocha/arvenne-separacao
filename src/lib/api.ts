@@ -116,18 +116,28 @@ export function useContagens() {
 }
 
 // Pedidos da expedição (ainda não enviados) para "Somar a um pedido": por número ou nome da cliente.
+// Lista para somar: o que o cartão mostra e o que passa para a venda (cliente e endereço). Sem prazo/etapas/acerto.
+const COLUNAS_SOMAR =
+  "id, numero, status, qtd_pecas, qtd_linhas, fotos, pedido_em, cliente_id, cliente_nome, cliente_telefone, cliente_email, cliente_cpf, cliente_razao_social, cliente_ie, entrega_cep, entrega_logradouro, entrega_numero, entrega_complemento, entrega_bairro, entrega_cidade, entrega_uf" as const
+
 export function useBuscaPedidosParaSomar(busca: string, ativo: boolean) {
   return useQuery({
     queryKey: ["pedidos", "somar", busca],
     enabled: ativo,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let q = supabase.from("v_pedidos").select("*").in("status", STATUS_DA_FASE.expedicao).order("pedido_em", { ascending: false }).limit(20)
+      // Só as colunas da lista: a v_pedidos inteira (prazo, etapas, acerto) custa ~4× mais no banco.
+      let q = supabase
+        .from("v_pedidos")
+        .select(COLUNAS_SOMAR)
+        .in("status", STATUS_DA_FASE.expedicao)
+        .order("pedido_em", { ascending: false })
+        .limit(20)
       const t = busca.trim().replace(/[%,()]/g, " ")
       if (t) q = q.or(`numero.ilike.%${t}%,cliente_nome.ilike.%${t}%`)
       const { data, error } = await q
       if (error) throw error
-      return data as Pedido[]
+      return data as unknown as Pedido[] // só as colunas acima (as que a tela de somar usa)
     },
   })
 }
@@ -214,6 +224,9 @@ export function useRepetidas(selecao: string[] | null = null, habilitado = true)
 export function useContagemRepetidas() {
   return useQuery({
     queryKey: ["repetidas", "contagem"],
+    // Selo da barra lateral: a view é pesada (~100 ms); não precisa voltar a cada peça marcada.
+    staleTime: 60_000,
+    refetchInterval: 120_000,
     queryFn: async () => {
       const { count, error } = await supabase.from("v_pecas_em_varios_pedidos").select("chave", { count: "exact", head: true })
       if (error) throw error

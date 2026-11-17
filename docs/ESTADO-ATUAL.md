@@ -4,6 +4,18 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Banco sobrecarregado em 17/11 (10:40–10:52) e alívio no app
+
+Logs do Postgres (Management API, só leitura): 37 `57014` (tempo limite de 8 s) em leituras da `v_pedidos` e
+58 `25P02` ("current transaction is aborted") logo depois, todos do PostgREST. Fora do pico as mesmas consultas
+levam 5–60 ms. Maior consumo acumulado: Realtime `postgres_changes` (202 mil leituras do WAL, 1.481 s),
+`v_pecas_em_varios_pedidos` (selo da barra, 1.883 chamadas × 208 ms), `alterar_item` e `troca_painel`. Projeto
+**sem compute add-on (Nano)**. ARV-1280 não voltou de etapa: a Expedição mostrava a lista antiga porque a leitura
+falhou. No app: aba escondida não recarrega pelo tempo real (recarrega ao voltar), espera 1,2 s para juntar
+eventos, selo de Repetidas a cada 2 min, busca de "Somar a um pedido" só com as colunas usadas (~4× mais leve) e
+"Pago" lê só os valores. Próximos passos sugeridos: subir para **Micro** (painel, ~US$ 10/mês) e trocar o tempo
+real de `postgres_changes` por Broadcast.
+
 ## Venda mais rápida ao mudar quantidade e preço (17/11/2026, só app)
 
 V70: o preço digitado não vai mais para o fim do valor antigo ("40" virava "5040"); cliques seguidos no "+" gravam

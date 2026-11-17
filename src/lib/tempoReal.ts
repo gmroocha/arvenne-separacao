@@ -8,6 +8,7 @@ export const intervaloListas = () => (canalAtivo ? 300_000 : 60_000)
 
 type Payload = { new?: Record<string, unknown>; old?: Record<string, unknown> }
 const idDe = (v: unknown) => (typeof v === "string" ? v : null)
+const escondida = () => typeof document !== "undefined" && document.hidden
 
 // Mudanças feitas por outra pessoa aparecem na hora.
 export function useTempoReal() {
@@ -28,12 +29,20 @@ export function useTempoReal() {
           espera = setTimeout(rodar, 800)
           return
         }
+        // Aba escondida não recarrega nada agora (cada aba aberta multiplicava as leituras no banco):
+        // marca como desatualizado e recarrega quando a aba voltar a aparecer.
+        if (escondida()) {
+          adiado = true
+          return
+        }
         if (!pesado) {
           qc.invalidateQueries({ queryKey: ["troca"] })
           qc.invalidateQueries({ queryKey: ["acerto"] })
         } else {
           qc.invalidateQueries({ queryKey: ["pedidos"] })
-          qc.invalidateQueries({ queryKey: ["repetidas"] })
+          // Contagem do selo: só fica desatualizada (volta pelo intervalo dela); a página Repetidas recarrega.
+          qc.invalidateQueries({ queryKey: ["repetidas"], predicate: (q) => q.queryKey[1] !== "contagem" })
+          qc.invalidateQueries({ queryKey: ["repetidas", "contagem"], refetchType: "none" })
           qc.invalidateQueries({ queryKey: ["acerto"] })
           qc.invalidateQueries({ queryKey: ["etiquetar"] })
           if (tudo) qc.invalidateQueries({ queryKey: ["pedido"] })
@@ -44,8 +53,20 @@ export function useTempoReal() {
         trocas = false
         tudo = false
         pesado = false
-      }, 800)
+      }, 1200)
     }
+    let adiado = false
+    const aoMostrar = () => {
+      if (escondida() || !adiado) return
+      adiado = false
+      qc.invalidateQueries({ queryKey: ["pedidos"] })
+      qc.invalidateQueries({ queryKey: ["pedido"] })
+      qc.invalidateQueries({ queryKey: ["troca"] })
+      qc.invalidateQueries({ queryKey: ["acerto"] })
+      qc.invalidateQueries({ queryKey: ["etiquetar"] })
+      qc.invalidateQueries({ queryKey: ["repetidas"] })
+    }
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", aoMostrar)
     // leve: só peças/opções da troca. Os demais eventos pedem recarregar pedidos também.
     const anotar = (campo: "id" | "pedido_id", troca: boolean, leve = false) => (p: Payload) => {
       const id = idDe(p.new?.[campo]) ?? idDe(p.old?.[campo])
@@ -69,10 +90,12 @@ export function useTempoReal() {
         // Voltou depois de uma queda: pode ter perdido eventos, então recarrega tudo uma vez.
         if (canalAtivo && teveQueda) {
           teveQueda = false
-          qc.invalidateQueries()
+          if (escondida()) adiado = true
+          else qc.invalidateQueries()
         } else if (!canalAtivo) teveQueda = true
       })
     return () => {
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", aoMostrar)
       clearTimeout(espera)
       canalAtivo = false
       supabase.removeChannel(canal)

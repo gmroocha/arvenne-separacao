@@ -156,7 +156,8 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
   // Grava a forma, recarrega o pedido e devolve o total que o banco calculou para ela.
   async function totalComForma(forma: string): Promise<number | null> {
     await gravar({ forma_pagamento: forma })
-    await qc.refetchQueries({ queryKey: ["pedido", pedido.id] })
+    // Só os valores (v_pedidos): uma leitura em vez de recarregar pedido, peças e histórico.
+    await atualizarTotaisVenda(qc, pedido.id)
     return qc.getQueryData<PedidoDetalhe>(["pedido", pedido.id])?.total ?? null
   }
 
