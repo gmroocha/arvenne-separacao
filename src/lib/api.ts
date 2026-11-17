@@ -967,7 +967,7 @@ export function useFeedbacks() {
         .order("created_at", { ascending: false })
         .limit(500)
       if (error) throw error
-      return data as unknown as Feedback[] // tipos locais ainda sem as relações da coluna nova
+      return data as Feedback[]
     },
   })
 }

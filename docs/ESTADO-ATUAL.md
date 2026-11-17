@@ -12,8 +12,8 @@ Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data grav
   do código; no PC, preço e quantidade à direita (linha mais baixa, foto alinhada). Mesma peça no carrinho e à mão
   fica em duas linhas, uma em cada grupo (valores iguais).
 - **V66:** sem animação dos blocos ao marcar peça (engasgava). **V67:** seletor − 1 + com um traço só nas junções.
-- Migrations `20261121110000_feedback_peca.sql` e `20261121120000_entrada_pecas_venda.sql`: aplicar com o "sim"
-  do Gustavo **antes** de publicar o app (o app novo grava as colunas novas).
+- Migrations `20261121110000_feedback_peca.sql` e `20261121120000_entrada_pecas_venda.sql` **aplicadas** (16/11, com o "sim"
+  do Gustavo, após dry-run); tipos regenerados, `baseAplicada = 20261121120000`.
 
 ## Esteira sem "voltar" de etapa (16/11/2026, só app)
 

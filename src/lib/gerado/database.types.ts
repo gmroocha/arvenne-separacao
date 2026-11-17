@@ -323,31 +323,51 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          item_id: string | null
           pagina: string | null
           pedido_id: string | null
           resolvido_em: string | null
+          sku: string | null
           texto: string
           usuario_email: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          item_id?: string | null
           pagina?: string | null
           pedido_id?: string | null
           resolvido_em?: string | null
+          sku?: string | null
           texto: string
           usuario_email?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          item_id?: string | null
           pagina?: string | null
           pedido_id?: string | null
           resolvido_em?: string | null
+          sku?: string | null
           texto?: string
           usuario_email?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "feedbacks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "pedido_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedbacks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "feedbacks_pedido_id_fkey"
             columns: ["pedido_id"]
@@ -598,6 +618,7 @@ export type Database = {
           conferido_em: string | null
           created_at: string
           devolvido_em: string | null
+          entrada: string | null
           etiqueta_previa: boolean
           etiquetado_em: string | null
           foto_url: string | null
@@ -630,6 +651,7 @@ export type Database = {
           conferido_em?: string | null
           created_at?: string
           devolvido_em?: string | null
+          entrada?: string | null
           etiqueta_previa?: boolean
           etiquetado_em?: string | null
           foto_url?: string | null
@@ -662,6 +684,7 @@ export type Database = {
           conferido_em?: string | null
           created_at?: string
           devolvido_em?: string | null
+          entrada?: string | null
           etiqueta_previa?: boolean
           etiquetado_em?: string | null
           foto_url?: string | null
