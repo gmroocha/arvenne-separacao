@@ -4,6 +4,18 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Excluir e duplicar pedidos (17/11/2026)
+
+- **Clique direito (ou toque longo)** no cartão em Vendas e no Arquivo: "Duplicar venda" (WhatsApp: nova venda em
+  aberto com a mesma cliente, endereço, frete, desconto e peças vivas) e "Excluir venda/pedido".
+- **Excluir não apaga** (decisão do Gustavo: "some de tudo"): marca `pedidos.excluido_em`; a RLS restritiva
+  `nao_excluido` esconde de todas as telas, buscas e views, e `romaneio_publico` não abre mais o link. Pode: venda
+  do WhatsApp não paga ou pedido do Arquivo (enviado, cancelado, perdida). Não pode: somada (vai junto com o
+  principal), pedido na esteira, com troca, movimento financeiro ou crédito da cliente.
+- **V69:** a separação não mostra mais em "Removidas" as peças tiradas durante a montagem da venda.
+- Migration `20261122100000_excluir_duplicar.sql` (`excluir_pedido`, `duplicar_venda`): **falta aplicar** (dry-run ok,
+  aguardando o "sim" do Gustavo); depois `npm run tipos:gerar`.
+
 ## CPF do cadastro da Shopify na venda (17/11/2026)
 
 V68: a busca de cliente na venda passa a trazer o CPF/CNPJ do metacampo do cadastro da Shopify (antes só do último

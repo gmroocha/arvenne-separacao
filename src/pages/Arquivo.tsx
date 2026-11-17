@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Archive } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import LinhaPedido from "@/components/LinhaPedido"
+import MenuContextoVenda from "@/components/MenuContextoVenda"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { ItemGroup } from "@/components/ui/item"
@@ -12,7 +13,7 @@ import { useDebounce } from "@/lib/useDebounce"
 
 const PASSO = 50
 
-// Pedidos enviados, cancelados e vendas perdidas. Nunca somem: a busca olha tudo.
+// Pedidos enviados, cancelados e vendas perdidas: a busca olha tudo. Clique direito: duplicar ou excluir.
 export default function Arquivo() {
   const [busca, setBusca] = useState("")
   const [limite, setLimite] = useState(PASSO)
@@ -49,7 +50,9 @@ export default function Arquivo() {
         <>
           <ItemGroup className="gap-2">
             {data.map((p) => (
-              <LinhaPedido key={p.id} p={p} />
+              <MenuContextoVenda key={p.id} pedido={p}>
+                <LinhaPedido p={p} />
+              </MenuContextoVenda>
             ))}
           </ItemGroup>
           {data.length >= limite && (

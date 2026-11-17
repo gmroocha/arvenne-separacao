@@ -819,6 +819,20 @@ export function useCriarVenda() {
   )
 }
 
+// Venda nova em aberto com a mesma cliente, frete, desconto e peças (o banco copia; nada de pagamento).
+// Funções simples (sem hook): o menu de clique direito existe em cada cartão das listas.
+export async function duplicarVenda(pedidoId: string) {
+  const { data, error } = await supabase.rpc("duplicar_venda", { p_pedido: pedidoId })
+  if (error) throw error
+  return (data as { id: string; numero: string }[])[0]
+}
+
+// Some de todas as telas; o banco guarda os dados e confere se pode (não paga ou no Arquivo, sem troca).
+export async function excluirPedido(pedidoId: string) {
+  const { error } = await supabase.rpc("excluir_pedido", { p_pedido: pedidoId })
+  if (error) throw error
+}
+
 export type DadosCliente = {
   nome: string
   cpf: string | null

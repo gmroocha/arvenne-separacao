@@ -27,7 +27,8 @@ chave certa via `core.sshCommand` já configurado neste repositório.
   direto no painel do Supabase. Houve dois vazamentos assim no outro projeto.
 - **Este projeto Supabase não dá GRANT automático.** Toda tabela, view ou função nova precisa de GRANT
   explícito (padrão em `supabase/migrations/20261110180000_permissoes.sql`): `anon` nada,
-  `authenticated` sem DELETE em pedidos e itens. **Nenhum pedido é apagado pelo app.**
+  `authenticated` sem DELETE em pedidos e itens. **Nenhum pedido é apagado pelo app.** "Excluir" só marca
+  `pedidos.excluido_em` (função `excluir_pedido`) e a RLS esconde; os dados ficam.
 - **Nunca edite migration já aplicada.** Crie uma nova. Todas ficam em `supabase/migrations/`.
 - **Escrita no banco ou na nuvem só com o "sim" do Gustavo**, dado antes, naquele pedido. O CLI exige
   `--yes` em modo agente: pergunte primeiro. Rotina: `npx supabase db push --remote --dry-run`, depois

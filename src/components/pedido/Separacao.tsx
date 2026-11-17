@@ -28,8 +28,9 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
   const itens = pedido.pedido_itens
   const pendentes = itens.filter((i) => i.status === "pendente")
   const achadas = itens.filter((i) => i.status === "encontrado")
-  const removidas = itens.filter((i) => i.status === "removido")
-  const vivas = itens.length - removidas.length
+  // Peça tirada enquanto a venda era montada não é "removida" da separação: nunca chegou a ela (V69).
+  const removidas = itens.filter((i) => i.status === "removido" && i.observacao !== "removida na venda")
+  const vivas = itens.filter((i) => i.status !== "removido").length
   // Tamanhos do mesmo modelo (mesmo produto e mesma pedra/cor) viram um bloco só; sem tamanho, um bloco por peça.
   // As peças adicionais (vieram de uma venda somada) ficam depois de um divisor: o agrupamento vale só dentro de cada metade.
   const agrupar = (pendentes: Item[]) => {
