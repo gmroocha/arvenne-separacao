@@ -1,4 +1,5 @@
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
+import { LinhaPeca } from "@/components/comum/Peca"
 import { useState } from "react"
 import { Link } from "react-router"
 import { MessageSquare } from "lucide-react"
@@ -52,6 +53,13 @@ export default function Feedbacks() {
             return (
               <Card key={f.id} size="sm">
                 <CardContent className="flex flex-col gap-2">
+                  {/* Feedback de uma peça: foto e código no topo (o código é o do momento do feedback). */}
+                  {(f.peca || f.sku) && (
+                    <LinhaPeca
+                      tamanho="lg"
+                      item={{ foto_url: f.peca?.foto_url ?? null, nome: f.peca?.nome ?? "", sku: f.sku, variante: f.peca?.variante }}
+                    />
+                  )}
                   <p className="text-sm whitespace-pre-wrap">{f.texto}</p>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-col text-xs text-muted-foreground">

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { etapaCompleta } from "@/lib/etapa"
 import AvisoPendentes from "./AvisoPendentes"
+import { useFeedbackPeca } from "./useFeedbackPeca"
 import Problemas from "./Problemas"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
@@ -21,6 +22,7 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
   const aEtiquetar = achadas.filter((i) => !i.etiquetado_em)
   const feitas = achadas.filter((i) => i.etiquetado_em)
   const { zebra, imprimindo, dialogo, imprimir, imprimirTeste } = useImprimirEtiquetas()
+  const feedback = useFeedbackPeca()
 
   // Uma etiqueta por unidade. Imprimir não marca nada como etiquetada.
   const grupoDe = (itens: Item[]) => {
@@ -42,6 +44,7 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
                       { rotulo: "Imprimir esta etiqueta", icone: Printer, desabilitado: !i.sku || imprimindo, aoClicar: () => imprimir(grupoDe([i])) },
                       { rotulo: "Falta", icone: PackageX, aoClicar: () => acao(i, { status: "falta" }) },
                       { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                      feedback.acao(i),
                       { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => acao(i, { status: "removido", observacao: "cliente desistiu" }) },
                     ]}
                   />
@@ -109,6 +112,7 @@ export default function Etiquetagem({ pedido, acao, aoTrocar, aoConcluir }: Prop
       />
 
       {dialogo}
+      {feedback.dialogo}
 
       {aoConcluir && (
         <ConcluirEtapa disabled={!etapaCompleta("etiquetagem", pedido.pedido_itens)} onClick={aoConcluir}>

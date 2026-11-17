@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from "react"
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
-import { flushSync } from "react-dom"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import type { Database } from "@/lib/banco"
@@ -447,58 +446,6 @@ export type ItemPatch = Partial<
 
 const chavePedido = (id: string) => ["pedido", id]
 
-// Troca de cache com transição suave (os blocos deslizam para o lugar em vez de pular).
-// Sem suporte do navegador, ou com "reduzir movimento", troca direto como sempre.
-// V63: durante a animação o navegador entrega o toque à página inteira (<html>), não ao botão: com toques
-// rápidos em "Etiquetada"/"Conferida" a tela parecia travada e peças ficavam sem marcar. Um toque assim
-// encerra a animação e vai para o botão que está ali; toques seguidos trocam direto, sem animar.
-type Transicao = { skipTransition?: () => void; finished?: Promise<unknown> }
-let ultimaTransicao = 0
-let transicaoAtiva: Transicao | null = null
-if (typeof window !== "undefined") {
-  window.addEventListener(
-    "click",
-    (e) => {
-      if (!transicaoAtiva || e.target !== document.documentElement) return
-      e.stopPropagation()
-      transicaoAtiva.skipTransition?.()
-      transicaoAtiva = null
-      const { clientX: x, clientY: y } = e
-      requestAnimationFrame(() => {
-        const alvo = document.elementFromPoint(x, y)
-        if (alvo instanceof HTMLElement && alvo !== document.documentElement) alvo.click()
-      })
-    },
-    true,
-  )
-}
-function comTransicao(trocar: () => void) {
-  const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => Transicao }
-  const reduzir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-  const agora = performance.now()
-  const seguido = agora - ultimaTransicao < 700
-  ultimaTransicao = agora
-  if (typeof doc.startViewTransition !== "function" || reduzir || seguido) {
-    // Corta a animação anterior: senão ela continua mostrando a tela de antes por cima da nova.
-    transicaoAtiva?.skipTransition?.()
-    transicaoAtiva = null
-    return trocar()
-  }
-  try {
-    const t = doc.startViewTransition(async () => {
-      flushSync(trocar)
-      // O TanStack avisa a tela num setTimeout(0): dá um respiro para o React desenhar o novo estado.
-      await new Promise((r) => setTimeout(r, 30))
-    })
-    transicaoAtiva = t
-    t.finished?.finally(() => {
-      if (transicaoAtiva === t) transicaoAtiva = null
-    }).catch(() => {})
-  } catch {
-    trocar()
-  }
-}
-
 // Troca o pedido em cache na hora e devolve o estado anterior, para desfazer se o banco recusar.
 function aplicarNoCache(qc: QueryClient, id: string, mudar: (p: PedidoDetalhe) => PedidoDetalhe) {
   const anterior = qc.getQueryData<PedidoDetalhe>(chavePedido(id))
@@ -683,10 +630,9 @@ export function useAcoesItem(pedidoId: string) {
     const passo = codigo ? 1 : (delta ?? 0)
     const aplicar = (i: Item): Item =>
       passo && patch.qtd_bipada !== undefined ? { ...i, ...patch, qtd_bipada: Math.min(i.qtd, Math.max(0, i.qtd_bipada + passo)) } : { ...i, ...patch }
-    comTransicao(() =>
-      qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) =>
-        old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? aplicar(i) : i)) } : old,
-      ),
+    // Troca direto, sem animação: a transição dos blocos (deslizar para o lugar) travava a tela (V65).
+    qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) =>
+      old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? aplicar(i) : i)) } : old,
     )
     return gravar.mutateAsync({ itemId: item.id, campos: patch, codigo, delta }).catch(() => null)
   }
@@ -805,6 +751,7 @@ const linhasDosItens = (itens: NovoItem[]) => itens.map((i) => ({
   foto_url: i.foto_url,
   qtd: i.qtd,
   preco: i.preco,
+  ...(i.entrada ? { entrada: i.entrada } : {}),
 }))
 
 // V06: uma chamada grava as substitutas e o acerto ou desfaz tudo.
@@ -1016,11 +963,11 @@ export function useFeedbacks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("feedbacks")
-        .select("*, pedidos(numero, cliente_nome, origem)")
+        .select("*, pedidos(numero, cliente_nome, origem), peca:pedido_itens!feedbacks_item_id_fkey(nome, variante, foto_url)")
         .order("created_at", { ascending: false })
         .limit(500)
       if (error) throw error
-      return data as Feedback[]
+      return data as unknown as Feedback[] // tipos locais ainda sem as relações da coluna nova
     },
   })
 }
@@ -1039,7 +986,7 @@ export function useContagemFeedbacksAbertos() {
 
 export function useEnviarFeedback() {
   return useAcao(
-    async (d: { texto: string; pagina: string; pedido_id: string | null }) => {
+    async (d: { texto: string; pagina: string; pedido_id: string | null; item_id?: string; sku?: string | null }) => {
       const { error } = await supabase.from("feedbacks").insert(d)
       if (error) throw error
     },

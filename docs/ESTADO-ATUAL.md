@@ -4,6 +4,17 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Feedback da peça, venda por origem e ajustes visuais (16/11/2026)
+
+- **Feedback da peça:** menu "…" das peças (separação, conferência, etiquetagem, faltas) tem "Feedback": campo
+  de texto sobre aquela peça (foto diferente, código que não bate). Aparece na página Feedbacks com foto e código.
+- **Venda:** peças do carrinho colado ("Do carrinho da cliente") separadas das adicionadas à mão; variante ao lado
+  do código; no PC, preço e quantidade à direita (linha mais baixa, foto alinhada). Mesma peça no carrinho e à mão
+  fica em duas linhas, uma em cada grupo (valores iguais).
+- **V66:** sem animação dos blocos ao marcar peça (engasgava). **V67:** seletor − 1 + com um traço só nas junções.
+- Migrations `20261121110000_feedback_peca.sql` e `20261121120000_entrada_pecas_venda.sql`: aplicar com o "sim"
+  do Gustavo **antes** de publicar o app (o app novo grava as colunas novas).
+
 ## Esteira sem "voltar" de etapa (16/11/2026, só app)
 
 V60 a V63 em [`VISTORIA.md`](VISTORIA.md): confirmar a próxima etapa com peça ainda gravando não volta mais

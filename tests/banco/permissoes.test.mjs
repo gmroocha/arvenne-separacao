@@ -108,3 +108,16 @@ test('V44: auditoria somente leitura acessa painel e sugestões com o mesmo cont
   await db.exec('set local role anon')
   await recusa(() => one('select troca_painel($1)', [f.pedido.id]), /permission denied/)
 })
+
+test('feedback de peça: equipe grava peça e código; quem e quando vêm do banco; anon não grava', async () => {
+  const f = await fixture()
+  const item = f.itens[0]
+  const fb = await one(`insert into feedbacks (texto, pagina, pedido_id, item_id, sku)
+    values ('Foto diferente da peça', '/pedidos/x', $1, $2, $3) returning *`, [f.pedido.id, item.id, item.sku])
+  assert.equal(fb.item_id, item.id)
+  assert.equal(fb.sku, 'ORIGINAL-0')
+  assert.equal(fb.resolvido_em, null)
+  await recusa(() => one('update feedbacks set sku = $2 where id = $1', [fb.id, 'OUTRO']), /permission denied/)
+  await db.exec('set local role anon')
+  await recusa(() => one(`insert into feedbacks (texto, item_id, sku) values ('x', $1, 'A')`, [item.id]), /permission denied/)
+})

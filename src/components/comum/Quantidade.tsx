@@ -12,6 +12,10 @@ type Props = {
   de?: number // só no grande: mostra "de N" embaixo do número
 }
 
+// Botão da ponta desabilitado (ex.: "−" no mínimo): apaga só o ícone. Com a opacidade no botão inteiro, o
+// contorno daquele lado ficava mais fraco que o resto do grupo.
+const PONTA = "disabled:opacity-100 disabled:[&_svg]:opacity-40"
+
 // Seletor de quantidade: compacto (padrão) ou o grande do "Quantas faltam?".
 export function Quantidade({ valor, min = 1, max, aoMudar, tamanho = "padrao", rotulo, de }: Props) {
   const sufixo = rotulo ? ` ${rotulo}` : ""
@@ -19,7 +23,7 @@ export function Quantidade({ valor, min = 1, max, aoMudar, tamanho = "padrao", r
     <Button
       variant="outline"
       size="icon"
-      className={tamanho === "grande" ? "size-12 rounded-full" : undefined}
+      className={tamanho === "grande" ? "size-12 rounded-full" : PONTA}
       aria-label={`Diminuir${sufixo}`}
       disabled={valor <= min}
       onClick={() => aoMudar(valor - 1)}
@@ -31,7 +35,7 @@ export function Quantidade({ valor, min = 1, max, aoMudar, tamanho = "padrao", r
     <Button
       variant="outline"
       size="icon"
-      className={tamanho === "grande" ? "size-12 rounded-full" : undefined}
+      className={tamanho === "grande" ? "size-12 rounded-full" : PONTA}
       aria-label={`Aumentar${sufixo}`}
       disabled={max != null && valor >= max}
       onClick={() => aoMudar(valor + 1)}

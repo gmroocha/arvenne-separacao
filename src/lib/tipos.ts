@@ -65,6 +65,7 @@ export type NovoItem = {
   foto_url: string | null
   qtd: number
   preco: number | null
+  entrada?: "carrinho" | "manual" // venda: veio do carrinho colado ou foi adicionada à mão
 }
 
 export type PecaRepetida = {
@@ -133,7 +134,10 @@ export type Feedback = {
   usuario_email: string | null
   created_at: string
   resolvido_em: string | null
+  item_id: string | null
+  sku: string | null // código da peça no momento do feedback (feedback de uma peça)
   pedidos: { numero: string; cliente_nome: string | null; origem: string } | null
+  peca: { nome: string; variante: string | null; foto_url: string | null } | null
 }
 
 export type StatusTroca = "rascunho" | "enviada" | "respondida" | "concluida" | "cancelada"

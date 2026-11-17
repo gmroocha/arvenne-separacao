@@ -43,7 +43,6 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
   const { abrir } = useAlteracoesDoPedido()
   return (
     <div
-      style={{ viewTransitionName: `peca-${item.id}` }}
       className={cn(
         "flex flex-col gap-2 rounded-xl bg-card p-2 ring-(length:--traco) ring-foreground/10 transition-shadow duration-300",
         piscando && "ring-2 ring-primary",
@@ -89,7 +88,7 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
   const total = ordenados.reduce((n, i) => n + i.qtd, 0)
   const variacao = separarTamanho(base.variante).base
   return (
-    <div style={{ viewTransitionName: `peca-${base.id}` }} className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-(length:--traco) ring-foreground/10 transition-shadow duration-300">
+    <div className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-(length:--traco) ring-foreground/10 transition-shadow duration-300">
       <div className="relative">
         <Foto url={base.foto_url} alt={base.nome} ampliar className="w-full" />
         <SelosPeca item={base} />
