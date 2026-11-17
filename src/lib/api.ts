@@ -1010,6 +1010,18 @@ export function useContagemFeedbacksAbertos() {
   })
 }
 
+// Nota da peça (ex.: "peça de montagem: temos, falta montar"). Vazio apaga; o banco guarda o histórico.
+export function useAnotarItem() {
+  return useAcao(
+    async ({ itemId, nota }: { itemId: string; nota: string }) => {
+      const { error } = await supabase.rpc("anotar_item", { p_item: itemId, p_nota: nota })
+      if (error) throw error
+    },
+    [["pedido"], ["pedidos"]],
+    (_r, { nota }) => toast.success(nota.trim() ? "Nota guardada" : "Nota apagada"),
+  )
+}
+
 export function useEnviarFeedback() {
   return useAcao(
     async (d: { texto: string; pagina: string; pedido_id: string | null; item_id?: string; sku?: string | null }) => {

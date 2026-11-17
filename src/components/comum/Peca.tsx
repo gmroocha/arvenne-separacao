@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import Foto from "@/components/Foto"
+import { NotaNaPeca } from "@/components/pedido/useNotaPeca"
 import { Badge } from "@/components/ui/badge"
 import { fotoTamanho } from "@/lib/foto"
 import { cn } from "@/lib/utils"
@@ -13,6 +14,7 @@ export type PecaBasica = {
   qtd?: number
   origem?: string | null
   observacao?: string | null
+  nota?: string | null // nota da peça (menu "…" → Nota)
   status?: string | null
 }
 
@@ -68,6 +70,7 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
         ) : (
           <div className="text-xs text-muted-foreground">{item.observacao}</div>
         ))}
+      {item.nota && <NotaNaPeca nota={item.nota} />}
       {(qtd > 1 || item.origem === "clube") && (
         <div className="mt-1 flex gap-1">
           {qtd > 1 && (

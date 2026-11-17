@@ -14,6 +14,7 @@ import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
 import LinhaPeca from "./LinhaPeca"
 import { useFeedbackPeca } from "./useFeedbackPeca"
+import { useNotaPeca } from "@/components/pedido/useNotaPeca"
 import Problemas from "./Problemas"
 import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TileModelo, TilePeca, Vazio } from "./TilePeca"
 
@@ -79,6 +80,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
 
   const [verPartes, setVerPartes] = useState(false)
   const feedback = useFeedbackPeca()
+  const nota = useNotaPeca()
   const bloco = (g: Item[]) =>
               g.length === 1 ? (
                 <TilePeca key={g[0].id} item={g[0]}>
@@ -89,6 +91,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
                     itens={[
                       { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(g[0]) },
                       { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(g[0]) },
+                      nota.acao(g[0]),
                       feedback.acao(g[0]),
                       { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(g[0], "removido", "cliente desistiu") },
                     ]}
@@ -108,6 +111,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
                       itens: [
                         { rotulo: "Em falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
                         { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                        nota.acao(i),
                         feedback.acao(i),
                         { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
                       ],
@@ -209,6 +213,8 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
       </RespDialog>
 
       {feedback.dialogo}
+
+      {nota.dialogo}
 
       {aoConcluir && (
         <ConcluirEtapa disabled={!etapaCompleta(pedido.status, itens)} onClick={aoConcluir}>

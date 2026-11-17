@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Progress } from "@/components/ui/progress"
 import { useAlteracoesDoPedido } from "@/components/pedido/alteracoesContexto"
+import { NotaNaPeca } from "@/components/pedido/useNotaPeca"
 import { numeroTamanho, separarTamanho, codigoModelo } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
@@ -69,6 +70,7 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
           ) : (
             <div className="text-xs text-muted-foreground">{item.observacao}</div>
           ))}
+        {item.nota && <div className="mt-1"><NotaNaPeca nota={item.nota} /></div>}
       </div>
       {(instrucao || children) && (
         <div className="mt-auto flex flex-col gap-2">
@@ -112,6 +114,9 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
           ))}
         </div>
         <div className="line-clamp-1 text-xs text-muted-foreground">{base.nome}</div>
+        {ordenados.filter((i) => i.nota).map((i) => (
+          <NotaNaPeca key={i.id} nota={i.nota!} titulo={separarTamanho(i.variante).tamanho ?? undefined} />
+        ))}
       </div>
       {children && <div className="mt-auto flex items-center gap-1.5">{children}</div>}
     </div>

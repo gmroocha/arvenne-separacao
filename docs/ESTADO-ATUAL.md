@@ -4,6 +4,14 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Nota na peça (17/11/2026)
+
+Menu "…" das peças (separação, conferência, etiquetagem, faltas) ganhou **Nota** ("Editar nota" quando já tem):
+recado sobre a peça (ex.: "peça de montagem: temos, falta montar") que aparece no cartão em todas as etapas.
+`pedido_itens.nota` + função `anotar_item` (vazio apaga; cada mudança fica em `pedido_eventos`). Migration
+`20261122110000_nota_peca.sql`: **falta aplicar** (aguardando o "sim" do Gustavo; depois `npm run tipos:gerar` e
+`baseAplicada = 20261122110000`).
+
 ## Excluir e duplicar pedidos (17/11/2026)
 
 - **Clique direito (ou toque longo)** no cartão em Vendas e no Arquivo: "Duplicar venda" (WhatsApp: nova venda em

@@ -8,6 +8,7 @@ import type { Item } from "@/lib/tipos"
 import AvisoConferencia from "./AvisoConferencia"
 import AvisoPendentes from "./AvisoPendentes"
 import { useFeedbackPeca } from "./useFeedbackPeca"
+import { useNotaPeca } from "@/components/pedido/useNotaPeca"
 import Problemas from "./Problemas"
 import { FaixaFeitas, GradePecas, InstrucaoTile, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
@@ -19,6 +20,7 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
   const aConferir = achadas.filter((i) => !i.conferido_em)
   const conferidas = achadas.filter((i) => i.conferido_em)
   const feedback = useFeedbackPeca()
+  const nota = useNotaPeca()
 
   const tile = (i: Item) => (
     <TilePeca key={i.id} item={i} instrucao={<InstrucaoTile>Separe {i.qtd}</InstrucaoTile>}>
@@ -29,6 +31,7 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
         itens={[
           { rotulo: "Falta", icone: PackageX, aoClicar: () => acao(i, { status: "falta" }) },
           { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+          nota.acao(i),
           feedback.acao(i),
           { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => acao(i, { status: "removido", observacao: "cliente desistiu" }) },
         ]}
@@ -58,6 +61,8 @@ export default function Conferencia({ pedido, acao, aoTrocar, aoConcluir }: Prop
       </section>
 
       {feedback.dialogo}
+
+      {nota.dialogo}
 
       <FaixaFeitas titulo="Conferidas" itens={conferidas} aoDesfazer={(i) => acao(i, { conferido_em: null })} aoDesfazerTudo={() => conferidas.forEach((i) => acao(i, { conferido_em: null }))} />
 
