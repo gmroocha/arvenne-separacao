@@ -1,4 +1,4 @@
-// GERADO por npm run tipos:local a partir das migrations posteriores a 20261122110000.
+// GERADO por npm run tipos:local a partir das migrations posteriores a 20261122120000.
 // Não editar à mão. O arquivo database.types.ts é gerado pelo Supabase CLI.
 import type { Database as Remoto } from './database.types'
 
@@ -10,8 +10,7 @@ type Adicoes = {
 
   }
   Functions: {
-    contagem_repetidas: { Args: Record<PropertyKey, never>; Returns: number | null }
-    tg_avisar_mudanca: { Args: Record<PropertyKey, never>; Returns: string | null }
+
   }
 }
 

@@ -12,7 +12,7 @@ Decisão do Gustavo: ficar no plano Free (Nano). Para aliviar o banco:
   `equipe_recebe_pedidos` em `realtime.messages` (só `authenticated`). As tabelas saíram da publicação
   `supabase_realtime` (fim do `postgres_changes`). App: `src/lib/tempoReal.ts`.
 - **Selo de Repetidas:** função `contagem_repetidas()` (só conta, sem prazo de cada peça).
-- Migration `20261122120000_tempo_real_leve.sql`. Testes: `tests/banco/tempo-real.test.mjs` (o banco de teste
+- Migration `20261122120000_tempo_real_leve.sql` **aplicada** em 17/11 (dry-run antes; "sim" do Gustavo); `baseAplicada = 20261122120000`. Testes: `tests/banco/tempo-real.test.mjs` (o banco de teste
   simula só a infraestrutura `realtime.send`/`realtime.messages`).
 - **Cópia semanal:** `.github/workflows/backup.yml` (pg_dump do schema public, cifrado, 90 dias como artefato).
   Falta o Gustavo gravar `SUPABASE_DB_URL` e `BACKUP_SENHA` no GitHub (roteiro em `PASSO-A-PASSO.md`).

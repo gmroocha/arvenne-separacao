@@ -2003,6 +2003,7 @@ export type Database = {
           total: number
         }[]
       }
+      contagem_repetidas: { Args: never; Returns: number }
       creditos_do_pedido: {
         Args: { p_pedido: string }
         Returns: {
