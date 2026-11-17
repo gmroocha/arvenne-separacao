@@ -4,6 +4,12 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## Venda mais rápida ao mudar quantidade e preço (17/11/2026, só app)
+
+V70: o preço digitado não vai mais para o fim do valor antigo ("40" virava "5040"); cliques seguidos no "+" gravam
+só a última quantidade; depois de gravar, só os valores (`v_pedidos`) voltam do banco, e o Total mostra um
+indicador enquanto recalcula. O preço da linha já era só desta venda (não muda o catálogo nem o Clube).
+
 ## Busca de peça nas etapas e "Reembolso ou crédito" na troca (17/11/2026, só app)
 
 - **Busca de peça:** campo "Buscar peça" em Separação, Conferência e Etiquetagem (e no cartão de falta): filtra

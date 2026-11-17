@@ -1,7 +1,8 @@
+import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 type Props = {
-  rotulo: string
+  rotulo: ReactNode
   valor: string // já formatado; aqui não há conta
   forte?: boolean
   total?: boolean

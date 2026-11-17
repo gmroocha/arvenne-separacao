@@ -1,5 +1,5 @@
-import { useCallback, useEffect } from "react"
-import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
+import { useCallback, useEffect, useRef } from "react"
+import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import type { Database } from "@/lib/banco"
@@ -706,13 +706,28 @@ export function useAtualizarItem() {
 
 // Venda (WhatsApp): qtd, preço e remover mudam na tela na hora; o banco grava em fila.
 // O total continua vindo do banco (v_pedidos) e atualiza quando a fila esvazia.
+// Depois de gravar na venda, só os valores (v_pedidos, calculados no banco) voltam: as peças já estão certas no
+// cache. Uma leitura em vez de três (pedido, peças e histórico); o histórico chega pelo tempo real.
+export async function atualizarTotaisVenda(qc: QueryClient, pedidoId: string) {
+  const { data, error } = await supabase.from("v_pedidos").select("*").eq("id", pedidoId).single()
+  if (error) return void qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+  qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (p) => (p ? { ...p, ...(data as Pedido) } : p))
+}
+
+// Quantas gravações da venda ainda estão a caminho (peças ou campos): o total mostra "recalculando".
+export const useRecalculandoVenda = (pedidoId: string) =>
+  useIsMutating({ predicate: (m) => ["item-venda", "autosave"].includes(String(m.options.mutationKey?.[0])) && m.options.mutationKey?.[1] === pedidoId }) > 0
+
 export function useAcoesItemVenda(pedidoId: string) {
   const qc = useQueryClient()
   const chave = ["item-venda", pedidoId]
+  // Última versão pedida de cada peça: cliques seguidos no "+" entram na fila, mas só o último vai ao banco.
+  const versao = useRef(new Map<string, number>())
   const gravar = useMutation({
     mutationKey: chave,
     scope: { id: `pedido-${pedidoId}` },
-    mutationFn: async ({ itemId, campos }: { itemId: string; campos: ItemPatch }) => {
+    mutationFn: async ({ itemId, campos, v }: { itemId: string; campos: ItemPatch; v: number }) => {
+      if (versao.current.get(itemId) !== v) return
       const { error } = await supabase.from("pedido_itens").update(campos).eq("id", itemId)
       if (error) throw error
     },
@@ -728,16 +743,28 @@ export function useAcoesItemVenda(pedidoId: string) {
     onError: (e, _, ctx) => {
       if (ctx?.anterior) qc.setQueryData(chavePedido(pedidoId), ctx.anterior)
       toast.error(msg(e))
+      qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
     },
-    onSettled: () => {
+    onSettled: async () => {
       if (qc.isMutating({ mutationKey: chave }) <= 1) {
-        qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
         qc.invalidateQueries({ queryKey: ["pedidos"] })
+        await atualizarTotaisVenda(qc, pedidoId)
       }
     },
   })
-  return (itemId: string, campos: ItemPatch) => gravar.mutate({ itemId, campos })
+  return (itemId: string, campos: ItemPatch) => {
+    // Campos acumulados da peça: a gravação que vale leva tudo o que mudou nela desde a última.
+    const v = (versao.current.get(itemId) ?? 0) + 1
+    versao.current.set(itemId, v)
+    const acumulado = { ...(acumulados.get(`${pedidoId}:${itemId}`) ?? {}), ...campos }
+    acumulados.set(`${pedidoId}:${itemId}`, acumulado)
+    gravar.mutate(
+      { itemId, campos: acumulado, v },
+      { onSettled: () => versao.current.get(itemId) === v && acumulados.delete(`${pedidoId}:${itemId}`) },
+    )
+  }
 }
+const acumulados = new Map<string, ItemPatch>()
 
 // Com somar (só na venda), peça já no pedido ganha quantidade em vez de uma linha nova.
 // A ordem das linhas e a soma são feitas no banco (função adicionar_itens), numa transação.

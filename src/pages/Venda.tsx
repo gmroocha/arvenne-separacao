@@ -18,7 +18,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { atualizarPedido, salvarCliente, somarVenda, usePedido, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
+import { atualizarPedido, atualizarTotaisVenda, salvarCliente, somarVenda, usePedido, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
 import { reais } from "@/lib/formato"
 import SituacaoVenda from "@/components/venda/SituacaoVenda"
 
@@ -38,10 +38,11 @@ function useAutosave(pedidoId: string, form: FormVenda) {
   const mutacao = useMutation({
     scope: { id: `pedido-${pedidoId}` },
     mutationFn: (campos: CamposPedido) => atualizarPedido(pedidoId, campos),
-    onSettled: () => {
+    onSettled: async () => {
       if (qc.isMutating({ mutationKey: ["autosave", pedidoId] }) <= 1) {
-        qc.invalidateQueries({ queryKey: ["pedido", pedidoId] })
         qc.invalidateQueries({ queryKey: ["pedidos"] })
+        // Só os valores voltam do banco (o formulário já mostra o que foi digitado).
+        await atualizarTotaisVenda(qc, pedidoId)
       }
     },
     mutationKey: ["autosave", pedidoId],

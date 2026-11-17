@@ -50,8 +50,13 @@ export default function CampoReais({
         value={mostrado}
         onFocus={(e) => {
           antes.current = value
+          // V70: o texto não pode mudar ao ganhar foco ("50" guardado aparecia "50,00"): a troca de texto
+          // desfazia a seleção e o que se digitava ia para o fim ("40" virava "5040"). Fica o texto mostrado.
+          if (lido != null && value !== mostrado) onValueChange(mostrado)
           setEmFoco(true)
-          e.currentTarget.select()
+          const campo = e.currentTarget
+          campo.select()
+          requestAnimationFrame(() => document.activeElement === campo && campo.select())
         }}
         onChange={(e) => onValueChange(e.target.value)}
         onBlur={() => {

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { reais } from "@/lib/formato"
+import { useRecalculandoVenda } from "@/lib/api"
+import { Spinner } from "@/components/ui/spinner"
 import { COR_PAC, COR_SEDEX } from "@/lib/selo"
 import type { DescontoTipo, FreteTipo, FretePagoPor, Pedido } from "@/lib/tipos"
 import type { FormVenda } from "./form"
@@ -37,6 +39,7 @@ function Dinheiro({ id, valor, aoMudar, rotulo }: { id: string; valor: string; a
 export { COR_PAC, COR_SEDEX }
 
 export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, aoPago, prefixo }: Props) {
+  const recalculando = useRecalculandoVenda(pedido.id)
   const p = (s: string) => `${prefixo}-${s}`
   // A forma muda na hora na tela; o banco grava em seguida (o total com Pix vem dele depois).
   const [formaLocal, setFormaLocal] = useState<string | null | undefined>(undefined)
@@ -150,7 +153,12 @@ export default function ResumoVenda({ pedido, form, aoMudar, aoForma, aoCopiar, 
       )}
 
       <div className="border-t pt-3">
-        <LinhaValor total rotulo="Total" valor={reais(pedido.total)} />
+        <LinhaValor
+          total
+          rotulo={recalculando ? <span className="flex items-center gap-2">Total <Spinner className="size-3.5 text-muted-foreground" /><span className="sr-only">recalculando</span></span> : "Total"}
+          valor={reais(pedido.total)}
+          className={recalculando ? "[&>span:last-child]:text-muted-foreground" : undefined}
+        />
       </div>
 
       <div className="flex flex-col gap-2">

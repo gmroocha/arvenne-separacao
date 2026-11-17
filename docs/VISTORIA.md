@@ -401,7 +401,7 @@ foram conferidas e etiquetadas, mas a tela ficou atrasada. Só app (sem migratio
 
 Também: no diálogo "Pedidos para separar" (Peças repetidas), só a lista rola; filtros e "Pronto" ficam fixos.
 
-## Ajustes pedidos pelo Gustavo (V66 a V69, 16 e 17/11/2026)
+## Ajustes pedidos pelo Gustavo (V66 a V70, 16 e 17/11/2026)
 
 | ID | Gravidade | O que acontecia | Correção e proteção |
 | --- | --- | --- | --- |
@@ -409,6 +409,7 @@ Também: no diálogo "Pedidos para separar" (Peças repetidas), só a lista rola
 | V67 | Baixa | Seletor de quantidade (− 1 +) e grupos de botões: o contorno é sombra de 1,5 px (`--traco`), então `border-l-0` não tirava o lado colado; os dois traços translúcidos se somavam e cada junção saía mais clara e grossa. O número usava borda de 1 px de outra cor, e o "−" desabilitado apagava o próprio contorno. | `ButtonGroup`: cada peça corta o próprio traço do lado em que a próxima encosta (`clip-path`); `ButtonGroupText` com o mesmo traço; no seletor, desabilitado apaga só o ícone. Teste em `tests/e2e/pecas-ajustes.spec.mjs`. |
 | V68 | Média | Venda do WhatsApp: ao buscar a cliente da Shopify, o CPF não vinha quando estava só no cadastro dela (metacampo "CPF/CNPJ"); a busca lia apenas o CPF do último pedido. | `shopify-clientes` lê os metacampos da cliente (nome ou chave com cpf, cnpj, documento ou tax; 11 ou 14 dígitos) e, sem eles, o do último pedido. Testes V68 em `tests/unidade/shopify-clientes.test.mjs` (falhavam antes). Vale depois de publicar a função Edge. |
 | V69 | Média | Separação: peças tiradas enquanto a venda era montada (antes de pagar) apareciam em "Removidas" com "Restaurar", como se a cliente tivesse desistido na esteira. | `Separacao.tsx` lista só as removidas na esteira (sem "removida na venda"); a contagem do progresso continua sem as removidas. Os dados ficam guardados. Teste `tests/e2e/excluir-duplicar.spec.mjs` (falhava antes). |
+| V70 | Alta | Venda: ao tocar no preço de uma peça, o campo trocava "50" por "50,00" e perdia a seleção; o que se digitava ia para o fim ("40" virava "5040"). Além disso, cada clique no "+" esperava o anterior gravar e o total só voltava depois de recarregar pedido, peças e histórico. | `CampoReais` mantém o texto mostrado ao ganhar foco e seleciona tudo. Venda: cliques seguidos só gravam a última quantidade, depois só a `v_pedidos` é lida (uma leitura em vez de três) e o Total mostra "recalculando". Teste `tests/e2e/venda-rapida.spec.mjs` (falhava antes). |
 
 Na mesma entrega (novidades, não bugs): opção **Feedback** no menu "…" das peças (separação, conferência,
 etiquetagem e faltas), gravada com a peça e o código (migration `20261121110000_feedback_peca.sql`); na venda,
