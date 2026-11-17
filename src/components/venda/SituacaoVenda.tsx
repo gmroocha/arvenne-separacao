@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { CircleCheck, CircleX, Hourglass, PencilLine } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export type Situacao = "em_aberto" | "aguardando_pagamento"
@@ -31,11 +32,19 @@ export default function SituacaoVenda({ status, aoSituacao, aoPago, aoPerdida }:
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="start">
-        <SelectItem value="em_aberto">📝 Em aberto</SelectItem>
-        <SelectItem value="aguardando_pagamento">⏳ Aguardando pagamento</SelectItem>
+        <SelectItem value="em_aberto">
+          <PencilLine /> Em aberto
+        </SelectItem>
+        <SelectItem value="aguardando_pagamento">
+          <Hourglass /> Aguardando pagamento
+        </SelectItem>
         <SelectSeparator />
-        <SelectItem value="pago">✅ Pago…</SelectItem>
-        <SelectItem value="perdida">❌ Perdida…</SelectItem>
+        <SelectItem value="pago">
+          <CircleCheck /> Pago…
+        </SelectItem>
+        <SelectItem value="perdida">
+          <CircleX /> Perdida…
+        </SelectItem>
       </SelectContent>
     </Select>
   )

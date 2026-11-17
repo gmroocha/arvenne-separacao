@@ -166,6 +166,7 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
                 </Select>
                 <Input
                   aria-label={tipo.rotulo}
+                  className="uppercase placeholder:normal-case"
                   placeholder={tipo.exemplo}
                   value={parte.valor}
                   onChange={(e) => mudarParte(i, { valor: e.target.value })}

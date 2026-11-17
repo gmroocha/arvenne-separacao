@@ -11,19 +11,21 @@ export const TIPOS_PARTE: { valor: TipoParte; rotulo: string; exemplo: string }[
   { valor: "outra", rotulo: "Outra", exemplo: "Ex.: 5 mm" },
 ]
 
-// Tamanho só com número vira "N°16" (como no site); "P", "Grande" ficam como foram escritos.
+// Tamanho só com número vira "N°16" (como no site); "P", "Grande" ficam como foram escritos (depois em maiúsculas).
 function tamanhoFormatado(t: string): string {
   const v = t.trim()
   return /^\d{1,2}$/.test(v) ? `N°${v}` : v
 }
 
-// Junta as partes como no site: o tamanho vai por último ("Verde / N°20"); as outras ficam na ordem escrita.
+// Junta as partes como no site: em maiúsculas, tamanho por último ("VERDE / N°20"); as outras na ordem escrita.
 export function montarVariante(partes: ParteVariante[]): string | null {
   const preenchidas = partes.filter((p) => p.valor.trim())
   const texto = [
     ...preenchidas.filter((p) => p.tipo !== "tamanho").map((p) => p.valor.trim()),
     ...preenchidas.filter((p) => p.tipo === "tamanho").map((p) => tamanhoFormatado(p.valor)),
-  ].join(" / ")
+  ]
+    .join(" / ")
+    .toLocaleUpperCase("pt-BR")
   return texto || null
 }
 

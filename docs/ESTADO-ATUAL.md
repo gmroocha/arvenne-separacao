@@ -7,13 +7,13 @@ Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data grav
 ## Venda reorganizada, página da cliente com carrossel e Clube editável (16/11/2026)
 
 - **Contorno:** 1,5 px (`--traco`) só nos contornos coloridos (verde, amarelo, vermelho); cinza volta ao 1 px do shadcn.
-- **Venda:** situação no topo numa lista (📝 Em aberto, ⏳ Aguardando pagamento, ✅ Pago…, ❌ Perdida…), no lugar
+- **Venda:** situação no topo numa lista (Em aberto, Aguardando pagamento, Pago…, Perdida…, com ícones lucide), no lugar
   dos botões do resumo. Cliente no topo (nome e telefone à vista; documento, e-mail e endereço recolhidos com
   resumo), depois o cartão Peças com "Adicionar peça" e "Colar carrinho" em cima e as peças numa caixa com
   rolagem própria.
 - **Clube:** "Editar" nos cartões do Clube (em Adicionar peça e na página Clube). Variante em linhas (17/11):
-  "Adicionar variante" soma quantas quiser (tamanho, cor, outra); grava no formato do site, tamanho por último
-  ("Verde / N°20"). Só texto, sem mudança no banco.
+  "Adicionar variante" soma quantas quiser (tamanho, cor, outra); grava no formato do site, em maiúsculas e tamanho por
+  último ("VERDE / N°20"). Só texto, sem mudança no banco.
 - **Página da cliente (`/r/...`):** cabeçalho Arvenne fixo; peças em cartões com foto grande; tocar no cartão abre
   o carrossel (foto, código, variante, quantidade, valor unitário e total da peça; arrasta para o lado ou setas no
   PC); resumo preso no rodapé (total sempre, detalhes ao tocar ou no fim da página).

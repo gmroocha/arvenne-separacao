@@ -3,19 +3,24 @@ import { lerVariante, montarVariante, proximoTipo } from "@/lib/varianteClube"
 
 test("monta a variante do Clube no formato do site", () => {
   expect(montarVariante([{ tipo: "tamanho", valor: "16" }])).toBe("N°16")
-  expect(montarVariante([{ tipo: "tamanho", valor: "Grande" }])).toBe("Grande")
-  expect(montarVariante([{ tipo: "cor", valor: " Verde " }])).toBe("Verde")
-  expect(montarVariante([{ tipo: "outra", valor: "5 mm" }])).toBe("5 mm")
+  expect(montarVariante([{ tipo: "tamanho", valor: "Grande" }])).toBe("GRANDE")
+  expect(montarVariante([{ tipo: "cor", valor: " Verde " }])).toBe("VERDE")
+  expect(montarVariante([{ tipo: "outra", valor: "5 mm" }])).toBe("5 MM")
   expect(montarVariante([])).toBeNull()
   expect(montarVariante([{ tipo: "cor", valor: "  " }])).toBeNull()
 })
 
+test("grava em maiúsculas, como a Shopify (inclusive acentos)", () => {
+  expect(montarVariante([{ tipo: "cor", valor: "citrino" }, { tipo: "tamanho", valor: "14" }])).toBe("CITRINO / N°14")
+  expect(montarVariante([{ tipo: "cor", valor: "zircônia" }])).toBe("ZIRCÔNIA")
+})
+
 test("peça com mais de uma variante: tamanho sempre por último, como no site", () => {
-  expect(montarVariante([{ tipo: "cor", valor: "Azul" }, { tipo: "tamanho", valor: "20" }])).toBe("Azul / N°20")
-  expect(montarVariante([{ tipo: "tamanho", valor: "20" }, { tipo: "cor", valor: "Azul" }])).toBe("Azul / N°20")
+  expect(montarVariante([{ tipo: "cor", valor: "Azul" }, { tipo: "tamanho", valor: "20" }])).toBe("AZUL / N°20")
+  expect(montarVariante([{ tipo: "tamanho", valor: "20" }, { tipo: "cor", valor: "Azul" }])).toBe("AZUL / N°20")
   expect(
     montarVariante([{ tipo: "tamanho", valor: "18" }, { tipo: "cor", valor: "Verde" }, { tipo: "outra", valor: "5 mm" }]),
-  ).toBe("Verde / 5 mm / N°18")
+  ).toBe("VERDE / 5 MM / N°18")
   // Parte vazia não deixa barra sobrando.
   expect(montarVariante([{ tipo: "cor", valor: "" }, { tipo: "tamanho", valor: "20" }])).toBe("N°20")
 })
@@ -34,5 +39,5 @@ test("lê a variante gravada de volta para editar", () => {
   expect(lerVariante("Verde")).toEqual([{ tipo: "cor", valor: "Verde" }])
   expect(lerVariante("Zircônia / 7mm")).toEqual([{ tipo: "cor", valor: "Zircônia" }, { tipo: "outra", valor: "7mm" }])
   expect(lerVariante(null)).toEqual([])
-  for (const v of ["Azul / N°20", "N°16", "Grande", "Verde / 5 mm / N°18"]) expect(montarVariante(lerVariante(v))).toBe(v)
+  for (const v of ["AZUL / N°20", "N°16", "GRANDE", "VERDE / 5 MM / N°18", "CITRINO / N°14", "ZIRCÔNIA / 7MM"]) expect(montarVariante(lerVariante(v))).toBe(v)
 })
