@@ -27,13 +27,15 @@ query Clientes($q: String!) {
   }
 }`;
 
-// O CPF/CNPJ não fica no cadastro da cliente: vem no campo localizado TAX_CREDENTIAL_BR dos pedidos.
+// CPF/CNPJ: primeiro o metacampo do cadastro da cliente (ex.: "CPF/CNPJ", criado por app ou à mão na Shopify);
+// sem ele, o campo localizado TAX_CREDENTIAL_BR do último pedido.
 // Consulta separada e tolerante: se falhar (escopo, campo ausente), o cpf volta null e a busca segue.
 const QUERY_CPF = `
 query CpfClientes($ids: [ID!]!) {
   nodes(ids: $ids) {
     ... on Customer {
       legacyResourceId
+      metafields(first: 30) { nodes { namespace key value definition { name } } }
       orders(first: 1, sortKey: CREATED_AT, reverse: true) {
         nodes { localizedFields(first: 10) { nodes { key value } } }
       }
@@ -41,10 +43,29 @@ query CpfClientes($ids: [ID!]!) {
   }
 }`;
 
+type Metacampo = { namespace?: string | null; key: string; value: string | null; definition?: { name: string | null } | null };
 type CpfNode = {
   legacyResourceId?: string;
+  metafields?: { nodes: Metacampo[] };
   orders?: { nodes: { localizedFields?: { nodes: { key: string; value: string | null }[] } }[] };
 } | null;
+
+const documento = (v: string | null | undefined) => {
+  const d = (v ?? "").replace(/\D/g, "");
+  return d.length === 11 || d.length === 14 ? d : null;
+};
+// Nome ou chave do metacampo que fala de documento: "CPF/CNPJ", "cpf_cnpj", "documento", "tax_id"...
+const PARECE_DOCUMENTO = /cpf|cnpj|documento|tax/i;
+
+function cpfDoCliente(n: CpfNode): string | null {
+  const meta = (n?.metafields?.nodes ?? [])
+    .filter((m) => PARECE_DOCUMENTO.test(`${m.definition?.name ?? ""} ${m.namespace ?? ""} ${m.key}`))
+    .map((m) => documento(m.value))
+    .find(Boolean);
+  if (meta) return meta;
+  const campo = n?.orders?.nodes[0]?.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR");
+  return documento(campo?.value);
+}
 
 async function cpfPorCliente(ids: string[], limite: number): Promise<Map<string, string>> {
   const mapa = new Map<string, string>();
@@ -52,9 +73,8 @@ async function cpfPorCliente(ids: string[], limite: number): Promise<Map<string,
   try {
     const data = await shopify<{ nodes: CpfNode[] }>(QUERY_CPF, { ids: ids.map((i) => `gid://shopify/Customer/${i}`) }, { limite });
     for (const n of data.nodes) {
-      const campo = n?.orders?.nodes[0]?.localizedFields?.nodes.find((f) => f.key === "TAX_CREDENTIAL_BR");
-      const d = (campo?.value ?? "").replace(/\D/g, "");
-      if (n?.legacyResourceId && (d.length === 11 || d.length === 14)) mapa.set(n.legacyResourceId, d);
+      const cpf = cpfDoCliente(n);
+      if (n?.legacyResourceId && cpf) mapa.set(n.legacyResourceId, cpf);
     }
   } catch {
     // segue sem CPF

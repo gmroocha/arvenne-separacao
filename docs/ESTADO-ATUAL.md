@@ -4,6 +4,12 @@
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
 
+## CPF do cadastro da Shopify na venda (17/11/2026)
+
+V68: a busca de cliente na venda passa a trazer o CPF/CNPJ do metacampo do cadastro da Shopify (antes só do último
+pedido). Função Edge `shopify-clientes` alterada: **falta publicar** (`npx supabase functions deploy shopify-clientes`,
+com o "sim" do Gustavo).
+
 ## Venda reorganizada, página da cliente com carrossel e Clube editável (16/11/2026)
 
 - **Contorno:** 1,5 px (`--traco`) só nos contornos coloridos (verde, amarelo, vermelho); cinza volta ao 1 px do shadcn.

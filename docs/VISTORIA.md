@@ -401,12 +401,13 @@ foram conferidas e etiquetadas, mas a tela ficou atrasada. Só app (sem migratio
 
 Também: no diálogo "Pedidos para separar" (Peças repetidas), só a lista rola; filtros e "Pronto" ficam fixos.
 
-## Ajustes pedidos pelo Gustavo (V66 e V67, 16/11/2026)
+## Ajustes pedidos pelo Gustavo (V66 a V68, 16 e 17/11/2026)
 
 | ID | Gravidade | O que acontecia | Correção e proteção |
 | --- | --- | --- | --- |
 | V66 | Média | Ao marcar uma peça (Achei, Conferida, Etiquetada), os blocos deslizavam: o de baixo subia para o fim da fileira de cima. A animação (View Transition) engasgava a tela. | A troca é direta, sem animação (`useAcoesItem` em `src/lib/api.ts`); saíram também os nomes de transição dos blocos. Teste `tests/e2e/pecas-ajustes.spec.mjs` (nenhuma transição começa ao marcar). V63 continua coberto. |
 | V67 | Baixa | Seletor de quantidade (− 1 +) e grupos de botões: o contorno é sombra de 1,5 px (`--traco`), então `border-l-0` não tirava o lado colado; os dois traços translúcidos se somavam e cada junção saía mais clara e grossa. O número usava borda de 1 px de outra cor, e o "−" desabilitado apagava o próprio contorno. | `ButtonGroup`: cada peça corta o próprio traço do lado em que a próxima encosta (`clip-path`); `ButtonGroupText` com o mesmo traço; no seletor, desabilitado apaga só o ícone. Teste em `tests/e2e/pecas-ajustes.spec.mjs`. |
+| V68 | Média | Venda do WhatsApp: ao buscar a cliente da Shopify, o CPF não vinha quando estava só no cadastro dela (metacampo "CPF/CNPJ"); a busca lia apenas o CPF do último pedido. | `shopify-clientes` lê os metacampos da cliente (nome ou chave com cpf, cnpj, documento ou tax; 11 ou 14 dígitos) e, sem eles, o do último pedido. Testes V68 em `tests/unidade/shopify-clientes.test.mjs` (falhavam antes). Vale depois de publicar a função Edge. |
 
 Na mesma entrega (novidades, não bugs): opção **Feedback** no menu "…" das peças (separação, conferência,
 etiquetagem e faltas), gravada com a peça e o código (migration `20261121110000_feedback_peca.sql`); na venda,

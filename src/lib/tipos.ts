@@ -95,7 +95,7 @@ export type Cliente = Tables<'clientes'>
 export type ClienteShopify = {
   shopify_customer_id: number
   nome: string | null
-  cpf: string | null // vem do último pedido da cliente (TAX_CREDENTIAL_BR)
+  cpf: string | null // metacampo "CPF/CNPJ" do cadastro; sem ele, o último pedido (TAX_CREDENTIAL_BR)
   email: string | null
   telefone: string | null
   cep: string | null

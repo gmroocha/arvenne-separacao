@@ -25,3 +25,21 @@ test('contrato clientes: erro da busca é informado, sem resultado de sucesso fa
  sim.respostas.push(new Error('Shopify indisponível. Tente novamente.'))
  const r=await chamar('Cliente');expect(r.erro).toContain('Tente novamente');expect(r.clientes).toBeUndefined()
 })
+// V68: CPF gravado no cadastro da cliente (metacampo "CPF/CNPJ" da Shopify) não vinha; só o do último pedido.
+test('V68 contrato clientes: CPF do metacampo do cadastro, mesmo sem pedido',async()=>{
+ sim.respostas.push({customers:{nodes:[cliente]}},{nodes:[{legacyResourceId:'123',metafields:{nodes:[
+  {namespace:'custom',key:'data_nascimento',value:'1990-01-01',definition:{name:'Data de nascimento'}},
+  {namespace:'custom',key:'cpf_cnpj',value:'529.982.247-25',definition:{name:'CPF/CNPJ'}},
+ ]},orders:{nodes:[]}}]})
+ const r=await chamar('cliente@ficticia.test')
+ expect(r.clientes[0].cpf).toBe('52998224725')
+})
+test('V68 contrato clientes: metacampo do cadastro vence o CPF do último pedido; sem ele, usa o do pedido',async()=>{
+ const pedido={nodes:[{localizedFields:{nodes:[{key:'TAX_CREDENTIAL_BR',value:'111.444.777-35'}]}}]}
+ sim.respostas.push({customers:{nodes:[cliente,{...cliente,legacyResourceId:'456'}]}},{nodes:[
+  {legacyResourceId:'123',metafields:{nodes:[{namespace:'app',key:'documento',value:'11.222.333/0001-81',definition:null}]},orders:pedido},
+  {legacyResourceId:'456',metafields:{nodes:[{namespace:'custom',key:'tipo_cadastro',value:'PF',definition:{name:'Tipo de cadastro'}}]},orders:pedido},
+ ]})
+ const r=await chamar('cliente@ficticia.test')
+ expect(r.clientes.map(c=>c.cpf)).toEqual(['11222333000181','11144477735'])
+})
