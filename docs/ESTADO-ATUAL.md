@@ -17,8 +17,8 @@ Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data grav
   o carrossel (foto, código, variante, quantidade, valor unitário e total da peça; arrasta para o lado ou setas no
   PC); resumo preso no rodapé (total sempre, detalhes ao tocar ou no fim da página).
 - **Foto ampliada:** abre no tamanho final com a miniatura na hora; não aparece mais o quadro vazio com o X.
-- Migration `20261121130000_romaneio_total_peca.sql` (total de cada peça no romaneio, calculado no banco):
-  **falta aplicar** com o "sim" do Gustavo. Sem ela, o carrossel só não mostra a linha "Total da peça".
+- Migration `20261121130000_romaneio_total_peca.sql` (total de cada peça no romaneio, calculado no banco)
+  **aplicada** em 17/11 com o "sim" do Gustavo; tipos regenerados, `baseAplicada = 20261121130000`.
 
 ## Feedback da peça, venda por origem e ajustes visuais (16/11/2026)
 
