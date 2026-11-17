@@ -13,8 +13,8 @@ Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data grav
   do WhatsApp não paga ou pedido do Arquivo (enviado, cancelado, perdida). Não pode: somada (vai junto com o
   principal), pedido na esteira, com troca, movimento financeiro ou crédito da cliente.
 - **V69:** a separação não mostra mais em "Removidas" as peças tiradas durante a montagem da venda.
-- Migration `20261122100000_excluir_duplicar.sql` (`excluir_pedido`, `duplicar_venda`): **falta aplicar** (dry-run ok,
-  aguardando o "sim" do Gustavo); depois `npm run tipos:gerar`.
+- Migration `20261122100000_excluir_duplicar.sql` (`excluir_pedido`, `duplicar_venda`) **aplicada** em 17/11 com o "sim"
+  do Gustavo, após dry-run; tipos regenerados, `baseAplicada = 20261122100000`.
 
 ## CPF do cadastro da Shopify na venda (17/11/2026)
 

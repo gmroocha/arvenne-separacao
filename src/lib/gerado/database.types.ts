@@ -805,6 +805,8 @@ export type Database = {
           entrega_numero: string | null
           entrega_uf: string | null
           etapa_antes_desvio: string | null
+          excluido_em: string | null
+          excluido_por: string | null
           financeiro_retrato: Json | null
           forma_pagamento: string | null
           frete_cobrado: number | null
@@ -870,6 +872,8 @@ export type Database = {
           entrega_numero?: string | null
           entrega_uf?: string | null
           etapa_antes_desvio?: string | null
+          excluido_em?: string | null
+          excluido_por?: string | null
           financeiro_retrato?: Json | null
           forma_pagamento?: string | null
           frete_cobrado?: number | null
@@ -935,6 +939,8 @@ export type Database = {
           entrega_numero?: string | null
           entrega_uf?: string | null
           etapa_antes_desvio?: string | null
+          excluido_em?: string | null
+          excluido_por?: string | null
           financeiro_retrato?: Json | null
           forma_pagamento?: string | null
           frete_cobrado?: number | null
@@ -2009,7 +2015,15 @@ export type Database = {
           numero: string
         }[]
       }
+      duplicar_venda: {
+        Args: { p_pedido: string }
+        Returns: {
+          id: string
+          numero: string
+        }[]
+      }
       enviar_troca: { Args: { p_troca: string }; Returns: undefined }
+      excluir_pedido: { Args: { p_pedido: string }; Returns: undefined }
       fator_pedido: { Args: { p_pedido: string }; Returns: number }
       fechar_financeiro: { Args: { p_pedido: string }; Returns: undefined }
       feriados_ate: { Args: never; Returns: string }
