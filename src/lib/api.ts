@@ -7,6 +7,7 @@ import { juntarLidos, lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
 import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
+import { gravarPeca } from "@/lib/gravarPeca"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
 import type { AcertoPedido, Membro, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
@@ -102,7 +103,7 @@ export function useContagens() {
     refetchInterval: intervaloListas,
     queryFn: async () => {
       const [a, b] = await Promise.all([
-        supabase.from("v_pedidos").select("id", { count: "exact", head: true }).eq("status", "em_aberto"),
+        supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("status", "em_aberto"),
         supabase
           .from("v_pedidos")
           .select("id", { count: "exact", head: true })
@@ -171,11 +172,15 @@ export function usePedido(id: string | undefined) {
   return useQuery({
     queryKey: ["pedido", id],
     enabled: !!id,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
+      // Um refoco/reconexão durante a fila não pode apagar as peças já marcadas na tela.
+      // Ao esvaziar, a fila agenda uma única leitura do estado confirmado.
+      const atual = qc.getQueryData<PedidoDetalhe>(["pedido", id])
+      if (atual && qc.isMutating({ mutationKey: ["item", id], predicate: (m) => m.options.meta?.preservarPecas === true }) > 0) return atual
       const [p, i, e] = await Promise.all([
-        supabase.from("v_pedidos").select("*").eq("id", id!).single(),
-        supabase.from("pedido_itens").select("*").eq("pedido_id", id!).order("ordem"),
-        supabase.from("pedido_eventos").select("*").eq("pedido_id", id!).order("created_at", { ascending: false }),
+        supabase.from("v_pedidos").select("*").eq("id", id!).abortSignal(signal).single(),
+        supabase.from("pedido_itens").select("*").eq("pedido_id", id!).order("ordem").abortSignal(signal),
+        supabase.from("pedido_eventos").select("*").eq("pedido_id", id!).order("created_at", { ascending: false }).abortSignal(signal),
       ])
       if (p.error) throw p.error
       if (i.error) throw i.error
@@ -476,6 +481,9 @@ export async function esperarFilaDoPedido(qc: QueryClient, pedidoId: string, lim
   while (qc.isMutating({ mutationKey: ["item", pedidoId] }) > 0 && Date.now() < fim) {
     await new Promise((r) => setTimeout(r, 100))
   }
+  if (qc.isMutating({ mutationKey: ["item", pedidoId] }) > 0) {
+    throw new Error("Ainda há peças sendo salvas. Aguarde antes de mudar de etapa.")
+  }
 }
 
 export function useMudarStatus() {
@@ -584,6 +592,30 @@ export function usePatchPedido(pedidoId: string) {
 const ESTADOS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "conferencia", "etiquetagem", "bipagem"]
 const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa: false, qtd_bipada: 0, bipado_em: null } as const
 
+// Não reler o pedido inteiro entre cliques de uma mesma sequência. O relógio é por pedido e por cache,
+// sobrevive à troca de tela e só relê depois de a fila esvaziar e a pessoa parar de marcar por 600 ms.
+const releiturasPecas = new WeakMap<QueryClient, Map<string, ReturnType<typeof setTimeout>>>()
+function cancelarReleituraPecas(qc: QueryClient, id: string) {
+  const timers = releiturasPecas.get(qc)
+  clearTimeout(timers?.get(id))
+  timers?.delete(id)
+}
+function agendarReleituraPecas(qc: QueryClient, id: string) {
+  cancelarReleituraPecas(qc, id)
+  let timers = releiturasPecas.get(qc)
+  if (!timers) { timers = new Map(); releiturasPecas.set(qc, timers) }
+  timers.set(id, setTimeout(() => {
+    timers.delete(id)
+    if (qc.isMutating({ mutationKey: ["item", id] }) > 0) return agendarReleituraPecas(qc, id)
+    qc.invalidateQueries({ queryKey: chavePedido(id) })
+    qc.invalidateQueries({ queryKey: ["pedidos"] })
+    qc.invalidateQueries({ queryKey: ["repetidas"], predicate: (q) => q.queryKey[1] !== "contagem" })
+    qc.invalidateQueries({ queryKey: ["repetidas", "contagem"], refetchType: "none" })
+    qc.invalidateQueries({ queryKey: ["acerto"] })
+    qc.invalidateQueries({ queryKey: ["etiquetar"] })
+  }, 600))
+}
+
 // Todas as ações numa peça (achei, conferida, etiquetada, bipada, desfazer, falta, defeito...).
 // A peça muda na tela na hora; alterar_item confirma peça e etapa juntas, uma gravação por vez por pedido.
 // Efeitos no pedido (nada disso trava o clique):
@@ -597,38 +629,34 @@ export function useAcoesItem(pedidoId: string) {
 
   const gravar = useMutation({
     mutationKey: chave,
+    meta: { preservarPecas: true },
     scope: { id: `pedido-${pedidoId}` },
     mutationFn: async ({ itemId, campos, codigo, delta }: { itemId: string; campos: ItemPatch; codigo?: string; delta?: number }): Promise<ResultadoBipagem | null> => {
       // Com código (bipagem), o banco soma 1 e registra o histórico: duas leituras seguidas contam as duas.
       if (codigo) {
-        const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId!, p_codigo: codigo })
+        const { data, error } = await gravarPeca(() => supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId!, p_codigo: codigo }))
         if (error) throw error
         return data as ResultadoBipagem
       }
       // "Contar 1" / "Tirar 1": o banco soma ou tira 1 (sem sair de 0..qtd), sem depender da tela.
       if (delta) {
-        const { error } = await supabase.rpc("bipar_ajustar", { p_item: itemId!, p_delta: delta })
+        const { error } = await gravarPeca(() => supabase.rpc("bipar_ajustar", { p_item: itemId!, p_delta: delta }))
         if (error) throw error
         return null
       }
-      // Gravar o mesmo campo de novo não muda nada: se o banco estourou o tempo (57014), tenta mais uma vez
-      // antes de desfazer na tela. Bipagem e +1/-1 acima somam e por isso não repetem.
-      let { error } = await supabase.rpc("alterar_item", { p_item: itemId, p_campos: campos })
-      if (error?.code === "57014") ({ error } = await supabase.rpc("alterar_item", { p_item: itemId, p_campos: campos }))
+      const { error } = await gravarPeca(() => supabase.rpc("alterar_item", { p_item: itemId, p_campos: campos }))
       if (error) throw error
       return null
     },
-    onError: (e) => {
-      toast.error(msg(e))
-      qc.invalidateQueries({ queryKey: chavePedido(pedidoId) }) // volta ao que o banco tem
+    onError: (e, { itemId }) => {
+      const item = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))?.pedido_itens.find((i) => i.id === itemId)
+      toast.error(`${item?.sku || item?.nome || "Peça"}: ${msg(e)}`)
+      // A leitura imediata sobrescrevia TODAS as outras peças ainda na fila com dados antigos.
+      // onSettled reconcilia o resultado, inclusive esta falha, ao terminar a sequência.
     },
     onSettled: () => {
       if (qc.isMutating({ mutationKey: chave }) <= 1) {
-        qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
-        qc.invalidateQueries({ queryKey: ["pedidos"] })
-        qc.invalidateQueries({ queryKey: ["repetidas"] })
-        qc.invalidateQueries({ queryKey: ["acerto"] })
-        qc.invalidateQueries({ queryKey: ["etiquetar"] })
+        agendarReleituraPecas(qc, pedidoId)
       }
     },
   })
@@ -637,6 +665,7 @@ export function useAcoesItem(pedidoId: string) {
   return (item: Item, campos: ItemPatch, codigo?: string, delta?: number): Promise<ResultadoBipagem | null> | void => {
     const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
     if (!atual) return
+    cancelarReleituraPecas(qc, pedidoId)
     const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
     const depois = atual.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
     // Cancela uma leitura em andamento (ela traria o estado velho de volta) e grava sobre o que está no cache agora.

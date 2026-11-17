@@ -1,4 +1,4 @@
-// GERADO por npm run tipos:local a partir das migrations posteriores a 20261122150000.
+// GERADO por npm run tipos:local a partir das migrations posteriores a 20261122160000.
 // Não editar à mão. O arquivo database.types.ts é gerado pelo Supabase CLI.
 import type { Database as Remoto } from './database.types'
 

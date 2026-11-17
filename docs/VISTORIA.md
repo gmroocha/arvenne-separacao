@@ -429,6 +429,19 @@ que recusava a chamada atômica antes de completar a migration deixada pelo Clau
 | V73 | Alta | Venda do WhatsApp podia entrar na expedição sem cadastro, frete e endereço suficientes. | Validação no gatilho SQL e aviso com campos destacados. Retirada dispensa endereço; Shopify e somadas ficam fora. Testes comparam aviso/SQL e conferem recusa sem gravar parcialmente o pagamento. |
 | V74 | Alta | “Editar” não corrigia quem pagou nem o frete incluído no pagamento original. | Correção transacional do frete e valor pago, com histórico no banco, saldo/devoluções/acerto preservados e custo real separado. Testes com Pix, descontos, somadas, repetição, permissões e rollback; correções entram nas sequências financeiras aleatórias. |
 
+## Cliques rápidos e bipagem (V75 a V78, 17/11/2026)
+
+Correções locais. Diagnóstico e validação: [DIAGNOSTICO-PECAS-2026-11-17.md](DIAGNOSTICO-PECAS-2026-11-17.md).
+Migration `20261122160000_progresso_pecas_leve.sql` aplicada após dry-run em 17/11, com autorização
+“aplica” do Gustavo; tipos regenerados. App enviado para publicação automática pela main.
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V75 | Alta | Falha numa peça disparava releitura enquanto outras ainda estavam salvando; refoco também podia trazer estado antigo sobre a sequência. | Reconciliação no fim da fila, proteção do cache durante mutações otimistas e cancelamento HTTP das leituras abandonadas. Testes com falha e 30 cliques/refoco. |
+| V76 | Alta | Cada clique concluído recarregava detalhe, itens, histórico e consultas auxiliares, multiplicando a carga durante uma sequência. | Releituras agrupadas após 600 ms sem nova marcação e fila vazia; contagem de Repetidas sem refetch imediato. Reprodução caiu de 4 releituras para 1. |
+| V77 | Alta | Timeout confirmado de bipagem não tinha recuperação; repetir falhas de rede indiscriminadamente criaria contagem dupla. | Uma segunda tentativa com pausa somente para código 57014 + statement timeout. Testes de timeout e de resposta perdida após gravação, sem repetição neste último caso. |
+| V78 | Média | Cada avanço de peça recalculava as regras de retorno de etapa, inclusive cada +1 da bipagem. | Gatilho distingue avanço de reabertura; preserva proteção de arquivados, inserções, restaurações, quantidades e etapas posteriores. Teste instrumentado passou de 13 reavaliações para zero; desfazer continua retornando à etapa correta. |
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na

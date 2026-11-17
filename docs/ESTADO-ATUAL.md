@@ -1,5 +1,26 @@
 # Estado atual (atualizado em 17/11/2026)
 
+## Cliques rápidos e bipagem (17/11/2026) — banco aplicado, app preparado para publicação
+
+Investigação do relato na bipagem do ARV-1287 e de “Achei”/“Conferida” em sequência: CLI conectado;
+777 ocorrências de timeout nos logs coletados de hoje, com 4 em `bipar` e 565 em leituras da `v_pedidos`.
+Detalhes, limites da evidência e plano de validação em
+[`DIAGNOSTICO-PECAS-2026-11-17.md`](DIAGNOSTICO-PECAS-2026-11-17.md).
+
+Correções V75–V78: reconciliação só depois da fila, proteção contra refoco trazendo peças antigas,
+releituras agrupadas após 600 ms, retry único de timeout confirmado (nunca de resposta de bipagem
+perdida), contagem de vendas abertas pela tabela e gatilho que evita reavaliar retorno a cada avanço.
+Mudança de etapa não prossegue se o limite de espera acabar com peças ainda na fila.
+
+Migration **`20261122160000_progresso_pecas_leve.sql` aplicada em 17/11**, após dry-run e autorização
+“aplica” do Gustavo para banco e publicação. Consulta remota confirmou a otimização e as permissões
+preservadas. Tipos regenerados; `baseAplicada = 20261122160000`. Publicação automática pelo push desta
+entrega na main; conferir a versão servida após o build do Cloudflare. Nenhum pedido ou plano alterado.
+
+**Validação concluída:** 174 testes de unidade, 232 de banco e 152 de tela passaram (558); tipos,
+conferência de migrations locais, build e diff limpo. Nenhuma falha nova; permanece um aviso de lint
+preexistente em `ErrorBoundary.tsx`.
+
 **Banco zerado em 16/11/2026** (com o "sim" do Gustavo, `scripts/zerar-testes.sql`): 0 pedidos, peças, trocas,
 eventos e movimentos; numeração do WhatsApp volta a W0001. Mantidos: catálogo (2051), Clube (2), feriados (195).
 Próximo passo (Gustavo): Sincronizar com a Shopify; entra a partir da data gravada em `SHOPIFY_IMPORTAR_DESDE`.
