@@ -1,4 +1,4 @@
-// GERADO por npm run tipos:local a partir das migrations posteriores a 20261122180000.
+// GERADO por npm run tipos:local a partir das migrations posteriores a 20261122190000.
 // Não editar à mão. O arquivo database.types.ts é gerado pelo Supabase CLI.
 import type { Database as Remoto } from './database.types'
 
@@ -10,7 +10,7 @@ type Adicoes = {
 
   }
   Functions: {
-    sincronizar_shopify_agendado: { Args: Record<PropertyKey, never>; Returns: number | null }
+
   }
 }
 

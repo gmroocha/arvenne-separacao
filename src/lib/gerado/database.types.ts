@@ -2298,6 +2298,7 @@ export type Database = {
       romaneio_publico: { Args: { p_token: string }; Returns: Json }
       sair_do_desvio: { Args: { p_pedido: string }; Returns: string }
       saldo_financeiro: { Args: { p_pedido: string }; Returns: number }
+      sincronizar_shopify_agendado: { Args: never; Returns: number }
       somar_venda: {
         Args: {
           p_forma: string

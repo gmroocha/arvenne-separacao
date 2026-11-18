@@ -16,10 +16,10 @@ quebravam ao tocar no campo. IDs V90–V99 em [`VISTORIA.md`](VISTORIA.md).
 - **Fila × separando:** "Começar separação"; "Na fila há…" / "Separando há…" no pedido e nos cartões; as métricas já separavam.
 - **Detalhe da peça:** tocar na foto mostra código, nome, variante, quantidade, **preço (só ali)**, nota e quantas faltam.
 - **Etiquetas:** uma por código e variante (não por unidade) e "Imprimir etiqueta" no "⋯" da peça.
-- **Shopify de hora em hora:** migration `20261122190000_shopify_automatica.sql` **NÃO aplicada** (aguarda revisão e o "sim" do
-  Gustavo; dry-run: só ela entraria). O app não depende dela. Depois de aplicada, o Gustavo grava `cron_secret` no Vault pelo
-  painel (`PASSO-A-PASSO.md`, Parte 5, passo 6). Hoje no remoto: só o job `arvenne-vistoria-diaria`; `pg_net` ainda não
-  instalado; Vault sem `cron_secret`.
+- **Shopify de hora em hora:** migration `20261122190000_shopify_automatica.sql` **aplicada em 18/11** com o "sim" do Gustavo
+  (dry-run antes; `baseAplicada = 20261122190000`). Remoto conferido: `pg_net` instalado, job `shopify-sync` ativo em
+  `0 * * * *`, função sem permissão para os papéis do app. **Falta:** o Gustavo gravar `cron_secret` no Vault pelo painel
+  (`PASSO-A-PASSO.md`, Parte 5, passo 6); até lá cada hora só deixa um aviso no log, sem chamar nada.
 - **Limite honesto:** o banco de teste (PGlite) não tem `pg_cron`, `pg_net` nem Vault (simulados); a chamada real à Edge e o
   disparo no relógio só se confirmam depois de aplicar e gravar o segredo.
 - **Próxima ação:** revisar, aplicar a migration da Shopify (com o "sim"), regenerar tipos (`baseAplicada`), o Gustavo grava o
