@@ -10,7 +10,6 @@ import { NOME_ETAPA, PASSOS, passoAtual, passoDe, type StatusPedido } from "@/li
 import type { Item } from "@/lib/tipos"
 import Bipagem from "./Bipagem"
 import Conferencia from "./Conferencia"
-import Etiquetagem from "./Etiquetagem"
 import Problemas from "./Problemas"
 import { Embalagem, Enviado, Postagem } from "./Fechamento"
 import Frete from "./Frete"
@@ -25,38 +24,37 @@ type Props = {
   aoVoltar: () => void
   acao: AcaoItem
   patch: (campos: CamposPedido) => void
-  aoConcluir: () => void
   aoTrocar: (item: Item) => void
 }
 
-// O painel muda conforme a etapa vista. Vendo outra etapa que não a atual, o botão de concluir some
-// (quem decide mudar de etapa é a atual), mas as ações das peças continuam valendo.
-export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoConcluir, aoTrocar }: Props) {
+// Etapas em que cada peça anda sozinha: dá para agir nas peças que já chegaram lá, mesmo com o pedido em outra.
+const ETAPAS_DE_PECA = ["separacao", "conferencia", "bipagem"]
+
+// O painel muda conforme a etapa vista. O pedido muda de etapa sozinho quando a etapa termina; nas etapas
+// de peça as ações valem em qualquer uma delas, nas de documentos só a etapa atual trabalha.
+export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoTrocar }: Props) {
   const atualIdx = passoAtual(pedido)
   const vistaIdx = vista ? passoDe(vista) : atualIdx
-  const somenteVer = vista !== null && vistaIdx !== atualIdx
-  const concluir = somenteVer ? undefined : aoConcluir
   const etapa = vistaIdx >= 0 ? PASSOS[vistaIdx].id : null
+  const somenteVer = vista !== null && vistaIdx !== atualIdx && !ETAPAS_DE_PECA.includes(etapa ?? "")
   const [busca, setBusca] = useState("")
 
   const painel = () => {
     switch (etapa) {
       case "separacao":
-        return <Separacao pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoConcluir={concluir} />
+        return <Separacao pedido={pedido} acao={acao} aoTrocar={aoTrocar} />
       case "conferencia":
-        return <Conferencia pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoConcluir={concluir} />
-      case "etiquetagem":
-        return <Etiquetagem pedido={pedido} acao={acao} aoTrocar={aoTrocar} aoConcluir={concluir} />
+        return <Conferencia pedido={pedido} acao={acao} aoTrocar={aoTrocar} />
       case "bipagem":
-        return <Bipagem pedido={pedido} acao={acao} aoConcluir={concluir} />
+        return <Bipagem pedido={pedido} acao={acao} />
       case "faturamento":
-        return <NotaFrete pedido={pedido} patch={patch} aoConcluir={concluir} />
+        return <NotaFrete pedido={pedido} patch={patch} />
       case "embalagem":
-        return <Embalagem pedido={pedido} patch={patch} aoConcluir={concluir} />
+        return <Embalagem pedido={pedido} patch={patch} />
       case "frete":
-        return <Frete pedido={pedido} patch={patch} aoConcluir={concluir} />
+        return <Frete pedido={pedido} patch={patch} />
       case "pronto_envio":
-        return <Postagem pedido={pedido} patch={patch} aoConcluir={concluir} />
+        return <Postagem pedido={pedido} patch={patch} />
       case "enviado":
         return <Enviado pedido={pedido} patch={patch} />
       default:
@@ -72,7 +70,7 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoCo
   // Embalagem, Frete, Postagem) mostra o cartão aqui em cima, para a falta não ficar escondida.
   const cartaoDoDesvio = ehDesvio(pedido.status) && !somenteVer && ["bipagem", "faturamento", "embalagem", "frete", "pronto_envio"].includes(etapa ?? "")
   // Busca de peça nas etapas de peças (a bipagem já tem o próprio campo de código).
-  const comBusca = ["separacao", "conferencia", "etiquetagem"].includes(etapa ?? "") || cartaoDoDesvio
+  const comBusca = ["separacao", "conferencia"].includes(etapa ?? "") || cartaoDoDesvio
   const vivas = pedido.pedido_itens.filter((i) => i.status !== "removido")
   const nenhuma = comBusca && busca.trim() !== "" && !pedido.pedido_itens.some((i) => combinaBusca(i, busca))
 

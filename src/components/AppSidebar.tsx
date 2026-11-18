@@ -1,11 +1,11 @@
 import { useSidebar } from "@/components/ui/sidebar-context"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
-import { Archive, BookOpen, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck, Users } from "lucide-react"
+import { Archive, BookOpen, CheckCheck, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck, Users } from "lucide-react"
 import { useTheme } from "next-themes"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
-import { useContagemFeedbacksAbertos, useContagemRepetidas, useContagens } from "@/lib/api"
+import { useContagemFeedbacksAbertos, useContagemRepetidas, useContagens, usePendentesRastreio } from "@/lib/api"
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +27,7 @@ export default function AppSidebar() {
   const { data: repetidas } = useContagemRepetidas()
   const { data: contagens } = useContagens()
   const { data: abertos } = useContagemFeedbacksAbertos()
+  const { data: semRastreio } = usePendentesRastreio()
   const [email, setEmail] = useState("")
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function AppSidebar() {
       badge: contagens?.atrasados,
       alerta: true,
     },
+    { to: "/concluidos", nome: "Concluídos", icone: CheckCheck, ativo: pathname === "/concluidos", badge: semRastreio?.length },
     { to: "/repetidas", nome: "Peças repetidas", icone: Repeat, ativo: pathname === "/repetidas", badge: repetidas },
     { to: "/catalogo", nome: "Catálogo", icone: BookOpen, ativo: pathname === "/catalogo" },
     { to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },

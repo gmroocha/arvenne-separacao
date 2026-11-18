@@ -3,12 +3,14 @@ import { keepPreviousData, useIsMutating, useMutation, useQuery, useQueryClient,
 import { toast } from "sonner"
 import { supabase, chamarFuncao } from "@/lib/supabase"
 import type { Database } from "@/lib/banco"
+import type { Json } from "@/lib/gerado/database.types"
 import { juntarLidos, lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
 import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
 import { agendarAtualizacaoOperacional } from "@/lib/atualizacaoOperacional"
 import { gravarPeca } from "@/lib/gravarPeca"
+import { enfileirarMarca, type Destino, type RespostaLote } from "@/lib/lotePecas"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
 import type { AcertoPedido, Membro, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
@@ -100,8 +102,8 @@ export function useArquivo(busca: string, limite: number) {
       let q = supabase
         .from("v_pedidos")
         .select("*")
-        .in("status", STATUS_DA_FASE.arquivo)
-        .neq("status", "somada")
+        // Concluídos (status enviado) têm página própria; somadas ficam dentro do pedido principal (V72).
+        .in("status", ["cancelado", "perdida"])
         .order("status_desde", { ascending: false })
         .limit(limite)
       const filtro = filtroBuscaPedidos(busca)
@@ -109,6 +111,30 @@ export function useArquivo(busca: string, limite: number) {
       const { data, error } = await q
       if (error) throw error
       return data as Pedido[]
+    },
+  })
+}
+
+// Pedidos concluídos (status "enviado"): postados, a caminho ou entregues. Leitura direta da tabela: a página só
+// precisa de cliente, rastreio e datas (nada financeiro).
+const COLUNAS_CONCLUIDO = "id, numero, origem, cliente_nome, cliente_telefone, rastreio, rastreio_url, rastreio_enviado_em, postado_em, entregue_em, status_desde, shopify_url" as const
+export type PedidoConcluido = {
+  id: string; numero: string; origem: "shopify" | "whatsapp"; cliente_nome: string | null; cliente_telefone: string | null
+  rastreio: string | null; rastreio_url: string | null; rastreio_enviado_em: string | null; postado_em: string | null
+  entregue_em: string | null; status_desde: string; shopify_url: string | null
+}
+export function useConcluidos(busca: string) {
+  const filtro = filtroBuscaPedidos(busca)
+  return useQuery({
+    queryKey: ["pedidos", "concluidos", filtro ?? ""],
+    refetchInterval: intervaloListas,
+    placeholderData: keepPreviousData,
+    queryFn: async ({ signal }) => {
+      let q = supabase.from("pedidos").select(COLUNAS_CONCLUIDO).eq("status", "enviado").order("status_desde", { ascending: false }).limit(LIMITE_LISTA)
+      if (filtro) q = q.or(filtro)
+      const { data, error } = await q.abortSignal(signal)
+      if (error) throw error
+      return data as unknown as PedidoConcluido[]
     },
   })
 }
@@ -467,7 +493,7 @@ function useAcao<A, R = unknown>(fn: (a: A) => Promise<R>, invalidar: unknown[][
   })
 }
 
-const TODAS = [["pedidos"], ["pedido"], ["repetidas"], ["acerto"], ["etiquetar"]]
+const TODAS = [["pedidos"], ["pedido"], ["repetidas"], ["acerto"]]
 
 export type ItemPatch = Partial<
   Pick<Item, "status" | "observacao" | "conferido_em" | "etiquetado_em" | "etiqueta_previa" | "qtd_bipada" | "bipado_em" | "qtd" | "preco">
@@ -532,7 +558,6 @@ export function useMudarStatus() {
       }
       qc.invalidateQueries({ queryKey: ["pedidos"] })
       qc.invalidateQueries({ queryKey: ["acerto"] })
-      qc.invalidateQueries({ queryKey: ["etiquetar"] })
     },
   })
 }
@@ -551,7 +576,7 @@ export type CamposPedido = Partial<
     | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_peso_g" | "frete_servico" | "rastreio_url"
     | "pedido_fornecedor_numero" | "pedido_fornecedor_em" | "embalado_em" | "postado_em" | "rastreio_enviado_em"
   >
->
+> & { entregue_em?: string | null } // quando a cliente recebeu (só na página Concluídos)
 
 // Marca a venda como paga e soma as peças ao pedido principal (função somar_venda): a venda vira
 // "somada" e as peças entram no pedido como adicionais. Devolve a promessa para a tela navegar depois.
@@ -598,7 +623,7 @@ export function usePatchPedido(pedidoId: string) {
   })
 }
 
-const ESTADOS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "conferencia", "etiquetagem", "bipagem"]
+const ESTADOS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "conferencia", "bipagem"]
 const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa: false, qtd_bipada: 0, bipado_em: null } as const
 
 // A fila local e o Broadcast compartilham o lote por cache. Só relê após as gravações
@@ -607,74 +632,133 @@ function agendarReleituraPecas(qc: QueryClient, id: string) {
   agendarAtualizacaoOperacional(qc, [id], { espera: 600 })
 }
 
-// Todas as ações numa peça (achei, conferida, etiquetada, bipada, desfazer, falta, defeito...).
-// A peça muda na tela na hora; alterar_item confirma peça e etapa juntas, uma gravação por vez por pedido.
-// Efeitos no pedido (nada disso trava o clique):
+// Só progresso da peça (achei, conferida, bipada): vai em lote para marcar_pecas. O resto (falta, retirar,
+// restaurar, nota, quantidade) continua indo uma a uma por alterar_item.
+const CAMPOS_DE_PROGRESSO = new Set<keyof ItemPatch>(["status", "conferido_em", "etiquetado_em", "etiqueta_previa", "qtd_bipada", "bipado_em"])
+function soProgresso(campos: ItemPatch): boolean {
+  const chaves = Object.keys(campos) as (keyof ItemPatch)[]
+  if (chaves.some((k) => !CAMPOS_DE_PROGRESSO.has(k))) return false
+  return campos.status === undefined || campos.status === "pendente" || campos.status === "encontrado"
+}
+
+// Resposta do banco ao lote: grava no cache sem reler o pedido. Peça que já tem marca mais nova na fila
+// fica como está (a tela dela está à frente do banco).
+function aplicarRespostaLote(qc: QueryClient, pedidoId: string, r: RespostaLote, emFila: Set<string>) {
+  const antes = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
+  qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) => {
+    if (!old) return old
+    const porId = new Map(r.itens.map((i) => [i.id, i]))
+    return {
+      ...old,
+      status: r.pedido.status as StatusPedido,
+      status_desde: r.pedido.status_desde,
+      etapa_antes_desvio: r.pedido.etapa_antes_desvio as Pedido["etapa_antes_desvio"],
+      pedido_itens: old.pedido_itens.map((i) => (porId.has(i.id) && !emFila.has(i.id) ? { ...i, ...porId.get(i.id)! } as Item : i)),
+      pedido_eventos: r.eventos.length ? [...(r.eventos as Evento[]).reverse(), ...old.pedido_eventos] : old.pedido_eventos,
+    }
+  })
+  if (antes && antes.status !== r.pedido.status) {
+    // A etapa do pedido mudou: as listas e os contadores ficam desatualizados e se leem ao serem abertos.
+    qc.invalidateQueries({ queryKey: ["pedidos"], refetchType: "none" })
+    qc.invalidateQueries({ queryKey: ["repetidas"], refetchType: "none" })
+  }
+}
+
+// Todas as ações numa peça (achei, conferida, bipada, desfazer, falta, defeito...).
+// O progresso (achei, conferida, bipada) muda a tela na hora e vai em lote, a cada ~400 ms, numa única
+// requisição por pedido (marcar_pecas): quem calcula a etapa do pedido é o banco, na mesma transação.
+// As demais ações vão por alterar_item. Efeitos no pedido:
 //  - falta/defeito leva o pedido a "avisar cliente" (o banco guarda de qual etapa);
 //  - resolvidos os problemas, ele volta à etapa de origem (ou à separação, se sobra peça pendente);
-//  - primeira peça achada tira o pedido de "novo";
-//  - a etapa completa é percebida pela tela do pedido (abre o Dialog; quem muda de etapa é a pessoa).
+//  - o pedido avança sozinho quando todas as peças terminam a etapa.
 export function useAcoesItem(pedidoId: string) {
   const qc = useQueryClient()
   const chave = ["item", pedidoId]
 
-  const gravar = useMutation({
+  const destino: Destino = {
+    enviar: (marcas) => supabase.rpc("marcar_pecas", { p_pedido: pedidoId, p_marcas: marcas as unknown as Json }) as PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null; status?: number }>,
+    aoResponder: (r, emFila) => aplicarRespostaLote(qc, pedidoId, r, emFila),
+    aoDescartar: (mensagem) => {
+      toast.error(msg({ message: mensagem }))
+      void qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
+    },
+  }
+
+  const gravarOutros = useMutation({
     mutationKey: chave,
     meta: { preservarPecas: true },
     scope: { id: `pedido-${pedidoId}` },
-    mutationFn: async ({ itemId, campos, codigo, delta }: { itemId: string; campos: ItemPatch; codigo?: string; delta?: number }): Promise<ResultadoBipagem | null> => {
-      // Com código (bipagem), o banco soma 1 e registra o histórico: duas leituras seguidas contam as duas.
-      if (codigo) {
-        const { data, error } = await gravarPeca(() => supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId!, p_codigo: codigo }))
-        if (error) throw error
-        return data as ResultadoBipagem
-      }
-      // "Contar 1" / "Tirar 1": o banco soma ou tira 1 (sem sair de 0..qtd), sem depender da tela.
-      if (delta) {
-        const { error } = await gravarPeca(() => supabase.rpc("bipar_ajustar", { p_item: itemId!, p_delta: delta }))
-        if (error) throw error
-        return null
-      }
+    mutationFn: async ({ itemId, campos }: { itemId: string; campos: ItemPatch }) => {
       const { error } = await gravarPeca(() => supabase.rpc("alterar_item", { p_item: itemId, p_campos: campos }))
       if (error) throw error
-      return null
     },
     onError: (e, { itemId }) => {
       const item = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))?.pedido_itens.find((i) => i.id === itemId)
       toast.error(`${item?.sku || item?.nome || "Peça"}: ${msg(e)}`)
-      // A leitura imediata sobrescrevia TODAS as outras peças ainda na fila com dados antigos.
-      // onSettled reconcilia o resultado, inclusive esta falha, ao terminar a sequência.
     },
     onSettled: () => {
-      if (qc.isMutating({ mutationKey: chave }) <= 1) {
-        agendarReleituraPecas(qc, pedidoId)
-      }
+      if (qc.isMutating({ mutationKey: chave }) <= 1) agendarReleituraPecas(qc, pedidoId)
     },
   })
 
-  // Com codigo (leitura do leitor) devolve o resultado do banco; com delta (+1/-1) o banco ajusta a contagem.
+  // Com codigo (leitura do leitor) ou delta (+1/-1) a contagem parte do número que está na tela agora, não do
+  // toque: com toques rápidos o botão ainda trazia a contagem antiga (V64). O resultado ("ok"/"excedente") é local.
   return (item: Item, campos: ItemPatch, codigo?: string, delta?: number): Promise<ResultadoBipagem | null> | void => {
     const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
     if (!atual) return
-    const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
-    const depois = atual.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
+    const base = atual.pedido_itens.find((i) => i.id === item.id) ?? item
+    const passo = codigo ? 1 : (delta ?? 0)
+    const progresso = soProgresso(campos)
+    let patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : { ...campos }
+    if (progresso && "conferido_em" in campos) {
+      patch = { ...patch, etiquetado_em: campos.conferido_em ?? null, ...(campos.conferido_em ? {} : { qtd_bipada: 0, bipado_em: null }) }
+    }
+    if (progresso && patch.qtd_bipada !== undefined) {
+      patch.qtd_bipada = Math.min(base.qtd, Math.max(0, passo ? base.qtd_bipada + passo : patch.qtd_bipada))
+    }
+    const excedente = !!codigo && base.qtd_bipada >= base.qtd
     // Cancela uma leitura em andamento (ela traria o estado velho de volta) e grava sobre o que está no cache agora.
     void qc.cancelQueries({ queryKey: chavePedido(pedidoId) })
     if (campos.status) {
+      const depois = atual.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
       const problemas = depois.some((i) => i.status === "falta" || i.status === "defeito")
       if (problemas && ESTADOS_DE_PECAS.includes(atual.status)) toast.info("Avise a cliente sobre a peça em falta")
     }
-    // Contagem (+1/-1 e leitura do código) parte do número que está na tela agora, não do toque: com toques
-    // rápidos o botão ainda trazia a contagem antiga e a peça ficava "1/3" até a fila acabar (V64).
-    const passo = codigo ? 1 : (delta ?? 0)
-    const aplicar = (i: Item): Item =>
-      passo && patch.qtd_bipada !== undefined ? { ...i, ...patch, qtd_bipada: Math.min(i.qtd, Math.max(0, i.qtd_bipada + passo)) } : { ...i, ...patch }
     // Troca direto, sem animação: a transição dos blocos (deslizar para o lugar) travava a tela (V65).
-    qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) =>
-      old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? aplicar(i) : i)) } : old,
-    )
-    return gravar.mutateAsync({ itemId: item.id, campos: patch, codigo, delta }).catch(() => null)
+    if (!excedente) {
+      qc.setQueryData<PedidoDetalhe>(chavePedido(pedidoId), (old) =>
+        old ? { ...old, pedido_itens: old.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i)) } : old,
+      )
+    }
+    if (!progresso) {
+      void gravarOutros.mutateAsync({ itemId: item.id, campos: patch }).catch(() => null)
+      return
+    }
+    if (excedente) return Promise.resolve("excedente" as ResultadoBipagem)
+    if (campos.status) enfileirarMarca(qc, pedidoId, { item: item.id, campo: "status", valor: campos.status }, destino)
+    if ("conferido_em" in campos) enfileirarMarca(qc, pedidoId, { item: item.id, campo: "conferida", valor: campos.conferido_em != null }, destino)
+    if (patch.qtd_bipada !== undefined && !campos.status && !("conferido_em" in campos)) {
+      enfileirarMarca(qc, pedidoId, { item: item.id, campo: "bipada", valor: patch.qtd_bipada, ...(codigo ? { codigo } : {}) }, destino)
+    }
+    return codigo ? Promise.resolve("ok" as ResultadoBipagem) : undefined
   }
+}
+
+// Recalcula a etapa do pedido pelas peças (marcar_pecas sem marcas). Cura pedido parado, por exemplo um que já
+// estava com a etapa completa quando esta versão entrou no ar.
+export function useRecalcularEtapa(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: ["recalcular", pedidoId],
+    mutationFn: async () => {
+      await esperarFilaDoPedido(qc, pedidoId)
+      const { data, error } = await supabase.rpc("marcar_pecas", { p_pedido: pedidoId, p_marcas: [] })
+      if (error) throw error
+      return data as unknown as RespostaLote
+    },
+    onSuccess: (r) => aplicarRespostaLote(qc, pedidoId, r, new Set()),
+    onError: () => void qc.invalidateQueries({ queryKey: chavePedido(pedidoId) }),
+  })
 }
 
 // Falta parcial: "faltam N de M". O banco divide a linha (função marcar_falta): o resto segue na separação
@@ -698,9 +782,29 @@ export function useMarcarFalta(pedidoId: string) {
     onError: (e) => toast.error(msgBanco(e)),
     onSettled: () => {
       if (qc.isMutating({ mutationKey: ["item", pedidoId] }) <= 1) {
-        ;[chavePedido(pedidoId), ["pedidos"], ["troca"], ["repetidas"], ["acerto"], ["etiquetar"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
+        ;[chavePedido(pedidoId), ["pedidos"], ["troca"], ["repetidas"], ["acerto"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
       }
     },
+  })
+}
+
+// Mover o pedido de etapa à mão (menu "Mover para outra etapa") e "Concluir pedido" (= mover para "enviado").
+// Para frente o banco marca como feito tudo o que vem antes (e grava etapas_puladas); para trás zera o trabalho do
+// destino em diante. Recusa troca em andamento, acerto pendente e peça em falta (a mensagem vem do banco).
+export function useMoverEtapa(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: ["mover-etapa", pedidoId],
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async ({ destino }: { destino: StatusPedido }) => {
+      await esperarFilaDoPedido(qc, pedidoId)
+      const { data, error } = await supabase.rpc("mover_etapa", { p_pedido: pedidoId, p_destino: destino })
+      if (error) throw new Error(msgBanco(error))
+      return data as string
+    },
+    onSuccess: (_, a) => toast.success(a.destino === "enviado" ? "Pedido concluído" : `Pedido movido para ${NOME_ETAPA[a.destino]}`),
+    onError: (e) => toast.error(msg(e)),
+    onSettled: () => [...TODAS, ["troca"]].forEach((queryKey) => qc.invalidateQueries({ queryKey })),
   })
 }
 
@@ -720,17 +824,6 @@ export function useReiniciar(pedidoId: string) {
     onError: (e) => toast.error(msg(e)),
     onSettled: () => [...TODAS, ["troca"]].forEach((queryKey) => qc.invalidateQueries({ queryKey })),
   })
-}
-
-// Leitura do leitor de código: soma 1 na peça (sem passar da quantidade) e grava o histórico em "bipagens",
-// tudo no banco (função bipar). Sem itemId, registra "fora_do_pedido". Devolve o resultado.
-export async function registrarBipagem(pedidoId: string, itemId: string | null, codigo: string): Promise<ResultadoBipagem | null> {
-  const { data, error } = await supabase.rpc("bipar", { p_pedido: pedidoId, p_item: itemId!, p_codigo: codigo })
-  if (error) {
-    toast.error(msg(error))
-    return null
-  }
-  return data as ResultadoBipagem
 }
 
 export function useAtualizarItem() {
@@ -1054,7 +1147,7 @@ export function useAtivarPecaClube() {
   )
 }
 
-// codigo (só na bipagem): grava pela função bipar, que soma 1 no banco e registra o histórico.
+// codigo (só na bipagem): leitura do leitor; o banco confere que é o SKU da peça. O resultado é decidido na tela.
 export type AcaoItem = (item: Item, campos: ItemPatch, codigo?: string, delta?: number) => Promise<ResultadoBipagem | null> | void
 
 // Feedbacks da equipe (página /feedbacks): guardados e visíveis a todos.
@@ -1121,7 +1214,7 @@ export function useResolverFeedback() {
 // ---------------------------------------------------------------------------
 // Trocas de peça em falta: UMA troca por pedido, com várias peças e um link só.
 // ---------------------------------------------------------------------------
-const TROCAS_TUDO = [["troca"], ["alteracoes"], ["pedido"], ["pedidos"], ["repetidas"], ["acerto"], ["etiquetar"]]
+const TROCAS_TUDO = [["troca"], ["alteracoes"], ["pedido"], ["pedidos"], ["repetidas"], ["acerto"]]
 
 // Troca ativa do pedido (rascunho, enviada ou respondida) com peças, opções, valores e resumo.
 // Todo dinheiro (pago, diferença, crédito) vem de v_troca_valores / v_troca_resumo.
@@ -1693,37 +1786,6 @@ export function carrinhoDaPeca(p: TrocaPublica["pecas"][number]): { opcao_id: st
   return p.escolha_tipo === "opcao" && p.escolha_opcao_id ? [{ opcao_id: p.escolha_opcao_id, qtd: p.qtd }] : []
 }
 
-export type PecasDoPedido = { pedidoId: string; numero: string; cliente: string | null; itens: Item[] }
-
-// Peças encontradas e ainda sem etiqueta, de todos os pedidos em Etiquetagem (botão "Imprimir todas" da Expedição).
-export function usePecasParaEtiquetar() {
-  return useQuery({
-    queryKey: ["etiquetar"],
-    refetchInterval: intervaloListas,
-    queryFn: async () => {
-      const { data: pedidos, error } = await supabase
-        .from("v_pedidos")
-        .select("id,numero,cliente_nome,prazo")
-        .eq("status", "etiquetagem")
-        .order("prazo", { ascending: true, nullsFirst: false })
-        .limit(300)
-      if (error) throw error
-      if (!pedidos || pedidos.length === 0) return [] as PecasDoPedido[]
-      const { data: itens, error: e2 } = await supabase
-        .from("pedido_itens")
-        .select("*")
-        .in("pedido_id", pedidos.map((p) => p.id).filter((id): id is string => id !== null))
-        .eq("status", "encontrado")
-        .is("etiquetado_em", null)
-        .order("ordem")
-      if (e2) throw e2
-      return pedidos
-        .map((p) => ({ pedidoId: p.id as string, numero: p.numero as string, cliente: (p.cliente_nome as string | null) ?? null, itens: (itens as Item[]).filter((i) => i.pedido_id === p.id) }))
-        .filter((p) => p.itens.length > 0) as PecasDoPedido[]
-    },
-  })
-}
-
 // ---------------------------------------------------------------------------
 // Time Arvenne: pessoas da equipe e quem faz cada etapa do pedido.
 // ---------------------------------------------------------------------------
@@ -1755,6 +1817,17 @@ export function useSalvarMembro() {
       }
     },
     [["equipe"]],
+  )
+}
+
+// Excluir de verdade: a pessoa sai do Time e dos pedidos em que era responsável. Pedidos e histórico ficam.
+export function useExcluirMembro() {
+  return useAcao(
+    async (id: string) => {
+      const { error } = await supabase.rpc("excluir_membro", { p_membro: id })
+      if (error) throw new Error(msgBanco(error))
+    },
+    [["equipe"], ["pedido"], ["pedidos"]],
   )
 }
 

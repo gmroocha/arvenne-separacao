@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
-import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import { LinhaPeca } from "@/components/comum/Peca"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,7 +22,7 @@ const LINK_OLIST = import.meta.env.VITE_URL_OLIST as string | undefined
 const LINK_BLING = import.meta.env.VITE_URL_BLING as string | undefined
 
 export type Patch = (campos: CamposPedido) => void
-type Props = { pedido: PedidoDetalhe; patch: Patch; aoConcluir?: () => void }
+type Props = { pedido: PedidoDetalhe; patch: Patch }
 
 export type Dado = { rotulo: string; valor: string | null }
 
@@ -253,7 +252,8 @@ export function ModalidadeFrete({
   )
 }
 
-export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
+// Nota fiscal e pedido LR: quando os dois estão feitos o pedido vai sozinho para a Embalagem (o banco avança).
+export default function NotaFrete({ pedido, patch }: Props) {
   const [pecasAbertas, setPecasAbertas] = useState(false)
   const itens = pedido.pedido_itens.filter((i) => i.status === "encontrado")
   const ruaNumero = [pedido.entrega_logradouro, pedido.entrega_numero].filter(Boolean).join(", ")
@@ -367,11 +367,17 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
       </Passo>
 
       <Passo numero={2} icone={<Store />} titulo="Pedido de venda LR (fornecedor)" feito={lr} feitoEm={pedido.pedido_fornecedor_em} aoDesfazer={() => patch({ pedido_fornecedor_em: null })} textoDesfazer="Desfazer pedido LR feito">
-        <ul className="flex flex-col gap-1 text-sm">
+        <ul className="flex flex-col" aria-label="Peças do pedido LR">
           {skusLr.map(([sku, qtd]) => (
-            <li key={sku} className="flex gap-2 tabular-nums">
+            <li key={sku} className="flex min-h-11 items-center gap-1 border-b py-1 text-sm tabular-nums last:border-b-0 sm:min-h-9">
               <span className="w-8 shrink-0 text-right font-semibold">{qtd}×</span>
-              <span className="font-mono">{sku}</span>
+              <span className="min-w-0 flex-1 font-mono break-all">{sku}</span>
+              <Button variant="ghost" size="icon-toque" className="shrink-0" aria-label={`Copiar código ${sku}`} onClick={() => copiar(sku, "Código copiado")}>
+                <Copy />
+              </Button>
+              <Button variant="ghost" size="toque" className="shrink-0 px-2" aria-label={`Copiar quantidade de ${sku}`} onClick={() => copiar(String(qtd), "Quantidade copiada")}>
+                <Copy /> {qtd}
+              </Button>
             </li>
           ))}
         </ul>
@@ -394,12 +400,6 @@ export default function NotaFrete({ pedido, patch, aoConcluir }: Props) {
           </Button>
         )}
       </Passo>
-
-      {aoConcluir && (
-        <ConcluirEtapa disabled={!(nf && lr)} onClick={aoConcluir}>
-          Concluir nota fiscal
-        </ConcluirEtapa>
-      )}
     </div>
   )
 }

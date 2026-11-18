@@ -26,8 +26,8 @@ export default function Cabecalho({ pedido, aoVerDados, semValores }: Props) {
   return (
     <div className="flex flex-col gap-2">
       <Button variant="ghost" size="sm" asChild className="w-fit">
-        <Link to={pedido.fase === "arquivo" ? "/arquivo" : "/"}>
-          <ArrowLeft /> {pedido.fase === "arquivo" ? "Arquivo" : "Expedição"}
+        <Link to={pedido.status === "enviado" ? "/concluidos" : pedido.fase === "arquivo" ? "/arquivo" : "/"}>
+          <ArrowLeft /> {pedido.status === "enviado" ? "Concluídos" : pedido.fase === "arquivo" ? "Arquivo" : "Expedição"}
         </Link>
       </Button>
       <div className="flex items-start justify-between gap-2">
@@ -45,7 +45,7 @@ export default function Cabecalho({ pedido, aoVerDados, semValores }: Props) {
             )}
           </div>
           <Responsaveis pedido={pedido} />
-          {/* Selo único: só no PC; no celular fica ao lado de "Etapa X de 9". */}
+          {/* Selo único: só no PC; no celular fica ao lado de "Etapa X de N". */}
           {ehDesvio(pedido.status) && <SeloStatus status={pedido.status} className="mt-1 hidden w-fit lg:inline-flex" />}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">

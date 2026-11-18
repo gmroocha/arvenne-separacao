@@ -1,11 +1,10 @@
 import { Fragment, type ReactNode } from "react"
 import { Check } from "lucide-react"
-import { useAcoesPedido } from "@/components/pedido/useAcoesPedido"
+import { useAcoesPedido, type PedidoMenu } from "@/components/pedido/useAcoesPedido"
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
-import type { Pedido } from "@/lib/tipos"
 
 // Clique direito no cartão: as mesmas ações do "⋯" do pedido.
-export default function MenuContexto({ pedido, children }: { pedido: Pick<Pedido, "id" | "status" | "fase" | "shopify_url" | "etapas_permitidas">; children: ReactNode }) {
+export default function MenuContexto({ pedido, children }: { pedido: PedidoMenu; children: ReactNode }) {
   const { grupos, dialogos } = useAcoesPedido(pedido, { abrir: true })
   const visiveis = grupos.filter((g) => g.itens.length > 0)
   return (

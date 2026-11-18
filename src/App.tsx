@@ -12,6 +12,7 @@ const configurado = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env
 const Login = lazy(() => import("@/pages/Login"))
 const Expedicao = lazy(() => import("@/pages/Expedicao"))
 const Arquivo = lazy(() => import("@/pages/Arquivo"))
+const Concluidos = lazy(() => import("@/pages/Concluidos"))
 const Vendas = lazy(() => import("@/pages/Vendas"))
 const Venda = lazy(() => import("@/pages/Venda"))
 const NovaVenda = lazy(() => import("@/pages/NovaVenda"))
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="vendas/nova" element={<NovaVenda />} />
           <Route path="vendas/:id" element={<Venda />} />
           <Route path="pedidos/:id" element={<Pedido />} />
+          <Route path="concluidos" element={<Concluidos />} />
           <Route path="arquivo" element={<Arquivo />} />
           <Route path="repetidas" element={<Repetidas />} />
           <Route path="clube" element={<Clube />} />

@@ -1,13 +1,12 @@
 import { useState, type ReactNode } from "react"
 import { useNavigate } from "react-router"
-import { ClipboardList, ExternalLink, FolderOpen, RotateCcw, XCircle } from "lucide-react"
+import { CheckCheck, ClipboardList, ExternalLink, FolderOpen, RotateCcw, XCircle } from "lucide-react"
 import type { GrupoAcoes } from "@/components/MenuAcoes"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useMudarStatus, useReiniciar } from "@/lib/api"
-import { ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
+import { useMoverEtapa, useMudarStatus, useReiniciar } from "@/lib/api"
+import { ETAPAS_MOVER, ICONE_ETAPA, NOME_ETAPA, PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
-import { motivoEtapa } from "@/lib/regrasEtapas"
 
 type Opcoes = {
   aoVerDados?: () => void // só nas etapas de foco, onde a lateral de dados some
@@ -15,33 +14,52 @@ type Opcoes = {
   aoCancelado?: () => void
 }
 
+export type PedidoMenu = Pick<Pedido, "id" | "status" | "fase" | "shopify_url"> & { etapa_antes_desvio?: Pedido["etapa_antes_desvio"] }
+
+// O que o diálogo de "Mover para outra etapa" explica: o que será marcado como feito (para frente) ou zerado (para trás).
+function textoMover(origem: number, destino: number): string {
+  const nomes = PASSOS.map((p) => p.nome)
+  if (destino > origem) {
+    const feitas = nomes.slice(origem, destino).join(", ")
+    return `Vai marcar como feito: ${feitas}. O que ainda não foi feito não é conferido: use só quando o trabalho já foi feito por fora. O histórico guarda que estas etapas foram puladas.`
+  }
+  const zeradas = nomes.slice(destino, nomes.length - 1).join(", ")
+  return `Vai voltar para ${nomes[destino]} e zerar o que foi feito de lá em diante (${zeradas}). As etapas anteriores continuam como estão.`
+}
+
 // Ações do pedido num lugar só: servem ao "⋯" do cabeçalho e ao clique direito do cartão.
 // Devolve os grupos do menu e os diálogos de confirmação (renderize `dialogos` uma vez).
-export function useAcoesPedido(pedido: Pick<Pedido, "id" | "status" | "fase" | "shopify_url" | "etapas_permitidas">, opcoes: Opcoes = {}) {
+export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
   const navegar = useNavigate()
   const mudarStatus = useMudarStatus()
+  const mover = useMoverEtapa(pedido.id)
   const reiniciar = useReiniciar(pedido.id)
   const [cancelando, setCancelando] = useState(false)
   const [reiniciando, setReiniciando] = useState<boolean | null>(null) // true = pedido todo, false = só a etapa
+  const [movendo, setMovendo] = useState<StatusPedido | null>(null) // destino pedido em "Mover para…" ou "Concluir pedido"
+  const naEsteira = pedido.fase === "expedicao"
+  const origem = passoAtual(pedido)
+  const destinoIdx = movendo ? passoDe(movendo) : -1
 
   const grupos: GrupoAcoes[] = [
     {
       itens: [
         ...(opcoes.abrir ? [{ rotulo: "Abrir pedido", icone: FolderOpen, aoClicar: () => navegar(`/pedidos/${pedido.id}`) }] : []),
         ...(opcoes.aoVerDados ? [{ rotulo: "Ver dados do pedido", icone: ClipboardList, aoClicar: opcoes.aoVerDados }] : []),
+        ...(naEsteira ? [{ rotulo: "Concluir pedido", icone: CheckCheck, aoClicar: () => setMovendo("enviado") }] : []),
       ],
     },
     {
       titulo: "Mover para outra etapa",
       estilo: "ghost",
-      itens: ETAPAS_EXPEDICAO.map((e) => ({
-        rotulo: NOME_ETAPA[e],
-        icone: ICONE_ETAPA[e],
-        atual: e === pedido.status,
-        desabilitado: e !== pedido.status && motivoEtapa(pedido.etapas_permitidas, e) !== null,
-        motivo: motivoEtapa(pedido.etapas_permitidas, e) ?? undefined,
-        aoClicar: () => mudarStatus.mutate({ pedidoId: pedido.id, para: e as StatusPedido }),
-      })),
+      itens: naEsteira
+        ? ETAPAS_MOVER.map((e) => ({
+            rotulo: NOME_ETAPA[e],
+            icone: ICONE_ETAPA[e],
+            atual: passoDe(e) === origem,
+            aoClicar: () => setMovendo(e),
+          }))
+        : [],
     },
     {
       itens:
@@ -64,13 +82,40 @@ export function useAcoesPedido(pedido: Pick<Pedido, "id" | "status" | "fase" | "
 
   const dialogos: ReactNode = (
     <>
+      <Dialog open={movendo !== null} onOpenChange={(a) => !a && setMovendo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{movendo === "enviado" ? "Concluir o pedido?" : movendo ? `Mover para ${NOME_ETAPA[movendo]}?` : ""}</DialogTitle>
+            <DialogDescription>
+              {movendo === "enviado"
+                ? "Tudo o que falta (separação, conferência, bipagem, nota, embalagem, frete e postagem) é marcado como feito e o pedido vai para Concluídos. O histórico guarda que estas etapas foram puladas."
+                : movendo && destinoIdx >= 0 && origem >= 0
+                  ? textoMover(origem, destinoIdx)
+                  : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMovendo(null)}>
+              Voltar
+            </Button>
+            <Button
+              onClick={() => {
+                if (movendo) mover.mutate({ destino: movendo })
+                setMovendo(null)
+              }}
+            >
+              {movendo === "enviado" ? "Concluir pedido" : "Mover"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={reiniciando !== null} onOpenChange={(a) => !a && setReiniciando(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{reiniciando ? "Reiniciar o pedido do zero?" : `Reiniciar ${NOME_ETAPA[pedido.status]}?`}</DialogTitle>
             <DialogDescription>
               {reiniciando
-                ? "Zera separação, conferência, etiquetagem, bipagem, nota fiscal, embalagem, frete e postagem, e volta o pedido para Novo. Peças removidas voltam ao pedido e a troca em andamento é cancelada."
+                ? "Zera separação, conferência, bipagem, nota fiscal, embalagem, frete e postagem, e volta o pedido para Novo. Peças removidas voltam ao pedido e a troca em andamento é cancelada."
                 : "Zera só o que foi feito nesta etapa, para refazer. O pedido continua nela."}
             </DialogDescription>
           </DialogHeader>

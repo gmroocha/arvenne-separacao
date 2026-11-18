@@ -2,7 +2,7 @@ import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
-import { ChevronRight, PackageOpen, Printer, RefreshCw, Users } from "lucide-react"
+import { ChevronRight, PackageOpen, RefreshCw, Users } from "lucide-react"
 import CardPedido from "@/components/CardPedido"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,10 +15,8 @@ import FaixaRolavel from "@/components/FaixaRolavel"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
-import { etiquetasDe } from "@/lib/etiquetas"
 import { useDebounce } from "@/lib/useDebounce"
-import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePecasParaEtiquetar, usePedidosExpedicao, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
+import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePedidosExpedicao, useSincronizarShopify } from "@/lib/api"
 import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { digitos } from "@/lib/formato"
 import { destinoAoConcluir, ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
@@ -32,7 +30,6 @@ type Coluna = {
   icone: string
   statuses: StatusPedido[]
   alerta?: "vermelho" | "amarelo"
-  rastreio?: boolean // pedidos enviados à espera do rastreio (vêm de outra consulta)
 }
 
 // Uma coluna por etapa, na ordem da esteira.
@@ -42,13 +39,11 @@ const COLUNAS: Coluna[] = [
   { id: "avisar_cliente", nome: "Avisar cliente", icone: "avisar_cliente", statuses: ["avisar_cliente"], alerta: "vermelho" },
   { id: "aguardando_cliente", nome: "Aguardando cliente", icone: "aguardando_cliente", statuses: ["aguardando_cliente"], alerta: "amarelo" },
   { id: "conferencia", nome: "Conferência", icone: "conferencia", statuses: ["conferencia"] },
-  { id: "etiquetagem", nome: "Etiquetagem", icone: "etiquetagem", statuses: ["etiquetagem"] },
   { id: "bipagem", nome: "Bipagem", icone: "bipagem", statuses: ["bipagem"] },
   { id: "faturamento", nome: "Nota fiscal", icone: "faturamento", statuses: ["faturamento"] },
   { id: "embalagem", nome: "Embalagem", icone: "embalagem", statuses: ["embalagem"] },
   { id: "frete", nome: "Frete", icone: "frete", statuses: ["frete"] },
   { id: "pronto_envio", nome: "Postagem", icone: "pronto_envio", statuses: ["pronto_envio"] },
-  { id: "rastreio", nome: "Enviar rastreio", icone: "rastreio", statuses: ["enviado"], rastreio: true },
 ]
 
 // Pela ordem da esteira (src/lib/status.ts): o destino natural ao concluir a etapa (o mesmo do Dialog) ou
@@ -130,18 +125,7 @@ export default function Expedicao() {
   const termo = useDebounce(busca, 300)
   const { data, isLoading, isError, isFetching, refetch } = usePedidosExpedicao(termo)
   const { data: contagens } = useContagens()
-  const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
-  const paraEtiquetar = usePecasParaEtiquetar()
-  const { zebra, imprimindo, dialogo, imprimir } = useImprimirEtiquetas()
-  // Um grupo por pedido em Etiquetagem; o lote ganha uma etiqueta separadora entre os pedidos.
-  const gruposEtiquetas = (paraEtiquetar.data ?? []).map((p) => ({ numero: p.numero, cliente: p.cliente, ...etiquetasDe(p.itens) }))
-  const totalEtiquetas = gruposEtiquetas.reduce((n, g) => n + g.etiquetas.length, 0)
-  const botaoImprimirTodas = (
-    <Button variant="secondary" size="toque" className="w-full" disabled={imprimindo} onClick={() => imprimir(gruposEtiquetas)}>
-      <Printer /> Imprimir todas ({totalEtiquetas}){zebra && <span className="font-normal opacity-80"> · na Zebra</span>}
-    </Button>
-  )
   const agora = useAgora()
   const mudarStatus = useMudarStatus()
   const [arrastando, setArrastando] = useState<PedidoOperacao | null>(null)
@@ -152,7 +136,7 @@ export default function Expedicao() {
     const p = arrastando
     setArrastando(null)
     setAlvo(null)
-    if (!p || c.rastreio || c.statuses.includes(p.status)) return
+    if (!p || c.statuses.includes(p.status)) return
     if (!podeSoltar(p, c)) {
       toast.info("Arraste para a próxima etapa")
       return
@@ -184,30 +168,30 @@ export default function Expedicao() {
   const filtrados = useMemo(() => {
     const t = busca.trim().toLowerCase()
     const d = digitos(busca)
-    return [...(data ?? []), ...(rastreio.data ?? [])].filter(
+    return (data ?? []).filter(
       (p) =>
         !t ||
         p.numero.toLowerCase().includes(t) ||
         (p.cliente_nome ?? "").toLowerCase().includes(t) ||
         (d.length >= 3 && digitos(p.cliente_telefone).includes(d)),
     )
-  }, [data, rastreio.data, busca])
+  }, [data, busca])
 
-  // Pela pessoa que faz a etapa em que o pedido está agora. A coluna "Enviar rastreio" não tem responsável.
+  // Pela pessoa que faz a etapa em que o pedido está agora.
   const daPessoa = (p: PedidoOperacao) => {
-    if (!pessoa || p.pendente_rastreio || (pessoa === "eu" && !meuMembro)) return true // "Comigo" sem cadastro: mostra tudo
+    if (!pessoa || (pessoa === "eu" && !meuMembro)) return true // "Comigo" sem cadastro: mostra tudo
     const resp = responsavelDaEtapaAtual(p, membros)
     if (pessoa === "sem") return !resp
     return !!resp && resp.id === (pessoa === "eu" ? meuMembro?.id : pessoa)
   }
   const dentro = (c: Coluna) =>
     filtrados
-      .filter((p) => (c.rastreio ? p.pendente_rastreio : !p.pendente_rastreio && c.statuses.includes(p.status)))
+      .filter((p) => c.statuses.includes(p.status))
       .filter((p) => !soAtrasados || atrasado(p.prazo))
       .filter(daPessoa)
   const porColuna = COLUNAS.map((c) => ({ ...c, pedidos: dentro(c) }))
   // Sem busca, o total vem do banco (conta mesmo além do limite da lista); com busca, conta os da lista filtrada.
-  const totalAtrasados = busca.trim() || !contagens ? filtrados.filter((p) => !p.pendente_rastreio && atrasado(p.prazo)).length : contagens.atrasados
+  const totalAtrasados = busca.trim() || !contagens ? filtrados.filter((p) => atrasado(p.prazo)).length : contagens.atrasados
 
   // Celular: o padrão é a primeira etapa que tem pedidos. Com busca, mostra todas as colunas juntas.
   const primeiraComPedidos = porColuna.find((c) => c.pedidos.length > 0)?.id ?? COLUNAS[0].id
@@ -328,7 +312,6 @@ export default function Expedicao() {
           vazio
         ) : (
           <div className="flex flex-col gap-2">
-            {selecionada === "etiquetagem" && !busca.trim() && totalEtiquetas > 0 && botaoImprimirTodas}
             {listaCelular.map((p) => (
               <CardPedido key={p.id} p={p} progresso={progressoDe(p)} />
             ))}
@@ -347,7 +330,7 @@ export default function Expedicao() {
                 <section
                   aria-label={c.nome}
                   onDragOver={(e) => {
-                    if (!arrastando || c.rastreio) return
+                    if (!arrastando) return
                     e.preventDefault() // aceita o soltar também nas inválidas, para avisar com o toast
                     if (!podeSoltar(arrastando, c)) return // sem destaque
                     e.dataTransfer.dropEffect = "move"
@@ -376,7 +359,6 @@ export default function Expedicao() {
                       {c.pedidos.length}
                     </Badge>
                   </header>
-                  {c.id === "etiquetagem" && totalEtiquetas > 0 && botaoImprimirTodas}
                   {isLoading ? (
                     <Skeleton className="h-24 w-full" />
                   ) : c.pedidos.length === 0 ? (
@@ -385,7 +367,7 @@ export default function Expedicao() {
                     c.pedidos.map((p) => (
                       <div
                         key={p.id}
-                        draggable={!c.rastreio}
+                        draggable
                         onDragStart={(e) => {
                           e.dataTransfer.effectAllowed = "move"
                           e.dataTransfer.setData("text/plain", p.id)
@@ -395,7 +377,7 @@ export default function Expedicao() {
                           setArrastando(null)
                           setAlvo(null)
                         }}
-                        className={cn(!c.rastreio && "cursor-grab active:cursor-grabbing", arrastando?.id === p.id && "opacity-40")}
+                        className={cn("cursor-grab active:cursor-grabbing", arrastando?.id === p.id && "opacity-40")}
                       >
                         <CardPedido p={p} progresso={progressoDe(p)} />
                       </div>
@@ -414,7 +396,6 @@ export default function Expedicao() {
       )}
       </div>
       </>}
-      {dialogo}
     </div>
   )
 }

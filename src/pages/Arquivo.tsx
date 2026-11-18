@@ -13,7 +13,7 @@ import { useDebounce } from "@/lib/useDebounce"
 
 const PASSO = 50
 
-// Pedidos enviados, cancelados e vendas perdidas: a busca olha tudo. Clique direito: duplicar ou excluir.
+// Pedidos cancelados e vendas perdidas (os concluídos ficam em Concluídos): a busca olha tudo. Clique direito: duplicar ou excluir.
 export default function Arquivo() {
   const [busca, setBusca] = useState("")
   const [limite, setLimite] = useState(PASSO)

@@ -1,7 +1,8 @@
 import { useEffect } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { agendarAtualizacaoOperacional } from "@/lib/atualizacaoOperacional"
+import { agendarAtualizacaoOperacional, ehEcoProprio } from "@/lib/atualizacaoOperacional"
 import { supabase } from "@/lib/supabase"
+import { PACOTE_ATUAL, haVersaoNova, lerPacotePublicado, recarregarUmaVez } from "@/lib/versaoNova"
 
 // Com o canal ao vivo as listas só se atualizam por reserva (5 min); sem ele, a cada 60 s.
 let canalAtivo = false
@@ -17,14 +18,24 @@ export function useTempoReal() {
   useEffect(() => {
     let teveQueda = false
     let adiado = false
+    // Versão nova no ar: recarrega sozinha quando a aba volta a aparecer, nada está sendo salvo e já passaram 5 min da
+    // última checagem. Só vale em produção (o pacote principal tem hash no nome).
+    let ultimaChecagem = 0
+    const verificarVersao = async () => {
+      if (escondida() || Date.now() - ultimaChecagem < 5 * 60_000 || !PACOTE_ATUAL) return
+      ultimaChecagem = Date.now()
+      if (!haVersaoNova(PACOTE_ATUAL, await lerPacotePublicado())) return
+      if (qc.isMutating() > 0) { ultimaChecagem = 0; return } // tenta de novo na próxima vez
+      recarregarUmaVez()
+    }
     const aoMostrar = () => {
+      void verificarVersao()
       if (escondida() || !adiado) return
       adiado = false
       qc.invalidateQueries({ queryKey: ["pedidos"] })
       qc.invalidateQueries({ queryKey: ["pedido"] })
       qc.invalidateQueries({ queryKey: ["troca"] })
       qc.invalidateQueries({ queryKey: ["acerto"] })
-      qc.invalidateQueries({ queryKey: ["etiquetar"] })
       qc.invalidateQueries({ queryKey: ["repetidas"] })
     }
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", aoMostrar)
@@ -38,7 +49,10 @@ export function useTempoReal() {
       }
       const troca = t === "trocas" || t === "troca_pecas" || t === "troca_opcoes"
       const pesado = t !== "troca_pecas" && t !== "troca_opcoes"
-      const ids = (Array.isArray(p) ? p : []).map(idDe).filter((x): x is string => !!x)
+      const todos = (Array.isArray(p) ? p : []).map(idDe).filter((x): x is string => !!x)
+      // O que esta aba mesma acabou de gravar já está na tela: o eco do aviso não relê o pedido.
+      const ids = todos.filter((id) => !ehEcoProprio(qc, id))
+      if (todos.length > 0 && ids.length === 0) return
       if (escondida()) adiado = true
       agendarAtualizacaoOperacional(qc, ids, { troca, pesado, tudo: pesado && !ids.length })
     }
@@ -66,7 +80,9 @@ export function useTempoReal() {
       .then(assinar)
     return () => {
       ativo = false
-      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", aoMostrar)
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", aoMostrar)
+      }
       canalAtivo = false
       supabase.removeChannel(canal)
     }

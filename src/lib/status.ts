@@ -1,5 +1,5 @@
 import {
-  Check, Eye, FileText, Inbox, ListChecks, BellRing, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck, Weight,
+  Check, Eye, FileText, Inbox, ListChecks, BellRing, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck,
   type LucideIcon,
 } from "lucide-react"
 
@@ -11,13 +11,12 @@ export const ETAPAS = [
   { id: "avisar_cliente", nome: "Avisar cliente" },
   { id: "aguardando_cliente", nome: "Aguardando cliente" },
   { id: "conferencia", nome: "Conferência" },
-  { id: "etiquetagem", nome: "Etiquetagem" },
   { id: "bipagem", nome: "Bipagem" },
   { id: "faturamento", nome: "Nota fiscal" },
   { id: "embalagem", nome: "Embalagem" },
   { id: "frete", nome: "Frete" },
   { id: "pronto_envio", nome: "Postagem" },
-  { id: "enviado", nome: "Enviado" },
+  { id: "enviado", nome: "Concluído" }, // o status continua "enviado" no banco
   { id: "cancelado", nome: "Cancelado" },
   { id: "perdida", nome: "Perdida" },
   { id: "somada", nome: "Somada" },
@@ -38,7 +37,6 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
   avisar_cliente: "expedicao",
   aguardando_cliente: "expedicao",
   conferencia: "expedicao",
-  etiquetagem: "expedicao",
   bipagem: "expedicao",
   faturamento: "expedicao",
   embalagem: "expedicao",
@@ -55,28 +53,30 @@ export const STATUS_DA_FASE: Record<Fase, StatusPedido[]> = {
   venda: ["em_aberto", "aguardando_pagamento"],
   arquivo: ["enviado", "cancelado", "perdida", "somada"],
   expedicao: [
-    "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
+    "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "bipagem", "faturamento",
     "embalagem", "frete", "pronto_envio",
   ],
 }
 
-// Etapas de expedição, na ordem em que aparecem em "Mover para…".
+// Etapas de expedição (para arrastar cartões e descobrir a posição na esteira).
 export const ETAPAS_EXPEDICAO: StatusPedido[] = [
-  "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "etiquetagem", "bipagem", "faturamento",
+  "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "bipagem", "faturamento",
   "embalagem", "frete", "pronto_envio", "enviado",
 ]
+
+// Etapas oferecidas em "Mover para outra etapa" (o banco decide se pode: mover_etapa). Desvios não entram.
+export const ETAPAS_MOVER = ["separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado"] as const satisfies readonly StatusPedido[]
 
 // Linha de etapas da tela do pedido. "Avisar/Aguardando cliente" não são passos: é um desvio da Separação.
 export const PASSOS = [
   { id: "separacao", nome: "Separação", statuses: ["novo", "separacao", "avisar_cliente", "aguardando_cliente"] },
   { id: "conferencia", nome: "Conferência", statuses: ["conferencia"] },
-  { id: "etiquetagem", nome: "Etiquetagem", statuses: ["etiquetagem"] },
   { id: "bipagem", nome: "Bipagem", statuses: ["bipagem"] },
   { id: "faturamento", nome: "Nota fiscal", statuses: ["faturamento"] },
   { id: "embalagem", nome: "Embalagem", statuses: ["embalagem"] },
   { id: "frete", nome: "Frete", statuses: ["frete"] },
   { id: "pronto_envio", nome: "Postagem", statuses: ["pronto_envio"] },
-  { id: "enviado", nome: "Enviado", statuses: ["enviado"] },
+  { id: "enviado", nome: "Concluído", statuses: ["enviado"] },
 ] as const satisfies readonly { id: string; nome: string; statuses: readonly StatusPedido[] }[]
 
 export type Passo = (typeof PASSOS)[number]
@@ -101,7 +101,7 @@ export function passoAtual(p: ComDesvio): number {
   return passoDe(etapaAtual(p))
 }
 
-// Etapas de trabalho que têm responsável (todas menos "Enviado"), na ordem da esteira.
+// Etapas de trabalho que têm responsável (todas menos "Concluído"), na ordem da esteira.
 export const PASSOS_TRABALHO = PASSOS.filter((p) => p.id !== "enviado")
 
 // Etapa atual do pedido (o desvio usa a etapa de origem) que pode ter responsável; "enviado"/arquivo não têm.
@@ -112,7 +112,7 @@ export function etapaDoResponsavel(p: ComDesvio): (typeof PASSOS_TRABALHO)[numbe
 
 // Caminho normal da expedição. Etapas de venda, "avisar_cliente", "aguardando_cliente" e "cancelado" ficam fora.
 const FLUXO: StatusPedido[] = [
-  "novo", "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
+  "novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
 ]
 
 export function proximaEtapa(s: StatusPedido): StatusPedido | null {
@@ -129,11 +129,10 @@ export const ICONE_ETAPA: Record<string, LucideIcon> = {
   avisar_cliente: BellRing,
   aguardando_cliente: MessageCircleWarning,
   conferencia: ListChecks,
-  etiquetagem: Tag,
   bipagem: ScanBarcode,
   faturamento: FileText,
   embalagem: Package,
-  frete: Weight,
+  frete: Tag,
   pronto_envio: Truck,
   enviado: Check,
   rastreio: Send,
@@ -145,8 +144,8 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
   conferencia: [
     "Pegue o saquinho do modelo e separe a quantidade certa do pedido.",
     "Examine cada peça com calma, de todos os lados.",
+    "Confira e cole a etiqueta no saquinho de cada peça.",
   ],
-  etiquetagem: ["Coloque a etiqueta em cada peça."],
   bipagem: [
     "Leia o código de cada peça com o leitor, uma unidade por vez.",
     "Peça com 2 ou mais unidades: bipe uma vez para cada unidade.",
@@ -161,15 +160,14 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
     "Feche a caixa.",
   ],
   frete: [
-    "Pese a caixa fechada.",
-    "Gere o frete na Frenet com o peso.",
-    "Cole a etiqueta de envio.",
+    "Gere o frete na Frenet.",
+    "Cole a etiqueta de envio e cole o link de rastreio aqui.",
   ],
   pronto_envio: [
     "Leve o pacote aos Correios.",
-    "Confira o link de rastreio antes de concluir.",
+    "Marque \"Postado\": o pedido vai para Concluídos.",
   ],
-  enviado: ["O pedido sai da expedição e vai para o Arquivo."],
+  enviado: ["O pedido sai da expedição e vai para Concluídos."],
 }
 
 // Para onde o pedido vai ao concluir a etapa (a pessoa confirma no Dialog).

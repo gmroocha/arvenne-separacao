@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { avisoSemPecas, etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { avisoSemPecas, etapaCompleta, etapaDaPeca, pecasPorEtapa, separarAdicionais, statusPelasPecas } from "@/lib/etapa"
 import { destinoAoConcluir, ETAPAS, etapaAtual, FASE_DE, PASSOS, passoAtual, proximaEtapa, STATUS_DA_FASE } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 
@@ -22,20 +22,21 @@ test("cada status pertence a uma fase, sem pedido ficar escondido", () => {
 test("o fluxo normal não pula uma etapa", () => {
   expect(proximaEtapa("novo")).toBe("separacao")
   expect(destinoAoConcluir("novo")).toBe("conferencia") // a tela Novo já mostra Separação
-  expect(proximaEtapa("conferencia")).toBe("etiquetagem")
+  expect(proximaEtapa("conferencia")).toBe("bipagem")
   expect(proximaEtapa("bipagem")).toBe("faturamento")
   expect(proximaEtapa("enviado")).toBeNull()
   expect(proximaEtapa("aguardando_cliente")).toBe("separacao")
 })
-test("nova esteira: Nota fiscal → Embalagem → Frete → Postagem → Enviado", () => {
+test("esteira sem Etiquetagem: Nota fiscal → Embalagem → Frete → Postagem → Concluído", () => {
   expect(proximaEtapa("faturamento")).toBe("embalagem")
   expect(proximaEtapa("embalagem")).toBe("frete")
   expect(proximaEtapa("frete")).toBe("pronto_envio")
   expect(proximaEtapa("pronto_envio")).toBe("enviado")
   expect(destinoAoConcluir("embalagem")).toBe("frete")
   expect(PASSOS.map((p) => p.id)).toEqual([
-    "separacao", "conferencia", "etiquetagem", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
+    "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
   ])
+  expect(PASSOS.at(-1)?.nome).toBe("Concluído")
   expect(PASSOS.find((p) => p.id === "faturamento")?.nome).toBe("Nota fiscal")
   expect(FASE_DE.frete).toBe("expedicao")
   expect(etapaAtual({ status: "avisar_cliente", etapa_antes_desvio: "frete" })).toBe("frete")
@@ -47,8 +48,9 @@ test("peça pendente, inclusive adicional, impede completar conferência", () =>
   expect(etapaCompleta("conferencia", [pronta, peca({ status: "removido" })])).toBe(true)
 })
 test("bipagem conta todas as unidades; nenhuma peça viva não é etapa feita", () => {
-  expect(etapaCompleta("bipagem", [peca({ qtd_bipada: 1 })])).toBe(false)
-  expect(etapaCompleta("bipagem", [peca({ qtd_bipada: 2 })])).toBe(true)
+  const conferida = "2026-11-12T12:00:00Z"
+  expect(etapaCompleta("bipagem", [peca({ conferido_em: conferida, qtd_bipada: 1 })])).toBe(false)
+  expect(etapaCompleta("bipagem", [peca({ conferido_em: conferida, qtd_bipada: 2 })])).toBe(true)
   expect(etapaCompleta("separacao", [])).toBe(false)
 })
 test("as adicionais continuam na lista ao separar os grupos", () => {
@@ -66,7 +68,7 @@ test("V18: pedido todo convertido em crédito explica como encerrar", () => {
 test("V37: pedido em desvio conta como a etapa de origem; sem origem, como Separação", () => {
   const nome = (p: Parameters<typeof passoAtual>[0]) => PASSOS[passoAtual(p)].id
   expect(nome({ status: "avisar_cliente", etapa_antes_desvio: "conferencia" })).toBe("conferencia")
-  expect(nome({ status: "aguardando_cliente", etapa_antes_desvio: "etiquetagem" })).toBe("etiquetagem")
+  expect(nome({ status: "aguardando_cliente", etapa_antes_desvio: "bipagem" })).toBe("bipagem")
   expect(nome({ status: "avisar_cliente", etapa_antes_desvio: "pronto_envio" })).toBe("pronto_envio")
   expect(nome({ status: "avisar_cliente", etapa_antes_desvio: null })).toBe("separacao")
   expect(nome({ status: "aguardando_cliente" })).toBe("separacao")
@@ -79,4 +81,23 @@ test("V37: pedido em desvio conta como a etapa de origem; sem origem, como Separ
   expect(etapaAtual({ status: "avisar_cliente", etapa_antes_desvio: "conferencia" })).toBe("conferencia")
   expect(etapaAtual({ status: "aguardando_cliente" })).toBe("separacao")
   expect(etapaAtual({ status: "faturamento" })).toBe("faturamento")
+})
+
+test("cada peça anda sozinha e o pedido fica na etapa da peça mais atrasada", () => {
+  const ok = "2026-11-12T12:00:00Z"
+  expect(etapaDaPeca(peca({ status: "pendente" }))).toBe("separacao")
+  expect(etapaDaPeca(peca())).toBe("conferencia")
+  expect(etapaDaPeca(peca({ conferido_em: ok }))).toBe("bipagem")
+  expect(etapaDaPeca(peca({ conferido_em: ok, qtd_bipada: 2 }))).toBe("pronta")
+  expect(etapaDaPeca(peca({ status: "falta" }))).toBeNull()
+  const lista = [peca({ id: "a", status: "pendente" }), peca({ id: "b" }), peca({ id: "c", conferido_em: ok })]
+  expect(pecasPorEtapa(lista)).toEqual({ separacao: 1, conferencia: 1, bipagem: 1 })
+  expect(statusPelasPecas("novo", lista)).toBe("separacao")
+  expect(statusPelasPecas("novo", [peca({ status: "pendente" })])).toBe("novo")
+  expect(statusPelasPecas("separacao", [peca({ id: "b" }), peca({ id: "c", conferido_em: ok })])).toBe("conferencia")
+  expect(statusPelasPecas("conferencia", [peca({ conferido_em: ok })])).toBe("bipagem")
+  expect(statusPelasPecas("bipagem", [peca({ conferido_em: ok, qtd_bipada: 2 })])).toBe("faturamento")
+  expect(statusPelasPecas("separacao", [peca({ status: "falta" })])).toBeNull() // desvio: o banco decide
+  expect(statusPelasPecas("faturamento", [peca()])).toBeNull() // documentos não são decididos pelas peças
+  expect(statusPelasPecas("separacao", [])).toBeNull()
 })

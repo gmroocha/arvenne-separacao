@@ -1,14 +1,17 @@
 import { useState } from "react"
-import { ArrowLeftRight, Check, Info, PackageX, Trash2 } from "lucide-react"
+import { ArrowLeftRight, Check, Info, MoreHorizontal, PackageX, Printer, Trash2, TriangleAlert } from "lucide-react"
 import { Quantidade } from "@/components/comum/Quantidade"
 import { TituloSecao } from "@/components/comum/TituloSecao"
-import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
+import MenuAcoes from "@/components/MenuAcoes"
+import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import RespDialog from "@/components/RespDialog"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useMarcarFalta, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
-import { avisoSemPecas, etapaCompleta, separarAdicionais } from "@/lib/etapa"
+import { avisoSemPecas, separarAdicionais } from "@/lib/etapa"
+import { etiquetasDe, skuCabe } from "@/lib/etiquetas"
 import { quando, reais } from "@/lib/formato"
 import { chaveModelo, numeroTamanho, separarTamanho } from "@/lib/variante"
 import type { Item } from "@/lib/tipos"
@@ -22,10 +25,9 @@ type Props = {
   pedido: PedidoDetalhe
   acao: AcaoItem
   aoTrocar: (item: Item) => void
-  aoConcluir?: () => void
 }
 
-export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props) {
+export default function Separacao({ pedido, acao, aoTrocar }: Props) {
   const itens = pedido.pedido_itens
   const pendentes = itens.filter((i) => i.status === "pendente")
   const achadas = itens.filter((i) => i.status === "encontrado")
@@ -79,6 +81,11 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
   }
 
   const [verPartes, setVerPartes] = useState(false)
+  // Imprimir todas as etiquetas do pedido de uma vez (uma por unidade): a etiqueta é colada na Conferência.
+  const { zebra, imprimindo, dialogo: dialogoEtiquetas, imprimir, imprimirTeste } = useImprimirEtiquetas()
+  const paraImprimir = itens.filter((i) => i.status === "pendente" || i.status === "encontrado")
+  const todas = etiquetasDe(paraImprimir)
+  const longos = paraImprimir.filter((i) => i.sku && !skuCabe(i.sku.trim()))
   const feedback = useFeedbackPeca()
   const nota = useNotaPeca()
   const bloco = (g: Item[]) =>
@@ -123,6 +130,43 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
   return (
     <div className="flex flex-col gap-4">
       <ProgressoEtapa titulo="Separação" feitas={achadas.length} total={vivas} unidade="peças" />
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="xl"
+            className="min-w-0 flex-1 sm:flex-none"
+            disabled={todas.etiquetas.length === 0 || imprimindo}
+            onClick={() => imprimir([{ numero: pedido.numero, cliente: pedido.cliente_nome, etiquetas: todas.etiquetas, itemIds: todas.itemIds }])}
+          >
+            <Printer /> Imprimir todas as etiquetas ({todas.etiquetas.length}){zebra && <span className="font-normal opacity-80"> · na Zebra</span>}
+          </Button>
+          <MenuAcoes
+            titulo="Etiquetas"
+            grupos={[{ itens: [{ rotulo: "Imprimir etiqueta de teste", icone: Printer, aoClicar: () => imprimirTeste() }] }]}
+            gatilho={
+              <Button variant="secondary" size="icon-toque" aria-label="Mais opções de impressão" className="shrink-0">
+                <MoreHorizontal />
+              </Button>
+            }
+          />
+        </div>
+        {todas.semCodigo.length > 0 && (
+          <Alert variant="warning">
+            <TriangleAlert />
+            <AlertDescription>
+              {todas.semCodigo.length === 1 ? "1 peça está sem código (SKU) e não será impressa." : `${todas.semCodigo.length} peças estão sem código (SKU) e não serão impressas.`}
+            </AlertDescription>
+          </Alert>
+        )}
+        {longos.length > 0 && (
+          <Alert variant="warning">
+            <TriangleAlert />
+            <AlertDescription className="break-all">O código {longos.map((i) => i.sku).join(", ")} é longo demais para a etiqueta e pode não ler. Confira ao imprimir.</AlertDescription>
+          </Alert>
+        )}
+      </div>
 
       <Problemas pedido={pedido} acao={acao} aoTrocar={aoTrocar} />
 
@@ -216,11 +260,7 @@ export default function Separacao({ pedido, acao, aoTrocar, aoConcluir }: Props)
 
       {nota.dialogo}
 
-      {aoConcluir && (
-        <ConcluirEtapa disabled={!etapaCompleta(pedido.status, itens)} onClick={aoConcluir}>
-          Concluir separação
-        </ConcluirEtapa>
-      )}
+      {dialogoEtiquetas}
     </div>
   )
 }

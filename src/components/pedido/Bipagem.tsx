@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 import { Check, Minus, Plus, ScanBarcode, TriangleAlert, Volume2, VolumeX } from "lucide-react"
-import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { registrarBipagem, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
-import { etapaCompleta } from "@/lib/etapa"
+import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { sons } from "@/lib/sons"
 import type { Item, ResultadoBipagem } from "@/lib/tipos"
-import AvisoPendentes from "./AvisoPendentes"
 import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
-type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoConcluir?: () => void }
+type Props = { pedido: PedidoDetalhe; acao: AcaoItem }
 type Aviso = { tipo: ResultadoBipagem; texto: string }
 
 const agora = () => new Date().toISOString()
@@ -29,7 +26,7 @@ function lerSilencio(): boolean {
 }
 
 // Bipagem: o leitor USB digita o código e dá Enter, como um teclado. O campo fica sempre focado.
-export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
+export default function Bipagem({ pedido, acao }: Props) {
   const campo = useRef<HTMLInputElement>(null)
   const [valor, setValor] = useState("")
   const [mudo, setMudo] = useState(lerSilencio)
@@ -55,7 +52,10 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
     }
   }, [])
 
-  const itens = pedido.pedido_itens.filter((i) => i.status === "encontrado")
+  // Só as peças que já foram conferidas chegaram à Bipagem; as outras ainda estão em etapas anteriores.
+  const todasAchadas = pedido.pedido_itens.filter((i) => i.status === "encontrado")
+  const itens = todasAchadas.filter((i) => i.conferido_em)
+  const atrasadas = pedido.pedido_itens.filter((i) => i.status === "pendente" || (i.status === "encontrado" && !i.conferido_em)).length
   const totalPecas = itens.reduce((s, i) => s + i.qtd, 0)
   const bipadas = itens.reduce((s, i) => s + Math.min(i.qtd_bipada, i.qtd), 0)
   // As que ainda faltam ficam em cima; as completas descem para "Bipadas", em verde, sem sumir.
@@ -118,24 +118,22 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
     const doCodigo = itens.filter((i) => normalizar(i.sku) === codigo)
     const alvo = doCodigo.find((i) => i.qtd_bipada < i.qtd)
     if (alvo) {
-      // O som vem do resultado do banco: se outra leitura já completou a peça, avisa em vez de soar "ok".
-      void Promise.resolve(acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: agora() }, codigo)).then((r) => {
-        if (r === "excedente") {
-          tocar("aviso")
-          mostrar({ tipo: "excedente", texto: `${codigo} já foi bipado por completo.` })
-        } else if (r === "ok") tocar("ok")
-      })
+      // A contagem muda na tela na hora e vai ao banco em lote, junto com as leituras seguintes. O banco confere
+      // o código; um lote repetido não conta duas vezes (as marcas são o total, não "+1").
+      void acao(alvo, { qtd_bipada: alvo.qtd_bipada + 1, bipado_em: agora() }, codigo)
+      tocar("ok")
       setAviso(null)
       setUltimaId(alvo.id)
       setPiscando(alvo.id)
       clearTimeout(tempoPisca.current)
       tempoPisca.current = setTimeout(() => setPiscando(null), 600)
     } else if (doCodigo.length > 0) {
-      void registrarBipagem(pedido.id, doCodigo[0].id, codigo)
       tocar("aviso")
       mostrar({ tipo: "excedente", texto: `${codigo} já foi bipado por completo.` })
+    } else if (todasAchadas.some((i) => normalizar(i.sku) === codigo)) {
+      tocar("aviso")
+      mostrar({ tipo: "excedente", texto: `${codigo} ainda não foi conferida. Confira a peça antes de bipar.` })
     } else {
-      void registrarBipagem(pedido.id, null, codigo)
       tocar("erro")
       mostrar({ tipo: "fora_do_pedido", texto: `SKU ${codigo} não é deste pedido.` })
     }
@@ -154,7 +152,11 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <ProgressoEtapa titulo="Bipagem" feitas={bipadas} total={totalPecas} unidade="peças" />
-      <AvisoPendentes pedido={pedido} />
+      {atrasadas > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {atrasadas === 1 ? "1 peça ainda está" : `${atrasadas} peças ainda estão`} na Separação ou na Conferência: elas chegam aqui depois de conferidas.
+        </p>
+      )}
 
       <form
         className="flex gap-2"
@@ -219,7 +221,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
       )}
 
       {itens.length === 0 ? (
-        <Vazio>Nenhuma peça para bipar.</Vazio>
+        <Vazio>{atrasadas > 0 ? "Nenhuma peça chegou da Conferência ainda." : "Nenhuma peça para bipar."}</Vazio>
       ) : (
         <>
           <section className="flex flex-col gap-2" aria-label="A bipar">
@@ -227,7 +229,7 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
               A bipar
             </TituloSecao>
             {aBipar.length === 0 ? (
-              <Vazio>Tudo bipado. Pode concluir a bipagem.</Vazio>
+              <Vazio>Tudo bipado.</Vazio>
             ) : (
 <GradePecas>{aBipar.map(tile)}</GradePecas>
             )}
@@ -244,12 +246,6 @@ export default function Bipagem({ pedido, acao, aoConcluir }: Props) {
         </>
       )}
 
-
-      {aoConcluir && (
-        <ConcluirEtapa disabled={!etapaCompleta("bipagem", pedido.pedido_itens)} onClick={aoConcluir}>
-          Concluir bipagem
-        </ConcluirEtapa>
-      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { toast } from "sonner"
-import { Pencil, Plus, UserCheck, UserX, Users } from "lucide-react"
+import { Pencil, Plus, Trash2, UserCheck, UserX, Users } from "lucide-react"
 import AvatarMembro from "@/components/AvatarMembro"
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Vazio } from "@/components/comum/Vazio"
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { useEquipe, useSalvarMembro } from "@/lib/api"
+import { useEquipe, useExcluirMembro, useSalvarMembro } from "@/lib/api"
 import type { Membro } from "@/lib/tipos"
 
 // Formulário de uma pessoa (nova ou existente). O e-mail é o do login dela: é ele que liga a pessoa ao "Comigo".
@@ -54,6 +54,8 @@ function FormMembro({ membro, aoSalvar }: { membro?: Membro; aoSalvar: () => voi
 export default function Time() {
   const { data, isLoading, isError, isFetching, refetch } = useEquipe()
   const salvar = useSalvarMembro()
+  const excluir = useExcluirMembro()
+  const [excluindo, setExcluindo] = useState<Membro | null>(null)
   // null = fechado; "novo" = adicionando; um Membro = editando.
   const [aberto, setAberto] = useState<Membro | "novo" | null>(null)
   const lista = data ?? []
@@ -61,7 +63,7 @@ export default function Time() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">Quem trabalha nos pedidos. Dentro de cada pedido você escolhe quem faz cada etapa.</p>
+        <p className="text-sm text-muted-foreground">Quem trabalha nos pedidos. Dentro de cada pedido você escolhe quem faz cada etapa. Desativar pausa a pessoa; excluir tira de vez.</p>
         <Button size="toque" className="shrink-0" onClick={() => setAberto("novo")}>
           <Plus /> Adicionar pessoa
         </Button>
@@ -92,12 +94,15 @@ export default function Time() {
                   </ItemTitle>
                   <ItemDescription>{m.email ?? "Sem e-mail do login"}</ItemDescription>
                 </ItemContent>
-                <ItemActions className="w-full justify-between sm:w-auto">
+                <ItemActions className="w-full flex-wrap justify-between sm:w-auto">
                   <Button variant="outline" size="toque" onClick={() => setAberto(m)}>
                     <Pencil /> Editar
                   </Button>
                   <Button variant="ghost" size="toque" disabled={salvar.isPending} onClick={() => salvar.mutate({ id: m.id, nome: m.nome, email: m.email, ativo: !m.ativo })}>
                     {m.ativo ? <UserX /> : <UserCheck />} {m.ativo ? "Desativar" : "Reativar"}
+                  </Button>
+                  <Button variant="ghost" size="toque" className="text-destructive hover:text-destructive" onClick={() => setExcluindo(m)}>
+                    <Trash2 /> Excluir
                   </Button>
                 </ItemActions>
               </Item>
@@ -105,6 +110,27 @@ export default function Time() {
           ))}
         </ItemGroup>
       )}
+
+      <RespDialog
+        aberto={excluindo !== null}
+        aoMudar={(a) => !a && setExcluindo(null)}
+        titulo={excluindo ? `Excluir ${excluindo.nome}?` : "Excluir pessoa?"}
+        descricao="A pessoa sai do Time e deixa de ser responsável pelos pedidos em que estava. Os pedidos e o histórico continuam como estão. Para só pausar, use Desativar."
+      >
+        <div className="flex flex-col gap-2 pt-2 sm:flex-row-reverse sm:justify-start">
+          <Button
+            variant="destructive"
+            size="toque"
+            disabled={excluir.isPending}
+            onClick={() => excluindo && excluir.mutate(excluindo.id, { onSuccess: () => { toast.success("Pessoa excluída do time"); setExcluindo(null) } })}
+          >
+            {excluir.isPending && <Spinner />} Excluir
+          </Button>
+          <Button variant="outline" size="toque" onClick={() => setExcluindo(null)}>
+            Voltar
+          </Button>
+        </div>
+      </RespDialog>
 
       <RespDialog
         aberto={aberto !== null}

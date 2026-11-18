@@ -1,25 +1,18 @@
 import { Check, Truck } from "lucide-react"
-import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { PedidoDetalhe } from "@/lib/api"
 import { mascaraCep, mascaraDocumento, reais } from "@/lib/formato"
 import { cn } from "@/lib/utils"
 import CampoSalvo from "./CampoSalvo"
 import { CopiarTudo, Faltando, FreteCusto, LinhaDado, ModalidadeFrete, Passo, type Dado, type Patch } from "./NotaFrete"
 
-type Props = { pedido: PedidoDetalhe; patch: Patch; aoConcluir?: () => void }
+type Props = { pedido: PedidoDetalhe; patch: Patch }
 
-// Só dígitos, de 1 g a 30 kg (o mesmo limite do banco). Vazio ou ilegível não grava peso.
-const soDigitos = (t: string) => t.replace(/\D/g, "").slice(0, 5)
-const pesoValido = (g: number | null | undefined): g is number => g != null && g >= 1 && g <= 30000
-const textoPeso = (g: number) => (g >= 1000 ? `${String(g / 1000).replace(".", ",")} kg (${g} g)` : `${g} g`)
-
-// Etapa Frete (depois da Embalagem): pesa-se a caixa fechada e gera-se o frete na Frenet com o peso.
-export default function Frete({ pedido, patch, aoConcluir }: Props) {
+// Etapa Frete (depois da Embalagem): gera-se o frete na Frenet e cola-se o link de rastreio. Sem peso. Um botão só:
+// "Frete gerado" leva o pedido para a Postagem (o banco avança sozinho).
+export default function Frete({ pedido, patch }: Props) {
   const cpf = pedido.cliente_cpf ? mascaraDocumento(pedido.cliente_cpf) : null
   const cep = pedido.entrega_cep ? mascaraCep(pedido.entrega_cep) : null
-  const peso = pesoValido(pedido.frete_peso_g) ? pedido.frete_peso_g : null
   const gerado = Boolean(pedido.frete_gerado_em)
   const diferenca = pedido.frete_custo != null ? pedido.frete_diferenca : null
   // Modalidade enviada: a salva ou, enquanto não houver, a que a cliente escolheu (gravada no "Frete gerado").
@@ -27,7 +20,6 @@ export default function Frete({ pedido, patch, aoConcluir }: Props) {
   const servico = pedido.frete_servico === "PAC" || pedido.frete_servico === "SEDEX" ? pedido.frete_servico : pedido.frete_servico ? null : pedida
 
   const dadosFrete: Dado[] = [
-    { rotulo: "Peso da caixa", valor: peso ? `${peso} g` : null },
     { rotulo: "CEP", valor: cep },
     { rotulo: "Valor das peças (com desconto)", valor: reais(pedido.valor_pecas_pacote ?? pedido.valor_pecas_com_desconto) },
     { rotulo: "Tipo de envio", valor: pedido.frete_tipo },
@@ -44,30 +36,6 @@ export default function Frete({ pedido, patch, aoConcluir }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card size="sm">
-        <CardHeader>
-          <CardTitle>Peso da caixa fechada</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <CampoSalvo
-            id="frete-peso"
-            rotulo="Peso da caixa (g)"
-            valor={peso ? String(peso) : null}
-            inputMode="numeric"
-            placeholder="Ex.: 350"
-            mascara={soDigitos}
-            aoSalvar={(v) => {
-              const n = v ? Number(v) : null
-              if (n === null) return patch({ frete_peso_g: null })
-              if (pesoValido(n)) patch({ frete_peso_g: n })
-            }}
-          />
-          <p className={cn("text-sm", peso ? "text-muted-foreground" : "text-destructive")}>
-            {peso ? textoPeso(peso) : "Pese a caixa fechada e informe o peso em gramas (de 1 g a 30 kg)."}
-          </p>
-        </CardContent>
-      </Card>
-
       <Faltando pedido={pedido} patch={patch} />
 
       <Passo numero={1} icone={<Truck />} titulo="Frete" feito={gerado} feitoEm={pedido.frete_gerado_em} aoDesfazer={() => patch({ frete_gerado_em: null })} textoDesfazer="Desfazer frete gerado">
@@ -115,25 +83,16 @@ export default function Frete({ pedido, patch, aoConcluir }: Props) {
             Desfazer frete gerado
           </Button>
         ) : (
-          <>
-            <Button
-              size="xl"
-              className="w-full"
-              disabled={!peso}
-              onClick={() => patch({ frete_gerado_em: new Date().toISOString(), ...(!pedido.frete_servico && servico ? { frete_servico: servico } : {}) })}
-            >
-              <Check /> Frete gerado
-            </Button>
-            {!peso && <p className="text-sm text-muted-foreground">Informe o peso da caixa para gerar o frete.</p>}
-          </>
+          <Button
+            size="xl"
+            className="w-full"
+            onClick={() => patch({ frete_gerado_em: new Date().toISOString(), ...(!pedido.frete_servico && servico ? { frete_servico: servico } : {}) })}
+          >
+            <Check /> Frete gerado
+          </Button>
         )}
       </Passo>
 
-      {aoConcluir && (
-        <ConcluirEtapa disabled={!gerado} onClick={aoConcluir}>
-          Concluir frete
-        </ConcluirEtapa>
-      )}
     </div>
   )
 }

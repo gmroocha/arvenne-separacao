@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { Check, ExternalLink, MapPin, MessageCircle, Send, Truck } from "lucide-react"
-import { ConcluirEtapa } from "@/components/comum/ConcluirEtapa"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -14,11 +13,12 @@ import { cn } from "@/lib/utils"
 import CampoSalvo from "./CampoSalvo"
 
 type Patch = (campos: CamposPedido) => void
-type Props = { pedido: PedidoDetalhe; patch: Patch; aoConcluir?: () => void }
+type Props = { pedido: PedidoDetalhe; patch: Patch }
 
 const ITENS_EMBALAGEM = ["Caixa do tamanho certo", "Nota impressa dentro", "Caixa fechada"]
 
-export function Embalagem({ patch, aoConcluir }: Props) {
+// Um botão só: marcar a embalagem como feita leva o pedido para o Frete (o banco avança sozinho).
+export function Embalagem({ pedido, patch }: Props) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set())
   return (
     <div className="flex flex-col gap-4">
@@ -44,22 +44,21 @@ export function Embalagem({ patch, aoConcluir }: Props) {
           </li>
         ))}
       </ul>
-      {aoConcluir && (
-        <ConcluirEtapa
-          disabled={marcados.size < ITENS_EMBALAGEM.length}
-          onClick={() => {
-            patch({ embalado_em: new Date().toISOString() })
-            aoConcluir?.()
-          }}
-        >
-          Concluir embalagem
-        </ConcluirEtapa>
+      {pedido.embalado_em ? (
+        <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ embalado_em: null })}>
+          Desfazer embalagem
+        </Button>
+      ) : (
+        <Button size="xl" className="w-full" disabled={marcados.size < ITENS_EMBALAGEM.length} onClick={() => patch({ embalado_em: new Date().toISOString() })}>
+          <Check /> Embalado
+        </Button>
       )}
     </div>
   )
 }
 
-export function Postagem({ pedido, patch, aoConcluir }: Props) {
+// Um botão só: "Postado" leva o pedido para Concluídos (o banco avança sozinho). O link de rastreio é colado no Frete.
+export function Postagem({ pedido, patch }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <TituloSecao as="h3">
@@ -72,30 +71,23 @@ export function Postagem({ pedido, patch, aoConcluir }: Props) {
         <li>Confira se a etiqueta de envio bate com o pedido.</li>
         <li>Leve o pacote aos Correios ou deixe para a coleta.</li>
       </ul>
-      <CampoSalvo
-        id="rastreio-url"
-        rotulo="Link de rastreio"
-        valor={pedido.rastreio_url}
-        inputMode="url"
-        placeholder="Cole o link da Frenet"
-        aoSalvar={(v) => patch({ rastreio_url: v })}
-      />
-      {pedido.rastreio_url && (
+      {pedido.rastreio_url ? (
         <Button variant="outline" size="toque" className="w-full sm:w-fit" asChild>
           <a href={pedido.rastreio_url} target="_blank" rel="noreferrer">
             <ExternalLink /> Abrir rastreio
           </a>
         </Button>
+      ) : (
+        <p className="text-sm text-muted-foreground">Sem link de rastreio. Ele é colado na etapa Frete.</p>
       )}
-      {aoConcluir && (
-        <ConcluirEtapa
-          onClick={() => {
-            patch({ postado_em: pedido.postado_em ?? new Date().toISOString() })
-            aoConcluir?.()
-          }}
-        >
-          Concluir postagem
-        </ConcluirEtapa>
+      {pedido.postado_em ? (
+        <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ postado_em: null })}>
+          Desfazer postagem
+        </Button>
+      ) : (
+        <Button size="xl" className="w-full" onClick={() => patch({ postado_em: new Date().toISOString() })}>
+          <Check /> Postado
+        </Button>
       )}
     </div>
   )
@@ -107,7 +99,7 @@ export function Enviado({ pedido, patch }: Omit<Props, "aoConcluir">) {
   const feito = Boolean(pedido.rastreio_enviado_em)
   return (
     <div className="flex flex-col gap-4">
-      <TituloSecao as="h3">Enviado{pedido.postado_em ? ` em ${quando(pedido.postado_em)}` : ""}</TituloSecao>
+      <TituloSecao as="h3">Concluído{pedido.postado_em ? ` · postado em ${quando(pedido.postado_em)}` : ""}</TituloSecao>
       {pedido.rastreio_url ? (
         <Button variant="outline" size="toque" className="w-full sm:w-fit" asChild>
           <a href={pedido.rastreio_url} target="_blank" rel="noreferrer">
@@ -115,6 +107,7 @@ export function Enviado({ pedido, patch }: Omit<Props, "aoConcluir">) {
           </a>
         </Button>
       ) : (
+        // Pedido concluído à mão (sem passar pelo Frete): este é o único lugar para colar o link depois.
         <CampoSalvo id="rastreio-url" rotulo="Link de rastreio" valor={null} inputMode="url" aoSalvar={(v) => patch({ rastreio_url: v })} />
       )}
       {whats ? (

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { TriangleAlert } from "lucide-react"
 import { Navigate, useParams } from "react-router"
 import AlteracoesDialog from "@/components/pedido/AlteracoesDialog"
@@ -8,21 +8,20 @@ import AvisoCredito from "@/components/pedido/AvisoCredito"
 import Cabecalho from "@/components/pedido/Cabecalho"
 import DadosCliente from "@/components/pedido/DadosCliente"
 import Etapas from "@/components/pedido/Etapas"
-import DialogEtapa from "@/components/pedido/DialogEtapa"
 import PainelEtapa from "@/components/pedido/PainelEtapa"
 import AdicionarPecas from "@/components/AdicionarPecas"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAcoesItem, useSubstituirItem, useMudarStatus, usePatchPedido, useAlteracoes, usePedido, type PedidoDetalhe } from "@/lib/api"
-import { ETAPAS_DE_PECAS, etapaCompleta } from "@/lib/etapa"
-import { etapaAtual, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
+import { useAcoesItem, useSubstituirItem, usePatchPedido, useAlteracoes, usePedido, useRecalcularEtapa, type PedidoDetalhe } from "@/lib/api"
+import { ETAPAS_DE_PECAS, statusPelasPecas } from "@/lib/etapa"
+import { haMarcasNaFila } from "@/lib/lotePecas"
+import { passoAtual, passoDe, type StatusPedido } from "@/lib/status"
+import { useQueryClient } from "@tanstack/react-query"
 import type { Item, NovoItem } from "@/lib/tipos"
 
 function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
-  const mudarStatus = useMudarStatus()
   const patch = usePatchPedido(pedido.id)
-  const [concluida, setConcluida] = useState<StatusPedido | null>(null) // etapa que abriu o Dialog
   const [verDados, setVerDados] = useState(false)
   const [vistaEscolhida, setVista] = useState<StatusPedido | null>(null) // etapa vista na esteira (null = a atual)
   // V61: "Ver mesmo assim" numa etapa à frente que, nesse meio-tempo, virou a atual é a própria etapa atual.
@@ -36,14 +35,19 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
     setStatusVisto(pedido.status)
     setVista(null)
   }
-  // Etapa atual com tudo feito: oferece a próxima (V62). Vale para o toque que fecha a etapa e também para o
-  // pedido que já chega completo (feito noutra tela ou com a tela atrasada). Só a partir da etapa atual.
-  // "Ficar aqui" vale até a etapa deixar de estar completa (um "Desfazer", por exemplo).
-  const etapa = etapaAtual(pedido)
-  const completa = etapaCompleta(etapa, pedido.pedido_itens)
-  const [dispensada, setDispensada] = useState<StatusPedido | null>(null)
-  if (dispensada !== null && (!completa || dispensada !== etapa)) setDispensada(null)
-  const automatica = completa && vista === null && dispensada !== etapa && !mudarStatus.isPending ? etapa : null
+  // O pedido muda de etapa sozinho quando a última peça termina (o banco calcula na mesma gravação). Um pedido que
+  // já estava com a etapa completa antes desta versão (ou mexido por outra tela) fica parado: ao abrir, pede o
+  // recálculo uma vez por estado, sem fila de peças pendente.
+  const qc = useQueryClient()
+  const { mutate: recalcularEtapa } = useRecalcularEtapa(pedido.id)
+  const tentado = useRef<string | null>(null)
+  const devia = statusPelasPecas(pedido.status, pedido.pedido_itens)
+  useEffect(() => {
+    const chaveEstado = `${pedido.status}>${devia}`
+    if (!devia || devia === pedido.status || tentado.current === chaveEstado || haMarcasNaFila(qc, pedido.id)) return
+    tentado.current = chaveEstado
+    recalcularEtapa()
+  }, [devia, pedido.status, pedido.id, qc, recalcularEtapa])
   const foco = ETAPAS_DE_PECAS.includes(pedido.status)
   const substituirItem = useSubstituirItem()
   const [adicionando, setAdicionando] = useState(false)
@@ -74,7 +78,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           <AlertDescription>Confira o pedido na Shopify antes de seguir: as quantidades não batem mais com as peças daqui.</AlertDescription>
         </Alert>
       )}
-      <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} responsaveis={pedido.responsaveis} vista={vista} aoVer={setVista} />
+      <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} responsaveis={pedido.responsaveis} vista={vista} aoVer={setVista} pecas={pedido.pedido_itens} />
       {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota fiscal em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       {!foco && <AvisoCredito pedidoId={pedido.id} />}
@@ -85,7 +89,6 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           aoVoltar={() => setVista(null)}
           acao={acao}
           patch={patch.mutate}
-          aoConcluir={() => setConcluida(etapaAtual(pedido))}
           aoTrocar={(item) => {
             setTrocando(item)
             setAdicionando(true)
@@ -93,18 +96,6 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         />
         {!foco && <DadosCliente pedido={pedido} />}
       </div>
-
-      <DialogEtapa
-        etapa={concluida ?? automatica}
-        aoFechar={() => {
-          setConcluida(null)
-          setDispensada(etapa)
-        }}
-        aoConfirmar={(para) => {
-          mudarStatus.mutate({ pedidoId: pedido.id, para, silencioso: true })
-          setConcluida(null)
-        }}
-      />
 
       <Sheet open={verDados} onOpenChange={setVerDados}>
         <SheetContent className="overflow-y-auto sm:max-w-md">

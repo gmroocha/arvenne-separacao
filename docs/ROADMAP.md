@@ -202,7 +202,7 @@ venda. Custo e código do fornecedor nunca saem da equipe.
 ## Próximo passo: impressão Zebra
 
 Botão "Imprimir etiquetas pendentes (n)" na Etiquetagem, mandando ZPL pelo Zebra Browser Print (grátis,
-instalado no PC da impressora). O ponto de extensão já está comentado em `Etiquetagem.tsx`. Faltam:
+instalado no PC da impressora). (A tela Etiquetagem saiu em 17/11/2026: a impressão agora é o botão "Imprimir todas as etiquetas" da Separação.) Faltam:
 
 - modelo da impressora;
 - tamanho da etiqueta;
@@ -212,5 +212,5 @@ instalado no PC da impressora). O ponto de extensão já está comentado em `Eti
 ## Tela de análise de gargalos
 
 Tela (Histórico/Gargalos) lendo `v_tempo_etapas` (tempo de cada pedido em cada etapa, em horas corridas e
-úteis) e `v_tempo_sku` (tempo para achar cada peça, média por SKU, quem achou, dia e hora). Os dados já
-são gravados pelas migrations `20261112090000` e `20261112091000`; falta só a tela.
+úteis) e `v_producao_pessoa` (pedidos e peças por pessoa, dia e etapa; substituiu a `v_tempo_sku`, que media o tempo de
+cada peça e saiu em 17/11/2026). Os dados são gravados pelas migrations `20261112090000` e `20261122180000`; falta só a tela.

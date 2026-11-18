@@ -16,7 +16,8 @@ import type { DestinoCredito, Item, Troca, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import ConfirmarTroca from "./ConfirmarTroca"
 import { avisoCredito, listaEscolhida } from "@/lib/trocaTexto"
-import LinhaPeca from "./LinhaPeca"
+import Foto from "@/components/Foto"
+import { NotaNaPeca } from "./NotaNaPeca"
 import { useFeedbackPeca } from "./useFeedbackPeca"
 import { useNotaPeca } from "@/components/pedido/useNotaPeca"
 import { MenuPeca } from "./TilePeca"
@@ -105,7 +106,7 @@ function EstadoTroca({ troca, peca, item, aoAbrir, wa }: { troca: Troca | undefi
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem; aoTrocar: (item: Item) => void }
 
 // Peças em falta ou com defeito: avisar a cliente, montar a troca e copiar mensagem/link.
-// Aparece na Separação e também na etapa em que a falta foi marcada (Conferência, Etiquetagem),
+// Aparece na Separação e também na etapa em que a falta foi marcada (Conferência),
 // para a pessoa não perder de vista as outras peças da etapa.
 export default function Problemas({ pedido, acao, aoTrocar }: Props) {
   const itens = pedido.pedido_itens
@@ -181,22 +182,37 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
           <CardContent className="flex flex-col gap-3">
             {problemas.map((i) => (
               <div key={i.id} className="flex flex-col gap-2">
-                <LinhaPeca item={i} compacta semNome>
-                  <Badge variant={avisar ? "destructive" : aguardando ? "warning" : "secondary"} size="lg">
-                    <PackageX />
-                    {i.qtd > 1 ? `Faltam ${i.qtd}` : "Em falta"}
-                  </Badge>
-                  <MenuPeca
-                    rotulo="Resolver"
-                    itens={[
-                      { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
-                      { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
-                      { rotulo: "Voltar a pendente", icone: Undo2, aoClicar: () => marcar(i, "pendente", null) },
-                      nota.acao(i),
-                      feedback.acao(i),
-                    ]}
-                  />
-                </LinhaPeca>
+                {/* Cartão grande: foto, código, variante, quanto falta, nota e desde quando, com as ações à vista. */}
+                <div className="flex gap-3 rounded-xl bg-card p-2.5 ring-1 ring-foreground/10">
+                  <Foto url={i.foto_url} alt={i.nome} ampliar className="size-28 shrink-0 sm:size-32" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="min-w-0 font-mono text-lg leading-tight font-semibold break-all">{i.sku ?? "sem código"}</span>
+                      <Badge variant={avisar ? "destructive" : aguardando ? "warning" : "secondary"} size="lg" className="shrink-0 tabular-nums">
+                        <PackageX />
+                        {i.qtd > 1 ? `Faltam ${i.qtd}` : "Em falta"}
+                      </Badge>
+                    </div>
+                    {i.variante && <div className="text-sm leading-tight font-medium">{i.variante}</div>}
+                    <div className="line-clamp-2 text-xs text-muted-foreground">{i.nome}</div>
+                    <div className="text-xs text-muted-foreground">Em falta há {tempoDesde(i.updated_at)}</div>
+                    {i.nota && <NotaNaPeca nota={i.nota} />}
+                    <div className="mt-auto flex items-center gap-1.5 pt-1">
+                      <Button size="bloco" className="min-w-0 flex-1" variant="secondary" onClick={() => aoTrocar(i)}>
+                        <ArrowLeftRight /> Trocar
+                      </Button>
+                      <MenuPeca
+                        rotulo="Resolver"
+                        itens={[
+                          { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
+                          { rotulo: "Voltar a pendente", icone: Undo2, aoClicar: () => marcar(i, "pendente", null) },
+                          nota.acao(i),
+                          feedback.acao(i),
+                        ]}
+                      />
+                    </div>
+                  </div>
+                </div>
                 <EstadoTroca troca={troca} peca={pecaDe(i)} item={i} aoAbrir={() => setTrocando(i.id)} wa={wa} />
               </div>
             ))}

@@ -15,6 +15,7 @@ function titulo(caminho: string) {
   if (caminho.startsWith("/vendas/")) return "Venda"
   if (caminho.startsWith("/vendas")) return "Vendas"
   if (caminho.startsWith("/pedidos/")) return "Pedido"
+  if (caminho.startsWith("/concluidos")) return "Concluídos"
   if (caminho.startsWith("/arquivo")) return "Arquivo"
   if (caminho.startsWith("/repetidas")) return "Peças repetidas"
   if (caminho.startsWith("/catalogo")) return "Catálogo"

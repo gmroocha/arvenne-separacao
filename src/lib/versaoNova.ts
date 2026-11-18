@@ -27,3 +27,27 @@ export function recarregarUmaVez(
   recarregar()
   return true
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Versão nova publicada com a aba aberta e SEM erro de pacote: a aba continua com o código antigo na memória.
+// De tempos em tempos lê a página inicial, compara o pacote principal e, se mudou e não há nada sendo salvo,
+// recarrega sozinha (uma vez, pelo mesmo cuidado do recarregarUmaVez).
+// ---------------------------------------------------------------------------------------------------------------
+export const PACOTE_ATUAL = typeof document === "undefined" || !document.documentElement ? null : pacoteDoHtml(document.documentElement.outerHTML)
+
+// Nome do pacote principal ("/assets/index-D49WoCSK.js") dentro do HTML da página inicial; nulo se não achar.
+export function pacoteDoHtml(html: string): string | null {
+  return html.match(/<script[^>]*type="module"[^>]*src="([^"]*\/assets\/index-[^"]+\.js)"/)?.[1] ?? html.match(/src="([^"]*\/assets\/index-[^"]+\.js)"[^>]*type="module"/)?.[1] ?? null
+}
+
+export const haVersaoNova = (atual: string | null, publicada: string | null) => !!atual && !!publicada && atual !== publicada
+
+// Lê a página inicial publicada. Erro de rede não é versão nova.
+export async function lerPacotePublicado(buscar: typeof fetch = fetch): Promise<string | null> {
+  try {
+    const r = await buscar("/", { cache: "no-store", headers: { accept: "text/html" } })
+    return r.ok ? pacoteDoHtml(await r.text()) : null
+  } catch {
+    return null
+  }
+}

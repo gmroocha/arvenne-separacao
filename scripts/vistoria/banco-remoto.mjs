@@ -39,7 +39,7 @@ const pedido="(select id from public.pedidos order by created_at desc limit 1)"
 const trocaPedido="(select pedido_id from public.trocas where status in ('rascunho','enviada','respondida') order by created_at desc limit 1)"
 const item="(select tp.item_id from public.troca_pecas tp join public.pedido_itens i on i.id=tp.item_id where i.status in ('falta','defeito') order by tp.created_at desc limit 1)"
 const consultas={
- expedicao:"select * from public.v_pedidos where status in ('novo','separacao','avisar_cliente','aguardando_cliente','conferencia','etiquetagem','bipagem','faturamento','embalagem','frete','pronto_envio') order by prazo nulls last limit 300",
+ expedicao:"select * from public.v_pedidos where status in ('novo','separacao','avisar_cliente','aguardando_cliente','conferencia','bipagem','faturamento','embalagem','frete','pronto_envio') order by prazo nulls last limit 300",
  detalhe:`select * from public.v_pedidos where id=${pedido}`,
  v_pedidos:'select * from public.v_pedidos',
  troca_painel:`select public.troca_painel(${trocaPedido})`,
