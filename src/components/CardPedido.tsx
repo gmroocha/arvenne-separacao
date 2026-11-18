@@ -8,6 +8,7 @@ import AvatarMembro from "@/components/AvatarMembro"
 import { useEquipe, useReembolsosPendentes } from "@/lib/api"
 import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { OrigemBadge } from "@/components/StatusBadge"
+import { tempoNaEtapa } from "@/lib/status"
 import type { PedidoOperacao } from "@/lib/tipos"
 
 // Cartão do pedido na esteira: a cliente em destaque, o número pequeno. Clique direito (ou toque longo) abre as ações.
@@ -34,6 +35,7 @@ export default function CardPedido({ p, progresso }: { p: PedidoOperacao; progre
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+          {(p.status === "novo" || p.status === "separacao") && <span className="text-xs text-muted-foreground">{tempoNaEtapa(p.status, p.status_desde)}</span>}
           {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
           {reembolsar && !p.acerto_pendente && <SeloAcerto reembolsar />}
         </div>

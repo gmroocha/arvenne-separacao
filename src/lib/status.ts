@@ -194,6 +194,15 @@ export function tempoDesde(iso: string): string {
   return `${Math.floor(h / 24)} d`
 }
 
+// Quanto tempo o pedido está na etapa. Pago e ainda não começado é "na fila"; começado (primeiro "Achei" ou "Começar
+// separação") é "separando": os dois tempos aparecem separados na tela e nas métricas (eventos de status).
+export function tempoNaEtapa(status: StatusPedido, desde: string): string {
+  const t = tempoDesde(desde)
+  if (status === "novo") return `Na fila há ${t}`
+  if (status === "separacao") return `Separando há ${t}`
+  return `Nesta etapa há ${t}`
+}
+
 // Selo do romaneio público. V19: pedido cancelado ou perdido não mostra "Pagamento confirmado".
 export function seloRomaneio(fase: string, status: string): { texto: string; variante: "success" | "secondary" } | null {
   if (status === "cancelado") return { texto: "Pedido cancelado", variante: "secondary" }

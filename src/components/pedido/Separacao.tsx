@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ArrowLeftRight, Check, Info, MoreHorizontal, PackageX, Printer, Trash2, TriangleAlert } from "lucide-react"
+import { ArrowLeftRight, Check, Info, MoreHorizontal, PackageX, Play, Printer, Trash2, TriangleAlert } from "lucide-react"
 import { Quantidade } from "@/components/comum/Quantidade"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import MenuAcoes from "@/components/MenuAcoes"
@@ -9,7 +9,7 @@ import RespDialog from "@/components/RespDialog"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { useMarcarFalta, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { useMarcarFalta, useMudarStatus, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { avisoSemPecas, separarAdicionais } from "@/lib/etapa"
 import { etiquetasDe, skuCabe } from "@/lib/etiquetas"
 import { quando, reais } from "@/lib/formato"
@@ -88,6 +88,8 @@ export default function Separacao({ pedido, acao, aoTrocar }: Props) {
   const longos = paraImprimir.filter((i) => i.sku && !skuCabe(i.sku.trim()))
   const feedback = useFeedbackPeca()
   const nota = useNotaPeca()
+  // Pago e ainda sem começar = "na fila". Começar (aqui ou no primeiro "Achei") leva para "separando".
+  const mudarStatus = useMudarStatus()
   const bloco = (g: Item[]) =>
               g.length === 1 ? (
                 <TilePeca key={g[0].id} item={g[0]}>
@@ -130,6 +132,12 @@ export default function Separacao({ pedido, acao, aoTrocar }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <ProgressoEtapa titulo="Separação" feitas={achadas.length} total={vivas} unidade="peças" />
+
+      {pedido.status === "novo" && pendentes.length > 0 && (
+        <Button size="xl" className="w-full" disabled={mudarStatus.isPending} onClick={() => mudarStatus.mutate({ pedidoId: pedido.id, para: "separacao", silencioso: true })}>
+          <Play /> Começar separação
+        </Button>
+      )}
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">

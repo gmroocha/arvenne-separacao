@@ -9,7 +9,7 @@ import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { OrigemBadge, StatusBadge } from "@/components/StatusBadge"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { quando, reais } from "@/lib/formato"
-import { tempoDesde } from "@/lib/status"
+import { tempoDesde, tempoNaEtapa } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
 
 // `resto` vai para o <li>: permite envolver a linha num menu de clique direito (asChild).
@@ -47,6 +47,7 @@ export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentPr
               <StatusBadge status={p.status} somadaA={p.somada_a_numero} />
               {resp && <AvatarMembro nome={resp.nome} />}
               <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+              {(p.status === "novo" || p.status === "separacao") && <span className="text-xs text-muted-foreground">{tempoNaEtapa(p.status, p.status_desde)}</span>}
               {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
               {reembolsar && !p.acerto_pendente && <SeloAcerto reembolsar />}
             </>

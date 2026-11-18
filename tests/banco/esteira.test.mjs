@@ -340,3 +340,28 @@ test('migração: pedidos em Etiquetagem vão para a Bipagem e o histórico cliq
 async function recusa_ok(b) {
   await assert.rejects(() => b.query("update pedidos set status='etiquetagem'"), /Etapa inválida|check|violates/)
 }
+
+// V96: "na fila" (novo) e "separando" (separacao) são etapas diferentes nas métricas: o tempo de cada uma vem dos eventos
+// de status. Começa por "Começar separação" (atualiza o status) ou pelo primeiro "Achei" (marcar_pecas); dá no mesmo.
+for (const caminho of ['botão Começar separação', 'primeiro Achei']) {
+  test(`V96: fila e separação aparecem separadas em v_tempo_etapas (${caminho})`, async () => {
+    const p = await montar()
+    const [a] = await itens(p.id)
+    await db.query("update pedido_eventos set created_at = created_at - interval '3 hours' where pedido_id=$1", [p.id])
+    await entrar()
+    if (caminho === 'botão Começar separação') await db.query("update pedidos set status='separacao' where id=$1", [p.id])
+    else await marcar(p.id, [achei(a)])
+    assert.equal(await status(p.id), 'separacao')
+    const linhas = (await db.query("select etapa, em_andamento, proxima_etapa, horas_corridas::float h from v_tempo_etapas where pedido_id=$1 and etapa in ('novo','separacao') order by entrou_em, etapa", [p.id])).rows
+    const novo = linhas.find((l) => l.etapa === 'novo'), sep = linhas.find((l) => l.etapa === 'separacao')
+    assert.ok(novo && sep, 'as duas etapas existem')
+    assert.equal(novo.em_andamento, false)
+    assert.equal(novo.proxima_etapa, 'separacao')
+    assert.ok(novo.h >= 2.9 && novo.h <= 3.1, `tempo na fila ≈ 3 h (veio ${novo.h})`)
+    assert.equal(sep.em_andamento, true)
+    assert.ok(sep.h < 0.1, `tempo separando recém começou (veio ${sep.h})`)
+    // O evento de status leva quem começou (a pessoa do login).
+    const ev = await one("select usuario_email from pedido_eventos where pedido_id=$1 and tipo='status' and para='separacao'", [p.id])
+    assert.equal(ev.usuario_email, 'ana@arvenne.test')
+  })
+}

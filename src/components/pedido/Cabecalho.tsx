@@ -10,7 +10,7 @@ import SeloStatus from "@/components/SeloStatus"
 import { OrigemBadge } from "@/components/StatusBadge"
 import { Button } from "@/components/ui/button"
 import type { PedidoDetalhe } from "@/lib/api"
-import { tempoDesde } from "@/lib/status"
+import { tempoNaEtapa } from "@/lib/status"
 
 type Props = {
   pedido: PedidoDetalhe
@@ -58,7 +58,7 @@ export default function Cabecalho({ pedido, aoVerDados, semValores }: Props) {
             </Button>
           }
         />
-          <div className="text-right text-xs text-muted-foreground">nesta etapa há {tempoDesde(pedido.status_desde)}</div>
+          <div className="text-right text-xs text-muted-foreground">{tempoNaEtapa(pedido.status, pedido.status_desde)}</div>
         </div>
       </div>
       {dialogos}
