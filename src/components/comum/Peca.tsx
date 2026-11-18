@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import Foto from "@/components/Foto"
+import { detalheDoItem } from "@/lib/detalhePeca"
 import { NotaNaPeca } from "@/components/pedido/NotaNaPeca"
 import { Badge } from "@/components/ui/badge"
 import { fotoTamanho } from "@/lib/foto"
@@ -15,6 +16,8 @@ export type PecaBasica = {
   origem?: string | null
   observacao?: string | null
   nota?: string | null // nota da peça (menu "…" → Nota)
+  preco?: number | null // só o detalhe da foto mostra (valores do banco)
+  preco_pago?: number | null
   status?: string | null
 }
 
@@ -97,7 +100,7 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
       )}
     >
       {inicio}
-      <Foto url={fotoTamanho(item.foto_url, PX[tamanho])} alt={item.nome} ampliar className={cn("shrink-0", FOTO[tamanho], esmaecida && "opacity-70")} />
+      <Foto url={fotoTamanho(item.foto_url, PX[tamanho])} alt={item.nome} ampliar peca={detalheDoItem(item)} className={cn("shrink-0", FOTO[tamanho], esmaecida && "opacity-70")} />
       {extraAoLado ? (
         <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
           {textos}

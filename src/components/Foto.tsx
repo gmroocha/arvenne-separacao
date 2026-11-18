@@ -1,13 +1,19 @@
 import { useState, type MouseEvent } from "react"
-import FotoGrande from "@/components/FotoGrande"
-import { Gem, X } from "lucide-react"
+import DetalhePeca from "@/components/comum/DetalhePeca"
+import type { PecaDetalhe } from "@/lib/detalhePeca"
+import { Gem } from "lucide-react"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { fotoTamanho } from "@/lib/foto"
 import { cn } from "@/lib/utils"
 
-type Props = { url: string | null; alt?: string; ampliar?: boolean; className?: string }
+type Props = {
+  url: string | null
+  alt?: string
+  ampliar?: boolean
+  // Detalhe da peça (código, nome, variante, quantidade, preço, nota): a janela da foto mostra isso embaixo.
+  peca?: PecaDetalhe | null
+  className?: string
+}
 
 // Miniaturas sem transformação pediam o original inteiro da Shopify (até vários MB).
 // Preserve as menores já pedidas pelo chamador; a ampliação abaixo continua em 1200 px.
@@ -30,7 +36,7 @@ function Imagem({ url, alt, className }: { url: string | null; alt: string; clas
   )
 }
 
-export default function Foto({ url, alt = "", ampliar, className }: Props) {
+export default function Foto({ url, alt = "", ampliar, peca, className }: Props) {
   const [aberta, setAberta] = useState(false)
   // Miniatura e proporção lidas da foto que já está na tela: a ampliada abre no tamanho final na hora.
   const [previa, setPrevia] = useState<{ src: string | null; proporcao: number }>({ src: null, proporcao: 1 })
@@ -45,36 +51,14 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
       <Imagem url={miniatura(url)} alt={alt} />
     </AspectRatio>
   )
-  if (!ampliar || !url) return <div className={className}>{quadro}</div>
+  // Com o detalhe da peça, tocar abre mesmo sem foto (a foto é só uma parte do detalhe).
+  if (!ampliar || (!url && !peca)) return <div className={className}>{quadro}</div>
   return (
     <>
       <button type="button" className={cn("block w-full cursor-zoom-in", className)} onClick={abrir}>
         {quadro}
       </button>
-      <Dialog open={aberta} onOpenChange={setAberta}>
-        {/* Moldura do tema (contorno + espaço) do tamanho da foto; o X fica preso no canto da própria foto. */}
-        <DialogContent showCloseButton={false} className="w-fit max-w-[calc(100%-2rem)] grid-cols-none gap-0 p-2 sm:max-w-2xl sm:p-3">
-          <DialogTitle className="sr-only">{alt || "Foto da peça"}</DialogTitle>
-          <DialogDescription className="sr-only">Foto ampliada</DialogDescription>
-          <div className="relative mx-auto w-fit">
-            {/* Ampliada: pede a foto grande à Shopify (a miniatura vem com width pequeno). Largura pelo menor
-                limite: tela, 40,5rem no PC ou a altura disponível vezes a proporção da foto. */}
-            <FotoGrande
-              url={fotoTamanho(url, 1200) ?? url}
-              previa={previa.src}
-              proporcao={previa.proporcao}
-              alt={alt}
-              style={{ width: `min(calc(100vw - 3rem), 40.5rem, calc((85svh - 1.5rem) * ${previa.proporcao}))` }}
-            />
-            <DialogClose asChild>
-              <Button size="icon" variant="ghost" className="absolute top-2 right-2 rounded-full bg-background/80 text-foreground shadow backdrop-blur hover:bg-background">
-                <X />
-                <span className="sr-only">Fechar</span>
-              </Button>
-            </DialogClose>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DetalhePeca aberto={aberta} aoMudar={setAberta} foto={url} previa={previa.src} proporcao={previa.proporcao} peca={peca ? { ...peca, nome: peca.nome || alt } : null} />
     </>
   )
 }

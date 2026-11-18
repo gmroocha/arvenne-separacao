@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react"
 import { Check, ChevronDown, MoreHorizontal, Printer, Undo2 } from "lucide-react"
 import { MarcaCheck } from "@/components/comum/Bolha"
+import { detalheDoItem } from "@/lib/detalhePeca"
 import { LinhaPeca } from "@/components/comum/Peca"
 import Foto from "@/components/Foto"
 import RespDialog from "@/components/RespDialog"
@@ -54,7 +55,7 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
       )}
     >
       <div className="relative">
-        <Foto url={item.foto_url} alt={item.nome} ampliar className={cn("w-full", esmaecida && "opacity-60")} />
+        <Foto url={item.foto_url} alt={item.nome} ampliar peca={detalheDoItem(item)} className={cn("w-full", esmaecida && "opacity-60")} />
         <SelosPeca item={item} />
         {contador && <div className="absolute right-1.5 bottom-1.5">{contador}</div>}
       </div>
@@ -97,7 +98,19 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-card p-2 ring-1 ring-foreground/10 transition-shadow duration-300">
       <div className="relative">
-        <Foto url={base.foto_url} alt={base.nome} ampliar className="w-full" />
+        <Foto
+          url={base.foto_url}
+          alt={base.nome}
+          ampliar
+          peca={{
+            sku: codigoModelo(ordenados.map((i) => i.sku)), nome: base.nome, qtd: total,
+            variante: [variacao, ordenados.map((i) => `${separarTamanho(i.variante).tamanho ?? ""} ×${i.qtd}`).join(", ")].filter(Boolean).join(" · "),
+            // Vários tamanhos: cada um com a sua quantidade; o preço e a nota de cada tamanho ficam na peça de cada um.
+            nota: ordenados.filter((i) => i.nota).map((i) => `${separarTamanho(i.variante).tamanho ?? ""}: ${i.nota}`).join(" · ") || null,
+            preco: new Set(ordenados.map((i) => i.preco)).size === 1 ? base.preco : null,
+          }}
+          className="w-full"
+        />
         <SelosPeca item={base} />
       </div>
       <div className="flex min-w-0 flex-col gap-1 px-0.5">

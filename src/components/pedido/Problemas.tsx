@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useConcluirTroca, useEnviarTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp } from "@/lib/formato"
+import { detalheDoItem } from "@/lib/detalhePeca"
 import { tempoDesde } from "@/lib/status"
 import type { DestinoCredito, Item, Troca, TrocaPeca } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
@@ -184,7 +185,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
               <div key={i.id} className="flex flex-col gap-2">
                 {/* Cartão grande: foto, código, variante, quanto falta, nota e desde quando, com as ações à vista. */}
                 <div className="flex gap-3 rounded-xl bg-card p-2.5 ring-1 ring-foreground/10">
-                  <Foto url={i.foto_url} alt={i.nome} ampliar className="size-28 shrink-0 sm:size-32" />
+                  <Foto url={i.foto_url} alt={i.nome} ampliar peca={detalheDoItem(i)} className="size-28 shrink-0 sm:size-32" />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-start justify-between gap-2">
                       <span className="min-w-0 font-mono text-lg leading-tight font-semibold break-all">{i.sku ?? "sem código"}</span>

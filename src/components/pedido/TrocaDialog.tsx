@@ -1,3 +1,5 @@
+import DetalhePeca from "@/components/comum/DetalhePeca"
+import { detalheDoItem } from "@/lib/detalhePeca"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Vazio } from "@/components/comum/Vazio"
@@ -227,22 +229,27 @@ function ChipsPecas({ itens, troca, atualId, aoEscolher }: { itens: Item[]; troc
   )
 }
 
-// Peça em falta: foto, código, variante e o que a cliente pagou (valores do banco).
+// Peça em falta: foto, código, variante e o que a cliente pagou (valores do banco), cada um em uma linha com reticências.
+// Tocar no cartão abre o detalhe da peça (foto grande, nome completo, quantidade, preço, nota e quantas faltam).
 function CabecalhoPeca({ item, pago }: { item: Item; pago: ValorPago | null | undefined }) {
+  const [aberto, setAberto] = useState(false)
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl border p-2.5">
-      <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} ampliar className="size-16 shrink-0" />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-mono text-base leading-tight font-semibold break-all">{item.sku ?? "sem código"}</span>
-        {item.variante && <span className="text-sm leading-tight">{item.variante}</span>}
-        {pago && (
-          <span className="text-sm tabular-nums">
-            Cliente pagou {reais(pago.valor_pago)}
-            {pago.qtd > 1 && <span className="text-muted-foreground"> ({reais(pago.valor_pago_unit)} cada)</span>}
-          </span>
-        )}
-      </div>
-    </div>
+    <>
+      <button type="button" onClick={() => setAberto(true)} className="flex w-full min-w-0 items-center gap-3 rounded-xl border p-2.5 text-left transition-colors hover:bg-muted/50">
+        <Foto url={fotoTamanho(item.foto_url, 300)} alt={item.nome} className="size-16 shrink-0" />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate font-mono text-base leading-tight font-semibold">{item.sku ?? "sem código"}</span>
+          {item.variante && <span className="truncate text-sm leading-tight">{item.variante}</span>}
+          {pago && (
+            <span className="truncate text-sm tabular-nums">
+              Cliente pagou {reais(pago.valor_pago)}
+              {pago.qtd > 1 && <span className="text-muted-foreground"> ({reais(pago.valor_pago_unit)} cada)</span>}
+            </span>
+          )}
+        </span>
+      </button>
+      <DetalhePeca aberto={aberto} aoMudar={setAberto} foto={item.foto_url} peca={detalheDoItem(item)} />
+    </>
   )
 }
 

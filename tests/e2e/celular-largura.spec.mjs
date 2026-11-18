@@ -199,7 +199,8 @@ test("celular de verdade: nenhuma tela alarga a página, dá zoom ou quebra os d
   await passo(page, "Foto ampliada", problemas, async () => {
     await toque(page.getByRole("button", { name: /^Anel espiral/ }).first())
     await expect(page.getByRole("dialog")).toBeVisible()
-    await conferir(page, "Foto ampliada", problemas)
+    await conferir(page, "Detalhe da peça (foto ampliada)", problemas)
+    await page.screenshot({ path: "capturas/celular-toque-detalhe-peca.png" })
     await fechar(page)
   })
   await passo(page, "Menu de etapas", problemas, async () => {
