@@ -171,15 +171,14 @@ Faça isto uma vez, no computador do Windows ligado na Zebra ZD220 por USB.
 3. **Primeira impressão.** O Browser Print pergunta se pode aceitar o endereço do app: aceite.
 4. **App publicado (https).** Abra uma vez `https://localhost:9101/ssl_support` no Chrome e aceite o
    certificado. Depois volte ao app.
-5. **Testar.** Em Etiquetagem, abra o menu "…" ao lado de "Imprimir etiquetas" e escolha
+5. **Testar.** Na Separação de qualquer pedido, abra o menu "…" ao lado de "Imprimir todas as etiquetas" e escolha
    "Imprimir etiqueta de teste". Leia o código com o leitor da Bipagem e confira o tamanho.
 
 Quando o Browser Print responde, o botão mostra "na Zebra". Sem ele, o botão abre a janela de impressão do
 Chrome: escolha a ZD220 uma vez (o Chrome lembra), sem margens e sem cabeçalho.
 
-Depois de imprimir, o app pergunta "Saiu tudo certo?". Se sim, marca as peças como etiquetadas.
-Em Expedição, "Imprimir todas" imprime os pedidos que estão em Etiquetagem, com uma etiqueta separadora
-entre um pedido e outro.
+Imprimir não marca nada: a etiqueta é colada no saquinho na Conferência (a etapa Etiquetagem não existe mais).
+O botão "Imprimir todas as etiquetas" fica no topo da Separação de cada pedido (uma etiqueta por unidade).
 
 ## Time Arvenne (depois de aplicar a migration `20261122140000_frete_e_time.sql`)
 
@@ -203,3 +202,20 @@ que o caminho sem token não funcionou.
 3. Reinstale o app e copie o **token de acesso da Storefront API**. Não cole o token no chat.
 4. No painel do Supabase, vá em **Edge Functions > Secrets**, crie o segredo `SHOPIFY_STOREFRONT_TOKEN`
    e cole o token no valor. Salve.
+
+## Como usar a esteira nova (17/11/2026)
+
+1. **Separação:** no topo, **Imprimir todas as etiquetas** (uma por unidade). Toque **Achei** em cada peça; ela
+   vai para a Conferência sozinha. Não precisa terminar tudo para conferir: abra **Conferência** na linha de etapas.
+2. **Conferência:** confira a peça, cole a etiqueta no saquinho e toque **Conferida**; ela vai para a Bipagem.
+3. **Bipagem:** bipe (ou use **Contar 1**). Quando todas as peças terminam uma etapa, o pedido **vai sozinho** para a
+   próxima.
+4. **Nota fiscal:** **Nota emitida** e **Pedido LR feito** (cada código tem botão de copiar). Os dois feitos levam à
+   Embalagem. **Embalagem:** marque os três itens e **Embalado**. **Frete:** gere na Frenet, cole o link de rastreio
+   e toque **Frete gerado**. **Postagem:** **Postado**.
+5. **Concluídos** (menu lateral): **Enviar rastreio** (abre o WhatsApp com a mensagem; depois **Mensagem enviada**),
+   **A caminho** e **Entregues** (**Marcar entregue**).
+6. **Concluir pedido** (clique direito no cartão ou "⋯" do pedido): marca tudo que falta como feito e manda para
+   Concluídos. **Mover para outra etapa** funciona nos dois sentidos e sempre pede confirmação; o sistema recusa se
+   houver troca em andamento, acerto pendente ou peça em falta.
+7. **Time:** **Excluir** tira a pessoa de vez (pedidos e histórico continuam); **Desativar** só pausa.

@@ -46,6 +46,15 @@ O teste confere o comando e horário cadastrados; executar no relógio do Supaba
 remota autorizada. O vigia está programado para 06h UTC (03h em São Paulo); erros do job aparecem em
 `cron.job_run_details`. Após 36h sem fotografia, o app avisa que a verificação atrasou.
 
+## Esteira leve (17/11/2026)
+
+- `tests/e2e/esteira-ponta-a-ponta.spec.mjs`: a esteira inteira com cliques em rajada (venda → concluídos), mais Shopify,
+  tempo limite no meio, duas telas com Broadcast, "Concluir pedido" e voltar etapa. Confere dinheiro, status, avisos
+  de erro, requisições e rolagem lateral a 390 px. Gera `capturas/esteira-*` (claro e escuro).
+- `tests/banco/esteira.test.mjs`: `marcar_pecas`, `mover_etapa`, avanço automático, `excluir_membro`, permissões e a
+  migração dos pedidos que estavam em Etiquetagem. `tests/unidade/lotePecas.test.ts`: a fila de gravação.
+- `npm run capturas -- --simulado` roda também esses cenários e o `time-celular.spec.mjs`.
+
 ## Como adicionar um teste
 
 1. Reproduza o erro em `tests/unidade/<assunto>.test.ts`, `tests/banco/<assunto>.test.mjs` ou,
@@ -72,7 +81,7 @@ Os arquivos ficam em `capturas/{pagamento-recalculando,venda-dados-obrigatorios,
 
 `npm run tipos:gerar` usa `supabase gen types --remote` para introspecção, sem aplicar SQL.
 O resultado oficial fica em `src/lib/gerado/database.types.ts`. `npm run tipos:local` gera o complemento
-`database.local.types.ts` a partir da diferença entre as migrations aplicadas até `20261122140000`
+`database.local.types.ts` a partir da diferença entre as migrations aplicadas até `20261122170000`
 e as locais. `tipos:conferir` verifica esse complemento sem escrever; não precisa de rede.
 Nunca edite os arquivos gerados à mão. Ao atualizar a base remota, regenere o oficial, ajuste a referência
 `baseAplicada` em `scripts/tipos-pendentes.mjs`, regenere o complemento e rode `npm test`.

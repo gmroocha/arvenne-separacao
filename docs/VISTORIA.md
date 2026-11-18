@@ -452,6 +452,30 @@ Migration `20261122160000_progresso_pecas_leve.sql` aplicada após dry-run em 17
 O teste com Broadcast cobre a multiplicação de leituras; o adaptador de banco continua serializado e
 não representa capacidade, latência ou conexões do Supabase de produção.
 
+## Esteira leve, peça a peça (V81–V89, 17/11/2026)
+
+Migration `20261122180000_esteira_leve.sql`. O banco remoto era pequeno (39 pedidos); o problema era o trabalho feito
+a cada clique (trava do pedido, gatilhos, histórico, releitura da `v_pedidos`). Teste principal:
+`tests/e2e/esteira-ponta-a-ponta.spec.mjs` (falha no código anterior em todas as 6 situações, passa no novo).
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V81 | Alta | Cada "Achei", "Conferida" e "+1" era uma requisição e uma transação própria. | `marcar_pecas`: marcas com valor absoluto em lote, uma trava, estado devolvido ao app; fila local por pedido (`lotePecas.ts`), uma requisição em voo, repetição segura em tempo limite ou rede. Unidade (7), banco (17 em `esteira.test.mjs`) e tela. |
+| V82 | Média | A etapa do pedido só mudava por um diálogo "Concluir etapa" e a funcionária não via as peças que já tinham chegado na etapa seguinte. | Cada peça anda sozinha; o banco calcula a etapa pela peça mais atrasada (`avancar_pecas`) e o pedido avança sozinho. A linha de etapas mostra quantas peças esperam em cada uma e as etapas de peça abrem direto. |
+| V83 | Alta | Cada peça disparava gatilhos que não eram dela (reavaliar etapa, recalcular acerto, evento por clique). | `marcar_pecas` roda sem `reavaliar_etapa`/`reconciliar_acertos` (zero execuções, teste instrumentado); `tg_itens_depois` só grava quantidade, preço e saída/volta de peça (removida, falta, defeito). |
+| V84 | Média | Pedido com a etapa já completa antes desta versão ficava parado. | Ao abrir o pedido a tela pede o recálculo uma vez (`statusPelasPecas` espelha o banco). Teste V62. |
+| V85 | Alta | O Broadcast da própria gravação relia o pedido (3 leituras, uma na `v_pedidos`). | Eco da própria aba ignorado enquanto a requisição está em voo e por 3 s; mudanças de outras pessoas continuam relendo. Teste com duas telas: 0 releituras na tela de quem marca. |
+| V86 | Média | Mover de etapa dependia das regras e a funcionária não conseguia concluir um pedido já feito por fora. | `mover_etapa` (e "Concluir pedido"): para frente marca o que falta e grava `etapas_puladas` (fora das métricas); para trás zera do destino em diante; recusa troca em andamento, acerto pendente e falta. Diálogo de confirmação. |
+| V87 | Média | Nota, embalagem, frete e postagem pediam "Concluir etapa" depois do botão da etapa. | Um botão por etapa; o banco avança sozinho quando o campo da etapa é gravado (acerto pendente segura a Embalagem). Frete sem peso. |
+| V88 | Baixa | Pessoa só podia ser desativada. | `excluir_membro`: sai do Time e dos pedidos; pedidos e eventos ficam. |
+| V89 | Média | Celular com rolagem lateral (código de peça longo no aviso) e risco de zoom ao tocar campos. | `break-all` no aviso de código longo; teste confere 16 px em todos os campos e nenhuma rolagem lateral a 390 px nas telas. |
+
+Mudanças de produto junto: etapa Etiquetagem removida (a conferência manda colar a etiqueta; "Imprimir todas as
+etiquetas" no topo da Separação), status `enviado` aparece como **Concluído** com a página `/concluidos`
+(rastreio, a caminho, entregues; `pedidos.entregue_em`), `v_tempo_sku` removida e `v_producao_pessoa` criada.
+Limite honesto: o simulador atende uma requisição por vez; mede correção e quantidade de requisições, não a
+capacidade do Supabase.
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na

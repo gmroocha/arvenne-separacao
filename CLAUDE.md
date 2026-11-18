@@ -12,6 +12,18 @@ em esteira (separação, conferência, etiquetagem, bipagem, nota e frete, embal
 O Gustavo **não é dev**: explique em português simples, passo a passo, e faça você mesmo tudo o que não
 exige navegador, senha ou segredo.
 
+## A esteira (desde 17/11/2026)
+
+Separação (com "Imprimir todas as etiquetas") → Conferência (cola a etiqueta) → Bipagem → Nota fiscal → Embalagem →
+Frete → Postagem → **Concluído** (status `enviado` no banco; página `/concluidos`). Não existe etapa Etiquetagem.
+Cada peça anda sozinha; o pedido fica na etapa da peça mais atrasada e avança sozinho (função `marcar_pecas` em lote,
+`avancar_pecas`, avanço automático dos documentos no gatilho `tg_pedidos_antes`). Mover de etapa à mão e "Concluir
+pedido" são `mover_etapa` (grava `etapas_puladas`). Progresso de peça vai em lote por `src/lib/lotePecas.ts`: valores
+absolutos, uma requisição em voo por pedido; não adicione gravação peça a peça nem gatilho caro por clique.
+**Métricas decididas:** prazo/atraso, produção por pessoa (`v_producao_pessoa`), mudanças depois de pago e tempo por
+etapa do pedido (`v_tempo_etapas`); nada de histórico clique a clique. Teste principal da esteira:
+`tests/e2e/esteira-ponta-a-ponta.spec.mjs` (precisa continuar passando em celular e PC).
+
 ## Stack
 
 Vite 8, React 19, TypeScript 7, Tailwind 4, react-router 8, TanStack Query, shadcn/ui (preset

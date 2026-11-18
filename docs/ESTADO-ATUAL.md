@@ -1,5 +1,48 @@
 # Estado atual (atualizado em 17/11/2026)
 
+## Esteira leve, peça a peça, Concluídos e teste de ponta a ponta (17/11/2026) — local, aguarda o "sim" para a migration
+
+Resposta ao incidente em que o Gustavo não conseguia levar um pedido do começo ao fim (erro de banco e pedido
+voltando de etapa). O banco é pequeno; o peso era o trabalho por clique. Migration
+**`20261122180000_esteira_leve.sql`** (ainda **não aplicada** no remoto; `20261122170000_operacao_leve.sql`,
+que já estava aplicada, ficou como está; a view `v_pedidos_operacao` foi recriada na nova). Detalhes e IDs
+V81–V89 em [`VISTORIA.md`](VISTORIA.md).
+
+- **Nova esteira:** Separação (com **Imprimir todas as etiquetas** no topo) → Conferência (confira e cole a etiqueta)
+  → Bipagem → Nota fiscal → Embalagem → Frete → Postagem → **Concluído**. A etapa Etiquetagem não existe mais
+  (os 2 pedidos que estavam nela vão para a Bipagem; conferida vale como etiquetada).
+- **Cada peça anda sozinha:** "Achei" leva a peça para a Conferência, "Conferida" para a Bipagem. O pedido fica na
+  etapa da peça mais atrasada e **avança sozinho** quando todas terminam (também Nota+LR → Embalagem, Embalado →
+  Frete, Frete gerado → Postagem, Postado → Concluído). A linha de etapas mostra quantas peças há em cada uma.
+- **Gravação em lote** (`marcar_pecas`): o clique muda a tela na hora; as marcas vão juntas a cada ~400 ms, uma
+  requisição em voo por pedido, valores absolutos (repetir é seguro), resposta direto para o cache, eco do
+  Broadcast da própria aba ignorado. Nada de histórico clique a clique.
+- **Mover de etapa / Concluir pedido:** menu do pedido e clique direito, com diálogo explicando o que será marcado
+  como feito (para frente) ou zerado (para trás). O banco recusa com troca em andamento, acerto pendente ou falta.
+- **Concluídos** (`/concluidos`): abas Enviar rastreio (WhatsApp), A caminho, Entregues; "Marcar entregue".
+  O Arquivo fica com cancelados e perdidas (somadas continuam só dentro do pedido principal, como em V72).
+- **Frete sem peso** (coluna `frete_peso_g` fica, sem uso); um botão por etapa; link de rastreio só no Frete.
+  Pedido concluído à mão (sem passar pelo Frete) mostra o campo do link no próprio pedido concluído.
+- **LR:** botão copiar por peça (código e quantidade). **Faltas:** cartão maior, foto maior, código, variante,
+  quantidade, nota e "em falta há…", com as ações à vista. **Time:** "Excluir" de verdade (sai da lista e dos pedidos).
+- **Métricas decididas (guardadas):** prazo/atraso, produção por pessoa (`v_producao_pessoa`: pedidos e peças por dia
+  e etapa, quem concluiu), mudanças depois de pago (retirada, falta, quantidade, preço) e tempo por etapa do pedido
+  (`v_tempo_etapas`). Não guardamos mais achei/conferida/bipada (eventos antigos apagados pela migration).
+- **Celular:** nenhuma rolagem lateral a 390 px nas telas; campos com 16 px (sem zoom ao tocar). Aba aberta com
+  versão antiga recarrega sozinha quando volta a aparecer, sem nada sendo salvo.
+- **Testes:** `tests/e2e/esteira-ponta-a-ponta.spec.mjs` (principal: esteira inteira com cliques em rajada, dinheiro
+  igual ao do pagamento em cada etapa, status nunca volta, nenhum aviso de erro, uma requisição em voo, sem rolagem
+  lateral; variantes Shopify, tempo limite no meio, duas telas com Broadcast, Concluir pedido e voltar etapa),
+  `tests/banco/esteira.test.mjs`, `tests/unidade/lotePecas.test.ts`, `time-celular.spec.mjs`.
+  A conservação do dinheiro ganhou marcas em lote e `mover_etapa`.
+- **Limite honesto:** o simulador atende uma requisição por vez. Mede correção e quantidade de requisições, não a
+  capacidade do Supabase. A prova real é o Gustavo passar um pedido de teste no app publicado.
+- **Próxima ação (com o "sim" do Gustavo):** `npx supabase db push --remote --dry-run`, aplicar a migration nova
+  com `--yes`, `npm run tipos:gerar`, atualizar `baseAplicada` em `scripts/tipos-pendentes.mjs` para
+  `20261122180000`, `npm run tipos:local`, `git push`; depois um pedido de teste completo e leitura remota dos
+  logs (só leitura) para confirmar que não há mais `57014`. Não publique antes da migration: o app novo usa
+  `marcar_pecas`, `mover_etapa` e `excluir_membro`.
+
 ## Cliques rápidos e bipagem (17/11/2026) — banco aplicado, app preparado para publicação
 
 Investigação do relato na bipagem do ARV-1287 e de “Achei”/“Conferida” em sequência: CLI conectado;

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
-import { expect, test } from 'vitest'
+import { test } from "vitest"
 import { db, one } from './suporte.mjs'
 import { criarBanco } from './suporte.mjs'
-import { completar, fixture, escolher, concluir, pedidoWhats, recusa } from './fixtures.mjs'
+import { fixture, escolher, concluir, pedidoWhats, recusa } from './fixtures.mjs'
 
 // Esteira leve (20261122180000): marcar_pecas em lote, avanço automático, mover_etapa, excluir_membro.
 const entrar = (email = 'ana@arvenne.test') => db.exec(`select set_config('request.jwt.claims','{"email":"${email}"}',true); set local role authenticated`)
