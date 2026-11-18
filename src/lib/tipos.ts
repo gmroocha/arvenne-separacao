@@ -61,6 +61,7 @@ export type ResultadoBipagem = "ok" | "fora_do_pedido" | "excedente"
 export type Evento = Tables<'pedido_eventos'>
 
 export type PecaClube = Tables<'pecas_clube'>
+export type ModeloClube = Tables<'clube_modelos'>
 
 // Peça escolhida na tela, antes de gravar no pedido.
 export type NovoItem = {

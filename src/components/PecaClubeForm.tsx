@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { toast } from "sonner"
-import { ExternalLink, ImagePlus, Plus, RefreshCw, Sparkles, X } from "lucide-react"
+import { ExternalLink, ImagePlus, RefreshCw, Sparkles, X } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
-import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { useAtualizarPecaClube, useCriarPecaClube } from "@/lib/api"
+import { Switch } from "@/components/ui/switch"
+import CampoVariante from "@/components/clube/CampoVariante"
+import EditorVariantes from "@/components/clube/EditorVariantes"
+import { useAtualizarPecaClube, useCriarPecaClube, useSalvarModeloClube } from "@/lib/api"
+import { errosDoProduto, novaLinhaVariante, variantesParaSalvar, type LinhaVariante } from "@/lib/clubeModelos"
 import { enviarFoto } from "@/lib/foto"
 import { lerNumero, numeroParaTexto } from "@/lib/formato"
-import { lerVariante, montarVariante, proximoTipo, TIPOS_PARTE, type ParteVariante, type TipoParte } from "@/lib/varianteClube"
-import type { PecaClube } from "@/lib/tipos"
+import { lerVariante, montarVariante, type ParteVariante } from "@/lib/varianteClube"
+import type { ModeloClube, PecaClube } from "@/lib/tipos"
 
 // Endereço do agente do GPT que melhora as fotos. Fica em .env.local / Cloudflare, para trocar sem código.
 const LINK_AGENTE_FOTO = import.meta.env.VITE_LINK_AGENTE_FOTO as string | undefined
@@ -25,22 +28,33 @@ function mensagem(err: unknown, padrao: string): string {
   return padrao
 }
 
-// Sem "peca": cadastra uma nova. Com "peca": edita aquela (a foto atual fica, a menos que troque ou remova).
-export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; aoSalvar: (peca: PecaClube) => void }) {
+// Sem "peca": cadastra uma nova (simples, ou "produto com variantes" no seletor). Com "peca": edita aquela (a foto atual
+// fica, a menos que troque ou remova). Com "produto": edita o produto com variantes (o pai e todas as variantes juntos).
+// Produto com variantes grava tudo numa chamada só (salvar_modelo_clube): se algo falha, nada fica salvo.
+type Produto = { modelo: ModeloClube; pecas: PecaClube[] }
+export default function PecaClubeForm({ peca, produto, aoSalvar }: { peca?: PecaClube; produto?: Produto; aoSalvar: (peca: PecaClube | null) => void }) {
   const criar = useCriarPecaClube()
   const atualizar = useAtualizarPecaClube()
+  const salvarModelo = useSalvarModeloClube()
+  const base = produto?.modelo ?? peca
+  const [comVariantes, setComVariantes] = useState(!!produto)
+  const [linhas, setLinhas] = useState<LinhaVariante[]>(() =>
+    produto
+      ? produto.pecas.map((p) => ({
+          chave: p.id, id: p.id, partes: lerVariante(p.variante), codigoManual: p.codigo,
+          preco: p.preco != null && p.preco !== produto.modelo.preco ? numeroParaTexto(p.preco) : "",
+        }))
+      : [novaLinhaVariante([{ tipo: "tamanho", valor: "" }])],
+  )
+  const [mostrarErros, setMostrarErros] = useState(false)
   const entrada = useRef<HTMLInputElement>(null)
   const [arquivo, setArquivo] = useState<File | null>(null)
-  const [fotoAtual, setFotoAtual] = useState<string | null>(peca?.foto_url ?? null)
-  const [codigo, setCodigo] = useState(peca?.codigo ?? "")
-  const [nome, setNome] = useState(peca?.nome ?? "")
+  const [fotoAtual, setFotoAtual] = useState<string | null>(base?.foto_url ?? null)
+  const [codigo, setCodigo] = useState(produto ? produto.modelo.codigo_base : (peca?.codigo ?? ""))
+  const [nome, setNome] = useState(base?.nome ?? "")
   const [partes, setPartes] = useState<ParteVariante[]>(() => lerVariante(peca?.variante))
-  const [preco, setPreco] = useState(numeroParaTexto(peca?.preco ?? null))
+  const [preco, setPreco] = useState(numeroParaTexto(base?.preco ?? null))
   const [enviando, setEnviando] = useState(false)
-  const mudarParte = (i: number, parcial: Partial<ParteVariante>) =>
-    setPartes((ps) => ps.map((p, n) => (n === i ? { ...p, ...parcial } : p)))
-  const adicionarParte = () => setPartes((ps) => [...ps, { tipo: proximoTipo(ps), valor: "" }])
-  const removerParte = (i: number) => setPartes((ps) => ps.filter((_, n) => n !== i))
 
   const novaPrevia = useMemo(() => (arquivo ? URL.createObjectURL(arquivo) : null), [arquivo])
   const previa = novaPrevia ?? fotoAtual
@@ -60,6 +74,13 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
     e.preventDefault()
     const precoLido = preco.trim() ? lerNumero(preco) : null
     if (preco.trim() && precoLido == null) return void toast.error("Preço não entendido. Use, por exemplo, 49,90")
+    if (comVariantes) {
+      const erros = errosDoProduto({ codigo, nome, preco, linhas })
+      if (erros.length || linhas.length === 0) {
+        setMostrarErros(true)
+        return void toast.error(linhas.length === 0 ? "Adicione ao menos uma variante" : erros[0])
+      }
+    }
     setEnviando(true)
     let foto_url: string | null = fotoAtual
     try {
@@ -70,6 +91,15 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
       return
     }
     try {
+      if (comVariantes) {
+        await salvarModelo.mutateAsync({
+          ...(produto ? { id: produto.modelo.id } : {}),
+          codigo: codigo.trim(), nome: nome.trim(), preco: precoLido, foto_url, variantes: variantesParaSalvar(codigo, linhas),
+        })
+        toast.success(produto ? "Produto atualizado" : "Produto salvo no Clube com as variantes")
+        aoSalvar(null)
+        return
+      }
       const dados = { codigo: codigo.trim(), nome: nome.trim(), variante: montarVariante(partes), preco: precoLido, foto_url }
       const salva = peca ? await atualizar.mutateAsync({ id: peca.id, ...dados }) : await criar.mutateAsync(dados)
       toast.success(peca ? "Peça do Clube atualizada" : "Peça salva no Clube")
@@ -132,9 +162,15 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
       </div>
 
       <FieldGroup>
+        {!peca && !produto && (
+          <Field orientation="horizontal">
+            <Switch id="com-variantes" checked={comVariantes} onCheckedChange={setComVariantes} />
+            <FieldLabel htmlFor="com-variantes">Produto com variantes</FieldLabel>
+          </Field>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel htmlFor="codigo">Código</FieldLabel>
+            <FieldLabel htmlFor="codigo">{comVariantes ? "Código do produto" : "Código"}</FieldLabel>
             <Input id="codigo" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
           </Field>
           <Field>
@@ -146,48 +182,13 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
           <FieldLabel htmlFor="nome">Nome</FieldLabel>
           <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
         </Field>
-        <FieldSet className="gap-3">
-          <FieldLegend variant="label">Variante</FieldLegend>
-          {partes.map((parte, i) => {
-            const tipo = TIPOS_PARTE.find((t) => t.valor === parte.tipo) ?? TIPOS_PARTE[0]
-            return (
-              <div key={i} className="flex items-center gap-2">
-                <Select value={parte.tipo} onValueChange={(t) => mudarParte(i, { tipo: t as TipoParte })}>
-                  <SelectTrigger aria-label={`Tipo da variante ${i + 1}`} className="w-32 shrink-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIPOS_PARTE.map((t) => (
-                      <SelectItem key={t.valor} value={t.valor}>
-                        {t.rotulo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  aria-label={tipo.rotulo}
-                  className="uppercase placeholder:normal-case"
-                  placeholder={tipo.exemplo}
-                  value={parte.valor}
-                  onChange={(e) => mudarParte(i, { valor: e.target.value })}
-                />
-                <Button type="button" variant="ghost" size="icon-toque" aria-label={`Remover ${tipo.rotulo.toLowerCase()}`} onClick={() => removerParte(i)}>
-                  <X />
-                </Button>
-              </div>
-            )
-          })}
-          <Button type="button" variant="outline" size="sm" className="self-start" onClick={adicionarParte}>
-            <Plus /> {partes.length ? "Adicionar outra variante" : "Adicionar variante"}
-          </Button>
-          {partes.length > 0 && (
-            <FieldDescription>
-              Fica assim: <span className="font-medium text-foreground">{montarVariante(partes) ?? "—"}</span>
-            </FieldDescription>
-          )}
-        </FieldSet>
+        {comVariantes ? (
+          <EditorVariantes base={codigo} linhas={linhas} aoMudar={setLinhas} mostrarErros={mostrarErros} precoBase={preco} />
+        ) : (
+          <CampoVariante partes={partes} aoMudar={setPartes} />
+        )}
         <Button type="submit" disabled={enviando}>
-          {enviando && <Spinner />} {peca ? "Salvar alterações" : "Salvar peça"}
+          {enviando && <Spinner />} {peca || produto ? "Salvar alterações" : comVariantes ? "Salvar produto" : "Salvar peça"}
         </Button>
       </FieldGroup>
     </form>

@@ -9,12 +9,13 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Spinner } from "@/components/ui/spinner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAtualizarCatalogo, useBuscaSite, useAtualizacaoAutomaticaCatalogo, useCatalogoInfo, usePecasClube } from "@/lib/api"
+import { useAtualizarCatalogo, useBuscaSite, useAtualizacaoAutomaticaCatalogo, useCatalogoInfo, useModelosClube, usePecasClube } from "@/lib/api"
+import { agruparClube, rotulosDeVariantes } from "@/lib/clubeModelos"
 import { reais } from "@/lib/formato"
 import { useDebounce } from "@/lib/useDebounce"
 import { itemDoClube, itemDoSite } from "@/lib/itens"
-import type { NovoItem, PecaClube } from "@/lib/tipos"
-import { agruparPorTamanho, codigoDoModelo, separarTamanho } from "@/lib/variante"
+import type { ModeloClube, NovoItem, PecaClube } from "@/lib/tipos"
+import { agruparPorTamanho, codigoDoModelo, separarTamanho, type GrupoTamanhos } from "@/lib/variante"
 
 export type Tocar = (item: NovoItem) => void
 
@@ -89,13 +90,13 @@ function Selos({ noCarrinho, jaNoPedido, qtdNoPedido }: { noCarrinho: number; ja
 
 // Grade de cartões: tamanhos do mesmo modelo juntos (só Site); variante de outro tipo fica em cartão próprio.
 // aoEditar (só Clube): botão "Editar" no pé do cartão.
-function GradeResultados({ itens, agrupar, aoTocar, aoEditar, quantidade, aoMudarQtd, selecionada, noPedido, qtdNoPedido, notaPreco, comPreco }: { itens: NovoItem[]; agrupar?: boolean; aoEditar?: (item: NovoItem) => void } & Pick<Marcas, "quantidade" | "aoMudarQtd" | "selecionada" | "noPedido" | "qtdNoPedido" | "notaPreco" | "comPreco"> & { aoTocar: Tocar }) {
+function GradeResultados({ itens, grupos: gruposProntos, agrupar, aoTocar, aoEditar, quantidade, aoMudarQtd, selecionada, noPedido, qtdNoPedido, notaPreco, comPreco }: { itens: NovoItem[]; grupos?: GrupoTamanhos<NovoItem>[]; agrupar?: boolean; aoEditar?: (item: NovoItem) => void } & Pick<Marcas, "quantidade" | "aoMudarQtd" | "selecionada" | "noPedido" | "qtdNoPedido" | "notaPreco" | "comPreco"> & { aoTocar: Tocar }) {
   const qtd = (i: NovoItem) => quantidade?.(i) ?? 0
   const marcada = (i: NovoItem) => selecionada?.(i) ?? false
   const nped = (i: NovoItem) => qtdNoPedido?.(i) ?? 0
   // Carrinho (quantidade) adiciona; troca (seleção) oferece.
   const acao = quantidade ? { rotulo: "Adicionar", rotuloMarcado: "Adicionada" } : { rotulo: "Oferecer", rotuloMarcado: "Oferecida" }
-  const grupos = agruparPorTamanho(itens, (i) => ({ id: String(i.shopify_variant_id ?? i.peca_clube_id ?? i.chave), produto: i.nome, variante: agrupar ? i.variante : null, extra: String(i.preco ?? "") }))
+  const grupos = gruposProntos ?? agruparPorTamanho(itens, (i) => ({ id: String(i.shopify_variant_id ?? i.peca_clube_id ?? i.chave), produto: i.nome, variante: agrupar ? i.variante : null, extra: String(i.preco ?? "") }))
   // p-1: folga para o anel do cartão marcado não ser cortado pela área rolável.
   return (
     <div className="grid grid-cols-2 gap-3 p-1 sm:grid-cols-3">
@@ -126,20 +127,21 @@ function GradeResultados({ itens, agrupar, aoTocar, aoEditar, quantidade, aoMuda
           )
         }
         const primeiro = g.tamanhos[0].item
-        const porId = new Map(g.tamanhos.map((t) => [String(t.item.shopify_variant_id ?? t.item.chave), t.item]))
+        const idDoItem = (i: NovoItem) => String(i.shopify_variant_id ?? i.peca_clube_id ?? i.chave)
+        const porId = new Map(g.tamanhos.map((t) => [idDoItem(t.item), t.item]))
         return (
           <CartaoCatalogo
             key={g.chave}
             foto={primeiro.foto_url}
             alt={primeiro.nome}
-            codigo={codigoDoModelo(g.tamanhos.map((t) => ({ sku: t.item.sku, tamanho: t.tamanho })))}
-            variante={separarTamanho(primeiro.variante).base}
+            codigo={g.codigo ?? codigoDoModelo(g.tamanhos.map((t) => ({ sku: t.item.sku, tamanho: t.tamanho })))}
+            variante={g.modelo ? null : separarTamanho(primeiro.variante).base}
             nome={primeiro.nome}
             selecionado={g.tamanhos.some((t) => marcada(t.item) || qtd(t.item) > 0)}
             selo={<Selos noCarrinho={0} jaNoPedido={g.tamanhos.some((t) => noPedido?.(t.item))} qtdNoPedido={g.tamanhos.reduce((n, t) => n + nped(t.item), 0)} />}
             preco={comPreco ? <PrecoCartao item={primeiro} notaPreco={notaPreco} /> : undefined}
             chips={g.tamanhos.map((t) => ({
-              id: String(t.item.shopify_variant_id ?? t.item.chave),
+              id: idDoItem(t.item),
               rotulo: t.tamanho,
               contagem: qtd(t.item),
               selecionado: marcada(t.item) || qtd(t.item) > 0,
@@ -230,12 +232,23 @@ function AbaSite({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPe
   )
 }
 
+// Clube: variantes do mesmo produto (modelo_id) viram um cartão com os botões de variante; peça sem pai fica sozinha.
+function gruposDoClube(pecas: PecaClube[], modelos: ModeloClube[]): GrupoTamanhos<NovoItem>[] {
+  return agruparClube(pecas, modelos).map((g) => {
+    const itens = g.pecas.map((p) => itemDoClube(p))
+    if (!g.modelo && g.pecas.length === 1 && !g.pecas[0].modelo_id) return { chave: g.chave, unica: itens[0], tamanhos: [] }
+    const rotulos = rotulosDeVariantes(g.pecas.map((p) => p.variante))
+    return { chave: g.chave, modelo: true, codigo: g.modelo?.codigo_base, tamanhos: itens.map((item, i) => ({ item, tamanho: rotulos[i] })) }
+  })
+}
+
 function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoTocar: Tocar } & Marcas) {
   const [termo, setTermo] = useState("")
   const [novo, setNovo] = useState(false)
   const [editando, setEditando] = useState<PecaClube | null>(null)
   const busca = useDebounce(termo.trim(), 300)
   const { data, isFetching } = usePecasClube(busca)
+  const modelos = useModelosClube().data ?? []
 
   if (novo || editando)
     return (
@@ -247,8 +260,8 @@ function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noP
           key={editando?.id ?? "nova"}
           peca={editando ?? undefined}
           aoSalvar={(peca) => {
-            // Peça nova já entra no carrinho; a editada só volta para a lista (já atualizada).
-            if (!editando) aoTocar(itemDoClube(peca))
+            // Peça simples nova já entra no carrinho; produto com variantes e a peça editada só voltam para a lista.
+            if (peca && !editando) aoTocar(itemDoClube(peca))
             setNovo(false)
             setEditando(null)
           }}
@@ -263,7 +276,7 @@ function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noP
         <Plus /> Nova peça do Clube
       </Button>
       {!isFetching && data?.length === 0 && <SemResultado />}
-      {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} aoTocar={aoTocar} aoEditar={(i) => setEditando(data.find((p) => p.id === i.peca_clube_id) ?? null)} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
+      {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} grupos={gruposDoClube(data, modelos)} aoTocar={aoTocar} aoEditar={(i) => setEditando(data.find((p) => p.id === i.peca_clube_id) ?? null)} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
     </div>
   )
 }

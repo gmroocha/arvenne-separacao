@@ -34,7 +34,8 @@ export function codigoModelo(skus: (string | null | undefined)[]): string | null
 
 // Junta variantes do mesmo modelo que só mudam de tamanho (mesmo produto, mesma pedra/cor, mesmo "extra" - ex.: preço).
 // Variante sem tamanho fica sozinha (a foto muda de uma cor/pedra para outra). Mantém a ordem da primeira aparição.
-export type GrupoTamanhos<T> = { chave: string; unica?: T; tamanhos: { item: T; tamanho: string }[] }
+// `codigo` (opcional) é o código do produto quando ele é conhecido (Clube com produto pai); `modelo` marca o grupo vindo do pai.
+export type GrupoTamanhos<T> = { chave: string; unica?: T; tamanhos: { item: T; tamanho: string }[]; codigo?: string; modelo?: boolean }
 
 export function agruparPorTamanho<T>(itens: T[], ler: (t: T) => { id: string; produto: string; variante: string | null | undefined; extra?: string }): GrupoTamanhos<T>[] {
   const grupos: GrupoTamanhos<T>[] = []

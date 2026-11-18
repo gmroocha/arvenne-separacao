@@ -12,7 +12,7 @@ import { agendarAtualizacaoOperacional } from "@/lib/atualizacaoOperacional"
 import { gravarPeca } from "@/lib/gravarPeca"
 import { enfileirarMarca, type Destino, type RespostaLote } from "@/lib/lotePecas"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, Membro, Papel, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, Membro, ModeloClube, Papel, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 // Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
@@ -1157,6 +1157,58 @@ export function useAtualizarPecaClube() {
       const { data, error } = await supabase.from("pecas_clube").update(d).eq("id", id).select().single()
       if (error) throw error
       return data as PecaClube
+    },
+    [["clube"]],
+  )
+}
+
+// Produtos com variantes do Clube (o "pai"). Poucos: vêm todos, e a tela junta as variantes pelo modelo_id.
+export function useModelosClube() {
+  return useQuery({
+    queryKey: ["clube", "modelos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clube_modelos").select("*").order("created_at", { ascending: false }).limit(1000)
+      if (error) {
+        if (semFuncao(error)) return [] as ModeloClube[] // banco ainda sem a migration: tudo como peça simples
+        throw error
+      }
+      return data as ModeloClube[]
+    },
+  })
+}
+
+// Todas as variantes (ativas ou não) de um produto do Clube, para editar o produto inteiro.
+export function usePecasDoModelo(modeloId: string | null) {
+  return useQuery({
+    queryKey: ["clube", "pecas-do-modelo", modeloId],
+    enabled: !!modeloId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("pecas_clube").select("*").eq("modelo_id", modeloId!).order("created_at").order("id")
+      if (error) throw error
+      return data as PecaClube[]
+    },
+  })
+}
+
+// Um item de salvar_modelo_clube: peça simples (sem "variantes" nem "id") ou produto com variantes. Tudo ou nada no banco.
+export type ItemModeloClube = {
+  id?: string
+  codigo: string
+  nome: string
+  preco: number | null
+  foto_url: string | null
+  variante?: string | null
+  ativo?: boolean
+  variantes?: { id?: string; codigo: string; variante: string; preco: number | null }[]
+}
+export type ResultadoModeloClube = { modelo_id: string | null; pecas: PecaClube[] }
+
+export function useSalvarModeloClube() {
+  return useAcao(
+    async (itens: ItemModeloClube | ItemModeloClube[]) => {
+      const { data, error } = await supabase.rpc("salvar_modelo_clube", { p: itens as unknown as Json })
+      if (error) throw new Error(msgBanco(error))
+      return (data ?? []) as unknown as ResultadoModeloClube[]
     },
     [["clube"]],
   )
