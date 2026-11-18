@@ -8,7 +8,7 @@
   Teste `tests/e2e/nota-peca.spec.mjs`. Publicado (não depende do banco).
 - **Cartão da Expedição:** as fotos das peças em falta vêm primeiro (útil no Avisar cliente). Migration
   `20261124110000_fotos_falta_primeiro.sql` (só muda a ordem das fotos em `v_pedidos_operacao`), teste
-  `tests/banco/fotos-falta.test.mjs`. **Migration ainda não aplicada.**
+  `tests/banco/fotos-falta.test.mjs`. **Aplicada em 18/11 com o "sim" do Gustavo.**
 
 ## Papéis suspensos (18/11/2026) — **aplicado em 18/11 com o "sim" do Gustavo**
 
