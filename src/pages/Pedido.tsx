@@ -82,7 +82,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
       {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota fiscal em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       {!foco && <AvisoCredito pedidoId={pedido.id} />}
-      <div className={foco ? "flex flex-col" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
+      <div className={foco ? "flex flex-col" : "grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start"}>
         <PainelEtapa
           pedido={pedido}
           vista={vista}

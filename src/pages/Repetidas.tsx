@@ -210,7 +210,7 @@ export default function Repetidas() {
         </div>
       )}
       {isLoading ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-56 w-full" />
           ))}
@@ -240,7 +240,7 @@ export default function Repetidas() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {visiveis.map((r) => (
             <Card key={r.chave} size="sm" className={cn(r.pedidos.some((p) => destacados.has(p.pedido_id)) && "ring-2 ring-primary")}>
               <CardContent className="flex flex-col gap-3">

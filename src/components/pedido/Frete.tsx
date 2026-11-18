@@ -48,7 +48,7 @@ export default function Frete({ pedido, patch }: Props) {
 
         <ModalidadeFrete escolhida={servico} clientePediu={pedido.frete_tipo} aoEscolher={(v) => patch({ frete_servico: v })} />
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Cliente pagou de frete</span>
             <div className="flex h-11 items-center rounded-md border bg-muted/40 px-3 text-sm tabular-nums sm:h-9">

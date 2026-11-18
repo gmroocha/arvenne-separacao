@@ -53,7 +53,7 @@ export default function Foto({ url, alt = "", ampliar, className }: Props) {
       </button>
       <Dialog open={aberta} onOpenChange={setAberta}>
         {/* Moldura do tema (contorno + espaço) do tamanho da foto; o X fica preso no canto da própria foto. */}
-        <DialogContent showCloseButton={false} className="w-fit max-w-[calc(100%-2rem)] gap-0 p-2 sm:max-w-2xl sm:p-3">
+        <DialogContent showCloseButton={false} className="w-fit max-w-[calc(100%-2rem)] grid-cols-none gap-0 p-2 sm:max-w-2xl sm:p-3">
           <DialogTitle className="sr-only">{alt || "Foto da peça"}</DialogTitle>
           <DialogDescription className="sr-only">Foto ampliada</DialogDescription>
           <div className="relative mx-auto w-fit">

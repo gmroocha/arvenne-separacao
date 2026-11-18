@@ -204,7 +204,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente, validacao 
           </Button>
         ) : (
           <FieldGroup className="gap-3">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="c-nome">Nome</FieldLabel>
                 <Input id="c-nome" aria-invalid={invalido("cliente_nome")} value={form.cliente_nome} onChange={(e) => aoMudar({ cliente_nome: e.target.value })} />
@@ -232,7 +232,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente, validacao 
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="flex flex-col gap-3">
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field>
                     <FieldLabel htmlFor="c-cpf">CPF ou CNPJ</FieldLabel>
                     <InputGroup>
@@ -255,7 +255,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente, validacao 
                   </p>
                 )}
                 {(digitos(form.cliente_cpf).length === 14 || form.cliente_razao_social || form.cliente_ie) && (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field>
                       <FieldLabel htmlFor="c-razao">Razão social</FieldLabel>
                       <Input id="c-razao" value={form.cliente_razao_social} onChange={(e) => aoMudar({ cliente_razao_social: e.target.value })} />
@@ -266,7 +266,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente, validacao 
                     </Field>
                   </div>
                 )}
-                <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr]">
                   <Field>
                     <FieldLabel htmlFor="c-cep">CEP</FieldLabel>
                     <InputGroup>
@@ -283,7 +283,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente, validacao 
                     <Input id="c-rua" aria-invalid={invalido("entrega_logradouro")} value={form.entrega_logradouro} onChange={(e) => aoMudar({ entrega_logradouro: e.target.value })} />
                   </Field>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-[100px_1fr]">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[100px_1fr]">
                   <Field>
                     <FieldLabel htmlFor="c-num">Número</FieldLabel>
                     <Input id="c-num" aria-invalid={invalido("entrega_numero")} value={form.entrega_numero} onChange={(e) => aoMudar({ entrega_numero: e.target.value })} />
@@ -293,7 +293,7 @@ export default function ClienteCard({ form, aoMudar, aoSalvarCliente, validacao 
                     <Input id="c-comp" value={form.entrega_complemento} onChange={(e) => aoMudar({ entrega_complemento: e.target.value })} />
                   </Field>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-[1fr_1fr_70px]">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_70px]">
                   <Field>
                     <FieldLabel htmlFor="c-bairro">Bairro</FieldLabel>
                     <Input id="c-bairro" aria-invalid={invalido("entrega_bairro")} value={form.entrega_bairro} onChange={(e) => aoMudar({ entrega_bairro: e.target.value })} />

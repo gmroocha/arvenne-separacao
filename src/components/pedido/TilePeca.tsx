@@ -227,7 +227,7 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
           </div>
         </RespDialog>
       )}
-      <CollapsibleContent className="grid gap-1.5 pt-1 sm:grid-cols-2">
+      <CollapsibleContent className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2">
         {visiveis.map((i) => (
           <LinhaPeca
             key={i.id}
@@ -235,7 +235,7 @@ export function FaixaFeitas({ titulo, itens, rotuloDesfazer = "Desfazer", aoDesf
             tamanho="md"
             semBorda
             entrando
-            className="gap-2 rounded-xl bg-success/5 p-2 ring-(length:--traco) ring-success/30"
+            className="min-w-0 gap-2 rounded-xl bg-success/5 p-2 ring-(length:--traco) ring-success/30"
             inicio={<MarcaCheck />}
             aoClicarObservacao={abrir && i.troca_peca_origem_id ? () => abrir({ foco: i.id, comValores: false }) : undefined}
           >

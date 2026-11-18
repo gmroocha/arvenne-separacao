@@ -43,6 +43,7 @@ function Formulario({ item, aoEnviado }: { item: Item; aoEnviado: () => void }) 
 export default function FeedbackPeca({ item, aoFechar }: { item: Item | null; aoFechar: () => void }) {
   return (
     <RespDialog
+      teclado
       aberto={item !== null}
       aoMudar={(a) => !a && aoFechar()}
       titulo="Feedback da peça"

@@ -108,9 +108,9 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
   return (
     <Collapsible open={celular ? aberto : true} onOpenChange={setAberto}>
       <Card size="sm">
-        <CardHeader>
+        <CardHeader className="items-center">
           <CardTitle>Cliente e valores</CardTitle>
-          <CardAction className="flex items-center gap-1">
+          <CardAction className="row-span-1 flex items-center gap-1 self-center">
             <Button variant="ghost" size="sm" onClick={() => setEditando(true)}>
               <Pencil /> Editar
             </Button>

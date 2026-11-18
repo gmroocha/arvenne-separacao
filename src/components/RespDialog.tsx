@@ -14,12 +14,27 @@ type Props = {
   medio?: boolean
   // O conteúdo cuida da própria rolagem (ex.: TrocaDialog): sem rolagem/respiro extra do diálogo.
   rolagemPropria?: boolean
+  // Tem campo de texto. No celular a gaveta de baixo se perdia com o teclado (a gaveta nasce fora da tela, o foco
+  // arrastava a página e a altura era recalculada): aqui vira uma janela presa no topo, que o teclado não cobre.
+  teclado?: boolean
   children: ReactNode
 }
 
 // Dialog no PC, Drawer (gaveta de baixo) no celular.
-export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, medio, rolagemPropria, children }: Props) {
+export default function RespDialog({ aberto, aoMudar, titulo, descricao, largo, medio, rolagemPropria, teclado, children }: Props) {
   const celular = useIsMobile()
+  if (celular && teclado)
+    return (
+      <Dialog open={aberto} onOpenChange={aoMudar}>
+        <DialogContent className="top-3 max-h-[calc(100dvh-1.5rem)] translate-y-0 overflow-x-hidden overflow-y-auto">
+          <DialogHeader className="pr-8">
+            <DialogTitle>{titulo}</DialogTitle>
+            <DialogDescription className={descricao ? undefined : "sr-only"}>{descricao ?? titulo}</DialogDescription>
+          </DialogHeader>
+          {children}
+        </DialogContent>
+      </Dialog>
+    )
   if (celular)
     return (
       <Drawer open={aberto} onOpenChange={aoMudar}>

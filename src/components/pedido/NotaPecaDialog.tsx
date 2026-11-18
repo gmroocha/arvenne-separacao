@@ -42,6 +42,7 @@ function Formulario({ item, aoSalvar }: { item: Item; aoSalvar: () => void }) {
 export default function NotaPecaDialog({ item, aoFechar }: { item: Item | null; aoFechar: () => void }) {
   return (
     <RespDialog
+      teclado
       aberto={item !== null}
       aoMudar={(a) => !a && aoFechar()}
       titulo="Nota da peça"

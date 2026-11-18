@@ -13,9 +13,13 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: { baseURL: "http://127.0.0.1:4175", actionTimeout: 10_000, colorScheme: "dark", serviceWorkers: "block", trace: "retain-on-failure", screenshot: "only-on-failure" },
   projects: [
-    { name: "celular", use: { browserName: "chromium", viewport: { width: 390, height: 844 } } },
+    // Chromium de 390 px sem toque: serve para a maioria dos fluxos, mas NÃO reproduz o celular de verdade.
+    { name: "celular", testIgnore: "**/celular-largura.spec.mjs", use: { browserName: "chromium", viewport: { width: 390, height: 844 } } },
+    // Celular de verdade (toque, viewport "mobile", escala 3x): se algum elemento passar de 390 px o navegador alarga a
+    // área visível, dá zoom para fora e deixa arrastar a tela para o lado. Só os testes de layout e a esteira rodam aqui.
+    { name: "celular-toque", testMatch: "**/{celular-largura,esteira-ponta-a-ponta}.spec.mjs", use: { browserName: "chromium", viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 } },
     { name: "tablet", testMatch: "**/{acessibilidade,semantica}.spec.mjs", use: { browserName: "chromium", viewport: { width: 768, height: 1024 } } },
-    { name: "pc", use: { browserName: "chromium", viewport: { width: 1280, height: 900 } } },
+    { name: "pc", testIgnore: "**/celular-largura.spec.mjs", use: { browserName: "chromium", viewport: { width: 1280, height: 900 } } },
   ],
   webServer: {
     command: "npm run dev -- --host 127.0.0.1 --port 4175 --strictPort --mode test",

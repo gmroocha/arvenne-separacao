@@ -41,7 +41,7 @@ export default function Layout() {
             <MessageSquarePlus /> <span className="max-sm:sr-only">Feedback</span>
           </Button>
         </header>
-        <div className={`mx-auto w-full flex-1 p-3 sm:p-4 ${pathname === "/" ? "" : "max-w-5xl"}`}>
+        <div className={`mx-auto w-full min-w-0 flex-1 overflow-x-clip p-3 sm:p-4 ${pathname === "/" ? "" : "max-w-5xl"}`}>
           {/* O aviso do vigia fica só na Expedição; nas outras páginas o foco é o trabalho delas. */}
           {pathname === "/" && <AvisoVistoria />}
           <Outlet />

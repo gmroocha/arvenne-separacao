@@ -82,7 +82,7 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
   }
 
   return (
-    <form onSubmit={enviar} className="grid gap-6 sm:grid-cols-[13rem_1fr]">
+    <form onSubmit={enviar} className="grid grid-cols-1 gap-6 sm:grid-cols-[13rem_1fr]">
       <Alert className="sm:col-span-2">
         <Sparkles />
         <AlertTitle>Melhore a foto antes de enviar</AlertTitle>
@@ -132,7 +132,7 @@ export default function PecaClubeForm({ peca, aoSalvar }: { peca?: PecaClube; ao
       </div>
 
       <FieldGroup>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="codigo">Código</FieldLabel>
             <Input id="codigo" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />

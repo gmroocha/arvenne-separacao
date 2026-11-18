@@ -181,7 +181,7 @@ export function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patc
           <TriangleAlert className="size-4 text-warning" /> Faltam dados do pedido
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2">
+      <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {faltam.map((c) => (
           <CampoSalvo
             key={c.chave}
@@ -366,7 +366,7 @@ export default function NotaFrete({ pedido, patch }: Props) {
         )}
       </Passo>
 
-      <Passo numero={2} icone={<Store />} titulo="Pedido de venda LR (fornecedor)" feito={lr} feitoEm={pedido.pedido_fornecedor_em} aoDesfazer={() => patch({ pedido_fornecedor_em: null })} textoDesfazer="Desfazer pedido LR feito">
+      <Passo numero={2} icone={<Store />} titulo="Pedido de venda LR" feito={lr} feitoEm={pedido.pedido_fornecedor_em} aoDesfazer={() => patch({ pedido_fornecedor_em: null })} textoDesfazer="Desfazer pedido LR feito">
         <ul className="flex flex-col" aria-label="Peças do pedido LR">
           {skusLr.map(([sku, qtd]) => (
             <li key={sku} className="flex min-h-11 items-center gap-1 border-b py-1 text-sm tabular-nums last:border-b-0 sm:min-h-9">

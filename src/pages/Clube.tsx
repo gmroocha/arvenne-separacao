@@ -56,7 +56,7 @@ export default function Clube() {
 
       {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-72 w-full" />
           ))}
@@ -71,7 +71,7 @@ export default function Clube() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data?.map((p) => (
             <Card key={p.id} className={p.ativo ? "" : "opacity-50"}>
               <CardContent className="flex flex-col gap-3">

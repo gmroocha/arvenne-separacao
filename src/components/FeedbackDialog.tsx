@@ -42,7 +42,7 @@ function Formulario({ pagina, aoEnviado }: { pagina: string; aoEnviado: () => vo
 
 export default function FeedbackDialog({ aberto, aoMudar, pagina }: Props) {
   return (
-    <RespDialog aberto={aberto} aoMudar={aoMudar} titulo="Feedback" descricao="Fica guardado e visível para toda a equipe, junto com a tela em que você estava.">
+    <RespDialog teclado aberto={aberto} aoMudar={aoMudar} titulo="Feedback" descricao="Fica guardado e visível para toda a equipe, junto com a tela em que você estava.">
       {aberto && <Formulario pagina={pagina} aoEnviado={() => aoMudar(false)} />}
     </RespDialog>
   )
