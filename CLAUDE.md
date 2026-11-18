@@ -15,11 +15,17 @@ exige navegador, senha ou segredo.
 ## A esteira (desde 17/11/2026)
 
 Separação (com "Imprimir todas as etiquetas") → Conferência (cola a etiqueta) → Bipagem → Nota fiscal → Embalagem →
-Frete → Postagem → **Concluído** (status `enviado` no banco; página `/concluidos`). Não existe etapa Etiquetagem.
+Frete → Postagem (aqui se cola o link de rastreio) → **Enviar rastreio** (status `enviar_rastreio`, só pedidos que não são da
+Shopify: link, WhatsApp com a mensagem pronta e "Mensagem enviada"; pedido da Shopify pula esta etapa) → **Concluído** (status
+`enviado` no banco; página `/concluidos`, só abas A caminho e Entregues). Não existe etapa Etiquetagem. A posição de uma etapa
+depende da origem do pedido (`passosDe(origem)` em `src/lib/status.ts`).
 Cada peça anda sozinha; o pedido fica na etapa da peça mais atrasada e avança sozinho (função `marcar_pecas` em lote,
 `avancar_pecas`, avanço automático dos documentos no gatilho `tg_pedidos_antes`). Mover de etapa à mão e "Concluir
 pedido" são `mover_etapa` (grava `etapas_puladas`). Progresso de peça vai em lote por `src/lib/lotePecas.ts`: valores
 absolutos, uma requisição em voo por pedido; não adicione gravação peça a peça nem gatilho caro por clique.
+**Papéis:** `equipe.papel` é `gestor` ou `funcionaria`. Só o gestor mexe no Time (adicionar, editar, desativar, excluir, trocar
+papel); a funcionária vê o app inteiro e a lista do time. O gestor é a pessoa ativa da equipe cujo e-mail é o do login
+(`sou_gestor()`); o time nunca fica sem gestor ativo. Nenhum e-mail vai em migration.
 **Métricas decididas:** prazo/atraso, produção por pessoa (`v_producao_pessoa`), mudanças depois de pago e tempo por
 etapa do pedido (`v_tempo_etapas`); nada de histórico clique a clique. Teste principal da esteira:
 `tests/e2e/esteira-ponta-a-ponta.spec.mjs` (precisa continuar passando em celular e PC).

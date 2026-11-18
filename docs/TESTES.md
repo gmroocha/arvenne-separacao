@@ -64,6 +64,14 @@ O primeiro confere zoom = 1, `scrollWidth <= 390`, elementos acima de 390 px, bo
 completa de culpados vem na mensagem de erro). Telas novas com texto longo devem entrar nele. O limite do `pg_cron`, `pg_net` e
 Vault (só simulados no banco de teste) está em `tests/banco/shopify-automatica.test.mjs`.
 
+## Rodada 3 (18/11/2026)
+
+- Banco: `rodada3.test.mjs` (Encontrada, troca, Enviar rastreio, migração dos pedidos antigos), `clube-modelos.test.mjs` (Clube com
+  produto pai) e os casos V109 de `time.test.mjs` (papéis). `prepararEtapa` (em `fixtures.mjs`) conhece `enviar_rastreio`.
+- Telas: `rodada3-pedido`, `rodada3-rastreio`, `rodada3-time` e `rodada3-clube` (a foto do cadastro em massa sobe para uma resposta
+  fictícia que o próprio teste registra com `page.route` + `fulfill`; a barreira do simulador continua bloqueando o resto).
+- O simulador passa o e-mail do login nas claims da transação, como o PostgREST faz (`sou_gestor()` e o histórico leem dali).
+
 ## Como adicionar um teste
 
 1. Reproduza o erro em `tests/unidade/<assunto>.test.ts`, `tests/banco/<assunto>.test.mjs` ou,

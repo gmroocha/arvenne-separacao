@@ -1,5 +1,38 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Rodada 3 (18/11/2026): página do pedido, troca, rastreio, permissões e Clube — **código pronto, migration NÃO aplicada**
+
+16 pedidos do Gustavo ao usar o app. Tudo o que mexe no banco está em **uma migration só**,
+`supabase/migrations/20261123090000_rodada3.sql`, escrita e testada em banco descartável, **sem dry-run nem aplicação remota**.
+IDs V100–V111 em [`VISTORIA.md`](VISTORIA.md). **O app desta rodada depende da migration (função `encontrar_peca`, status
+`enviar_rastreio`, `equipe.papel`, `clube_modelos`): só publicar (`git push`) depois de aplicar.** Os commits estão só locais.
+
+- **Página do pedido:** seta do "Voltar" alinhada; nome, número, linha de etapas, busca e **responsável ao lado da busca** ficam
+  presos no topo ao rolar (o menu "⋯" e o voltar rolam); aviso "A próxima etapa é de Fulana. Avise Fulana."; **Encontrada** no
+  menu "Resolver" da peça em falta (tira a peça da troca aberta); quantidade pode ser **digitada**; o link de rastreio saiu do
+  Frete e foi para a **Postagem**.
+- **Vendas e troca:** venda marcada como paga **continua em Vendas** (aviso com "Abrir pedido"); copiar a mensagem/link da troca
+  **não** muda mais o pedido, só "Cliente avisada" leva a "Aguardando cliente".
+- **Enviar rastreio (WhatsApp):** nova etapa laranja entre Postagem e Concluído (coluna na Expedição, selo e aviso na barra
+  lateral). Pedido da Shopify não tem a etapa. **Concluídos** ficou só com A caminho e Entregues, com cartão novo.
+  Pedido do WhatsApp já concluído **sem** mensagem e sem entrega volta para Enviar rastreio quando a migration for aplicada.
+- **Permissões (Time):** `gestor` e `funcionaria`. Só o gestor adiciona, edita, desativa, exclui e muda papel; a funcionária só
+  vê a lista. O time não fica sem gestor. Dois gestores previstos: o Gustavo e mais uma pessoa (ele promove pela tela).
+- **Clube:** produto "pai" com variantes (código sugerido BASE-SUFIXO, preço opcional), cartão agrupado no Clube e na busca da
+  venda, edição do produto inteiro e **Adicionar em massa** (várias fotos, até 3 subindo juntas, uma linha por foto, salva tudo
+  numa chamada só).
+- **Testes:** `tests/banco/rodada3.test.mjs`, `clube-modelos.test.mjs`, `time.test.mjs` (V109), unidade (`quemAvisar`, `quantidade`,
+  `clubeModelos`, etapas por origem) e telas `rodada3-pedido`, `rodada3-rastreio`, `rodada3-time`, `rodada3-clube`. O simulador
+  agora manda o e-mail do login nas claims (como o PostgREST). Capturas em `capturas/` (claro e escuro, 390 e 1280).
+- **Próxima ação (precisa do "sim" do Gustavo, nesta ordem):** (1) `npx supabase db push --remote --dry-run` e, com o "sim",
+  `--yes`; (2) **um update único** marcando o registro do Gustavo na tabela `equipe` como `papel = 'gestor'` (ele confirma qual
+  registro e qual e-mail de login; sem isso ninguém consegue mexer no Time depois da migration); (3) `npm run tipos:gerar`,
+  atualizar `baseAplicada` em `scripts/tipos-pendentes.mjs` para `20261123090000` e `npm run tipos:local`; (4) `git push`;
+  (5) o Gustavo promove a segunda pessoa a gestora em Time e passa um pedido do WhatsApp de teste até Enviar rastreio.
+- **Limites honestos:** o disparo no relógio (`pg_cron`) e o Storage real não são exercidos nos testes (o envio de fotos usa uma
+  resposta fictícia); o ajuste dos pedidos antigos para Enviar rastreio foi testado em banco descartável, não nos dados reais.
+  Se houver muitos pedidos antigos do WhatsApp sem mensagem registrada, todos aparecerão na coluna nova: conferir depois de aplicar.
+
 ## Rodada 2: celular de verdade, nota no LR, barra de etapa, fila, detalhe da peça, etiquetas e Shopify automática (17/11/2026)
 
 Relato do Gustavo no celular: ao marcar "Achei" a faixa das peças feitas alargava a página (zoom para fora, arrastar para o
