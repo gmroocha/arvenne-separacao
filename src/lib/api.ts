@@ -791,6 +791,26 @@ export function useMarcarFalta(pedidoId: string) {
   })
 }
 
+// "Encontrada" numa peça em falta/troca: sai da troca ainda aberta e volta como encontrada (vai para a Conferência),
+// numa transação só (função encontrar_peca). Resolvidos os problemas, o pedido sai do desvio no banco.
+export function useEncontrarPeca(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: ["item", pedidoId],
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async (item: Item) => {
+      const { error } = await supabase.rpc("encontrar_peca", { p_item: item.id })
+      if (error) throw new Error(msgBanco(error))
+    },
+    onError: (e) => toast.error(msg(e)),
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: ["item", pedidoId] }) <= 1) {
+        ;[chavePedido(pedidoId), ["pedidos"], ["troca"], ["repetidas"], ["acerto"]].forEach((queryKey) => qc.invalidateQueries({ queryKey }))
+      }
+    },
+  })
+}
+
 // Mover o pedido de etapa à mão (menu "Mover para outra etapa") e "Concluir pedido" (= mover para "enviado").
 // Para frente o banco marca como feito tudo o que vem antes (e grava etapas_puladas); para trás zera o trabalho do
 // destino em diante. Recusa troca em andamento, acerto pendente e peça em falta (a mensagem vem do banco).
@@ -1503,8 +1523,9 @@ export function useOpcaoTroca(pedidoId: string) {
   return { adicionar, remover }
 }
 
-// Marca a troca como enviada e leva o pedido para "Aguardando cliente".
-// O evento "troca_enviada" é gravado pelo banco (gatilho). Reenviar não muda nada.
+// Marca a troca como enviada (a cliente já pode abrir o link). O pedido NÃO muda de etapa aqui: ele só vai para
+// "Aguardando cliente" no botão "Cliente avisada". O evento "troca_enviada" é gravado pelo banco (gatilho).
+// Reenviar não muda nada.
 export function useEnviarTroca() {
   return useAcao(
     async ({ troca }: { troca: Troca }) => {

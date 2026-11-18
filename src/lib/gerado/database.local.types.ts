@@ -10,7 +10,7 @@ type Adicoes = {
 
   }
   Functions: {
-
+    encontrar_peca: { Args: { p_item: string | null }; Returns: undefined | null }
   }
 }
 

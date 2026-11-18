@@ -161,10 +161,10 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
   ],
   frete: [
     "Gere o frete na Frenet.",
-    "Cole a etiqueta de envio e cole o link de rastreio aqui.",
+    "Cole a etiqueta de envio na caixa.",
   ],
   pronto_envio: [
-    "Leve o pacote aos Correios.",
+    "Leve o pacote aos Correios e cole aqui o link de rastreio.",
     "Marque \"Postado\": o pedido vai para Concluídos.",
   ],
   enviado: ["O pedido sai da expedição e vai para Concluídos."],

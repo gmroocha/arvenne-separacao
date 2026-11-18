@@ -104,6 +104,10 @@ async function pagar(page) {
   const dialog = page.getByRole("dialog", { name: "Marcar como pago", exact: true })
   await expect(dialog.getByRole("button", { name: "Confirmar pagamento" })).toBeEnabled()
   await dialog.getByRole("button", { name: "Confirmar pagamento" }).click()
+  // V105: a venda paga continua em Vendas; o pedido abre só pelo aviso.
+  await expect(page).toHaveURL(/\/vendas$/)
+  await expect(page.getByText("Pedido entrou na expedição")).toBeVisible()
+  await page.getByRole("button", { name: "Abrir pedido", exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/pedidos/${sim.pedido.id}$`))
 }
 
@@ -198,11 +202,9 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   await continuar(page, "Embalagem", "Frete")
   await conferirEtapa(page, o, pago, "embalagem")
 
-  // 9) Frete: sem peso; "Frete gerado" avança; o link de rastreio é colado aqui.
+  // 9) Frete: sem peso e sem link de rastreio (o link é colado na Postagem); "Frete gerado" avança.
   await expect(page.getByRole("textbox", { name: /Peso da caixa/ })).toHaveCount(0)
-  const link = page.getByRole("textbox", { name: "Link de rastreio (opcional)" })
-  await link.fill("https://rastreio.exemplo/AB123"); await link.press("Enter")
-  await expect.poll(async () => (await sim.one("select rastreio_url from pedidos where id=$1", [sim.pedido.id])).rastreio_url).toBe("https://rastreio.exemplo/AB123")
+  await expect(page.getByRole("textbox", { name: /rastreio/i })).toHaveCount(0)
   // "Concluir etapa" da barra inferior: o diálogo diz o que falta e para onde o pedido vai; confirmar marca o frete como gerado.
   await page.getByRole("button", { name: "Concluir etapa", exact: true }).click()
   const confirmar = page.getByRole("dialog", { name: "Concluir Frete?" })
@@ -214,8 +216,10 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   expect((await sim.one("select frete_gerado_em from pedidos where id=$1", [sim.pedido.id])).frete_gerado_em).not.toBeNull()
   await conferirEtapa(page, o, pago, "frete")
 
-  // 10) Postagem: um botão, sem campo de rastreio; "Postado" conclui o pedido.
-  await expect(page.getByRole("textbox", { name: /rastreio/i })).toHaveCount(0)
+  // 10) Postagem: o link de rastreio é colado aqui; "Postado" conclui o pedido.
+  const link = page.getByRole("textbox", { name: "Link de rastreio (opcional)" })
+  await link.fill("https://rastreio.exemplo/AB123"); await link.press("Enter")
+  await expect.poll(async () => (await sim.one("select rastreio_url from pedidos where id=$1", [sim.pedido.id])).rastreio_url).toBe("https://rastreio.exemplo/AB123")
   await page.getByRole("button", { name: "Postado", exact: true }).click()
   await expect.poll(status).toBe("enviado")
   await continuar(page, "Postagem", "Concluído")

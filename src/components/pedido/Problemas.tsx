@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageX, Trash2, TriangleAlert, Undo2 } from "lucide-react"
+import { ArrowLeftRight, BellRing, Check, Copy, HandCoins, Link2, MessageCircle, PackageCheck, PackageX, Trash2, TriangleAlert, Undo2 } from "lucide-react"
 import { LinhaPeca as LinhaPecaComum } from "@/components/comum/Peca"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { useConcluirTroca, useEnviarTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { useConcluirTroca, useEncontrarPeca, useEnviarTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp } from "@/lib/formato"
 import { detalheDoItem } from "@/lib/detalhePeca"
@@ -115,6 +115,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
   const problemas = itens.filter((i) => i.status === "falta" || i.status === "defeito")
   const wa = linkWhatsApp(pedido.cliente_telefone, "")
   const mudarStatus = useMudarStatus()
+  const encontrar = useEncontrarPeca(pedido.id)
   const aguardando = pedido.status === "aguardando_cliente"
   const feedback = useFeedbackPeca()
   const nota = useNotaPeca()
@@ -208,6 +209,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
                         rotulo="Resolver"
                         itens={[
                           { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
+                          { rotulo: "Encontrada", icone: PackageCheck, aoClicar: () => encontrar.mutate(i) },
                           { rotulo: "Voltar a pendente", icone: Undo2, aoClicar: () => marcar(i, "pendente", null) },
                           etiqueta.acao(i),
                           nota.acao(i),

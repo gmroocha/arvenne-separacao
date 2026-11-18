@@ -16,3 +16,17 @@ export function responsavelDaEtapaAtual(p: Pick<Pedido, "status" | "etapa_antes_
   const id = etapa ? (p.responsaveis ?? {})[etapa] : undefined
   return id ? (membros.find((m) => m.id === id) ?? null) : null
 }
+
+// Quem avisar quando uma etapa termina: a pessoa que faz a PRÓXIMA etapa, desde que esteja ativa e não seja quem
+// acabou de concluir (a pessoa logada). Sem responsável na próxima etapa, ninguém.
+export function quemAvisar(
+  proximaEtapa: string | null,
+  responsaveis: Record<string, string> | null | undefined,
+  membros: Membro[],
+  meuId?: string | null,
+): Membro | null {
+  const id = proximaEtapa ? (responsaveis ?? {})[proximaEtapa] : undefined
+  if (!id || id === meuId) return null
+  const quem = membros.find((m) => m.id === id)
+  return quem?.ativo ? quem : null
+}

@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button"
 import type { PedidoDetalhe } from "@/lib/api"
 import { mascaraCep, mascaraDocumento, reais } from "@/lib/formato"
 import { cn } from "@/lib/utils"
-import CampoSalvo from "./CampoSalvo"
 import { CopiarTudo, Faltando, FreteCusto, LinhaDado, ModalidadeFrete, Passo, type Dado, type Patch } from "./NotaFrete"
 
 type Props = { pedido: PedidoDetalhe; patch: Patch }
@@ -71,13 +70,6 @@ export default function Frete({ pedido, patch }: Props) {
             {diferenca < 0 ? `A Arvenne cobre ${reais(-diferenca)} de frete` : diferenca > 0 ? `Sobrou ${reais(diferenca)} do frete pago` : "Frete empatado: a cliente pagou o custo"}
           </p>
         )}
-        <CampoSalvo
-          id="frete-link"
-          rotulo="Link de rastreio (opcional)"
-          valor={pedido.rastreio_url}
-          inputMode="url"
-          aoSalvar={(v) => patch({ rastreio_url: v })}
-        />
         {gerado ? (
           <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ frete_gerado_em: null })}>
             Desfazer frete gerado

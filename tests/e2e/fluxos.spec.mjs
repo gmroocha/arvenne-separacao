@@ -26,6 +26,10 @@ test("venda paga entra na expedição com o valor calculado pelo banco", async (
   const dialog = page.getByRole("dialog", { name: "Marcar como pago", exact: true })
   await expect(dialog).toBeVisible()
   await dialog.getByRole("button", { name: "Confirmar pagamento" }).click()
+  // V105: a venda paga continua em Vendas; o pedido abre só pelo aviso.
+  await expect(page).toHaveURL(/\/vendas$/)
+  await expect(page.getByText("Pedido entrou na expedição")).toBeVisible()
+  await page.getByRole("button", { name: "Abrir pedido", exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/pedidos/${sim.pedido.id}$`))
   await expect(page.getByRole("button", { name: "Achei", exact: true })).toBeVisible()
   const p = await sim.one("select status,valor_pago from pedidos where id=$1", [sim.pedido.id])
@@ -474,11 +478,17 @@ test("time: cadastrar pessoa, designar a etapa do pedido e filtrar a Expedição
   const ana = (await sim.one("select id from equipe where nome='Ana Paula'")).id
   // Designar pela tela do pedido.
   await page.goto(`/pedidos/${sim.pedido.id}`)
-  await page.getByRole("button", { name: /Mudar responsáveis/ }).click()
-  await page.getByRole("combobox", { name: "Responsável por Separação" }).click()
-  await page.getByRole("option", { name: "Ana Paula" }).click()
+  // O responsável mora ao lado da busca: menu rápido da etapa atual e "Todas as etapas…" (uma pessoa por etapa).
+  const itemMenu = (nome) => page.getByRole("menuitem", { name: nome }).or(page.getByRole("button", { name: nome, exact: true }))
+  await page.getByRole("button", { name: /Mudar responsável/ }).click()
+  await itemMenu("Ana Paula").click()
   await expect.poll(async () => (await sim.one("select responsaveis from pedidos where id=$1", [sim.pedido.id])).responsaveis).toEqual({ separacao: ana })
   expect(Number((await sim.one("select count(*) n from pedido_eventos where tipo='designado' and pedido_id=$1", [sim.pedido.id])).n)).toBe(1)
+  await page.getByRole("button", { name: /Mudar responsável/ }).click()
+  await itemMenu("Todas as etapas…").click()
+  await page.getByRole("combobox", { name: "Responsável por Conferência" }).click()
+  await page.getByRole("option", { name: "Ana Paula" }).click()
+  await expect.poll(async () => (await sim.one("select responsaveis from pedidos where id=$1", [sim.pedido.id])).responsaveis).toEqual({ separacao: ana, conferencia: ana })
   await page.keyboard.press("Escape")
   // Expedição: avatar no cartão e filtro.
   await page.goto("/")

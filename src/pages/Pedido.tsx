@@ -6,6 +6,10 @@ import { AlteracoesContexto } from "@/components/pedido/alteracoesContexto"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
 import AvisoCredito from "@/components/pedido/AvisoCredito"
 import BarraEtapa from "@/components/pedido/BarraEtapa"
+import Responsaveis from "@/components/pedido/Responsaveis"
+import { CampoBusca } from "@/components/comum/CampoBusca"
+import { quemAvisar } from "@/lib/equipe"
+import { contextoDaEtapa } from "@/lib/etapaVista"
 import Cabecalho from "@/components/pedido/Cabecalho"
 import EtapaConcluida, { type Concluida } from "@/components/pedido/EtapaConcluida"
 import DadosCliente from "@/components/pedido/DadosCliente"
@@ -15,7 +19,7 @@ import AdicionarPecas from "@/components/AdicionarPecas"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAcoesItem, useSubstituirItem, usePatchPedido, useAlteracoes, usePedido, useRecalcularEtapa, type PedidoDetalhe } from "@/lib/api"
+import { useAcoesItem, useEquipe, useMeuMembro, useSubstituirItem, usePatchPedido, useAlteracoes, usePedido, useRecalcularEtapa, type PedidoDetalhe } from "@/lib/api"
 import { ETAPAS_DE_PECAS, statusPelasPecas } from "@/lib/etapa"
 import { haMarcasNaFila } from "@/lib/lotePecas"
 import { PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
@@ -40,12 +44,20 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   // Qualquer avanço de etapa (botão da barra, última peça marcada, botão do documento, menu) mostra "Etapa X concluída →
   // agora Y". Só para frente: voltar de etapa ou reiniciar não avisa.
   const idxAtual = passoAtual(pedido)
+  const membros = useEquipe().data ?? []
+  const meuMembro = useMeuMembro()
   const [idxVisto, setIdxVisto] = useState(idxAtual)
   const [concluida, setConcluida] = useState<Concluida | null>(null)
   if (idxVisto !== idxAtual) {
     setIdxVisto(idxAtual)
     if (idxAtual > idxVisto && idxVisto >= 0)
-      setConcluida({ de: PASSOS[idxVisto].nome, ate: PASSOS[idxAtual - 1].nome, agora: PASSOS[idxAtual].nome, pedidoConcluido: pedido.status === "enviado" })
+      setConcluida({
+        de: PASSOS[idxVisto].nome,
+        ate: PASSOS[idxAtual - 1].nome,
+        agora: PASSOS[idxAtual].nome,
+        pedidoConcluido: pedido.status === "enviado",
+        avisar: quemAvisar(PASSOS[idxAtual].id, pedido.responsaveis, membros, meuMembro?.id),
+      })
   }
   // O pedido muda de etapa sozinho quando a última peça termina (o banco calcula na mesma gravação). Um pedido que
   // já estava com a etapa completa antes desta versão (ou mexido por outra tela) fica parado: ao abrir, pede o
@@ -61,6 +73,8 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
     recalcularEtapa()
   }, [devia, pedido.status, pedido.id, qc, recalcularEtapa])
   const foco = ETAPAS_DE_PECAS.includes(pedido.status)
+  const [busca, setBusca] = useState("")
+  const { mostraBusca } = contextoDaEtapa(pedido, vista)
   const substituirItem = useSubstituirItem()
   const [adicionando, setAdicionando] = useState(false)
   const [trocando, setTrocando] = useState<Item | null>(null)
@@ -82,7 +96,14 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         pedido={pedido}
         aoVerDados={foco ? () => setVerDados(true) : undefined}
         semValores={foco}
-      />
+      >
+        <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} responsaveis={pedido.responsaveis} vista={vista} aoVer={setVista} pecas={pedido.pedido_itens} />
+        {/* Busca de peça e responsável da etapa, na mesma linha; o responsável aparece mesmo sem busca. */}
+        <div className="flex items-center gap-2 empty:hidden">
+          {mostraBusca && <CampoBusca className="flex-1" valor={busca} aoMudar={setBusca} placeholder="Buscar peça: código, nome ou variante" />}
+          <Responsaveis pedido={pedido} className={mostraBusca ? undefined : "ml-auto"} />
+        </div>
+      </Cabecalho>
       {pedido.pedido_eventos.some((e) => e.tipo === "shopify_alterado") && (
         <Alert variant="warning">
           <TriangleAlert />
@@ -90,7 +111,6 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           <AlertDescription>Confira o pedido na Shopify antes de seguir: as quantidades não batem mais com as peças daqui.</AlertDescription>
         </Alert>
       )}
-      <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} responsaveis={pedido.responsaveis} vista={vista} aoVer={setVista} pecas={pedido.pedido_itens} />
       {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota fiscal em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       {!foco && <AvisoCredito pedidoId={pedido.id} />}
@@ -100,6 +120,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           vista={vista}
           aoVoltar={() => setVista(null)}
           acao={acao}
+          busca={busca}
           patch={patch.mutate}
           aoTrocar={(item) => {
             setTrocando(item)

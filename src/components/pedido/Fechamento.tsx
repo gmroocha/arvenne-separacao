@@ -57,7 +57,7 @@ export function Embalagem({ pedido, patch }: Props) {
   )
 }
 
-// Um botão só: "Postado" leva o pedido para Concluídos (o banco avança sozinho). O link de rastreio é colado no Frete.
+// Um botão só: "Postado" leva o pedido para Concluídos (o banco avança sozinho). O link de rastreio é colado aqui.
 export function Postagem({ pedido, patch }: Props) {
   return (
     <div className="flex flex-col gap-4">
@@ -71,14 +71,19 @@ export function Postagem({ pedido, patch }: Props) {
         <li>Confira se a etiqueta de envio bate com o pedido.</li>
         <li>Leve o pacote aos Correios ou deixe para a coleta.</li>
       </ul>
-      {pedido.rastreio_url ? (
+      <CampoSalvo
+        id="postagem-link"
+        rotulo="Link de rastreio (opcional)"
+        valor={pedido.rastreio_url}
+        inputMode="url"
+        aoSalvar={(v) => patch({ rastreio_url: v })}
+      />
+      {pedido.rastreio_url && (
         <Button variant="outline" size="toque" className="w-full sm:w-fit" asChild>
           <a href={pedido.rastreio_url} target="_blank" rel="noreferrer">
             <ExternalLink /> Abrir rastreio
           </a>
         </Button>
-      ) : (
-        <p className="text-sm text-muted-foreground">Sem link de rastreio. Ele é colado na etapa Frete.</p>
       )}
       {pedido.postado_em ? (
         <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ postado_em: null })}>
