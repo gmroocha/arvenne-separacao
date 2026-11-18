@@ -31,12 +31,11 @@ type Opcao = Peca["opcoes"][number]
 // Número da loja (só dígitos) para o link do WhatsApp. Sem ele, o botão não aparece.
 const WHATSAPP_LOJA = ((import.meta.env.VITE_WHATSAPP_LOJA as string | undefined) ?? "").replace(/\D/g, "")
 
-// Diferença da opção em poucas palavras (o valor vem do banco: v_troca_valores).
-function seloDiferenca(o: Opcao) {
-  if (o.situacao === "paga_diferenca") return `paga + ${reais(o.diferenca)}`
-  if (o.situacao === "credito") return `sobra ${reais(Math.abs(o.diferenca))}`
-  return "mesmo valor"
-}
+// O código (SKU) fica em segundo plano: para a cliente vale o nome, a cor/pedra e o tamanho.
+const titulo = (x: { sku: string | null; nome: string }) => x.sku?.trim() || x.nome
+
+// Código do modelo de um grupo de tamanhos: AN3597-12 e AN3597-16 viram AN3597 (helper de lib/variante).
+const codigoDoGrupo = (g: Opcao[]) => codigoModelo(g.map((o) => o.sku?.trim())) ?? g[0].sku?.trim() ?? null
 
 // Mesmo modelo (mesmo produto, mesma pedra/cor e mesmo valor) em vários TAMANHOS vira um cartão só:
 // "ABALONE / N°12" e "ABALONE / N°16" juntam; "MADREPÉROLA / N°16" fica em outro cartão (outra foto).
@@ -52,51 +51,34 @@ function agrupar(opcoes: Opcao[]): Opcao[][] {
   return [...grupos.values()].map((g) => [...g].sort((a, b) => numeroTamanho(separarTamanho(a.variante).tamanho) - numeroTamanho(separarTamanho(b.variante).tamanho)))
 }
 
-// O código (SKU) é o nome na página: o nome da Shopify é comprido demais.
-const titulo = (x: { sku: string | null; nome: string }) => x.sku?.trim() || x.nome
-
-// Código do modelo de um grupo de tamanhos: AN3597-12 e AN3597-16 viram AN3597 (helper de lib/variante).
-const codigoDoGrupo = (g: Opcao[]) => codigoModelo(g.map((o) => o.sku?.trim())) ?? g[0].nome
-
 const MAX_UNIDADES = 20 // limite do banco por peça
 
-// Peça com várias unidades: mostra o valor de UMA (valor_unit, do banco); o total fica no "Você pagou".
-function Preco({ o, varias }: { o: Opcao; varias: boolean }) {
-  const unit = varias && o.valor_unit != null
+// Todos os cartões da página seguem o mesmo molde: foto à esquerda, nome, detalhe e valor; a ação embaixo.
+const CARTAO = "flex flex-col gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+const CARTAO_MARCADO = "ring-2 ring-foreground/40"
+
+// O que muda no valor, numa frase só (a cliente tem 40+ e pouca prática com lojas online). Valores prontos do banco
+// (v_troca_valores); com várias unidades, a diferença é do total.
+function ValorOpcao({ o, varias, comPreco }: { o: Opcao; varias: boolean; comPreco: boolean }) {
+  const preco = varias && o.valor_unit != null ? `${reais(o.valor_unit)} cada` : reais(o.valor)
   return (
-    <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="text-base font-semibold tabular-nums">
-        {reais(unit ? (o.valor_unit as number) : o.valor)}
-        {unit && <span className="text-sm font-normal text-muted-foreground"> cada</span>}
-      </span>
-      <Badge variant="secondary" className="h-5 px-1.5 text-xs font-normal tabular-nums">
-        {seloDiferenca(o)}
-      </Badge>
+    <div className="flex flex-col gap-0.5">
+      {o.situacao === "paga_diferenca" ? (
+        <p className="text-base font-medium tabular-nums">Custa {reais(o.diferenca)} a mais{varias ? " no total" : ""}</p>
+      ) : o.situacao === "credito" ? (
+        <p className="text-base font-medium text-success tabular-nums">Custa menos: sobram {reais(Math.abs(o.diferenca))} de crédito</p>
+      ) : (
+        <p className="text-base text-muted-foreground">Mesmo valor, sem pagar nada a mais</p>
+      )}
+      {comPreco && <p className="text-sm text-muted-foreground tabular-nums">Valor da peça: {preco}</p>}
     </div>
   )
 }
 
-// Opção do mesmo modelo da peça que faltou (só muda o tamanho ou a cor): um aviso para a cliente notar.
-function SeloMesmoModelo({ outroTamanho }: { outroTamanho: boolean }) {
-  return (
-    <Badge variant="outline" className="h-5 w-fit px-1.5 text-xs font-normal">
-      {outroTamanho ? "Mesmo modelo, outro tamanho" : "Mesmo modelo"}
-    </Badge>
-  )
-}
-
-// Mesmo modelo: a cliente (40+, pouco acostumada a lojas online) só precisa saber se muda o valor. Sem código e sem
-// preço quando o valor é o mesmo; quando muda, uma frase simples (valores prontos do banco: v_troca_valores).
-function ValorMesmoModelo({ o, varias }: { o: Opcao; varias: boolean }) {
-  if (o.situacao === "paga_diferenca")
-    return <p className="text-base font-medium tabular-nums">Custa {reais(o.diferenca)} a mais{varias ? " no total" : ""}</p>
-  if (o.situacao === "credito")
-    return <p className="text-base font-medium tabular-nums">Custa menos: sobram {reais(Math.abs(o.diferenca))} de crédito</p>
-  return <p className="text-base text-muted-foreground">Mesmo valor, sem pagar nada a mais</p>
-}
-
-// Cartão do mesmo modelo em outro tamanho: frase grande, foto maior, tamanhos em botões grandes.
-function CabecalhoMesmoModelo({ o, marcado, outroTamanho }: { o: Opcao; marcado: boolean; outroTamanho: boolean }) {
+// Topo do cartão: foto, nome (ou "Mesmo modelo…"), cor/pedra e o código discreto.
+function CabecalhoOpcao({ o, mesmoModelo, outroTamanho, marcado, codigo }: { o: Opcao; mesmoModelo: boolean; outroTamanho: boolean; marcado: boolean; codigo: string | null }) {
+  const { base, tamanho } = separarTamanho(o.variante)
+  const detalhe = tamanho ? base : o.variante
   return (
     <div className="flex gap-3">
       <div className="relative shrink-0">
@@ -104,8 +86,11 @@ function CabecalhoMesmoModelo({ o, marcado, outroTamanho }: { o: Opcao; marcado:
         {marcado && <BolhaCheck className="pointer-events-none absolute -top-1.5 -right-1.5 ring-2 ring-card" />}
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-        <p className="text-lg leading-snug font-semibold">{outroTamanho ? "Mesmo modelo, outro tamanho" : "Mesmo modelo"}</p>
-        {outroTamanho && separarTamanho(o.variante).base && <p className="text-sm text-muted-foreground">{separarTamanho(o.variante).base}</p>}
+        <p className="line-clamp-2 text-base leading-snug font-semibold">
+          {mesmoModelo ? (outroTamanho ? "Mesmo modelo, outro tamanho" : "Mesmo modelo") : o.nome}
+        </p>
+        {detalhe && <p className="text-sm text-muted-foreground">{detalhe}</p>}
+        {!mesmoModelo && codigo && <p className="text-xs text-muted-foreground">Cód. {codigo}</p>}
       </div>
     </div>
   )
@@ -137,55 +122,27 @@ type CartaoProps = {
 
 function CartaoOpcao({ o, varias, mesmoModelo, qtd, vazio, cheio, carregando, ocupado, aoEscolher, aoQtd, secundario }: CartaoProps) {
   const tamanho = separarTamanho(o.variante).tamanho
-  if (mesmoModelo)
-    return (
-      <li className={cn("relative flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10", qtd > 0 && "ring-2 ring-foreground/40")}>
-        <CabecalhoMesmoModelo o={o} marcado={qtd > 0} outroTamanho={!!tamanho} />
-        {tamanho ? <p className="text-xl font-semibold">Tamanho {tamanho}</p> : o.variante && <p className="text-lg font-semibold">{o.variante}</p>}
-        <ValorMesmoModelo o={o} varias={varias} />
-        {vazio ? (
-          <Button type="button" size="xl" variant={secundario ? "secondary" : "default"} className="w-full text-base" disabled={ocupado} onClick={aoEscolher}>
-            {carregando ? <Spinner /> : null}
-            {tamanho ? "Quero este tamanho" : "Quero esta"}
-          </Button>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-base text-muted-foreground">Quantas?</span>
-            <Passo qtd={qtd} aoMudar={aoQtd} cheio={cheio} rotulo={tamanho ? `Tamanho ${tamanho}` : titulo(o)} />
-          </div>
-        )}
-      </li>
-    )
   return (
-    <li className={cn("relative flex flex-col gap-2.5 rounded-xl bg-card p-3 ring-1 ring-foreground/10", qtd > 0 && "ring-2 ring-foreground/40")}>
-      <div className="flex gap-3">
-        <div className="relative shrink-0">
-          <Foto url={fotoTamanho(o.foto_url, 300)} alt={o.nome} ampliar className="size-16" />
-          {qtd > 0 && <BolhaCheck className="pointer-events-none absolute -top-1.5 -right-1.5 ring-2 ring-card" />}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="font-mono text-sm leading-snug font-semibold">{titulo(o)}</div>
-          {o.variante && <div className="text-xs text-muted-foreground">{o.variante}</div>}
-          {mesmoModelo && <SeloMesmoModelo outroTamanho={!!separarTamanho(o.variante).tamanho} />}
-          <Preco o={o} varias={varias} />
-        </div>
-      </div>
+    <li className={cn(CARTAO, qtd > 0 && CARTAO_MARCADO)}>
+      <CabecalhoOpcao o={o} mesmoModelo={mesmoModelo} outroTamanho={!!tamanho} marcado={qtd > 0} codigo={o.sku?.trim() || null} />
+      {tamanho && <p className="text-lg font-semibold">Tamanho {tamanho}</p>}
+      <ValorOpcao o={o} varias={varias} comPreco={!mesmoModelo} />
       {vazio ? (
-        <Button type="button" size="xl" variant={secundario ? "secondary" : "default"} className="w-full" disabled={ocupado} onClick={aoEscolher}>
+        <Button type="button" size="xl" variant={secundario ? "secondary" : "default"} className="w-full text-base" disabled={ocupado} onClick={aoEscolher}>
           {carregando ? <Spinner /> : null}
-          Quero esta
+          {tamanho ? "Quero este tamanho" : "Quero esta"}
         </Button>
       ) : (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">Quantas?</span>
-          <Passo qtd={qtd} aoMudar={aoQtd} cheio={cheio} rotulo={titulo(o)} />
+        <div className="flex items-center justify-between gap-3 border-t pt-3">
+          <span className="text-base text-muted-foreground">Quantas?</span>
+          <Passo qtd={qtd} aoMudar={aoQtd} cheio={cheio} rotulo={tamanho ? `Tamanho ${tamanho}` : titulo(o)} />
         </div>
       )}
     </li>
   )
 }
 
-// Um modelo, vários tamanhos: foto, nome e preço uma vez; cada toque no tamanho coloca mais uma no carrinho.
+// Um modelo, vários tamanhos: foto, nome e valor uma vez; cada toque no tamanho coloca mais uma no carrinho.
 function CartaoModelo({
   grupo,
   varias,
@@ -203,70 +160,17 @@ function CartaoModelo({
 }) {
   const marcados = grupo.filter((o) => (qtds[o.id] ?? 0) > 0)
   const base = marcados[0] ?? grupo[0]
-  const modelo = separarTamanho(base.variante).base
   const tamanhoDe = (o: Opcao) => separarTamanho(o.variante).tamanho ?? o.variante ?? o.nome
-  if (mesmoModelo)
-    return (
-      <li className={cn("relative flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10", marcados.length > 0 && "ring-2 ring-foreground/40")}>
-        <CabecalhoMesmoModelo o={base} marcado={marcados.length > 0} outroTamanho />
-        <ValorMesmoModelo o={base} varias={varias} />
-        <div className="flex flex-col gap-2.5">
-          <span className="text-base font-medium">Toque no tamanho que você quer:</span>
-          <div className="flex flex-wrap gap-2.5" role="group" aria-label="Tamanhos">
-            {grupo.map((o) => {
-              const n = qtds[o.id] ?? 0
-              const tam = tamanhoDe(o)
-              return (
-                <Toggle
-                  key={o.id}
-                  variant="outline"
-                  size="xl"
-                  pressed={n > 0}
-                  aria-label={n > 0 ? `Tamanho ${tam}, ${n} no carrinho. Toque para colocar mais uma` : `Tamanho ${tam}`}
-                  className="relative h-14 min-w-20 text-lg font-semibold tabular-nums"
-                  disabled={cheio}
-                  onPressedChange={() => aoQtd(o.id, n + 1)}
-                >
-                  {tam}
-                  {n > 0 && <BolhaContador n={n} className="absolute -top-2 -right-2 border border-background" />}
-                </Toggle>
-              )
-            })}
-          </div>
-        </div>
-        {marcados.length > 0 && (
-          <div className="flex flex-col gap-2 border-t pt-3">
-            {marcados.map((o) => (
-              <div key={o.id} className="flex items-center justify-between gap-3">
-                <span className="text-base font-medium">Tamanho {tamanhoDe(o)}</span>
-                <Passo qtd={qtds[o.id] ?? 0} aoMudar={(n) => aoQtd(o.id, n)} cheio={cheio} rotulo={`Tamanho ${separarTamanho(o.variante).tamanho ?? o.nome}`} />
-              </div>
-            ))}
-          </div>
-        )}
-      </li>
-    )
   return (
-    <li className={cn("relative flex flex-col gap-3 rounded-xl bg-card p-3 ring-1 ring-foreground/10", marcados.length > 0 && "ring-2 ring-foreground/40")}>
-      <div className="flex gap-3">
-        <div className="relative shrink-0">
-          <Foto url={fotoTamanho(base.foto_url, 300)} alt={base.nome} ampliar className="size-16" />
-          {marcados.length > 0 && <BolhaCheck className="pointer-events-none absolute -top-1.5 -right-1.5 ring-2 ring-card" />}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="font-mono text-sm leading-snug font-semibold">{codigoDoGrupo(grupo)}</div>
-          {modelo && <div className="text-xs text-muted-foreground">{modelo}</div>}
-          <div className="text-xs text-muted-foreground">{grupo.length} tamanhos disponíveis</div>
-          {mesmoModelo && <SeloMesmoModelo outroTamanho />}
-          <Preco o={base} varias={varias} />
-        </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        <span className="text-xs text-muted-foreground">Toque no tamanho para colocar no carrinho</span>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Tamanhos">
+    <li className={cn(CARTAO, marcados.length > 0 && CARTAO_MARCADO)}>
+      <CabecalhoOpcao o={base} mesmoModelo={mesmoModelo} outroTamanho marcado={marcados.length > 0} codigo={codigoDoGrupo(grupo)} />
+      <ValorOpcao o={base} varias={varias} comPreco={!mesmoModelo} />
+      <div className="flex flex-col gap-2.5">
+        <span className="text-base font-medium">Toque no tamanho que você quer:</span>
+        <div className="flex flex-wrap gap-2.5" role="group" aria-label="Tamanhos">
           {grupo.map((o) => {
             const n = qtds[o.id] ?? 0
-            const tam = separarTamanho(o.variante).tamanho ?? o.variante ?? o.nome
+            const tam = tamanhoDe(o)
             return (
               <Toggle
                 key={o.id}
@@ -274,7 +178,7 @@ function CartaoModelo({
                 size="xl"
                 pressed={n > 0}
                 aria-label={n > 0 ? `Tamanho ${tam}, ${n} no carrinho. Toque para colocar mais uma` : `Tamanho ${tam}`}
-                className="relative min-w-16 tabular-nums"
+                className="relative h-14 min-w-20 text-lg font-semibold tabular-nums"
                 disabled={cheio}
                 onPressedChange={() => aoQtd(o.id, n + 1)}
               >
@@ -289,13 +193,111 @@ function CartaoModelo({
         <div className="flex flex-col gap-2 border-t pt-3">
           {marcados.map((o) => (
             <div key={o.id} className="flex items-center justify-between gap-3">
-              <span className="text-sm">Tamanho {separarTamanho(o.variante).tamanho ?? o.variante ?? o.nome}</span>
+              <span className="text-base font-medium">Tamanho {tamanhoDe(o)}</span>
               <Passo qtd={qtds[o.id] ?? 0} aoMudar={(n) => aoQtd(o.id, n)} cheio={cheio} rotulo={`Tamanho ${separarTamanho(o.variante).tamanho ?? o.nome}`} />
             </div>
           ))}
         </div>
       )}
     </li>
+  )
+}
+
+// A peça que faltou: mesmo molde dos cartões, com o selo "Sem estoque" (sem bloco vermelho, que assusta).
+function PecaQueFaltou({ p }: { p: Peca }) {
+  const { base, tamanho } = separarTamanho(p.variante)
+  const varias = p.qtd > 1
+  return (
+    <div className={CARTAO}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-muted-foreground">Peça do seu pedido</span>
+        <Badge variant="destructive" size="lg">
+          <PackageX /> Sem estoque
+        </Badge>
+      </div>
+      <div className="flex gap-3">
+        <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-24 shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <p className="line-clamp-2 text-base leading-snug font-semibold">{p.nome}</p>
+          {tamanho ? <p className="text-base font-medium">Tamanho {tamanho}</p> : p.variante && <p className="text-sm text-muted-foreground">{p.variante}</p>}
+          {tamanho && base && <p className="text-sm text-muted-foreground">{base}</p>}
+          <p className="mt-auto pt-1 text-sm text-muted-foreground tabular-nums">
+            {varias ? `${p.qtd} unidades · você pagou ${reais(p.valor_pago)}` : `Você pagou ${reais(p.valor_pago)}`}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Ficar com o valor em vez de trocar. O destino (crédito para a próxima compra ou reembolso) a equipe combina depois.
+function OpcaoCredito({ valor, escolhido, temOpcoes, carregando, ocupado, aoEscolher }: {
+  valor: number; escolhido: boolean; temOpcoes: boolean; carregando: boolean; ocupado: boolean; aoEscolher: () => void
+}) {
+  if (escolhido)
+    return (
+      // Já escolhido: aparece como estado (sem cara de botão). Para trocar, basta escolher uma peça acima.
+      <div role="status" className="flex items-start gap-3 rounded-xl border border-success/40 inset-ring-[0.5px] inset-ring-success/40 bg-success/10 p-4 animate-in fade-in duration-300">
+        <CircleCheck className="mt-0.5 size-5 shrink-0 text-success" />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-base font-semibold text-success">Crédito de {reais(valor)} escolhido</span>
+          <span className="text-sm text-muted-foreground">
+            Fica guardado para sua próxima compra.{temOpcoes ? " Mudou de ideia? É só escolher uma peça acima." : ""}
+          </span>
+        </div>
+      </div>
+    )
+  return (
+    <div className={CARTAO}>
+      <div className="flex gap-3">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <HandCoins className="size-5" />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <p className="text-base leading-snug font-semibold">{temOpcoes ? "Prefere não trocar?" : "Fique com o valor da peça"}</p>
+          <p className="text-sm text-muted-foreground">
+            Os {reais(valor)} ficam de crédito para sua próxima compra. Se preferir o reembolso, é só falar com a gente no WhatsApp.
+          </p>
+        </div>
+      </div>
+      <Button type="button" variant="outline" size="xl" className="w-full text-base" aria-pressed={false} disabled={ocupado} onClick={aoEscolher}>
+        {carregando ? <Spinner /> : null}
+        Prefiro crédito de {reais(valor)}
+      </Button>
+    </div>
+  )
+}
+
+// Passo a passo no topo: o que aconteceu, o que ela faz e o que acontece com a diferença.
+function ComoFunciona({ total, cobrirAte }: { total: number; cobrirAte: number }) {
+  const maisCara =
+    cobrirAte > 0
+      ? cobreTudo(cobrirAte)
+        ? "Se a peça nova custar mais, a diferença fica por nossa conta 🤍"
+        : `Se a peça nova custar mais, cobrimos até ${reais(cobrirAte)} da diferença e você paga só o resto`
+      : "Se a peça nova custar mais, você paga só a diferença"
+  const passos = [
+    <>
+      Escolha o que vai no lugar {total === 1 ? "da peça" : "de cada peça"}. Se não quiser trocar, toque em <strong className="font-semibold">Prefiro crédito</strong>.
+    </>,
+    <>{maisCara}. Se custar menos, a diferença vira crédito para você.</>,
+    <>
+      No fim, toque em <strong className="font-semibold">Concluir minhas escolhas</strong>. A gente separa tudo e te avisa pelo WhatsApp.
+    </>,
+  ]
+  return (
+    <section aria-label="Como funciona" className={cn(CARTAO, "gap-3")}>
+      <h2 className="text-base font-semibold">Como funciona</h2>
+      <ol className="flex flex-col gap-3">
+        {passos.map((t, n) => (
+          <li key={n} className="flex gap-3 text-sm">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground tabular-nums">{n + 1}</span>
+            <span className="pt-0.5">{t}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="border-t pt-3 text-xs text-muted-foreground">Cada toque já fica salvo. Você pode mudar de ideia até concluir.</p>
+    </section>
   )
 }
 
@@ -408,13 +410,13 @@ function BarraConcluir({ data, respondidas, total, noFim, ocupado, aoConcluir }:
   )
 }
 
-// Foto pequena + código + variante (e quantidade) de uma peça, no resumo final.
-function MiniPeca({ foto, sku, variante, qtd, esmaecida }: { foto: string | null; sku: string; variante: string | null; qtd: number; esmaecida?: boolean }) {
+// Foto pequena + nome + variante (e quantidade) de uma peça, no resumo final.
+function MiniPeca({ foto, nome, variante, qtd, esmaecida }: { foto: string | null; nome: string; variante: string | null; qtd: number; esmaecida?: boolean }) {
   return (
     <div className={cn("flex items-center gap-3", esmaecida && "text-muted-foreground")}>
-      <Foto url={fotoTamanho(foto, 200)} alt={sku} ampliar className={cn("size-12 shrink-0", esmaecida && "opacity-70")} />
+      <Foto url={fotoTamanho(foto, 200)} alt={nome} ampliar className={cn("size-12 shrink-0", esmaecida && "opacity-70")} />
       <div className="min-w-0 flex-1">
-        <div className={cn("truncate font-mono text-sm font-semibold", esmaecida ? "line-through" : "text-foreground")}>{sku}</div>
+        <div className={cn("truncate text-sm font-semibold", esmaecida ? "line-through" : "text-foreground")}>{nome}</div>
         {variante && <div className="truncate text-xs text-muted-foreground">{variante}</div>}
       </div>
       {qtd > 1 && <Badge variant="secondary" className="tabular-nums">{qtd}×</Badge>}
@@ -434,7 +436,12 @@ function Concluida({ data, pecas, cliente, aoMudar }: { data: TrocaPublica; peca
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold text-balance">Pronto! Recebemos suas escolhas.</h1>
           <p className="text-base text-balance text-muted-foreground">
-            {cliente ? `Obrigada, ${cliente}. ` : ""}Agora é com a gente: vamos separar suas peças e te avisar pelo WhatsApp.
+            {cliente ? `Obrigada, ${cliente}. ` : ""}
+            {dif > 0
+              ? `Vamos te chamar no WhatsApp para combinar o pagamento dos ${reais(dif)} de diferença. Depois, separamos suas peças.`
+              : dif < 0
+                ? `Os ${reais(Math.abs(dif))} de diferença ficam de crédito para você. Agora é com a gente: vamos separar suas peças e te avisar pelo WhatsApp.`
+                : "Agora é com a gente: vamos separar suas peças e te avisar pelo WhatsApp."}
           </p>
         </div>
       </div>
@@ -446,7 +453,7 @@ function Concluida({ data, pecas, cliente, aoMudar }: { data: TrocaPublica; peca
             return (
               <div key={p.item_id} className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-muted-foreground">No lugar de</span>
-                <MiniPeca foto={p.foto_url} sku={titulo(p)} variante={p.variante} qtd={p.qtd} esmaecida />
+                <MiniPeca foto={p.foto_url} nome={p.nome} variante={p.variante} qtd={p.qtd} esmaecida />
                 <ArrowDown className="mx-auto size-4 text-muted-foreground" aria-hidden />
                 {p.escolha_tipo === "credito" ? (
                   <div className="flex items-center gap-3 text-sm font-medium text-success">
@@ -458,7 +465,7 @@ function Concluida({ data, pecas, cliente, aoMudar }: { data: TrocaPublica; peca
                 ) : (
                   cart.map((c) => {
                     const o = p.opcoes.find((x) => x.id === c.opcao_id)
-                    return <MiniPeca key={c.opcao_id} foto={o?.foto_url ?? null} sku={o ? titulo(o) : "Peça escolhida"} variante={o?.variante ?? null} qtd={c.qtd} />
+                    return <MiniPeca key={c.opcao_id} foto={o?.foto_url ?? null} nome={o?.nome ?? "Peça escolhida"} variante={o?.variante ?? null} qtd={c.qtd} />
                   })
                 )}
               </div>
@@ -559,22 +566,23 @@ export default function Troca() {
       ) : (
         <>
           {!finalizada && (
-            <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold">{cliente ? `Olá, ${cliente}! 🤍` : "Olá! 🤍"}</h1>
-              <p className="text-sm text-muted-foreground">Pedido {data.numero.replace(/^#/, "")}</p>
-            </div>
+            <header className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <h1 className="text-2xl font-semibold">{cliente ? `Oi, ${cliente}! 🤍` : "Oi! 🤍"}</h1>
+                <p className="text-sm text-muted-foreground">Pedido {data.numero.replace(/^#/, "")}</p>
+              </div>
+              {concluida ? (
+                <p className="text-base">Sua troca já foi concluída. Veja abaixo o que vai no lugar {total === 1 ? "da peça que faltou" : "de cada peça que faltou"}.</p>
+              ) : (
+                <p className="text-base">
+                  Durante a separação do seu pedido, vimos que {total === 1 ? "uma peça não está disponível" : `${total} peças não estão disponíveis`} no
+                  nosso estoque. Separamos opções parecidas para você escolher o que vai no lugar.
+                </p>
+              )}
+            </header>
           )}
 
-          {!finalizada && <p className="text-base">
-            {total === 1 ? "Uma peça do seu pedido ficou" : `${total} peças do seu pedido ficaram`} sem estoque. Escolha uma troca ou crédito para{" "}
-            {total === 1 ? "ela" : "cada uma"}.
-          </p>}
-
-          {(data.resumo.cobrir_ate ?? 0) > 0 && !concluida && !finalizada && (
-            <p className="text-sm text-muted-foreground">
-              {cobreTudo(data.resumo.cobrir_ate) ? "A loja cobre a diferença 🤍" : `A loja cobre até ${reais(data.resumo.cobrir_ate ?? 0)} da diferença 🤍`}
-            </p>
-          )}
+          {!concluida && !finalizada && <ComoFunciona total={total} cobrirAte={data.resumo.cobrir_ate ?? 0} />}
 
           {finalizada && <Concluida data={data} pecas={pecas} cliente={cliente} aoMudar={() => concluir(false)} />}
 
@@ -603,32 +611,7 @@ export default function Troca() {
                     </span>
                   </div>
                 )}
-                {/* Peça que faltou */}
-                <Alert variant="destructive" className="flex flex-col gap-2 border-destructive/30 inset-ring-[0.5px] inset-ring-destructive/30 bg-destructive/10 p-3">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-destructive">
-                    <PackageX className="size-3.5" />
-                    Ficou sem estoque
-                  </div>
-                  <div className="flex gap-3">
-                    <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-28 shrink-0" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      {/* Sem código: para a cliente vale o que ela reconhece (tamanho/cor e o nome da peça). */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-lg leading-snug font-semibold text-foreground">
-                          {separarTamanho(p.variante).tamanho ? `Tamanho ${separarTamanho(p.variante).tamanho}` : p.variante || p.nome}
-                        </div>
-                        {varias && <Badge variant="secondary" className="h-6 shrink-0 px-2 text-sm font-medium tabular-nums">{p.qtd}×</Badge>}
-                      </div>
-                      {separarTamanho(p.variante).tamanho && separarTamanho(p.variante).base && <div className="text-sm text-muted-foreground">{separarTamanho(p.variante).base}</div>}
-                      {(separarTamanho(p.variante).tamanho || p.variante) && <div className="line-clamp-2 text-xs text-muted-foreground">{p.nome}</div>}
-                      <div className="mt-auto text-sm text-muted-foreground tabular-nums">
-                        {varias && p.valor_pago_unit != null
-                          ? `${p.qtd} unidades de ${reais(p.valor_pago_unit)} · você pagou ${reais(p.valor_pago)}`
-                          : `Você pagou ${reais(p.valor_pago)}`}
-                      </div>
-                    </div>
-                  </div>
-                </Alert>
+                <PecaQueFaltou p={p} />
 
                 {/* O que ela escolhe no lugar */}
                 {feita ? (
@@ -641,7 +624,7 @@ export default function Troca() {
                           {novas.map((n, k) => (
                             <span key={k} className="block">
                               {n.qtd > 1 ? `${n.qtd}× ` : ""}
-                              {titulo(n)}
+                              {n.nome}
                               {n.variante ? ` · ${n.variante}` : ""}
                             </span>
                           ))}
@@ -654,7 +637,10 @@ export default function Troca() {
                   </Alert>
                 ) : (
                   <div className="flex flex-col gap-3 pt-1">
-                    <h2 className="text-lg font-semibold">{p.opcoes.length > 0 ? "Escolha o que vai no lugar dela" : "Sua opção"}</h2>
+                    <div className="flex flex-col gap-0.5">
+                      <h2 className="text-lg font-semibold">{p.opcoes.length > 0 ? "O que vai no lugar dela?" : "Sua opção"}</h2>
+                      {p.opcoes.length > 0 && unidades === 0 && <p className="text-sm text-muted-foreground">Toque na opção que preferir.</p>}
+                    </div>
                     {unidades > 0 && p.valor_escolhido != null && <LinhaEscolhido escolhido={p.valor_escolhido} pago={p.valor_pago} />}
                     {p.opcoes.length > 0 && (
                       <>
@@ -694,29 +680,19 @@ export default function Troca() {
                         </ul>
                       </>
                     )}
-                    {p.escolha_tipo === "credito" ? (
-                      // Já escolhido: aparece como estado (sem cara de botão). Para trocar, basta tocar numa peça acima.
-                      <div role="status" className="flex items-center gap-3 rounded-xl border border-success/40 inset-ring-[0.5px] inset-ring-success/40 bg-success/10 px-4 py-3 animate-in fade-in duration-300">
-                        <CircleCheck className="size-5 shrink-0 text-success" />
-                        <div className="flex min-w-0 flex-col">
-                          <span className="font-semibold text-success">Crédito de {reais(p.valor_pago)} escolhido</span>
-                          {p.opcoes.length > 0 && <span className="text-xs text-muted-foreground">Prefere uma peça? É só tocar em "Quero esta".</span>}
-                        </div>
+                    {p.opcoes.length > 0 && p.escolha_tipo !== "credito" && (
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground" aria-hidden>
+                        <Separator className="flex-1" /> ou <Separator className="flex-1" />
                       </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xl"
-                        className="w-full"
-                        aria-pressed={false}
-                        disabled={escolher.isPending}
-                        onClick={() => escolha(p.item_id, "credito", null)}
-                      >
-                        {gravando === `${p.item_id}:credito` ? <Spinner /> : <HandCoins />}
-                        Prefiro crédito de {reais(p.valor_pago)}
-                      </Button>
                     )}
+                    <OpcaoCredito
+                      valor={p.valor_pago}
+                      escolhido={p.escolha_tipo === "credito"}
+                      temOpcoes={p.opcoes.length > 0}
+                      carregando={gravando === `${p.item_id}:credito`}
+                      ocupado={escolher.isPending}
+                      aoEscolher={() => escolha(p.item_id, "credito", null)}
+                    />
                   </div>
                 )}
               </section>
@@ -730,17 +706,16 @@ export default function Troca() {
             </>
           )}
 
-          {!concluida && !finalizada && (
-            <p className="text-sm text-muted-foreground">Cada toque já fica salvo. Se mudar de ideia, é só escolher outra opção.</p>
-          )}
-
           {linkWa && (
-            <Button asChild size="xl" variant="outline" className="w-full">
-              <a href={linkWa} target="_blank" rel="noopener noreferrer">
-                <MessageCircle />
-                Falar no WhatsApp
-              </a>
-            </Button>
+            <div className="flex flex-col items-center gap-2 pt-2">
+              <p className="text-sm text-muted-foreground">Ficou com alguma dúvida?</p>
+              <Button asChild size="xl" variant="outline" className="w-full">
+                <a href={linkWa} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle />
+                  Falar no WhatsApp
+                </a>
+              </Button>
+            </div>
           )}
           {!concluida && !finalizada && (
             <>
