@@ -7,8 +7,8 @@
   as fantasmas (W0023, W0014, ARV-1281, ARV-1280) são canceladas pela migration.
 - **Acerto na hora certa (V113):** "A devolver"/acerto pendente só segura o pedido antes da **Embalagem** (como o avanço
   automático). O botão **Devolvido** fica no cartão "A devolver" do pedido, a partir da Nota fiscal.
-- Migration `20261124120000_troca_fantasma.sql`, teste `tests/banco/troca-fantasma.test.mjs`. **Não aplicada: precisa do
-  "sim" do Gustavo.**
+- Migration `20261124120000_troca_fantasma.sql`, teste `tests/banco/troca-fantasma.test.mjs`. **Aplicada em 18/11 com o "sim" do
+  Gustavo.**
 
 ## Troca para a cliente 40+, "Pago pela cliente" e mensagem sem link estruturada (18/11/2026)
 
