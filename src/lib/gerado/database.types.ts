@@ -887,6 +887,7 @@ export type Database = {
           entrega_logradouro: string | null
           entrega_numero: string | null
           entrega_uf: string | null
+          entregue_em: string | null
           etapa_antes_desvio: string | null
           excluido_em: string | null
           excluido_por: string | null
@@ -956,6 +957,7 @@ export type Database = {
           entrega_logradouro?: string | null
           entrega_numero?: string | null
           entrega_uf?: string | null
+          entregue_em?: string | null
           etapa_antes_desvio?: string | null
           excluido_em?: string | null
           excluido_por?: string | null
@@ -1025,6 +1027,7 @@ export type Database = {
           entrega_logradouro?: string | null
           entrega_numero?: string | null
           entrega_uf?: string | null
+          entregue_em?: string | null
           etapa_antes_desvio?: string | null
           excluido_em?: string | null
           excluido_por?: string | null
@@ -1967,13 +1970,22 @@ export type Database = {
           qtd_bipadas: number | null
           qtd_conferidas: number | null
           qtd_encontradas: number | null
-          qtd_etiquetadas: number | null
           qtd_linhas: number | null
           qtd_pecas: number | null
           responsaveis: Json | null
           shopify_url: string | null
           status: string | null
           status_desde: string | null
+        }
+        Relationships: []
+      }
+      v_producao_pessoa: {
+        Row: {
+          dia: string | null
+          etapa: string | null
+          pecas: number | null
+          pedidos: number | null
+          pessoa: string | null
         }
         Relationships: []
       }
@@ -1995,69 +2007,6 @@ export type Database = {
           visita: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "pedido_eventos_pedido_id_fkey"
-            columns: ["pedido_id"]
-            isOneToOne: false
-            referencedRelation: "pedidos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pedido_eventos_pedido_id_fkey"
-            columns: ["pedido_id"]
-            isOneToOne: false
-            referencedRelation: "v_parte_somada"
-            referencedColumns: ["venda_id"]
-          },
-          {
-            foreignKeyName: "pedido_eventos_pedido_id_fkey"
-            columns: ["pedido_id"]
-            isOneToOne: false
-            referencedRelation: "v_pedidos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pedido_eventos_pedido_id_fkey"
-            columns: ["pedido_id"]
-            isOneToOne: false
-            referencedRelation: "v_pedidos_operacao"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_tempo_sku: {
-        Row: {
-          achado_em: string | null
-          achado_por: string | null
-          desde_em: string | null
-          dia: string | null
-          evento_id: number | null
-          hora: number | null
-          item_id: string | null
-          nome: string | null
-          numero: string | null
-          pedido_id: string | null
-          qtd: number | null
-          referencia: string | null
-          segundos_para_achar: number | null
-          sku: string | null
-          variante: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pedido_eventos_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "pedido_itens"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pedido_eventos_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "v_item_liquido"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "pedido_eventos_pedido_id_fkey"
             columns: ["pedido_id"]
@@ -2205,6 +2154,7 @@ export type Database = {
         Args: { p_item: string; p_nota: string }
         Returns: undefined
       }
+      avancar_pecas: { Args: { p_pedido: string }; Returns: string }
       bipar: {
         Args: { p_codigo: string; p_item: string; p_pedido: string }
         Returns: string
@@ -2262,6 +2212,7 @@ export type Database = {
         }[]
       }
       enviar_troca: { Args: { p_troca: string }; Returns: undefined }
+      excluir_membro: { Args: { p_membro: string }; Returns: undefined }
       excluir_pedido: { Args: { p_pedido: string }; Returns: undefined }
       faltas_para_pagar: { Args: { p: Json }; Returns: string[] }
       fator_pedido: { Args: { p_pedido: string }; Returns: number }
@@ -2290,6 +2241,10 @@ export type Database = {
         Args: { p_item: string; p_qtd: number; p_status?: string }
         Returns: string
       }
+      marcar_pecas: {
+        Args: { p_marcas: Json; p_pedido: string }
+        Returns: Json
+      }
       marcar_reembolsado: {
         Args: { p_credito: string; p_desfazer?: boolean }
         Returns: undefined
@@ -2300,6 +2255,10 @@ export type Database = {
           b: Database["public"]["Tables"]["pedidos"]["Row"]
         }
         Returns: boolean
+      }
+      mover_etapa: {
+        Args: { p_destino: string; p_pedido: string }
+        Returns: string
       }
       normalizar_descontos: { Args: { p_bruto: Json }; Returns: Json }
       pascoa: { Args: { p_ano: number }; Returns: string }

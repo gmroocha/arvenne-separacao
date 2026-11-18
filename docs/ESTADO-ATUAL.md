@@ -1,10 +1,10 @@
 # Estado atual (atualizado em 17/11/2026)
 
-## Esteira leve, peça a peça, Concluídos e teste de ponta a ponta (17/11/2026) — local, aguarda o "sim" para a migration
+## Esteira leve, peça a peça, Concluídos e teste de ponta a ponta (17/11/2026) — migration aplicada e app publicado em 17/11
 
 Resposta ao incidente em que o Gustavo não conseguia levar um pedido do começo ao fim (erro de banco e pedido
 voltando de etapa). O banco é pequeno; o peso era o trabalho por clique. Migration
-**`20261122180000_esteira_leve.sql`** (ainda **não aplicada** no remoto; `20261122170000_operacao_leve.sql`,
+**`20261122180000_esteira_leve.sql`** (**aplicada em 17/11** com o "aplica" do Gustavo, após dry-run; `baseAplicada = 20261122180000`; `20261122170000_operacao_leve.sql`,
 que já estava aplicada, ficou como está; a view `v_pedidos_operacao` foi recriada na nova). Detalhes e IDs
 V81–V89 em [`VISTORIA.md`](VISTORIA.md).
 
@@ -37,11 +37,8 @@ V81–V89 em [`VISTORIA.md`](VISTORIA.md).
   A conservação do dinheiro ganhou marcas em lote e `mover_etapa`.
 - **Limite honesto:** o simulador atende uma requisição por vez. Mede correção e quantidade de requisições, não a
   capacidade do Supabase. A prova real é o Gustavo passar um pedido de teste no app publicado.
-- **Próxima ação (com o "sim" do Gustavo):** `npx supabase db push --remote --dry-run`, aplicar a migration nova
-  com `--yes`, `npm run tipos:gerar`, atualizar `baseAplicada` em `scripts/tipos-pendentes.mjs` para
-  `20261122180000`, `npm run tipos:local`, `git push`; depois um pedido de teste completo e leitura remota dos
-  logs (só leitura) para confirmar que não há mais `57014`. Não publique antes da migration: o app novo usa
-  `marcar_pecas`, `mover_etapa` e `excluir_membro`.
+- **Próxima ação:** Gustavo passa um pedido de teste completo no app publicado (de Separação a Concluído);
+  depois, leitura remota dos logs (só leitura) para confirmar que não há mais `57014`.
 
 ## Cliques rápidos e bipagem (17/11/2026) — banco aplicado, app preparado para publicação
 
