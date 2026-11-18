@@ -15,6 +15,7 @@ type Props = {
   previa?: string | null // miniatura já carregada: aparece na hora enquanto a grande chega
   proporcao?: number // largura ÷ altura da foto
   peca?: PecaDetalhe | null // sem ela, só a foto
+  alt?: string // nome da foto quando não há detalhe
 }
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
@@ -28,7 +29,7 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
 
 // Detalhe da peça: a foto no centro (mesma moldura da foto ampliada) e, embaixo, código, nome, variante, quantidade, preço,
 // nota e quantas faltam. Abre ao tocar na foto ou no cartão da peça (todas as etapas, troca e faltas).
-export default function DetalhePeca({ aberto, aoMudar, foto, previa = null, proporcao = 1, peca }: Props) {
+export default function DetalhePeca({ aberto, aoMudar, foto, previa = null, proporcao = 1, peca, alt = "" }: Props) {
   // Com texto embaixo, a foto usa menos da altura da tela para sobrar espaço.
   const altura = peca ? "58svh" : "85svh"
   const largura = `min(calc(100vw - 3rem), 40.5rem, calc((${altura} - 1.5rem) * ${proporcao}))`
@@ -36,11 +37,11 @@ export default function DetalhePeca({ aberto, aoMudar, foto, previa = null, prop
     <Dialog open={aberto} onOpenChange={aoMudar}>
       {/* Moldura do tema (contorno + espaço) do tamanho da foto; o X fica preso no canto da própria foto, sem sombra. */}
       <DialogContent showCloseButton={false} className="max-h-[96dvh] w-fit max-w-[calc(100%-2rem)] grid-cols-none gap-3 overflow-y-auto p-2 sm:max-w-2xl sm:p-3">
-        <DialogTitle className="sr-only">{peca?.sku ?? peca?.nome ?? "Foto da peça"}</DialogTitle>
+        <DialogTitle className="sr-only">{peca ? (peca.sku ?? peca.nome) : alt || "Foto da peça"}</DialogTitle>
         <DialogDescription className="sr-only">{peca ? "Detalhe da peça" : "Foto ampliada"}</DialogDescription>
         <div className="relative mx-auto w-fit">
           {foto ? (
-            <FotoGrande url={fotoTamanho(foto, 1200) ?? foto} previa={previa} proporcao={proporcao} alt={peca?.nome ?? ""} style={{ width: largura }} />
+            <FotoGrande url={fotoTamanho(foto, 1200) ?? foto} previa={previa} proporcao={proporcao} alt={peca?.nome ?? alt} style={{ width: largura }} />
           ) : (
             <div className="flex items-center justify-center rounded-lg bg-muted text-muted-foreground" style={{ width: largura, aspectRatio: 1 }}>
               <Gem className="size-1/4" />

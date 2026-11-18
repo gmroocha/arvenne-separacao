@@ -55,10 +55,10 @@ export default function Foto({ url, alt = "", ampliar, peca, className }: Props)
   if (!ampliar || (!url && !peca)) return <div className={className}>{quadro}</div>
   return (
     <>
-      <button type="button" className={cn("block w-full cursor-zoom-in", className)} onClick={abrir}>
+      <button type="button" className={cn("block w-full cursor-zoom-in", className)} onClick={abrir} aria-label={!url && peca ? `Detalhe de ${peca.sku ?? peca.nome}` : undefined}>
         {quadro}
       </button>
-      <DetalhePeca aberto={aberta} aoMudar={setAberta} foto={url} previa={previa.src} proporcao={previa.proporcao} peca={peca ? { ...peca, nome: peca.nome || alt } : null} />
+      <DetalhePeca alt={alt} aberto={aberta} aoMudar={setAberta} foto={url} previa={previa.src} proporcao={previa.proporcao} peca={peca ? { ...peca, nome: peca.nome || alt } : null} />
     </>
   )
 }

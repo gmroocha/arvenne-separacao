@@ -43,10 +43,14 @@ test("V76: sequência de peças vai em lote e não recarrega o pedido a cada cli
   lerItens(page, leituras)
   let lotes = 0
   page.on("request", req => { if (new URL(req.url()).pathname === "/rest/v1/rpc/marcar_pecas") lotes++ })
-  for (let n = 1; n <= 4; n++) {
-    await page.getByRole("button", { name: "Achei", exact: true }).first().click()
-    if (n < 4) await page.waitForTimeout(60)
-  }
+  // Quatro toques com 60 ms entre eles, medidos dentro da página (o tempo de cada clique do Playwright, sob carga, passava
+  // da janela de 400 ms do lote e fazia o teste oscilar).
+  await page.evaluate(async () => {
+    for (let n = 1; n <= 4; n++) {
+      [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Achei")?.click()
+      if (n < 4) await new Promise((r) => setTimeout(r, 60))
+    }
+  })
   await expect.poll(encontradas).toBe(4)
   // O pedido avança sozinho para a Conferência (com o aviso de etapa concluída) e a tela vai junto, sem reler nada.
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("conferencia")
