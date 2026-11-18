@@ -202,14 +202,18 @@ function Editor({ pedido }: { pedido: PedidoDetalhe }) {
         await somarVenda({ venda: pedido.id, forma: d.forma, valor: d.valor ?? pedido.total, pagoEm: d.pagoEm })
         await Promise.all([qc.invalidateQueries({ queryKey: ["pedidos"] }), qc.invalidateQueries({ queryKey: ["pedido"] })])
         const alvo = qc.getQueryData<{ numero: string }>(["pedido", "resumo", form.somar_em])
-        toast.success(`Peças somadas ao pedido ${alvo?.numero.replace(/^#/, "") ?? ""}`.trim())
-        navegar(`/pedidos/${form.somar_em}`, { replace: true })
+        const destino = form.somar_em
+        toast.success(`Peças somadas ao pedido ${alvo?.numero.replace(/^#/, "") ?? ""}`.trim(), {
+          action: { label: "Abrir pedido", onClick: () => navegar(`/pedidos/${destino}`) }, duration: 8000,
+        })
+        navegar("/vendas", { replace: true })
         return
       }
       await gravar({ cliente_id: id, forma_pagamento: d.forma, valor_pago: d.valor, pago_em: d.pagoEm, status: "novo" })
       await qc.invalidateQueries({ queryKey: ["pedidos"] })
-      toast.success("Pedido entrou na expedição")
-      navegar(`/pedidos/${pedido.id}`, { replace: true })
+      // A pessoa segue nas Vendas (próxima venda, próximo contato); o pedido abre só se ela quiser.
+      toast.success("Pedido entrou na expedição", { action: { label: "Abrir pedido", onClick: () => navegar(`/pedidos/${pedido.id}`) }, duration: 8000 })
+      navegar("/vendas", { replace: true })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível marcar como pago")
     }

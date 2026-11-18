@@ -41,3 +41,18 @@ begin
 end $$;
 revoke all on function public.encontrar_peca(uuid) from public, anon;
 grant execute on function public.encontrar_peca(uuid) to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- B) Enviar a troca (copiar a mensagem ou o link) só marca a troca como enviada. O pedido continua em "Avisar
+-- cliente" até alguém tocar em "Cliente avisada" (antes ele pulava sozinho para "Aguardando cliente").
+-- Cópia da definição de 20261113110000_acoes.sql sem o update do pedido. Reenviar continua sem efeito.
+-- ---------------------------------------------------------------------------------------------------------------
+create or replace function public.enviar_troca(p_troca uuid) returns void
+language plpgsql security invoker set search_path = public, pg_temp as $$
+declare
+  v_pedido uuid;
+begin
+  select pedido_id into v_pedido from trocas where id = p_troca for update;
+  if v_pedido is null then raise exception 'Troca não encontrada'; end if;
+  update trocas set status = 'enviada', enviada_em = now() where id = p_troca and status = 'rascunho';
+end $$;

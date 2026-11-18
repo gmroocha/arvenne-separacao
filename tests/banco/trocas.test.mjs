@@ -127,7 +127,8 @@ test('garantir_troca e enviar_troca são idempotentes', async () => {
   assert.equal(env.status, 'enviada')
   await one('select enviar_troca($1)', [t1])
   assert.equal((await one('select enviada_em from trocas where id = $1', [t1])).enviada_em.getTime(), env.enviada_em.getTime())
-  assert.equal((await one('select status from pedidos where id = $1', [p.id])).status, 'aguardando_cliente')
+  // V106: enviar a troca não move o pedido; só "Cliente avisada" leva a "Aguardando cliente".
+  assert.equal((await one('select status from pedidos where id = $1', [p.id])).status, 'avisar_cliente')
   // Peça nova numa troca respondida volta para enviada.
   await db.query("update trocas set status = 'respondida' where id = $1", [t1])
   const extra = await one("insert into pedido_itens (pedido_id, origem, nome, qtd, preco, ordem) values ($1, 'avulso', 'Pulseira', 1, 10, 5) returning id", [p.id])

@@ -40,7 +40,9 @@ test("V71: pagamento abre com gravação pendente e só confirma com o total atu
     liberar()
     await expect(dialog.getByLabel("Valor pago", { exact: true })).toHaveValue("150,00")
     await dialog.getByRole("button", { name: "Confirmar pagamento" }).click()
-    await expect(page).toHaveURL(new RegExp(`/pedidos/${sim.pedido.id}$`))
+    // V105: a venda paga continua em Vendas; o pedido abre só pelo aviso.
+    await expect(page).toHaveURL(/\/vendas$/)
+    await expect(page.getByText("Pedido entrou na expedição")).toBeVisible()
     expect(Number((await sim.one("select valor_pago from pedidos where id=$1", [sim.pedido.id])).valor_pago)).toBe(150)
     expect(sim.bloqueadas).toEqual([])
   } finally { liberar() }
@@ -97,7 +99,9 @@ test("V71: trocar a forma de pagamento recalcula o Pix e descarta uma resposta a
     await expect(dialog.getByLabel("Valor pago", { exact: true })).toHaveValue("90,00")
     await expect(page.locator("main").getByText("R$ 90,00", { exact: true }).filter({ visible: true }).last()).toBeVisible()
     await dialog.getByRole("button", { name: "Confirmar pagamento" }).click()
-    await expect(page).toHaveURL(new RegExp(`/pedidos/${sim.pedido.id}$`))
+    // V105: a venda paga continua em Vendas; o pedido abre só pelo aviso.
+    await expect(page).toHaveURL(/\/vendas$/)
+    await expect(page.getByText("Pedido entrou na expedição")).toBeVisible()
     expect(await sim.one("select forma_pagamento,valor_pago from pedidos where id=$1", [sim.pedido.id])).toEqual({ forma_pagamento: "Pix", valor_pago: "90.00" })
     expect(sim.bloqueadas).toEqual([])
   } finally { liberar() }
