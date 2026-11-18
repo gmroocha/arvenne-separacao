@@ -2308,7 +2308,7 @@ export type Database = {
       normalizar_descontos: { Args: { p_bruto: Json }; Returns: Json }
       pascoa: { Args: { p_ano: number }; Returns: string }
       pecas_repetidas: {
-        Args: { p_pedidos?: string[] }
+        Args: { p_avancadas?: boolean; p_pedidos?: string[] }
         Returns: {
           chave: string
           foto_url: string
