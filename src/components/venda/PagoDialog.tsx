@@ -7,27 +7,9 @@ import { Spinner } from "@/components/ui/spinner"
 import { FormaPagamento } from "@/components/comum/FormaPagamento"
 import CampoReais from "@/components/CampoReais"
 import RespDialog from "@/components/RespDialog"
-import { lerNumero, numeroParaTexto } from "@/lib/formato"
+import { deCampoDataHora, lerNumero, numeroParaTexto, paraCampoDataHora } from "@/lib/formato"
 
 export type DadosPagamento = { forma: string; valor: number | null; pagoEm: string }
-
-// Data e hora de São Paulo no formato do campo datetime-local (sem depender do fuso do aparelho).
-const agoraLocal = () => {
-  const p = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Sao_Paulo",
-      hourCycle: "h23",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-      .formatToParts(new Date())
-      .map((x) => [x.type, x.value]),
-  )
-  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`
-}
 
 type Props = {
   aberto: boolean
@@ -74,7 +56,7 @@ function Formulario({ formaInicial, aoMudarForma, aoConfirmar }: Pick<Props, "fo
     void Promise.resolve().then(async () => { if (ativo) await calcular(formaInicial ?? "Pix") })
     return () => { ativo = false; controle.atual++ }
   }, [formaInicial, calcular])
-  const [quando, setQuando] = useState(agoraLocal())
+  const [quando, setQuando] = useState(() => paraCampoDataHora())
   const [salvando, setSalvando] = useState(false)
   return (
     <FieldGroup className="gap-4">
@@ -101,10 +83,11 @@ function Formulario({ formaInicial, aoMudarForma, aoConfirmar }: Pick<Props, "fo
         onClick={async () => {
           const lido = lerNumero(valor)
           if (lido == null) return toast.error("Valor pago inválido")
+          const pagoEm = deCampoDataHora(quando)
+          if (pagoEm == null) return toast.error("Data do pagamento inválida")
           setSalvando(true)
           try {
-            // Horário de São Paulo com deslocamento explícito (sem horário de verão desde 2019).
-            await aoConfirmar({ forma, valor: lido, pagoEm: new Date(`${quando}:00-03:00`).toISOString() })
+            await aoConfirmar({ forma, valor: lido, pagoEm })
           } finally {
             setSalvando(false)
           }

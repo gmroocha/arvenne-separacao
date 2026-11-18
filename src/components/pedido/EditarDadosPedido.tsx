@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { atualizarPedido, corrigirFretePedido, registrarNota, type CamposPedido, type PedidoDetalhe } from "@/lib/api"
-import { digitos, lerNumero, mascaraCep, mascaraDocumento, mascaraTelefone, numeroParaTexto, reais } from "@/lib/formato"
+import { deCampoDataHora, digitos, lerNumero, mascaraCep, mascaraDocumento, mascaraTelefone, numeroParaTexto, paraCampoDataHora, quando, reais } from "@/lib/formato"
 import { COR_PAC, COR_SEDEX } from "@/lib/selo"
 import { useQueryClient } from "@tanstack/react-query"
 
@@ -33,6 +33,7 @@ function Formulario({ pedido, aoFechar }: { pedido: PedidoDetalhe; aoFechar: () 
     custo: numeroParaTexto(pedido.frete_custo),
     pagoPor: pedido.frete_pago_por ?? "arvenne",
     cobrado: numeroParaTexto(pedido.frete_cobrado),
+    pagoEm: pedido.pago_em ? paraCampoDataHora(pedido.pago_em) : "",
   })
   const [salvando, setSalvando] = useState(false)
   const mudar = (parcial: Partial<typeof f>) => setF((v) => ({ ...v, ...parcial }))
@@ -40,6 +41,11 @@ function Formulario({ pedido, aoFechar }: { pedido: PedidoDetalhe; aoFechar: () 
   const podeCorrigir = pedido.origem === "whatsapp" && pedido.fase === "expedicao"
 
   async function salvar() {
+    // Data do pagamento: só para pedido já pago. O prazo de 48 h úteis é recalculado pelo banco (v_pedidos).
+    const pagoMudou = pedido.pago_em != null && f.pagoEm !== paraCampoDataHora(pedido.pago_em)
+    const novoPagoEm = pagoMudou ? deCampoDataHora(f.pagoEm) : null
+    if (pagoMudou && novoPagoEm == null) return void toast.error("Informe a data e a hora do pagamento")
+    if (novoPagoEm != null && new Date(novoPagoEm).getTime() > Date.now()) return void toast.error("A data do pagamento não pode ser no futuro")
     const custo = f.custo.trim() ? lerNumero(f.custo) : null
     if (f.custo.trim() && custo == null) return void toast.error("Custo do frete não entendido. Use, por exemplo, 39,90")
     const cobrado = f.pagoPor === "arvenne" ? 0 : lerNumero(f.cobrado)
@@ -65,11 +71,18 @@ function Formulario({ pedido, aoFechar }: { pedido: PedidoDetalhe; aoFechar: () 
     const mudados = Object.fromEntries(
       Object.entries(campos).filter(([k, v]) => v !== ((pedido as Record<string, unknown>)[k] ?? null)),
     ) as CamposPedido
-    if (Object.keys(mudados).length === 0 && !corrigindo) return aoFechar()
+    if (Object.keys(mudados).length === 0 && !corrigindo && !pagoMudou) return aoFechar()
+    // pago_em_estimado = false: a data corrigida pela equipe não é trocada pela sincronização da Shopify.
+    const pagamento: CamposPedido = novoPagoEm != null ? { pago_em: novoPagoEm, pago_em_estimado: false } : {}
     setSalvando(true)
     try {
-      if (corrigindo) await corrigirFretePedido(pedido.id, f.pagoPor, cobrado, mudados)
-      else await atualizarPedido(pedido.id, mudados)
+      if (corrigindo) {
+        await corrigirFretePedido(pedido.id, f.pagoPor, cobrado, mudados)
+        if (novoPagoEm != null) await atualizarPedido(pedido.id, pagamento)
+      } else await atualizarPedido(pedido.id, { ...mudados, ...pagamento })
+      if (novoPagoEm != null && pedido.pago_em) {
+        await registrarNota(pedido.id, `Data do pagamento alterada: ${quando(pedido.pago_em)} → ${quando(novoPagoEm)}`).catch(() => {})
+      }
       // Quando há correção financeira, o banco já registra as notas junto com a gravação.
       if (!corrigindo && ("frete_tipo" in mudados || "frete_custo" in mudados)) {
         const tipo = mudados.frete_tipo !== undefined ? `${pedido.frete_tipo ?? "—"} → ${mudados.frete_tipo ?? "—"}` : (pedido.frete_tipo ?? "—")
@@ -165,6 +178,17 @@ function Formulario({ pedido, aoFechar }: { pedido: PedidoDetalhe; aoFechar: () 
         </FieldGroup>
       </FieldSet>
 
+      {pedido.pago_em && (
+        <FieldSet>
+          <FieldLegend variant="label" className="text-muted-foreground">Pagamento</FieldLegend>
+          <Field>
+            <FieldLabel htmlFor="ed-pago-em">Data e hora do pagamento</FieldLabel>
+            <Input id="ed-pago-em" type="datetime-local" className="sm:w-64" value={f.pagoEm} max={paraCampoDataHora()} onChange={(e) => mudar({ pagoEm: e.target.value })} />
+            <FieldDescription>O prazo de envio (48 h úteis) passa a contar desta data. A mudança fica no histórico.</FieldDescription>
+          </Field>
+        </FieldSet>
+      )}
+
       <div className="flex flex-col gap-2 sm:flex-row-reverse">
         <Button size="xl" className="sm:flex-1" disabled={salvando} onClick={() => void salvar()}>
           {salvando && <Spinner />} Salvar
@@ -177,10 +201,10 @@ function Formulario({ pedido, aoFechar }: { pedido: PedidoDetalhe; aoFechar: () 
   )
 }
 
-// "Editar" nos dados do pedido: cliente, endereço, frete pago e custo real da Frenet.
+// "Editar" nos dados do pedido: cliente, endereço, frete pago, custo real da Frenet e data do pagamento.
 export default function EditarDadosPedido({ pedido, aberto, aoMudar }: { pedido: PedidoDetalhe; aberto: boolean; aoMudar: (a: boolean) => void }) {
   return (
-    <RespDialog aberto={aberto} aoMudar={aoMudar} titulo="Editar dados do pedido" descricao="Confira os dados da cliente, o endereço e o frete." medio>
+    <RespDialog aberto={aberto} aoMudar={aoMudar} titulo="Editar dados do pedido" descricao="Confira os dados da cliente, o endereço, o frete e a data do pagamento." medio>
       {aberto && <Formulario key={pedido.id} pedido={pedido} aoFechar={() => aoMudar(false)} />}
     </RespDialog>
   )

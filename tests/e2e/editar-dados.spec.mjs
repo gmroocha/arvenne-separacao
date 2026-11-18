@@ -74,3 +74,35 @@ test("editar dados do pedido: trocar o frete e a Arvenne paga a diferença", asy
   await expect(page.getByText("R$ 17,92").first()).toBeVisible()
   expect(sim.bloqueadas).toEqual([])
 })
+
+// Data do pagamento editável no "Editar": grava no horário de São Paulo, recalcula o prazo no banco,
+// tira a marca de estimada (a Shopify não sobrescreve) e registra a mudança no histórico. Futuro é recusado.
+test("editar dados do pedido: corrigir a data do pagamento", async ({ page, context, baseURL }, info) => {
+  sim = await criarSimulacao({ status: "novo" })
+  await sim.banco.query("update pedidos set pago_em='2026-01-06T13:00:00Z', pago_em_estimado=true where id=$1", [sim.pedido.id])
+  const antes = await sim.one("select prazo from v_pedidos where id=$1", [sim.pedido.id])
+  await sim.instalar(context, baseURL)
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await editarNaSeparacao(page)
+  const janela = page.getByRole("dialog", { name: "Editar dados do pedido" })
+  const campo = janela.getByLabel("Data e hora do pagamento")
+  await expect(campo).toHaveValue("2026-01-06T10:00")
+  await campo.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `capturas/editar-pago-em-${info.project.name}.png` })
+
+  await campo.fill("2099-01-01T10:00")
+  await janela.getByRole("button", { name: "Salvar", exact: true }).click()
+  await expect(page.getByText("A data do pagamento não pode ser no futuro")).toBeVisible()
+  await expect(janela).toBeVisible()
+
+  await campo.fill("2026-01-05T09:15")
+  await janela.getByRole("button", { name: "Salvar", exact: true }).click()
+  await expect(janela).toBeHidden()
+  const p = await sim.one("select pago_em, pago_em_estimado from pedidos where id=$1", [sim.pedido.id])
+  expect([new Date(p.pago_em).toISOString(), p.pago_em_estimado]).toEqual(["2026-01-05T12:15:00.000Z", false])
+  const depois = await sim.one("select prazo from v_pedidos where id=$1", [sim.pedido.id])
+  expect(new Date(depois.prazo).getTime()).toBeLessThan(new Date(antes.prazo).getTime())
+  expect((await sim.one("select texto from pedido_eventos where pedido_id=$1 and tipo='nota' order by id desc limit 1", [sim.pedido.id])).texto)
+    .toBe("Data do pagamento alterada: 06/01/2026, 10:00 → 05/01/2026, 09:15")
+  expect(sim.bloqueadas).toEqual([])
+})

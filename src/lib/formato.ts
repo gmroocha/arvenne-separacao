@@ -7,6 +7,21 @@ export const reais = (v: number | null | undefined) => (v == null ? "—" : moed
 const dataHora = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: FUSO })
 export const quando = (iso: string) => dataHora.format(new Date(iso))
 
+// Campo datetime-local ("2026-11-18T14:32") sempre no horário de São Paulo, qualquer que seja o fuso do aparelho.
+const campoDataHora = new Intl.DateTimeFormat("en-CA", {
+  timeZone: FUSO, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+})
+export function paraCampoDataHora(d: Date | string = new Date()): string {
+  const p = Object.fromEntries(campoDataHora.formatToParts(new Date(d)).map((x) => [x.type, x.value]))
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`
+}
+// Volta do campo para ISO: São Paulo com deslocamento explícito (sem horário de verão desde 2019). Inválido → null.
+export function deCampoDataHora(texto: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(texto)) return null
+  const d = new Date(`${texto}:00-03:00`)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
 const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: FUSO })
 
 // Dia (aaaa-mm-dd) em São Paulo, para comparar "hoje" sem depender do fuso do aparelho.

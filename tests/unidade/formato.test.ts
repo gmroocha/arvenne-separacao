@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 import fc from "fast-check"
-import { digitos, formatarPrazo, lerNumero, linkWhatsApp, mascaraTelefone, numeroParaTexto } from "@/lib/formato"
+import { deCampoDataHora, digitos, formatarPrazo, lerNumero, linkWhatsApp, mascaraTelefone, numeroParaTexto, paraCampoDataHora } from "@/lib/formato"
 
 describe("entrada de valores e contatos", () => {
   test.each([
@@ -33,5 +33,23 @@ describe("entrada de valores e contatos", () => {
     expect(formatarPrazo(alvo, 1, Date.parse("2026-11-12T17:00:00Z")).texto).toBe("vence hoje 15:00")
     expect(formatarPrazo(alvo, null, Date.parse("2026-11-12T20:00:00Z")).texto).toBe("atrasado 2 h")
     expect(formatarPrazo(null, null).texto).toBe("sem prazo")
+  })
+})
+
+// Data do pagamento editável: o campo mostra e grava sempre no horário de São Paulo.
+describe("campo de data e hora do pagamento", () => {
+  test("mostra o horário de São Paulo e volta para o mesmo instante", () => {
+    expect(paraCampoDataHora("2026-11-10T12:15:00.000Z")).toBe("2026-11-10T09:15")
+    expect(deCampoDataHora("2026-11-10T09:15")).toBe("2026-11-10T12:15:00.000Z")
+    expect(paraCampoDataHora("2026-11-11T01:30:00.000Z")).toBe("2026-11-10T22:30")
+  })
+  test.each(["", "2026-11-10", "10/11/2026 09:15", "2026-13-40T99:99"])("recusa %s", (texto) => {
+    expect(deCampoDataHora(texto)).toBeNull()
+  })
+  test("qualquer minuto vai e volta sem mudar", () => {
+    fc.assert(fc.property(fc.integer({ min: 0, max: 60 * 24 * 365 * 5 }), (min) => {
+      const iso = new Date(Date.UTC(2025, 0, 1) + min * 60_000).toISOString()
+      expect(deCampoDataHora(paraCampoDataHora(iso))).toBe(iso)
+    }), { numRuns: 200, seed: 20261118 })
   })
 })

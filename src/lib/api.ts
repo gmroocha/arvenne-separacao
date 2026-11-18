@@ -576,7 +576,10 @@ export type CamposPedido = Partial<
     | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_peso_g" | "frete_servico" | "rastreio_url"
     | "pedido_fornecedor_numero" | "pedido_fornecedor_em" | "embalado_em" | "postado_em" | "rastreio_enviado_em"
   >
-> & { entregue_em?: string | null } // quando a cliente recebeu (só na página Concluídos)
+> & {
+  entregue_em?: string | null // quando a cliente recebeu (só na página Concluídos)
+  pago_em_estimado?: boolean // false quando a equipe corrige a data do pagamento (a Shopify não sobrescreve)
+}
 
 // Marca a venda como paga e soma as peças ao pedido principal (função somar_venda): a venda vira
 // "somada" e as peças entram no pedido como adicionais. Devolve a promessa para a tela navegar depois.
