@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import { Check, ChevronDown, Copy, ExternalLink, FileText, Store, TriangleAlert } from "lucide-react"
+import { Check, ChevronDown, Copy, ExternalLink, FileText, StickyNote, Store, TriangleAlert } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
 import { LinhaPeca } from "@/components/comum/Peca"
+import Foto from "@/components/Foto"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -301,6 +304,7 @@ export default function NotaFrete({ pedido, patch }: Props) {
   // Pedido LR: uma linha por código, somando as quantidades.
   const skusLr = [...itens.reduce((m, i) => m.set(i.sku ?? i.nome, (m.get(i.sku ?? i.nome) ?? 0) + i.qtd), new Map<string, number>())]
   const textoSkus = skusLr.map(([sku, qtd]) => `${sku} x${qtd}`).join("\n")
+  const comNota = itens.filter((i) => i.nota)
   const nf = Boolean(pedido.nf_emitida_em)
   const lr = Boolean(pedido.pedido_fornecedor_em)
 
@@ -367,6 +371,30 @@ export default function NotaFrete({ pedido, patch }: Props) {
       </Passo>
 
       <Passo numero={2} icone={<Store />} titulo="Pedido de venda LR" feito={lr} feitoEm={pedido.pedido_fornecedor_em} aoDesfazer={() => patch({ pedido_fornecedor_em: null })} textoDesfazer="Desfazer pedido LR feito">
+        {comNota.length > 0 && (
+          <Alert aria-label="Peças com nota">
+            <StickyNote />
+            <AlertTitle>Peças com nota ({comNota.length})</AlertTitle>
+            <AlertDescription>Quem faz o pedido LR: confira o recado destas peças antes de pedir.</AlertDescription>
+            <ItemGroup className="col-span-2 mt-2">
+              {comNota.map((i) => (
+                <Item key={i.id} size="xs" variant="muted" className="flex-nowrap items-start">
+                  <ItemMedia variant="image" className="size-12 rounded-md">
+                    <Foto url={i.foto_url} alt={i.nome} className="size-12" />
+                  </ItemMedia>
+                  <ItemContent className="min-w-0">
+                    <ItemTitle className="max-w-full min-w-0 gap-1.5">
+                      <span className="min-w-0 truncate font-mono font-semibold">{i.sku ?? "sem código"}</span>
+                      {i.qtd > 1 && <Badge variant="secondary" className="tabular-nums">{i.qtd}×</Badge>}
+                    </ItemTitle>
+                    {i.variante && <div className="min-w-0 text-xs break-words text-muted-foreground">{i.variante}</div>}
+                    <ItemDescription className="line-clamp-none text-sm font-medium break-words text-foreground">{i.nota}</ItemDescription>
+                  </ItemContent>
+                </Item>
+              ))}
+            </ItemGroup>
+          </Alert>
+        )}
         <ul className="flex flex-col" aria-label="Peças do pedido LR">
           {skusLr.map(([sku, qtd]) => (
             <li key={sku} className="flex min-h-11 items-center gap-1 border-b py-1 text-sm tabular-nums last:border-b-0 sm:min-h-9">
