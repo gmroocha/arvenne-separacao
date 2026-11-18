@@ -1,5 +1,15 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Pedido LR com check e peças com nota separadas; fotos da falta na frente (18/11/2026)
+
+- **Pedido de venda LR** (etapa Nota fiscal): cada linha tem um check; copiar o código, a quantidade ou "Copiar SKUs" marca
+  sozinho, tocar desmarca. Fica guardado no aparelho, por pedido (não vai para o banco). Peças **com nota** ficam num bloco
+  separado (foto, código, variante, recado, copiar e check próprios) e **não entram** na lista nem no "Copiar SKUs".
+  Teste `tests/e2e/nota-peca.spec.mjs`. Publicado (não depende do banco).
+- **Cartão da Expedição:** as fotos das peças em falta vêm primeiro (útil no Avisar cliente). Migration
+  `20261124110000_fotos_falta_primeiro.sql` (só muda a ordem das fotos em `v_pedidos_operacao`), teste
+  `tests/banco/fotos-falta.test.mjs`. **Migration ainda não aplicada.**
+
 ## Papéis suspensos (18/11/2026) — **aplicado em 18/11 com o "sim" do Gustavo**
 
 Pedido do Gustavo: por enquanto todos podem fazer tudo. `20261124100000_papeis_suspensos.sql` faz `sou_gestor()` valer para
