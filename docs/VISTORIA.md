@@ -518,6 +518,16 @@ aplicar). Cada linha abaixo tem teste que falhava antes (função, coluna ou tel
 | V110 | Média | Clube só tinha peça solta: cada tamanho era um cadastro separado. | Produto "pai" (`clube_modelos`) com variantes (`pecas_clube.modelo_id`); `salvar_modelo_clube` grava tudo ou nada; formulário com "Produto com variantes" (código sugerido BASE-SUFIXO, preço opcional); página do Clube e busca "Adicionar peça" agrupam por produto com botões de variante; corrigido o id do botão de variante do Clube (usava a chave sorteada). Pedidos continuam apontando para a variante (dinheiro não muda). `tests/banco/clube-modelos.test.mjs`, unidade `clubeModelos`, `rodada3-clube.spec.mjs`. |
 | V111 | Média | Cadastrar muitas peças do Clube era uma por uma. | "Adicionar em massa": várias fotos de uma vez (até 3 subindo ao mesmo tempo, com progresso), uma linha por foto (código, nome, preço, variantes opcionais), linhas com problema marcadas e "Salvar todas" numa chamada só. Banco, unidade (`enviarEmParalelo`) e telas (a foto sobe para um Storage fictício dentro do teste). |
 
+## Troca fantasma e acerto na hora errada (V112–V113, 18/11/2026)
+
+Caso real: W0023 (Conferência) não saía da etapa ("Há uma troca em andamento") com a troca já concluída; logo depois
+viria "Há acerto ou devolução pendente" sem o botão Devolvido na tela. Migration `20261124120000_troca_fantasma.sql`.
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V112 | Alta | Ao concluir a última peça da troca com a janela aberta, a consulta da troca voltava vazia antes de a lista de faltas atualizar; o efeito da `TrocaDialog` chamava `garantir_troca` com a peça já trocada (removida) e o banco abria uma troca nova, vazia, em rascunho. Invisível na tela, ela travava o "Concluir etapa". Aconteceu em W0023, W0014, ARV-1281 e ARV-1280. | `garantir_troca` só põe na troca peça em falta ou com defeito e não abre troca sem nenhuma; a tela não recria a troca que já existia; a migration cancela os rascunhos nunca enviados, sem opção e sem peça em falta. `tests/banco/troca-fantasma.test.mjs`. |
+| V113 | Média | `mover_etapa` recusava acerto ou devolução pendente já na Separação, Conferência e Bipagem (e até para voltar etapa), onde o cartão "A devolver"/"Acerto" não aparece; o avanço automático só exige o acerto a partir da Embalagem. | `mover_etapa` exige o acerto só para avançar à Embalagem ou adiante, com mensagem que diz onde resolver; "A devolver à cliente" nos dados diz que o botão Devolvido aparece a partir da Nota fiscal. `tests/banco/troca-fantasma.test.mjs`. |
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na

@@ -254,7 +254,8 @@ test('mover_etapa: recusa troca em andamento, acerto pendente, peça em falta, d
   const f = await fixture({ desconto: 0 })
   await recusa(() => one("select mover_etapa($1,'conferencia')", [f.pedido.id]), /falta|desvio|Resolva/)
   await escolher(f); await concluir(f)
-  await recusa(() => one("select mover_etapa($1,'bipagem')", [f.pedido.id]), /acerto|troca|falta/)
+  // V113: o acerto pendente só segura a Embalagem em diante.
+  await recusa(() => one("select mover_etapa($1,'embalagem')", [f.pedido.id]), /acerto ou devolução pendente/)
   await db.exec('reset role')
   const sep = await pedidoWhats('separacao')
   await db.query("insert into trocas(pedido_id) values ($1)", [sep.id])

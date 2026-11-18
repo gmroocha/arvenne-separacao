@@ -40,7 +40,9 @@ function LinhaDevolver({ valor }: { valor: number | null | undefined }) {
         <span>A devolver à cliente</span>
         <span className="text-right tabular-nums">{reais(valor)}</span>
       </div>
-      <span className="text-xs text-muted-foreground">Peças saíram do pedido depois do pagamento: ela pagou mais do que o total atual.</span>
+      <span className="text-xs text-muted-foreground">
+        Peças saíram do pedido depois do pagamento: ela pagou mais do que o total atual. O botão Devolvido aparece no pedido a partir da Nota fiscal.
+      </span>
     </div>
   )
 }

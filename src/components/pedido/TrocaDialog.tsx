@@ -502,7 +502,12 @@ export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }:
       return
     }
     if (itens.length === 0 || !trocaQ.isSuccess || criando || criou.current === chaveItens) return
-    if (troca && !faltaPeca) return
+    if (troca && !faltaPeca) {
+      // V112: a troca já existe para estas peças. Se ela sumir (concluída ou cancelada) com a janela aberta, a lista
+      // de peças ainda é a velha: não recria a troca com ela.
+      criou.current = chaveItens
+      return
+    }
     criou.current = chaveItens
     criarTroca({ pedidoId: pedido.id, itemIds: itens.map((i) => i.id) })
   }, [aberto, trocaQ.isSuccess, troca, faltaPeca, criando, criarTroca, chaveItens, pedido.id, itens])

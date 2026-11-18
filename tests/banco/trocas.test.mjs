@@ -116,6 +116,8 @@ test('remover a opção escolhida pede nova resposta e preserva escolhas já con
 test('garantir_troca e enviar_troca são idempotentes', async () => {
   const p = await pedidoWhats('avisar_cliente')
   const itens = (await db.query('select id from pedido_itens where pedido_id = $1 order by ordem', [p.id])).rows.map(r => r.id)
+  // V112: só peça em falta ou com defeito entra na troca.
+  await db.query("update pedido_itens set status = 'falta' where pedido_id = $1", [p.id])
   await db.exec('set local role authenticated')
   const t1 = (await one('select garantir_troca($1, $2::uuid[]) as t', [p.id, [itens[0]]])).t
   const t2 = (await one('select garantir_troca($1, $2::uuid[]) as t', [p.id, itens])).t
@@ -131,7 +133,7 @@ test('garantir_troca e enviar_troca são idempotentes', async () => {
   assert.equal((await one('select status from pedidos where id = $1', [p.id])).status, 'avisar_cliente')
   // Peça nova numa troca respondida volta para enviada.
   await db.query("update trocas set status = 'respondida' where id = $1", [t1])
-  const extra = await one("insert into pedido_itens (pedido_id, origem, nome, qtd, preco, ordem) values ($1, 'avulso', 'Pulseira', 1, 10, 5) returning id", [p.id])
+  const extra = await one("insert into pedido_itens (pedido_id, origem, nome, qtd, preco, ordem, status) values ($1, 'avulso', 'Pulseira', 1, 10, 5, 'falta') returning id", [p.id])
   await one('select garantir_troca($1, $2::uuid[])', [p.id, [extra.id]])
   assert.equal((await one('select status from trocas where id = $1', [t1])).status, 'enviada')
 })

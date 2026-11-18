@@ -1,5 +1,15 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Troca fantasma e devolução na Conferência (18/11/2026)
+
+- **Troca fantasma (V112):** concluir a troca com a janela aberta criava uma troca nova vazia, invisível, que travava o
+  "Concluir etapa" ("Há uma troca em andamento"). Corrigido na tela e no banco (`garantir_troca` só aceita peça em falta);
+  as fantasmas (W0023, W0014, ARV-1281, ARV-1280) são canceladas pela migration.
+- **Acerto na hora certa (V113):** "A devolver"/acerto pendente só segura o pedido antes da **Embalagem** (como o avanço
+  automático). O botão **Devolvido** fica no cartão "A devolver" do pedido, a partir da Nota fiscal.
+- Migration `20261124120000_troca_fantasma.sql`, teste `tests/banco/troca-fantasma.test.mjs`. **Não aplicada: precisa do
+  "sim" do Gustavo.**
+
 ## Troca para a cliente 40+, "Pago pela cliente" e mensagem sem link estruturada (18/11/2026)
 
 - **Página da troca (`/t/...`):** opção do **mesmo modelo** sai sem código e sem preço quando o valor é igual: frase grande
