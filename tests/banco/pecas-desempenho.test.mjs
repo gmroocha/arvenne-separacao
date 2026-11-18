@@ -12,8 +12,6 @@ test("V78: avançar as peças não recalcula as regras de retorno do pedido a ca
   await one("select alterar_item($1,'{\"status\":\"encontrado\"}')", [i.id])
   await db.query("update pedidos set status='conferencia' where id=$1", [p.id])
   await one("select alterar_item($1,jsonb_build_object('conferido_em',now()))", [i.id])
-  await db.query("update pedidos set status='etiquetagem' where id=$1", [p.id])
-  await one("select alterar_item($1,jsonb_build_object('etiquetado_em',now()))", [i.id])
   await db.query("update pedidos set status='bipagem' where id=$1", [p.id])
   for (let n = 0; n < 10; n++) await one("select bipar($1,$2,'PC-1')", [p.id, i.id])
   expect(Number((await one("select count(*) n from reavaliacoes")).n)).toBe(0)

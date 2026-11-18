@@ -8,10 +8,10 @@ import AvatarMembro from "@/components/AvatarMembro"
 import { useEquipe, useReembolsosPendentes } from "@/lib/api"
 import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { OrigemBadge } from "@/components/StatusBadge"
-import type { Pedido } from "@/lib/tipos"
+import type { PedidoOperacao } from "@/lib/tipos"
 
 // Cartão do pedido na esteira: a cliente em destaque, o número pequeno. Clique direito (ou toque longo) abre as ações.
-export default function CardPedido({ p, progresso }: { p: Pedido; progresso?: string | null }) {
+export default function CardPedido({ p, progresso }: { p: PedidoOperacao; progresso?: string | null }) {
   const reembolsar = useReembolsosPendentes().data?.has(p.id) ?? false
   const membros = useEquipe().data ?? []
   const resp = p.fase === "expedicao" ? responsavelDaEtapaAtual(p, membros) : null

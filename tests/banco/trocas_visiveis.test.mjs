@@ -25,13 +25,13 @@ test('V37: falta na Conferência leva ao desvio guardando a origem; sair volta �
 })
 
 test('V37: resolvida a falta, o pedido volta à etapa de origem; peça pendente manda para a Separação', async () => {
-  const p = await pedidoWhats('etiquetagem')
+  const p = await pedidoWhats('bipagem')
   const a = await one("select id from pedido_itens where pedido_id = $1 and sku = 'A1'", [p.id])
   await db.query("update pedido_itens set status = 'falta' where id = $1", [a.id])
-  assert.deepEqual(await status(p.id), { status: 'avisar_cliente', etapa_antes_desvio: 'etiquetagem' })
+  assert.deepEqual(await status(p.id), { status: 'avisar_cliente', etapa_antes_desvio: 'bipagem' })
   await db.query("update pedido_itens set status = 'removido', observacao = 'cliente desistiu' where id = $1", [a.id])
-  assert.equal(await sair(p.id), 'etiquetagem')
-  assert.deepEqual(await status(p.id), { status: 'etiquetagem', etapa_antes_desvio: null })
+  assert.equal(await sair(p.id), 'bipagem')
+  assert.deepEqual(await status(p.id), { status: 'bipagem', etapa_antes_desvio: null })
   // Com peça pendente a etapa de origem não vale: Separação.
   const q = await pedidoWhats('conferencia')
   const b = await one("select id from pedido_itens where pedido_id = $1 and sku = 'A1'", [q.id])
@@ -53,10 +53,10 @@ test('V37: falta na Separação continua voltando para a Separação', async () 
 })
 
 test('V37: mover manualmente do desvio vai exatamente para onde a pessoa escolheu', async () => {
-  const p = await pedidoWhats('etiquetagem')
+  const p = await pedidoWhats('bipagem')
   const a = await one("select id from pedido_itens where pedido_id = $1 and sku = 'A1'", [p.id])
   await db.query("update pedido_itens set status = 'falta' where id = $1", [a.id])
-  assert.equal((await status(p.id)).etapa_antes_desvio, 'etiquetagem')
+  assert.equal((await status(p.id)).etapa_antes_desvio, 'bipagem')
   await db.query("update pedido_itens set status = 'removido' where id = $1", [a.id])
   await db.query("update pedidos set status = 'conferencia' where id = $1", [p.id])
   assert.deepEqual(await status(p.id), { status: 'conferencia', etapa_antes_desvio: null })
@@ -71,13 +71,14 @@ test('V37: sair do desvio só vale em desvio e a função é só da equipe', asy
   await recusa(() => one('select sair_do_desvio($1)', ['00000000-0000-0000-0000-000000000000']), /não encontrado/)
 })
 
-test('V37: troca só com crédito devolve o pedido à Conferência; troca com peça nova vai à Separação', async () => {
+test('V37: troca só com crédito devolve o pedido à etapa da peça mais atrasada; troca com peça nova vai à Separação', async () => {
   const f = await fixture({ quantidade: 2 })
   // A 2ª peça já estava conferida; a falta da 1ª veio da Conferência.
   await db.query("update pedido_itens set status = 'encontrado', conferido_em = now() where id = $1", [f.itens[1].id])
   await db.query("update pedidos set etapa_antes_desvio = 'conferencia' where id = $1", [f.pedido.id])
   await one('select troca_aprovar($1, $2, $3, null)', [f.troca.id, f.pecas[0].id, 'credito'])
-  assert.deepEqual(await status(f.pedido.id), { status: 'conferencia', etapa_antes_desvio: null })
+  // Só sobra a peça já conferida: a etapa mais atrasada das peças é a Bipagem e o pedido segue sozinho.
+  assert.deepEqual(await status(f.pedido.id), { status: 'bipagem', etapa_antes_desvio: null })
 
   const g = await fixture({ quantidade: 2 })
   await db.query("update pedido_itens set status = 'encontrado', conferido_em = now() where id = $1", [g.itens[1].id])

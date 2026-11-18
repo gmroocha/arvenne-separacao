@@ -133,3 +133,55 @@ test("V75: trinta cliques rápidos sobrevivem a refoco durante a gravação e co
   await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(30)
   expect(sim.bloqueadas).toEqual([])
 })
+
+test("V80: conferência rápida com Broadcast em duas telas mantém a lista e outro pedido acessíveis", async ({ page, context, baseURL }) => {
+  sim = await criarSimulacao()
+  await sim.banco.query(`insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,ordem)
+    select $1,'avulso','Peça '||n,'PC-'||n,1,10,n from generate_series(1,29) n`, [sim.pedido.id])
+  await sim.banco.query("update pedido_itens set status='encontrado' where pedido_id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedidos set status='conferencia' where id=$1", [sim.pedido.id])
+  const outro = await sim.one("insert into pedidos(origem,status,cliente_nome) values('whatsapp','novo','Outra cliente') returning id")
+  await sim.instalar(context, baseURL)
+  const lista = await context.newPage()
+  const canais = new Map()
+  for (const tela of [page, lista]) {
+    // Servidor Phoenix fictício: o navegador usa o cliente Realtime real, sem abrir conexão externa.
+    await tela.routeWebSocket('wss://simulacao.supabase.test/**', ws => {
+      ws.onMessage(raw => {
+        const [join, ref, topic, evento] = JSON.parse(raw.toString())
+        if (evento === 'phx_join') canais.set(tela, { ws, join, topic })
+        ws.send(JSON.stringify([join, ref, topic, 'phx_reply', { status: 'ok', response: {} }]))
+      })
+    })
+  }
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  await lista.goto('/')
+  await Promise.all([page.waitForLoadState('networkidle'), lista.waitForLoadState('networkidle')])
+  await expect.poll(() => canais.size).toBe(2)
+  let detalhes = 0, listas = 0, contagens = 0, avisos = 0
+  page.on('request', req => { if (new URL(req.url()).pathname === '/rest/v1/pedido_itens') detalhes++ })
+  lista.on('request', req => {
+    const u = new URL(req.url())
+    if (u.pathname === '/rest/v1/v_pedidos_operacao' && u.searchParams.has('status')) listas++
+    if (u.pathname === '/rest/v1/rpc/contagens_pedidos') contagens++
+  })
+  page.on('requestfinished', req => {
+    if (new URL(req.url()).pathname !== '/rest/v1/rpc/alterar_item') return
+    avisos++
+    for (const { ws, join, topic } of canais.values()) ws.send(JSON.stringify([
+      join, null, topic, 'broadcast', { event: 'mudou', type: 'broadcast', payload: { t: 'pedido_itens', p: [sim.pedido.id] } },
+    ]))
+  })
+  await page.getByRole('button', { name: 'Conferida', exact: true }).evaluateAll(bs => bs.forEach(b => b.click()))
+  await expect.poll(() => avisos).toBe(30)
+  await expect.poll(async () => Number((await sim.one('select count(*) n from pedido_itens where pedido_id=$1 and conferido_em is not null', [sim.pedido.id])).n)).toBe(30)
+  await expect(page.getByRole('dialog').getByText('Conferência concluída', { exact: true })).toBeVisible()
+  await expect.poll(() => listas).toBe(1)
+  await expect.poll(() => detalhes).toBe(1)
+  await lista.waitForTimeout(1600)
+  expect({ listas, detalhes, contagens }).toEqual({ listas: 1, detalhes: 1, contagens: 1 })
+  await lista.goto(`/pedidos/${outro.id}`)
+  await expect(lista.getByText('Outra cliente', { exact: true }).first()).toBeVisible()
+  expect(sim.bloqueadas).toEqual([])
+  await lista.close()
+})

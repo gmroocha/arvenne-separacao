@@ -21,12 +21,12 @@ test('nota da peça: grava, troca e apaga, com cada mudança no histórico', asy
 })
 
 test('nota da peça: vale em qualquer etapa e não muda status nem etapa', async () => {
-  const p = await pedidoWhats('etiquetagem')
+  const p = await pedidoWhats('bipagem')
   const i = await itemDe(p.id)
   await db.exec('set local role authenticated')
   await one('select anotar_item($1, $2)', [i.id, 'Embalar separado'])
   const r = await one('select i.status, i.conferido_em is not null conferida, p.status etapa from pedido_itens i join pedidos p on p.id = i.pedido_id where i.id = $1', [i.id])
-  assert.deepEqual([r.status, r.conferida, r.etapa], ['encontrado', true, 'etiquetagem'])
+  assert.deepEqual([r.status, r.conferida, r.etapa], ['encontrado', true, 'bipagem'])
 })
 
 test('nota da peça: limite de 500 caracteres; anon não anota', async () => {

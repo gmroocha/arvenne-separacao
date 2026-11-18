@@ -47,6 +47,9 @@ export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'st
   responsaveis?: Record<string, string> | null
 }
 
+// Projeção usada na esteira; valores financeiros completos ficam no detalhe do pedido.
+export type PedidoOperacao = Pick<Pedido, keyof Views<'v_pedidos_operacao'>>
+
 // Pessoa do Time Arvenne (tabela equipe). O e-mail liga a pessoa ao login ("Comigo").
 export type Membro = Pick<Tables<'equipe'>, 'id' | 'nome' | 'email' | 'ativo'>
 

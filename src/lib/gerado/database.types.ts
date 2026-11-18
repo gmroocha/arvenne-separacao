@@ -78,6 +78,13 @@ export type Database = {
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bipagens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
         ]
       }
       catalogo_sincronizacao: {
@@ -269,6 +276,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "creditos_cliente_troca_id_fkey"
             columns: ["troca_id"]
             isOneToOne: false
@@ -315,6 +329,13 @@ export type Database = {
             columns: ["usado_pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -413,6 +434,13 @@ export type Database = {
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "feedbacks_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
         ]
       }
       feriados: {
@@ -498,6 +526,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
           {
@@ -631,6 +666,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_eventos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -768,6 +810,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pedido_itens_troca_peca_origem_id_fkey"
             columns: ["troca_peca_origem_id"]
             isOneToOne: false
@@ -800,6 +849,13 @@ export type Database = {
             columns: ["venda_origem_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1067,6 +1123,13 @@ export type Database = {
             columns: ["somar_em"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["somar_em"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1356,6 +1419,13 @@ export type Database = {
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
         ]
       }
       vistoria_execucoes: {
@@ -1412,6 +1482,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "trocas_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
@@ -1430,6 +1507,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1473,6 +1557,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
           {
@@ -1524,6 +1615,13 @@ export type Database = {
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "creditos_cliente_usado_pedido_id_fkey"
+            columns: ["usado_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_item_liquido: {
@@ -1558,6 +1656,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pedido_itens_venda_origem_id_fkey"
             columns: ["venda_origem_id"]
             isOneToOne: false
@@ -1576,6 +1681,13 @@ export type Database = {
             columns: ["venda_origem_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1608,6 +1720,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1663,6 +1782,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1812,7 +1938,44 @@ export type Database = {
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pedidos_somar_em_fkey"
+            columns: ["somar_em"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      v_pedidos_operacao: {
+        Row: {
+          a_devolver: number | null
+          acerto_pendente: boolean | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          etapa_antes_desvio: string | null
+          etapas_permitidas: Json | null
+          fase: string | null
+          fotos: Json | null
+          id: string | null
+          numero: string | null
+          origem: string | null
+          pedido_em: string | null
+          pendente_rastreio: boolean | null
+          prazo: string | null
+          prazo_horas_uteis: number | null
+          qtd_bipadas: number | null
+          qtd_conferidas: number | null
+          qtd_encontradas: number | null
+          qtd_etiquetadas: number | null
+          qtd_linhas: number | null
+          qtd_pecas: number | null
+          responsaveis: Json | null
+          shopify_url: string | null
+          status: string | null
+          status_desde: string | null
+        }
+        Relationships: []
       }
       v_tempo_etapas: {
         Row: {
@@ -1851,6 +2014,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_eventos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1907,6 +2077,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_eventos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1976,6 +2153,13 @@ export type Database = {
             referencedRelation: "v_pedidos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_troca_valores: {
@@ -2008,6 +2192,7 @@ export type Database = {
       }
     }
     Functions: {
+      acerto_operacional: { Args: { p_pedido: string }; Returns: Json }
       adicionar_itens: {
         Args: { p_itens: Json; p_pedido: string; p_somar?: boolean }
         Returns: undefined
@@ -2036,6 +2221,7 @@ export type Database = {
         }[]
       }
       contagem_repetidas: { Args: never; Returns: number }
+      contagens_pedidos: { Args: never; Returns: Json }
       corrigir_frete_pedido: {
         Args: {
           p_cobrado?: number

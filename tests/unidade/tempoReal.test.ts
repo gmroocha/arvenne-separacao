@@ -45,7 +45,8 @@ test('tempo real: aba escondida não recarrega; recarrega ao voltar a aparecer',
  sim.inscricoes=[];limpar=sim.efeito!();await vi.advanceTimersByTimeAsync(0)
  const canal=sim.inscricoes.find(x=>x.filtro.event==='mudou')!
  canal.cb({payload:{t:'pedido_itens',p:['pedido-ficticio']}})
- await vi.advanceTimersByTimeAsync(2000);expect(sim.invalidate).not.toHaveBeenCalled()
+ await vi.advanceTimersByTimeAsync(2000)
+ expect(sim.invalidate.mock.calls.every(([q]) => (q as {refetchType?: string})?.refetchType === "none")).toBe(true)
  oculto=false;ouvintes.visibilitychange()
  expect(sim.invalidate).toHaveBeenCalledWith({queryKey:['pedido']})
  vi.unstubAllGlobals()

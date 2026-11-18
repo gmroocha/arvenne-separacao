@@ -7,9 +7,10 @@ import { juntarLidos, lerLinkCarrinho, type LidoCarrinho } from "@/lib/carrinho"
 import { sincronizarEmPartes, type RespostaSync } from "@/lib/sincronizar"
 import { itemDoSite } from "@/lib/itens"
 import { intervaloListas } from "@/lib/tempoReal"
+import { agendarAtualizacaoOperacional } from "@/lib/atualizacaoOperacional"
 import { gravarPeca } from "@/lib/gravarPeca"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, Membro, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, Membro, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 // Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
@@ -38,7 +39,7 @@ export function filtroBuscaPedidos(busca: string): string | null {
     .join(",")
 }
 
-export function usePedidosFase(fase: "venda" | "expedicao", busca = "") {
+export function usePedidosFase(fase: "venda", busca = "") {
   const filtro = filtroBuscaPedidos(busca)
   return useQuery({
     queryKey: ["pedidos", fase, filtro ?? ""],
@@ -47,12 +48,28 @@ export function usePedidosFase(fase: "venda" | "expedicao", busca = "") {
     queryFn: async () => {
       let q = supabase.from("v_pedidos").select("*").in("status", STATUS_DA_FASE[fase]).limit(LIMITE_LISTA)
       if (filtro) q = q.or(filtro)
-      q = fase === "expedicao"
-        ? q.order("prazo", { ascending: true, nullsFirst: false })
-        : q.order("pedido_em", { ascending: false })
+      q = q.order("pedido_em", { ascending: false })
       const { data, error } = await q
       if (error) throw error
       return data as Pedido[]
+    },
+  })
+}
+
+// A esteira lê somente progresso, prazo, responsáveis e regras operacionais.
+export function usePedidosExpedicao(busca = "") {
+  const filtro = filtroBuscaPedidos(busca)
+  return useQuery({
+    queryKey: ["pedidos", "expedicao", filtro ?? ""],
+    refetchInterval: intervaloListas,
+    placeholderData: keepPreviousData,
+    queryFn: async ({ signal }) => {
+      let q = supabase.from("v_pedidos_operacao").select("*")
+        .in("status", STATUS_DA_FASE.expedicao).order("prazo", { ascending: true, nullsFirst: false }).limit(LIMITE_LISTA)
+      if (filtro) q = q.or(filtro)
+      const { data, error } = await q.abortSignal(signal)
+      if (error) throw error
+      return data as PedidoOperacao[]
     },
   })
 }
@@ -62,15 +79,15 @@ export function usePendentesRastreio() {
   return useQuery({
     queryKey: ["pedidos", "rastreio"],
     refetchInterval: intervaloListas,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
-        .from("v_pedidos")
+        .from("v_pedidos_operacao")
         .select("*")
         .eq("pendente_rastreio", true)
         .order("status_desde", { ascending: true })
-        .limit(100)
+        .limit(100).abortSignal(signal)
       if (error) throw error
-      return data as Pedido[]
+      return data as PedidoOperacao[]
     },
   })
 }
@@ -102,17 +119,9 @@ export function useContagens() {
     queryKey: ["pedidos", "contagem"],
     refetchInterval: intervaloListas,
     queryFn: async () => {
-      const [a, b] = await Promise.all([
-        supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("status", "em_aberto"),
-        supabase
-          .from("v_pedidos")
-          .select("id", { count: "exact", head: true })
-          .in("status", STATUS_DA_FASE.expedicao)
-          .lt("prazo", new Date().toISOString()),
-      ])
-      if (a.error) throw a.error
-      if (b.error) throw b.error
-      return { emAberto: a.count ?? 0, atrasados: b.count ?? 0 }
+      const { data, error } = await supabase.rpc("contagens_pedidos")
+      if (error) throw error
+      return data as { emAberto: number; atrasados: number }
     },
   })
 }
@@ -592,28 +601,10 @@ export function usePatchPedido(pedidoId: string) {
 const ESTADOS_DE_PECAS: StatusPedido[] = ["novo", "separacao", "conferencia", "etiquetagem", "bipagem"]
 const ZERAR_ETAPAS = { conferido_em: null, etiquetado_em: null, etiqueta_previa: false, qtd_bipada: 0, bipado_em: null } as const
 
-// Não reler o pedido inteiro entre cliques de uma mesma sequência. O relógio é por pedido e por cache,
-// sobrevive à troca de tela e só relê depois de a fila esvaziar e a pessoa parar de marcar por 600 ms.
-const releiturasPecas = new WeakMap<QueryClient, Map<string, ReturnType<typeof setTimeout>>>()
-function cancelarReleituraPecas(qc: QueryClient, id: string) {
-  const timers = releiturasPecas.get(qc)
-  clearTimeout(timers?.get(id))
-  timers?.delete(id)
-}
+// A fila local e o Broadcast compartilham o lote por cache. Só relê após as gravações
+// terminarem; 600 ms de pausa local, ou 1200 ms a partir da última notificação.
 function agendarReleituraPecas(qc: QueryClient, id: string) {
-  cancelarReleituraPecas(qc, id)
-  let timers = releiturasPecas.get(qc)
-  if (!timers) { timers = new Map(); releiturasPecas.set(qc, timers) }
-  timers.set(id, setTimeout(() => {
-    timers.delete(id)
-    if (qc.isMutating({ mutationKey: ["item", id] }) > 0) return agendarReleituraPecas(qc, id)
-    qc.invalidateQueries({ queryKey: chavePedido(id) })
-    qc.invalidateQueries({ queryKey: ["pedidos"] })
-    qc.invalidateQueries({ queryKey: ["repetidas"], predicate: (q) => q.queryKey[1] !== "contagem" })
-    qc.invalidateQueries({ queryKey: ["repetidas", "contagem"], refetchType: "none" })
-    qc.invalidateQueries({ queryKey: ["acerto"] })
-    qc.invalidateQueries({ queryKey: ["etiquetar"] })
-  }, 600))
+  agendarAtualizacaoOperacional(qc, [id], { espera: 600 })
 }
 
 // Todas as ações numa peça (achei, conferida, etiquetada, bipada, desfazer, falta, defeito...).
@@ -665,7 +656,6 @@ export function useAcoesItem(pedidoId: string) {
   return (item: Item, campos: ItemPatch, codigo?: string, delta?: number): Promise<ResultadoBipagem | null> | void => {
     const atual = qc.getQueryData<PedidoDetalhe>(chavePedido(pedidoId))
     if (!atual) return
-    cancelarReleituraPecas(qc, pedidoId)
     const patch: ItemPatch = campos.status && campos.status !== "encontrado" ? { ...ZERAR_ETAPAS, ...campos } : campos
     const depois = atual.pedido_itens.map((i) => (i.id === item.id ? { ...i, ...patch } : i))
     // Cancela uma leitura em andamento (ela traria o estado velho de volta) e grava sobre o que está no cache agora.

@@ -60,8 +60,9 @@ test('limpeza: some só o ruído da montagem de vendas; etapas, pagamento e pedi
   })
   try {
     const tipos = async (id) => (await b.query("select tipo from pedido_eventos where pedido_id = $1 and tipo in ('qtd','preco','item','pago') order by created_at, id", [id])).rows.map((r) => r.tipo)
-    assert.deepEqual(await tipos(ids.venda), ['pago', 'item'])
-    assert.deepEqual(await tipos(ids.antigo), ['item'])
+    // A esteira leve (20261122180000) também apaga os eventos "achei" (pendente → encontrado).
+    assert.deepEqual(await tipos(ids.venda), ['pago'])
+    assert.deepEqual(await tipos(ids.antigo), [])
   } finally {
     await b.close()
   }

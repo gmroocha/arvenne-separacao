@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
-import { usePedidosFase, useRepetidas } from "@/lib/api"
+import { usePedidosExpedicao, useRepetidas } from "@/lib/api"
 import { formatarPrazo } from "@/lib/formato"
 import { categoriaDoNome, paraBusca } from "@/lib/categoria"
 import type { PecaRepetida, Pedido } from "@/lib/tipos"
@@ -65,7 +65,7 @@ const atrasado = (p: Pick<Pedido, "prazo" | "prazo_horas_uteis">) => formatarPra
 export default function Repetidas() {
   const [selecao, setSelecao] = useState<string[]>(lerSelecao)
   const [escolhendo, setEscolhendo] = useState(false)
-  const expedicao = usePedidosFase("expedicao")
+  const expedicao = usePedidosExpedicao()
   // Pedidos que podem ser separados, do prazo mais curto ao mais longo (a consulta já vem nessa ordem).
   const candidatos = useMemo(() => (expedicao.data ?? []).filter((p) => EM_SEPARACAO.has(p.status)), [expedicao.data])
   // Só vale o que ainda está na separação; se nada sobrar, volta a mostrar todos.

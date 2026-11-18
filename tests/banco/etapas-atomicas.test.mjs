@@ -33,7 +33,8 @@ test('V57: resolver a falta sai do desvio na mesma ação, sem segunda requisiç
  const {p,i}=await montar('separacao')
  await one('select alterar_item($1,$2::jsonb)',[i.id,JSON.stringify({status:'falta'})])
  await one('select alterar_item($1,$2::jsonb)',[i.id,JSON.stringify({status:'encontrado'})])
- expect((await one('select status from pedidos where id=$1',[p.id])).status).toBe('separacao')
+ // Única peça achada de novo: a etapa mais atrasada das peças já é a Conferência, e o pedido segue sozinho.
+ expect((await one('select status from pedidos where id=$1',[p.id])).status).toBe('conferencia')
 })
 
 

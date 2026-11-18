@@ -442,6 +442,16 @@ Migration `20261122160000_progresso_pecas_leve.sql` aplicada após dry-run em 17
 | V77 | Alta | Timeout confirmado de bipagem não tinha recuperação; repetir falhas de rede indiscriminadamente criaria contagem dupla. | Uma segunda tentativa com pausa somente para código 57014 + statement timeout. Testes de timeout e de resposta perdida após gravação, sem repetição neste último caso. |
 | V78 | Média | Cada avanço de peça recalculava as regras de retorno de etapa, inclusive cada +1 da bipagem. | Gatilho distingue avanço de reabertura; preserva proteção de arquivados, inserções, restaurações, quantidades e etapas posteriores. Teste instrumentado passou de 13 reavaliações para zero; desfazer continua retornando à etapa correta. |
 
+## Expedição sob sequência rápida (V79–V80, 17/11/2026)
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V79 | Alta | Lista, rastreio e contador de atrasados expandiam a view financeira completa; timeouts simultâneos impediam navegar. | `v_pedidos_operacao` e `contagens_pedidos`: progresso e prazo sem financeiro completo no caminho comum. Acerto excepcional usa a regra original. Testes de equivalência por etapa, troca, crédito, retirada/devolução, RLS e acesso público; pedido comum funciona mesmo sem permissão na view financeira. |
+| V80 | Alta | Fim da fila local e Broadcast tinham relógios separados e recarregavam o mesmo pedido duas vezes. | Lote por QueryClient compartilhado, acumulando IDs, esperando gravações e preservando eventos posteriores. Teste com 30 conferências, duas telas e cliente Realtime real ligado a WebSocket fictício: falhou com duas releituras no código anterior, passou com uma no novo. Valida diálogo e abertura de outro pedido. |
+
+O teste com Broadcast cobre a multiplicação de leituras; o adaptador de banco continua serializado e
+não representa capacidade, latência ou conexões do Supabase de produção.
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na

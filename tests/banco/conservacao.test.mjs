@@ -50,7 +50,7 @@ const vivas = async (id) => (await db.query(
 
 async function aplicar(id, op) {
   const lista = await vivas(id)
-  if (!lista.length && !["receber", "devolver", "frete"].includes(op.tipo)) return
+  if (!lista.length && !["receber", "devolver", "frete", "mover"].includes(op.tipo)) return
   const alvo = lista[op.k % Math.max(lista.length, 1)]
   if (op.tipo === "remover") {
     await db.query("update pedido_itens set status='removido',observacao='cliente desistiu' where id=$1", [alvo.id])
@@ -63,6 +63,18 @@ async function aplicar(id, op) {
     const o = await one("insert into troca_opcoes(troca_peca_id,origem,nome,sku,preco) values ($1,'clube','Nova','NOVA',$2) returning id", [tp.id, op.preco])
     await db.query("update trocas set status='enviada',enviada_em=now() where id=$1", [t.id])
     await one("select troca_aprovar($1,$2,$3,$4)", [t.id, tp.id, op.credito ? "credito" : "opcao", op.credito ? null : o.id])
+  } else if (op.tipo === "lote") {
+    // Marcas em lote (esteira leve): achei + conferida na peça; não mexem em dinheiro.
+    await one("select marcar_pecas($1,$2::jsonb)", [id, JSON.stringify([
+      { item: alvo.id, campo: "status", valor: "encontrado" }, { item: alvo.id, campo: "conferida", valor: true }])])
+  } else if (op.tipo === "mover") {
+    // Mover de etapa à mão (para frente marca como feito; para trás zera). O banco pode recusar; nunca mexe em dinheiro.
+    await db.exec("savepoint mover")
+    try { await one("select mover_etapa($1,$2)", [id, op.destino]); await db.exec("release savepoint mover") }
+    catch (e) {
+      await db.exec("rollback to savepoint mover")
+      if (!/Há |Só dá|já está concluído|Etapa inválida|peças para expedir/.test(e.message)) throw e
+    }
   } else if (op.tipo === "receber") {
     await acertar(id, false)
   } else if (op.tipo === "desfazer") {
@@ -118,6 +130,8 @@ const operacao = fc.oneof(
   fc.record({ tipo: fc.constant("remover"), k: fc.nat(9) }),
   fc.record({ tipo: fc.constant("falta"), k: fc.nat(9) }),
   fc.record({ tipo: fc.constant("trocar"), k: fc.nat(9), preco: fc.oneof(fc.integer({ min: 1, max: 400 }), fc.integer({ min: 1, max: 40_000 }).map(c => c / 100)), cobertura: fc.oneof(fc.integer({ min: 0, max: 50 }), fc.integer({ min: 0, max: 5_000 }).map(c => c / 100)), credito: fc.boolean() }),
+  fc.record({ tipo: fc.constant("lote"), k: fc.nat(9) }),
+  fc.record({ tipo: fc.constant("mover"), destino: fc.constantFrom("separacao", "conferencia", "bipagem", "faturamento") }),
   fc.record({ tipo: fc.constant("receber") }),
   fc.record({ tipo: fc.constant("devolver") }),
   fc.record({ tipo: fc.constant("desfazer") }),

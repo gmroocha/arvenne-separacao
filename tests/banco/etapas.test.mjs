@@ -56,8 +56,9 @@ test('bipar é atômico: duas chamadas somam 2 e nunca passam da quantidade', as
   assert.deepEqual(r.map(x => x.r).sort(), ['excedente', 'ok', 'ok'])
   assert.equal((await one('select qtd_bipada from pedido_itens where id = $1', [i.id])).qtd_bipada, 2)
   assert.equal((await one('select bipar($1, null, $2) as r', [p.id, 'XX'])).r, 'fora_do_pedido')
+  // A esteira leve não guarda mais cada leitura: a contagem fica na peça.
   const { rows } = await db.query('select resultado from bipagens where pedido_id = $1 order by id', [p.id])
-  assert.equal(rows.length, 4)
+  assert.equal(rows.length, 0)
   await recusa(() => one('select bipar($1, $2, $3)', [p.id, '00000000-0000-0000-0000-000000000000', 'A1']), /não pertence/)
 })
 
@@ -114,7 +115,7 @@ test('bipar_ajustar soma e tira no banco, sem passar de 0 nem da quantidade', as
   assert.equal(await aj(-1), 1)
   assert.equal(await aj(-9), 0)
   assert.equal((await one('select bipado_em from pedido_itens where id = $1', [i.id])).bipado_em, null)
-  assert.ok(await eventos(p.id, 'bipada') >= 3)
+  assert.equal(await eventos(p.id, 'bipada'), 0) // histórico clique a clique saiu
   await recusa(() => one('select bipar_ajustar($1, 1)', [zero]), /não encontrada/)
 })
 
@@ -178,11 +179,8 @@ test('V14: cada destino exige o trabalho das etapas anteriores, inclusive nota e
   await recusa(() => db.query("update pedidos set status='enviado' where id=$1",[p.id]),/pendente/)
   await db.query("update pedido_itens set status='encontrado' where pedido_id=$1",[p.id])
   await db.query("update pedidos set status='conferencia' where id=$1",[p.id])
-  await recusa(() => db.query("update pedidos set status='etiquetagem' where id=$1",[p.id]),/Confira/)
+  await recusa(() => db.query("update pedidos set status='bipagem' where id=$1",[p.id]),/Confira/)
   await db.query('update pedido_itens set conferido_em=now() where pedido_id=$1',[p.id])
-  await db.query("update pedidos set status='etiquetagem' where id=$1",[p.id])
-  await recusa(() => db.query("update pedidos set status='bipagem' where id=$1",[p.id]),/Etiquete/)
-  await db.query('update pedido_itens set etiquetado_em=now() where pedido_id=$1',[p.id])
   await db.query("update pedidos set status='bipagem' where id=$1",[p.id])
   await recusa(() => db.query("update pedidos set status='faturamento' where id=$1",[p.id]),/Bipe/)
   await db.query('update pedido_itens set qtd_bipada=qtd,bipado_em=now() where pedido_id=$1',[p.id])
@@ -220,7 +218,6 @@ test('V14: inserir diretamente na etapa avançada não contorna os pré-requisit
 test.each([
   ["status='pendente'",'separacao'],
   ['conferido_em=null','conferencia'],
-  ['etiquetado_em=null','etiquetagem'],
   ['qtd_bipada=0,bipado_em=null','bipagem'],
 ])('V16: reabrir trabalho em %s retorna o pedido para %s', async (campos, destino) => {
   const p=await pedidoWhats('faturamento')

@@ -28,7 +28,7 @@ for(const tema of ['light','dark']){
   }})
   mkdirSync('capturas/vistoria2',{recursive:true})
   for(const [nome,rota,fonte,vazio] of [
-   ['expedicao','/','v_pedidos','Nenhum pedido'],['vendas','/vendas','v_pedidos','Nenhuma venda aqui'],
+   ['expedicao','/','v_pedidos_operacao','Nenhum pedido'],['vendas','/vendas','v_pedidos','Nenhuma venda aqui'],
    ['arquivo','/arquivo','v_pedidos','Nenhum pedido encontrado'],['clube','/clube','pecas_clube','Nenhuma peça do Clube'],
    ['repetidas','/repetidas','rpc/pecas_repetidas','Nenhuma peça repetida'],['feedbacks','/feedbacks','feedbacks','Nenhum feedback aberto'],
   ]){

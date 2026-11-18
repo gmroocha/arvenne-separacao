@@ -5,7 +5,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuLabel, Con
 import type { Pedido } from "@/lib/tipos"
 
 // Clique direito no cartão: as mesmas ações do "⋯" do pedido.
-export default function MenuContexto({ pedido, children }: { pedido: Pedido; children: ReactNode }) {
+export default function MenuContexto({ pedido, children }: { pedido: Pick<Pedido, "id" | "status" | "fase" | "shopify_url" | "etapas_permitidas">; children: ReactNode }) {
   const { grupos, dialogos } = useAcoesPedido(pedido, { abrir: true })
   const visiveis = grupos.filter((g) => g.itens.length > 0)
   return (

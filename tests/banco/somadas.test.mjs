@@ -41,7 +41,7 @@ test('somar_venda: peças vão para o principal como adicionais, venda vira soma
 })
 
 test('somar_venda: principal na conferência ou depois volta para a separação', async () => {
-  for (const st of ['conferencia', 'etiquetagem', 'bipagem', 'faturamento', 'embalagem', 'pronto_envio']) {
+  for (const st of ['conferencia', 'bipagem', 'faturamento', 'embalagem', 'pronto_envio']) {
     const { p, w } = await somaFixture({ principal: { status: st } })
     await one("select somar_venda($1, 'Pix', 40, now())", [w.id])
     assert.equal((await one('select status from pedidos where id = $1', [p.id])).status, 'separacao', st)

@@ -18,11 +18,11 @@ import { Spinner } from "@/components/ui/spinner"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
 import { etiquetasDe } from "@/lib/etiquetas"
 import { useDebounce } from "@/lib/useDebounce"
-import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePecasParaEtiquetar, usePedidosFase, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
+import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePecasParaEtiquetar, usePedidosExpedicao, usePendentesRastreio, useSincronizarShopify } from "@/lib/api"
 import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { digitos } from "@/lib/formato"
 import { destinoAoConcluir, ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
-import type { Pedido } from "@/lib/tipos"
+import type { PedidoOperacao } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 import { useAgora } from "@/lib/useAgora"
 
@@ -54,7 +54,7 @@ const COLUNAS: Coluna[] = [
 // Pela ordem da esteira (src/lib/status.ts): o destino natural ao concluir a etapa (o mesmo do Dialog) ou
 // qualquer etapa anterior do fluxo principal. "Avisar" e "Aguardando cliente" são desvios: só entram
 // como destino quando são o destino natural.
-function podeSoltar(p: Pedido, c: Coluna) {
+function podeSoltar(p: PedidoOperacao, c: Coluna) {
   const de = ETAPAS_EXPEDICAO.indexOf(p.status)
   const alvo = c.statuses[0]
   const para = ETAPAS_EXPEDICAO.indexOf(alvo)
@@ -81,7 +81,7 @@ const COR_ALERTA = {
 } as const
 
 // Progresso da etapa no cartão ("3/5"), vindo das contagens da view.
-function progressoDe(p: Pedido): string | null {
+function progressoDe(p: PedidoOperacao): string | null {
   switch (p.status) {
     case "novo":
     case "separacao":
@@ -90,8 +90,6 @@ function progressoDe(p: Pedido): string | null {
       return `${p.qtd_encontradas}/${p.qtd_linhas}`
     case "conferencia":
       return `${p.qtd_conferidas}/${p.qtd_encontradas}`
-    case "etiquetagem":
-      return `${p.qtd_etiquetadas}/${p.qtd_encontradas}`
     case "bipagem":
       return `${p.qtd_bipadas}/${p.qtd_pecas}`
     default:
@@ -130,7 +128,7 @@ export default function Expedicao() {
   const meuMembro = useMeuMembro()
   const [busca, setBusca] = useState("")
   const termo = useDebounce(busca, 300)
-  const { data, isLoading, isError, isFetching, refetch } = usePedidosFase("expedicao", termo)
+  const { data, isLoading, isError, isFetching, refetch } = usePedidosExpedicao(termo)
   const { data: contagens } = useContagens()
   const rastreio = usePendentesRastreio()
   const sincronizar = useSincronizarShopify()
@@ -146,7 +144,7 @@ export default function Expedicao() {
   )
   const agora = useAgora()
   const mudarStatus = useMudarStatus()
-  const [arrastando, setArrastando] = useState<Pedido | null>(null)
+  const [arrastando, setArrastando] = useState<PedidoOperacao | null>(null)
   const [alvo, setAlvo] = useState<string | null>(null)
 
   // Arrastar um cartão move o pedido de etapa (com Desfazer): só para a próxima etapa ou para uma anterior.
@@ -196,7 +194,7 @@ export default function Expedicao() {
   }, [data, rastreio.data, busca])
 
   // Pela pessoa que faz a etapa em que o pedido está agora. A coluna "Enviar rastreio" não tem responsável.
-  const daPessoa = (p: Pedido) => {
+  const daPessoa = (p: PedidoOperacao) => {
     if (!pessoa || p.pendente_rastreio || (pessoa === "eu" && !meuMembro)) return true // "Comigo" sem cadastro: mostra tudo
     const resp = responsavelDaEtapaAtual(p, membros)
     if (pessoa === "sem") return !resp
