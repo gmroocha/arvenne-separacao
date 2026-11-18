@@ -10,7 +10,7 @@ type Adicoes = {
 
   }
   Functions: {
-
+    sincronizar_shopify_agendado: { Args: Record<PropertyKey, never>; Returns: number | null }
   }
 }
 

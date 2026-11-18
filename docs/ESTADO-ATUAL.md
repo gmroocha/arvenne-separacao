@@ -1,4 +1,29 @@
-# Estado atual (atualizado em 17/11/2026)
+# Estado atual (atualizado em 18/11/2026)
+
+## Rodada 2: celular de verdade, nota no LR, barra de etapa, fila, detalhe da peça, etiquetas e Shopify automática (17/11/2026)
+
+Relato do Gustavo no celular: ao marcar "Achei" a faixa das peças feitas alargava a página (zoom para fora, arrastar para o
+lado, janelas e menus fora do lugar); o mesmo em "Peças do pedido" da Nota fiscal; botão do LR cortado; Nota e Feedback
+quebravam ao tocar no campo. IDs V90–V99 em [`VISTORIA.md`](VISTORIA.md).
+
+- **Celular 100%:** o teste antigo não via o problema (projeto sem `isMobile`/`hasTouch`). Novo projeto Playwright
+  **`celular-toque`** e teste `celular-largura.spec.mjs` (falhou antes: scrollWidth 747 > 390, culpado = linha da faixa das peças
+  feitas, `grid` sem coluna definida; Nota fiscal 610; seta do LR cortada). Corrigido na origem (colunas `minmax(0,1fr)` e
+  `min-w-0`), mais `overflow-x: clip` no conteúdo. Janelas com campo de texto (Nota, Feedback) viram janela presa no topo no
+  celular (sem gaveta que o teclado cobre).
+- **Pedido LR:** bloco "Peças com nota". **Arrastar a esteira** com o mouse. **Barra inferior** (‹ anterior, **Concluir etapa**
+  com confirmação, próxima ›) e aviso "Etapa X concluída → agora Y" em todo avanço (também para quem está com outra tela aberta).
+- **Fila × separando:** "Começar separação"; "Na fila há…" / "Separando há…" no pedido e nos cartões; as métricas já separavam.
+- **Detalhe da peça:** tocar na foto mostra código, nome, variante, quantidade, **preço (só ali)**, nota e quantas faltam.
+- **Etiquetas:** uma por código e variante (não por unidade) e "Imprimir etiqueta" no "⋯" da peça.
+- **Shopify de hora em hora:** migration `20261122190000_shopify_automatica.sql` **NÃO aplicada** (aguarda revisão e o "sim" do
+  Gustavo; dry-run: só ela entraria). O app não depende dela. Depois de aplicada, o Gustavo grava `cron_secret` no Vault pelo
+  painel (`PASSO-A-PASSO.md`, Parte 5, passo 6). Hoje no remoto: só o job `arvenne-vistoria-diaria`; `pg_net` ainda não
+  instalado; Vault sem `cron_secret`.
+- **Limite honesto:** o banco de teste (PGlite) não tem `pg_cron`, `pg_net` nem Vault (simulados); a chamada real à Edge e o
+  disparo no relógio só se confirmam depois de aplicar e gravar o segredo.
+- **Próxima ação:** revisar, aplicar a migration da Shopify (com o "sim"), regenerar tipos (`baseAplicada`), o Gustavo grava o
+  segredo no Vault e confere uma hora cheia nos logs; ele passa um pedido de teste no celular de verdade.
 
 ## Esteira leve, peça a peça, Concluídos e teste de ponta a ponta (17/11/2026) — migration aplicada e app publicado em 17/11
 

@@ -25,14 +25,22 @@ export async function criarBanco({ ate, antesDe, prepararAntes } = {}) {
     create function cron.schedule(text,text,text) returns bigint language sql as $$
       insert into cron.job(jobname,schedule,command) values ($1,$2,$3)
       on conflict(jobname) do update set schedule=excluded.schedule,command=excluded.command returning jobid;
-    $$;`)
+    $$;
+    -- pg_net e Vault também não existem no PGlite: simulados só para exercitar a função da Shopify automática.
+    -- net.chamadas guarda o que seria enviado; vault.decrypted_secrets começa vazio (o segredo é do painel, nunca do código).
+    create schema net;
+    create table net.chamadas (id bigint generated always as identity primary key, url text, headers jsonb, body jsonb, timeout_milliseconds int);
+    create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000)
+      returns bigint language sql as $$ insert into net.chamadas(url,headers,body,timeout_milliseconds) values ($1,$4,$2,$5) returning id $$;
+    create schema vault;
+    create table vault.decrypted_secrets (id uuid primary key default gen_random_uuid(), name text, decrypted_secret text);`)
   for (const file of readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort()) {
     if (ate && file.slice(0, 14) > ate) break
     if (antesDe && file.slice(0, 14) === antesDe) await prepararAntes(banco)
     const sql = readFileSync(`supabase/migrations/${file}`, "utf8")
     // PGlite não possui servidor de replicação; os objetos de negócio ficam intactos.
     await banco.exec(sql.replace(/^alter publication .*;$/gm, "")
-      .replace(/^create extension if not exists pg_cron with schema pg_catalog;$/gm, ""))
+      .replace(/^create extension if not exists (pg_cron with schema pg_catalog|pg_net with schema extensions);$/gm, ""))
   }
   return banco
 }

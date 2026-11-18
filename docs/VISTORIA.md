@@ -476,6 +476,27 @@ etiquetas" no topo da Separação), status `enviado` aparece como **Concluído**
 Limite honesto: o simulador atende uma requisição por vez; mede correção e quantidade de requisições, não a
 capacidade do Supabase.
 
+## Rodada 2: celular de verdade e melhorias (V90–V99, 17/11/2026)
+
+O Gustavo testou no celular e a página ainda alargava (zoom para fora, arrastar para o lado, janelas fora do lugar). O teste
+anterior não via isso: o projeto Playwright `celular` é só um Chromium de 390 px, sem `isMobile` nem `hasTouch`. Foi criado o projeto
+**`celular-toque`** (390x844, `isMobile`, `hasTouch`, escala 3x) e o teste `tests/e2e/celular-largura.spec.mjs`, que confere
+`visualViewport.scale = 1`, `scrollWidth <= 390`, nenhum elemento visível passando de 390 px e nenhum botão cortado por um pai
+com `overflow` escondido. O teste **falhou no código anterior** e passa agora.
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V90 | Alta | Ao marcar "Achei", a faixa das peças feitas alargava a página (scrollWidth 747 em 390). Culpado: o `div` de cada linha da faixa (`flex items-center ... bg-success/5`) passava 357 px: o `CollapsibleContent` era um `grid` sem coluna definida (coluna `auto` cresce com o código longo da peça). Mesma causa na Nota fiscal com "Peças do pedido" aberto (scrollWidth 610; o `grid` do pedido e o cartão "Cliente e valores" passavam 220 px) e nas janelas (`DialogContent` e `CardHeader` do shadcn são `grid`). | `grid-cols-1`/`grid-cols-[minmax(0,1fr)]` na origem (faixa, pedido, Dialog, CardHeader, formulários), `min-w-0` na linha e `overflow-x: clip` no conteúdo do `Layout`. `celular-largura.spec.mjs` (3 testes: etapas com peças feitas em cada faixa, Nota fiscal, LR, Concluídos, listas, venda, página da cliente, troca). |
+| V91 | Média | Botão do LR cortado: no cartão do passo "Pedido de venda LR (fornecedor)" a seta passava 11 px do cartão (o `CardHeader` em `grid` não deixava o título encolher). | Mesma correção do `CardHeader`; título agora "Pedido de venda LR". O teste confere botões cortados por pai com `overflow` escondido. Também: título "Cliente e valores" centralizado com os botões. |
+| V92 | Alta | Janelas de Nota e Feedback quebravam ao tocar no campo (gaveta de baixo do `vaul`: nasce fora da tela, o foco arrastava a página e a altura era recalculada com o teclado). | `RespDialog` ganhou `teclado`: no celular vira janela presa no topo (`dvh`), sem reposicionamento. Usada em Nota da peça, Feedback da peça e Feedback do cabeçalho. O teste foca o campo, confere 16 px, encolhe a área visível (teclado) e confere janela e campo dentro da tela. |
+| V93 | Baixa | Quem faz o pedido LR não via quais peças têm nota. | Bloco "Peças com nota" (`Alert` + `Item`) no passo LR; as peças continuam na lista. `nota-peca.spec.mjs`. |
+| V94 | Baixa | A esteira só rolava com a roda ou a barra. | Arrastar com o mouse (clique segurado, só mouse, limiar de 5 px, cursor `grab`) na Expedição e nas faixas; os cartões continuam arrastáveis para mudar de etapa. `arrastar-esteira.spec.mjs`. |
+| V95 | Média | Não havia como navegar entre etapas nem concluir uma etapa de qualquer lugar; o avanço automático não avisava. | Barra fixa no rodapé do pedido: ‹ anterior, **Concluir etapa** (confirmação com o que será marcado; usa `mover_etapa`; recusas do banco aparecem no diálogo) e próxima ›. Em todo avanço, diálogo "Etapa X concluída → agora Y". `barra-etapa.spec.mjs`, unidade `pendenciasDaEtapa`, `esteira-ponta-a-ponta` (também em `celular-toque`) adaptada. |
+| V96 | Média | "Na fila" e "separando" eram a mesma coisa na tela. | Botão **Começar separação** (e o primeiro "Achei"); "Na fila há X" / "Separando há X" no pedido e nos cartões. `tests/banco/esteira.test.mjs` confirma que `v_tempo_etapas` separa as duas etapas pelos eventos de status. |
+| V97 | Baixa | Não havia onde ver nome completo, quantidade, preço e nota da peça. | `DetalhePeca`: tocar na foto (todas as etapas, faltas e cartão da troca) mostra o detalhe; preço lido de `pedido_itens` só ali; sem sombra no X; cartão da troca em uma linha por texto. `detalhe-peca.spec.mjs`. |
+| V98 | Baixa | "Imprimir todas" gerava uma etiqueta por unidade. | Uma por código e variante (nunca pela quantidade) e "Imprimir etiqueta" no menu "…" da peça (Separação, Conferência e faltas). Unidade (falhava antes), `etiquetas-peca.spec.mjs`. |
+| V99 | Média | A Shopify só entrava pelo botão. | Migration `20261122190000_shopify_automatica.sql` (**não aplicada**): `pg_net`, função `sincronizar_shopify_agendado` (lê `cron_secret` do Vault; sem segredo não chama nada) e `cron.schedule('shopify-sync', '0 * * * *')`. `tests/banco/shopify-automatica.test.mjs`. **Limite:** o PGlite não tem `pg_cron`, `pg_net` nem Vault; eles são simulados em `suporte.mjs`. Confere-se o SQL real, o agendamento cadastrado, a ausência de segredo no arquivo, as permissões e o comportamento com e sem segredo; o disparo no relógio e a chamada à Edge dependem da aplicação e do segredo no painel. |
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na

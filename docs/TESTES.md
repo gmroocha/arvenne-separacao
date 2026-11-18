@@ -55,6 +55,15 @@ remota autorizada. O vigia está programado para 06h UTC (03h em São Paulo); er
   migração dos pedidos que estavam em Etiquetagem. `tests/unidade/lotePecas.test.ts`: a fila de gravação.
 - `npm run capturas -- --simulado` roda também esses cenários e o `time-celular.spec.mjs`.
 
+## Celular de verdade (Rodada 2, 17/11/2026)
+
+O projeto Playwright `celular` é só uma janela de 390 px; ele **não** reproduz o celular real (num celular de verdade, qualquer
+elemento mais largo que a tela alarga a área visível, dá zoom e deixa arrastar a página). O projeto **`celular-toque`**
+(`isMobile`, `hasTouch`, escala 3x) roda `tests/e2e/celular-largura.spec.mjs` e `esteira-ponta-a-ponta.spec.mjs`.
+O primeiro confere zoom = 1, `scrollWidth <= 390`, elementos acima de 390 px, botões cortados e janelas com teclado (a lista
+completa de culpados vem na mensagem de erro). Telas novas com texto longo devem entrar nele. O limite do `pg_cron`, `pg_net` e
+Vault (só simulados no banco de teste) está em `tests/banco/shopify-automatica.test.mjs`.
+
 ## Como adicionar um teste
 
 1. Reproduza o erro em `tests/unidade/<assunto>.test.ts`, `tests/banco/<assunto>.test.mjs` ou,

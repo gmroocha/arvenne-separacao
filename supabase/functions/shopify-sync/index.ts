@@ -1,5 +1,5 @@
 // Traz os pedidos pagos da Shopify para o app. Roda pelo botão "Sincronizar" e
-// a cada 5 minutos pelo pg_cron. Idempotente: pedido novo entra inteiro; pedido que já entrou só
+// de hora em hora pelo pg_cron. Idempotente: pedido novo entra inteiro; pedido que já entrou só
 // completa o que está nulo, guarda a versão mais nova do pedido bruto e acompanha cancelamento e
 // despacho (quem decide é importar_pedido_shopify, no banco).
 

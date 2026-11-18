@@ -100,17 +100,21 @@ Pode ficar para outro dia: o app já funciona sem isso, só os pedidos da loja n
    ```
    `CODIGO` é a parte do meio da Project URL (`https://CODIGO.supabase.co`). O `link` pede a senha do
    banco da Parte 2. O `login` abre o navegador.
-6. No Supabase: **Database** → **Extensions**: ative `pg_cron` e `pg_net`. Depois, no **SQL Editor**,
-   rode o bloco abaixo trocando `CODIGO` e `SEU_CRON_SECRET`:
-   ```sql
-   select cron.schedule('shopify-sync', '*/5 * * * *', $$
-     select net.http_post(
-       url := 'https://CODIGO.supabase.co/functions/v1/shopify-sync',
-       headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', 'SEU_CRON_SECRET'),
-       body := '{}'::jsonb
-     )
-   $$);
-   ```
+6. **Sincronização automática de hora em hora** (00:00, 01:00, 02:00 ... toda hora cheia; o botão **Sincronizar** continua
+   funcionando igual). Ela vem da migration `20261122190000_shopify_automatica.sql` (liga o `pg_net`, cria a função
+   `sincronizar_shopify_agendado` e o agendamento `shopify-sync` com `0 * * * *`). **O segredo nunca fica no arquivo, no
+   chat nem numa consulta salva**: a função lê o valor do **Vault** do Supabase. Depois que o Claude aplicar a migration
+   (com o seu "sim"), faça você, no painel:
+   1. **Project Settings** → **Edge Functions** → **Secrets**: confira que o `CRON_SECRET` existe (é o mesmo da tabela do
+      passo 4). Você não precisa abrir o valor para ninguém.
+   2. **Database** → **Vault** → **Add new secret**: **Name** = `cron_secret` (exatamente assim, minúsculas), **Secret** = o
+      **mesmo texto** do `CRON_SECRET`. Salve. (Se só tiver o `CRON_SECRET` das Edge Functions e não souber o texto, gere um
+      novo, grave nos dois lugares com o mesmo valor e republique a função: o Claude faz a publicação.)
+   3. Na hora cheia seguinte o banco chama a `shopify-sync` sozinho. Para conferir (só leitura), peça ao Claude ou use o
+      **SQL Editor** com `select start_time, status, return_message from cron.job_run_details order by start_time desc limit 5;`
+      e, nos **Logs** da função Edge `shopify-sync`, veja as chamadas de cada hora. Sem o segredo no Vault nada quebra: a
+      função só deixa um aviso no log ("falta o segredo cron_secret no Vault") e os pedidos continuam entrando pelo botão.
+   4. Para pausar: **Database** → **Cron** (ou SQL Editor: `select cron.unschedule('shopify-sync');`).
 
 Conferir: no app, botão **Sincronizar** traz os pedidos pagos da loja, com foto. Rodar de novo não
 duplica nada.
@@ -178,7 +182,7 @@ Quando o Browser Print responde, o botão mostra "na Zebra". Sem ele, o botão a
 Chrome: escolha a ZD220 uma vez (o Chrome lembra), sem margens e sem cabeçalho.
 
 Imprimir não marca nada: a etiqueta é colada no saquinho na Conferência (a etapa Etiquetagem não existe mais).
-O botão "Imprimir todas as etiquetas" fica no topo da Separação de cada pedido (uma etiqueta por unidade).
+O botão "Imprimir todas as etiquetas" fica no topo da Separação de cada pedido (uma etiqueta por código e variante, não por unidade).
 
 ## Time Arvenne (depois de aplicar a migration `20261122140000_frete_e_time.sql`)
 
@@ -205,8 +209,9 @@ que o caminho sem token não funcionou.
 
 ## Como usar a esteira nova (17/11/2026)
 
-1. **Separação:** no topo, **Imprimir todas as etiquetas** (uma por unidade). Toque **Achei** em cada peça; ela
-   vai para a Conferência sozinha. Não precisa terminar tudo para conferir: abra **Conferência** na linha de etapas.
+1. **Separação:** no topo, **Imprimir todas as etiquetas** (uma por código e variante, não por unidade; para uma peça só,
+   use o "⋯" da peça → **Imprimir etiqueta**). **Começar separação** marca que o pedido saiu da fila (o primeiro **Achei**
+   também faz isso). Toque **Achei** em cada peça; ela vai para a Conferência sozinha. Não precisa terminar tudo para conferir: abra **Conferência** na linha de etapas.
 2. **Conferência:** confira a peça, cole a etiqueta no saquinho e toque **Conferida**; ela vai para a Bipagem.
 3. **Bipagem:** bipe (ou use **Contar 1**). Quando todas as peças terminam uma etapa, o pedido **vai sozinho** para a
    próxima.
@@ -219,3 +224,9 @@ que o caminho sem token não funcionou.
    Concluídos. **Mover para outra etapa** funciona nos dois sentidos e sempre pede confirmação; o sistema recusa se
    houver troca em andamento, acerto pendente ou peça em falta.
 7. **Time:** **Excluir** tira a pessoa de vez (pedidos e histórico continuam); **Desativar** só pausa.
+8. **Barra de baixo (celular e PC):** ‹ **etapa anterior** e **próxima etapa** › só trocam o que aparece na tela (não mudam o
+   pedido). **Concluir etapa** pergunta e leva o pedido para a próxima (marca como feito o que faltar). Em todo avanço
+   aparece "Etapa X concluída → agora Y"; toque em **Continuar**.
+9. **Foto da peça:** tocar na foto abre o detalhe (código, nome, variante, quantidade, **preço**, nota e, se faltar, quantas
+   faltam). O preço só aparece ali; os cartões das etapas continuam sem valores.
+10. **Notas no pedido LR:** peças com nota aparecem em um bloco acima da lista do LR.
