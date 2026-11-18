@@ -11,119 +11,97 @@ async function pedidoComPecas(context, baseURL, statusItens = "pendente") {
   await sim.instalar(context, baseURL)
 }
 
-// V60: "Ir para Conferência" com a última peça ainda gravando. O recarregar da fila de peças trazia a
-// etapa antiga do banco por cima da nova: a tela "voltava" para a Separação logo depois de confirmar.
-test("V60: confirmar a próxima etapa com peça ainda gravando não volta a tela para a Separação", async ({ page, context, baseURL }) => {
+// V60: a peça ainda grava quando a tela é lida de novo. A leitura trazia a etapa antiga do banco por cima do que a
+// pessoa acabou de marcar: a tela "voltava" para a Separação. Agora a tela das peças só confia no que ela mesma
+// marcou até o banco responder, e a etapa nova chega na resposta (sem reler o pedido).
+test("V60: peças ainda gravando não deixam a tela voltar para a Separação", async ({ page, context, baseURL }) => {
   await pedidoComPecas(context, baseURL)
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await page.waitForLoadState("networkidle")
-  let liberarPeca
-  const pecaRetida = new Promise((r) => { liberarPeca = r })
-  let retida = false
-  await context.route((u) => u.origin === SUPABASE_FICTICIO && u.pathname === "/rest/v1/rpc/alterar_item", async (route) => {
-    if (route.request().postDataJSON().p_item === sim.item.id) { retida = true; await pecaRetida }
+  let liberar
+  const retida = new Promise((r) => { liberar = r })
+  let segurou = false
+  await context.route((u) => u.origin === SUPABASE_FICTICIO && u.pathname === "/rest/v1/rpc/marcar_pecas", async (route) => {
+    segurou = true
+    await retida
     await route.fallback()
   })
-  // A mudança de etapa demora a chegar ao banco: é nessa janela que a tela voltava.
-  await context.route((u) => u.origin === SUPABASE_FICTICIO && u.pathname === "/rest/v1/pedidos", async (route) => {
-    if (route.request().method() === "PATCH") await new Promise((r) => setTimeout(r, 1500))
-    await route.fallback()
-  })
-  const achei = page.getByRole("button", { name: "Achei", exact: true })
-  for (let n = 0; n < 4; n++) await achei.first().click()
-  await expect.poll(() => retida).toBe(true)
-  await page.getByRole("button", { name: "Ir para Conferência", exact: true }).click()
-  await expect(page.getByRole("button", { name: "Conferida", exact: true }).first()).toBeVisible()
-  // Vigia a tela durante a janela inteira: a Separação não pode reaparecer nem por um instante.
-  await page.evaluate(() => {
-    window.__voltouSeparacao = false
-    const olhar = () => { if (document.body.innerText.includes("A encontrar")) window.__voltouSeparacao = true }
-    new MutationObserver(olhar).observe(document.body, { childList: true, subtree: true, characterData: true })
-  })
-  liberarPeca()
-  await page.waitForTimeout(1200)
-  await expect(page.getByRole("button", { name: "Conferida", exact: true }).first()).toBeVisible()
+  await page.getByRole("button", { name: "Achei", exact: true }).evaluateAll((bs) => bs.forEach((b) => b.click()))
+  await expect.poll(() => segurou).toBe(true)
+  // Foco volta para a aba e o relógio passa enquanto o banco ainda não respondeu: a tela mantém as peças marcadas.
+  await page.evaluate(() => { window.__voltouSeparacao = false
+    new MutationObserver(() => { if (document.body.innerText.includes("A encontrar") && !document.body.innerText.includes("Nenhuma peça pendente")) window.__voltouSeparacao = true })
+      .observe(document.body, { childList: true, subtree: true, characterData: true })
+    window.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus")) })
+  await page.waitForTimeout(600)
+  await expect(page.getByRole("button", { name: "Achei", exact: true })).toHaveCount(0)
+  liberar()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("conferencia")
-  await sim.ocioso()
+  await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(4)
   expect(await page.evaluate(() => window.__voltouSeparacao)).toBe(false)
   expect(sim.bloqueadas).toEqual([])
 })
 
-// V61: com a tela atrasada, a pessoa tocava na etapa seguinte ("Ver mesmo assim"); se o pedido chegava
-// nela enquanto o aviso estava aberto, a etapa atual ficava marcada como "vista" e, ao conferir tudo,
-// o diálogo da próxima etapa não abria.
-test("V61: abrir a etapa atual por \"Ver mesmo assim\" ainda oferece a próxima etapa ao concluir", async ({ page, context, baseURL }) => {
-  await pedidoComPecas(context, baseURL, "encontrado")
-  await sim.banco.query("update pedido_itens set status='encontrado' where pedido_id=$1", [sim.pedido.id])
-  await sim.banco.query("update pedidos set status='separacao' where id=$1", [sim.pedido.id])
-  await page.clock.install()
+// V82: cada peça anda sozinha, então as etapas de peça abrem direto (com as peças que já chegaram); as de documentos
+// à frente da atual continuam pedindo aviso antes de abrir.
+test("V82: etapas de peça abrem direto; as de documentos pedem aviso", async ({ page, context, baseURL }) => {
+  await pedidoComPecas(context, baseURL)
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect(page.getByText("A encontrar")).toBeVisible()
-  // A separação já completa oferece a Conferência (V62); a pessoa fica e olha a esteira.
-  await page.getByRole("dialog").getByRole("button", { name: "Ficar aqui" }).click()
-  if ((page.viewportSize()?.width ?? 0) < 1024) {
-    await page.getByRole("button", { name: /^Etapa 1 de/ }).click()
-    await page.getByRole("dialog", { name: "Etapas do pedido" }).getByRole("button", { name: "Conferência", exact: true }).click()
-  } else await page.getByRole("button", { name: "Conferência", exact: true }).click()
-  const aviso = page.getByRole("dialog", { name: "Etapa ainda não liberada" })
-  await expect(aviso).toBeVisible()
-  // Enquanto o aviso está aberto, o pedido chega à Conferência e a tela recarrega.
-  await sim.banco.query("update pedidos set status='conferencia' where id=$1", [sim.pedido.id])
-  await page.clock.fastForward(20_000)
-  await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")))
-  await expect(page.getByText("A conferir")).toBeAttached()
-  await aviso.getByRole("button", { name: "Ver mesmo assim" }).click()
-  const conferida = page.getByRole("button", { name: "Conferida", exact: true })
-  for (let n = 0; n < 4; n++) await conferida.first().click()
-  await expect(page.getByRole("dialog").getByText("Conferência concluída")).toBeVisible()
+  const ir = async (nome) => {
+    if ((page.viewportSize()?.width ?? 0) < 1024) {
+      await page.getByRole("button", { name: /^Etapa \d+ de/ }).click()
+      await page.getByRole("dialog", { name: "Etapas do pedido" }).getByRole("button", { name: new RegExp(`^${nome}`) }).click()
+    } else await page.getByRole("list", { name: "Etapas do pedido" }).getByRole("button", { name: new RegExp(`^${nome}`) }).click()
+  }
+  await ir("Conferência")
+  await expect(page.getByText("Nenhuma peça chegou da Separação ainda.")).toBeVisible()
+  await expect(page.getByRole("dialog", { name: "Etapa ainda não liberada" })).toHaveCount(0)
+  await ir("Embalagem")
+  await expect(page.getByRole("dialog", { name: "Etapa ainda não liberada" })).toBeVisible()
   expect(sim.bloqueadas).toEqual([])
 })
 
-// V62: pedido aberto já com a etapa toda feita (concluída noutra tela, ou com a tela atrasada) não oferecia
-// a próxima etapa: o diálogo só abria no toque que completava a etapa.
-test("V62: abrir o pedido com a etapa atual já completa oferece a próxima etapa", async ({ page, context, baseURL }) => {
+// V62: pedido aberto com a etapa atual já toda feita (feito antes desta versão, ou por outra tela) ficava parado
+// esperando um clique em "Concluir". Agora ao abrir o app pede o recálculo e o pedido segue sozinho.
+test("V62: abrir o pedido com a etapa atual já completa o leva para a próxima", async ({ page, context, baseURL }) => {
   await pedidoComPecas(context, baseURL, "encontrado")
-  await sim.banco.query("update pedido_itens set status='encontrado', conferido_em=now() where pedido_id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedido_itens set status='encontrado', conferido_em=now(), etiquetado_em=now() where pedido_id=$1", [sim.pedido.id])
   await sim.banco.query("update pedidos set status='conferencia' where id=$1", [sim.pedido.id])
   await page.goto(`/pedidos/${sim.pedido.id}`)
-  const dialogo = page.getByRole("dialog").filter({ hasText: "Conferência concluída" })
-  await expect(dialogo).toBeVisible()
-  // "Ficar aqui" é respeitado: o diálogo não volta sozinho enquanto nada muda.
-  await dialogo.getByRole("button", { name: "Ficar aqui" }).click()
-  await expect(dialogo).toBeHidden()
-  await page.waitForTimeout(500)
-  await expect(dialogo).toBeHidden()
+  await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("bipagem")
+  await expect(page.getByRole("textbox", { name: "Código da peça" })).toBeVisible()
   expect(sim.bloqueadas).toEqual([])
 })
 
-// V63: toques rápidos em "Etiquetada" (ou "Conferida") no mesmo lugar da tela. Durante a animação das peças
-// a camada da transição engolia os toques: a tela parecia travada e peças ficavam sem marcar.
+// V63: toques rápidos em "Conferida" no mesmo lugar da tela. Durante a animação das peças a camada da transição
+// engolia os toques: a tela parecia travada e peças ficavam sem marcar.
 test("V63: toques rápidos seguidos marcam todas as peças", async ({ page, context, baseURL }) => {
   await pedidoComPecas(context, baseURL, "encontrado")
-  await sim.banco.query("update pedido_itens set status='encontrado', conferido_em=now() where pedido_id=$1", [sim.pedido.id])
-  await sim.banco.query("update pedidos set status='etiquetagem' where id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedido_itens set status='encontrado' where pedido_id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedidos set status='conferencia' where id=$1", [sim.pedido.id])
   await page.goto(`/pedidos/${sim.pedido.id}`)
-  const botao = page.getByRole("button", { name: "Etiquetada", exact: true }).first()
-  await expect(botao).toBeVisible()
-  const caixa = await botao.boundingBox()
+  const botao = page.getByRole("button", { name: "Conferida", exact: true })
+  await expect(botao.first()).toBeVisible()
+  // Cada toque cai no primeiro "Conferida" da lista (a lista encolhe e a tela se ajusta a cada peça).
   for (let n = 0; n < 4; n++) {
-    await page.mouse.click(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2)
+    await botao.first().click()
     await page.waitForTimeout(90)
   }
-  await expect.poll(async () => Number((await sim.one("select count(*) n from pedido_itens where pedido_id=$1 and etiquetado_em is not null", [sim.pedido.id])).n)).toBe(4)
+  await expect.poll(async () => Number((await sim.one("select count(*) n from pedido_itens where pedido_id=$1 and conferido_em is not null", [sim.pedido.id])).n)).toBe(4)
   expect(sim.bloqueadas).toEqual([])
 })
 
-// V64: "Contar 1" tocado rápido na mesma peça (3×): a tela contava a partir do número antigo do botão,
-// ficava em 1/3 e a próxima etapa só aparecia quando a fila de gravações acabava.
-test("V64: toques rápidos em Contar 1 contam na hora e oferecem a próxima etapa", async ({ page, context, baseURL }) => {
+// V64: "Contar 1" tocado rápido na mesma peça (3×): a tela contava a partir do número antigo do botão e ficava em 1/3.
+// Agora conta na hora, parte do número da tela, e a gravação vai em lote (um valor absoluto).
+test("V64: toques rápidos em Contar 1 contam na hora e o pedido segue para a Nota fiscal", async ({ page, context, baseURL }) => {
   sim = await criarSimulacao({ status: "novo" })
   await sim.banco.query("update pedido_itens set status='encontrado', qtd=3, conferido_em=now(), etiquetado_em=now() where id=$1", [sim.item.id])
   await sim.banco.query("update pedidos set status='bipagem' where id=$1", [sim.pedido.id])
   await sim.instalar(context, baseURL)
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await page.waitForLoadState("networkidle")
-  await context.route((u) => u.origin === SUPABASE_FICTICIO && u.pathname === "/rest/v1/rpc/bipar_ajustar", async (route) => {
+  await context.route((u) => u.origin === SUPABASE_FICTICIO && u.pathname === "/rest/v1/rpc/marcar_pecas", async (route) => {
     await new Promise((r) => setTimeout(r, 700))
     await route.fallback()
   })
@@ -131,8 +109,9 @@ test("V64: toques rápidos em Contar 1 contam na hora e oferecem a próxima etap
   await expect(contar).toBeVisible()
   // Três toques antes de a tela redesenhar (aparelho lento ou toques muito rápidos).
   await contar.evaluate((b) => { b.click(); b.click(); b.click() })
-  // A fila leva ~2 s para gravar as três; a tela não espera por ela.
-  await expect(page.getByRole("dialog").getByText("Bipagem concluída")).toBeVisible({ timeout: 1200 })
+  // A tela não espera o banco (700 ms de atraso): a peça já aparece toda bipada.
+  await expect(page.getByText("Tudo bipado.")).toBeVisible({ timeout: 600 })
   await expect.poll(async () => Number((await sim.one("select qtd_bipada from pedido_itens where id=$1", [sim.item.id])).qtd_bipada)).toBe(3)
+  await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("faturamento")
   expect(sim.bloqueadas).toEqual([])
 })

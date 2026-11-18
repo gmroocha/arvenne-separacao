@@ -10,7 +10,7 @@ test("nota da peça: anotar na separação, ver no cartão e na conferência", a
   await sim.instalar(context, baseURL)
   await page.goto(`/pedidos/${sim.pedido.id}`)
   const item = test.info().project.name === "pc" ? "menuitem" : "button"
-  await page.getByRole("button", { name: "Mais opções" }).first().click()
+  await page.getByRole("button", { name: "Mais opções", exact: true }).first().click()
   await page.getByRole(item, { name: "Nota", exact: true }).click()
   const janela = page.getByRole("dialog", { name: "Nota da peça" })
   await janela.getByRole("textbox", { name: "Nota da peça" }).fill("Peça de montagem: temos, falta montar")
@@ -24,7 +24,7 @@ test("nota da peça: anotar na separação, ver no cartão e na conferência", a
   await sim.banco.query("update pedidos set status='conferencia' where id=$1", [sim.pedido.id])
   await page.reload()
   await expect(page.getByText("Peça de montagem: temos, falta montar")).toBeVisible()
-  await page.getByRole("region", { name: "A conferir" }).getByRole("button", { name: "Mais opções" }).first().click()
+  await page.getByRole("region", { name: "A conferir" }).getByRole("button", { name: "Mais opções", exact: true }).first().click()
   await page.getByRole(item, { name: "Editar nota", exact: true }).click()
   await page.getByRole("dialog", { name: "Nota da peça" }).getByRole("button", { name: "Apagar nota" }).click()
   await expect(page.getByText("Peça de montagem: temos, falta montar")).toHaveCount(0)
