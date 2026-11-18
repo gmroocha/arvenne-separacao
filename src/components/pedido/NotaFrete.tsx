@@ -5,8 +5,8 @@ import CampoReais from "@/components/CampoReais"
 import { LinhaPeca } from "@/components/comum/Peca"
 import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -255,6 +255,50 @@ export function ModalidadeFrete({
   )
 }
 
+// Pedido LR: o que já foi passado para a LR fica marcado (check) neste aparelho, por pedido. Copiar marca sozinho.
+// Conveniência de quem digita o pedido: não vai para o banco nem para o histórico.
+function useMarcasLr(pedidoId: string) {
+  const chave = `lr-marcas:${pedidoId}`
+  const [marcas, setMarcas] = useState<Set<string>>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(chave) ?? "[]")
+      return new Set(Array.isArray(v) ? v.filter((x) => typeof x === "string") : [])
+    } catch {
+      return new Set()
+    }
+  })
+  const mudar = (chaves: string[], sim: boolean) =>
+    setMarcas((atual) => {
+      const novo = new Set(atual)
+      for (const c of chaves) {
+        if (sim) novo.add(c)
+        else novo.delete(c)
+      }
+      try {
+        if (novo.size) localStorage.setItem(chave, JSON.stringify([...novo]))
+        else localStorage.removeItem(chave)
+      } catch {
+        /* sem armazenamento: vale só nesta visita */
+      }
+      return novo
+    })
+  return { marcas, mudar }
+}
+
+// Botões "copiar código" e "copiar quantidade" de uma linha do pedido LR; os dois marcam a linha.
+function CopiarLr({ codigo, qtd, aoCopiar }: { codigo: string; qtd: number; aoCopiar: () => void }) {
+  return (
+    <>
+      <Button variant="ghost" size="icon-toque" className="shrink-0" aria-label={`Copiar código ${codigo}`} onClick={() => { copiar(codigo, "Código copiado"); aoCopiar() }}>
+        <Copy />
+      </Button>
+      <Button variant="ghost" size="toque" className="shrink-0 px-2" aria-label={`Copiar quantidade de ${codigo}`} onClick={() => { copiar(String(qtd), "Quantidade copiada"); aoCopiar() }}>
+        <Copy /> {qtd}
+      </Button>
+    </>
+  )
+}
+
 // Nota fiscal e pedido LR: quando os dois estão feitos o pedido vai sozinho para a Embalagem (o banco avança).
 export default function NotaFrete({ pedido, patch }: Props) {
   const [pecasAbertas, setPecasAbertas] = useState(false)
@@ -301,10 +345,14 @@ export default function NotaFrete({ pedido, patch }: Props) {
     ...valoresNota,
   ]
 
-  // Pedido LR: uma linha por código, somando as quantidades.
-  const skusLr = [...itens.reduce((m, i) => m.set(i.sku ?? i.nome, (m.get(i.sku ?? i.nome) ?? 0) + i.qtd), new Map<string, number>())]
-  const textoSkus = skusLr.map(([sku, qtd]) => `${sku} x${qtd}`).join("\n")
+  // Pedido LR: peças com nota ficam num bloco separado (uma linha por peça, com o recado); as outras, uma linha por
+  // código somando as quantidades. "Copiar SKUs" copia só a lista sem nota.
   const comNota = itens.filter((i) => i.nota)
+  const skusLr = [...itens.filter((i) => !i.nota).reduce((m, i) => m.set(i.sku ?? i.nome, (m.get(i.sku ?? i.nome) ?? 0) + i.qtd), new Map<string, number>())]
+  const textoSkus = skusLr.map(([sku, qtd]) => `${sku} x${qtd}`).join("\n")
+  const { marcas, mudar: marcar } = useMarcasLr(pedido.id)
+  const chaveSku = (sku: string) => `s:${sku}`
+  const chaveNota = (id: string) => `n:${id}`
   const nf = Boolean(pedido.nf_emitida_em)
   const lr = Boolean(pedido.pedido_fornecedor_em)
 
@@ -375,43 +423,64 @@ export default function NotaFrete({ pedido, patch }: Props) {
           <Alert aria-label="Peças com nota">
             <StickyNote />
             <AlertTitle>Peças com nota ({comNota.length})</AlertTitle>
-            <AlertDescription>Quem faz o pedido LR: confira o recado destas peças antes de pedir.</AlertDescription>
-            <ItemGroup className="col-span-2 mt-2">
-              {comNota.map((i) => (
-                <Item key={i.id} size="xs" variant="muted" className="flex-nowrap items-start">
-                  <ItemMedia variant="image" className="size-12 rounded-md">
-                    <Foto url={i.foto_url} alt={i.nome} className="size-12" />
-                  </ItemMedia>
-                  <ItemContent className="min-w-0">
-                    <ItemTitle className="max-w-full min-w-0 gap-1.5">
-                      <span className="min-w-0 truncate font-mono font-semibold">{i.sku ?? "sem código"}</span>
-                      {i.qtd > 1 && <Badge variant="secondary" className="tabular-nums">{i.qtd}×</Badge>}
-                    </ItemTitle>
-                    {i.variante && <div className="min-w-0 text-xs break-words text-muted-foreground">{i.variante}</div>}
-                    <ItemDescription className="line-clamp-none text-sm font-medium break-words text-foreground">{i.nota}</ItemDescription>
-                  </ItemContent>
-                </Item>
-              ))}
-            </ItemGroup>
+            <AlertDescription>Separadas da lista: confira o recado de cada uma antes de pedir. Não entram no "Copiar SKUs".</AlertDescription>
+            <ul className="col-span-2 mt-2 flex flex-col gap-2" aria-label="Peças com nota do pedido LR">
+              {comNota.map((i) => {
+                const codigo = i.sku ?? i.nome
+                const feito = marcas.has(chaveNota(i.id))
+                return (
+                  <li key={i.id} className={cn("flex items-start gap-2 rounded-lg bg-muted p-2 transition-colors", feito && "bg-success/10")}>
+                    <label className="-m-1 flex size-11 shrink-0 cursor-pointer items-center justify-center">
+                      <Checkbox variant="success" checked={feito} aria-label={`${codigo} passado para a LR`} onCheckedChange={(c) => marcar([chaveNota(i.id)], c === true)} />
+                    </label>
+                    <Foto url={i.foto_url} alt={i.nome} className="size-12 shrink-0 rounded-md" />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="min-w-0 truncate font-mono text-sm font-semibold">{i.sku ?? "sem código"}</span>
+                        {i.qtd > 1 && <Badge variant="secondary" className="tabular-nums">{i.qtd}×</Badge>}
+                      </span>
+                      {i.variante && <span className="min-w-0 text-xs break-words text-muted-foreground">{i.variante}</span>}
+                      <span className="text-sm font-medium break-words text-foreground">{i.nota}</span>
+                      <span className="-ml-2 flex items-center">
+                        <CopiarLr codigo={codigo} qtd={i.qtd} aoCopiar={() => marcar([chaveNota(i.id)], true)} />
+                      </span>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
           </Alert>
         )}
-        <ul className="flex flex-col" aria-label="Peças do pedido LR">
-          {skusLr.map(([sku, qtd]) => (
-            <li key={sku} className="flex min-h-11 items-center gap-1 border-b py-1 text-sm tabular-nums last:border-b-0 sm:min-h-9">
-              <span className="w-8 shrink-0 text-right font-semibold">{qtd}×</span>
-              <span className="min-w-0 flex-1 font-mono break-all">{sku}</span>
-              <Button variant="ghost" size="icon-toque" className="shrink-0" aria-label={`Copiar código ${sku}`} onClick={() => copiar(sku, "Código copiado")}>
-                <Copy />
-              </Button>
-              <Button variant="ghost" size="toque" className="shrink-0 px-2" aria-label={`Copiar quantidade de ${sku}`} onClick={() => copiar(String(qtd), "Quantidade copiada")}>
-                <Copy /> {qtd}
-              </Button>
-            </li>
-          ))}
-        </ul>
-        <Button variant="outline" size="toque" className="w-full sm:w-fit" onClick={() => copiar(textoSkus, "SKUs copiados")}>
-          <Copy /> Copiar SKUs
-        </Button>
+        {skusLr.length > 0 && (
+          <>
+            <ul className="flex flex-col" aria-label="Peças do pedido LR">
+              {skusLr.map(([sku, qtd]) => {
+                const feito = marcas.has(chaveSku(sku))
+                return (
+                  <li key={sku} className={cn("-mx-2 flex min-h-11 items-center gap-1 rounded-md border-b px-2 py-1 text-sm tabular-nums transition-colors last:border-b-0 sm:min-h-9", feito && "bg-success/10")}>
+                    <label className="-ml-2 flex size-11 shrink-0 cursor-pointer items-center justify-center sm:size-9">
+                      <Checkbox variant="success" checked={feito} aria-label={`${sku} passado para a LR`} onCheckedChange={(c) => marcar([chaveSku(sku)], c === true)} />
+                    </label>
+                    <span className="w-8 shrink-0 text-right font-semibold">{qtd}×</span>
+                    <span className="min-w-0 flex-1 font-mono break-all">{sku}</span>
+                    <CopiarLr codigo={sku} qtd={qtd} aoCopiar={() => marcar([chaveSku(sku)], true)} />
+                  </li>
+                )
+              })}
+            </ul>
+            <Button
+              variant="outline"
+              size="toque"
+              className="w-full sm:w-fit"
+              onClick={() => {
+                copiar(textoSkus, "SKUs copiados")
+                marcar(skusLr.map(([sku]) => chaveSku(sku)), true)
+              }}
+            >
+              <Copy /> Copiar SKUs
+            </Button>
+          </>
+        )}
         <CampoSalvo
           id="lr-numero"
           rotulo="Nº do pedido LR"
