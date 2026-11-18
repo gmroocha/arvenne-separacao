@@ -207,6 +207,36 @@ export type Database = {
         }
         Relationships: []
       }
+      clube_modelos: {
+        Row: {
+          ativo: boolean
+          codigo_base: string
+          created_at: string
+          foto_url: string | null
+          id: string
+          nome: string
+          preco: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_base: string
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          nome: string
+          preco?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo_base?: string
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          preco?: number | null
+        }
+        Relationships: []
+      }
       creditos_cliente: {
         Row: {
           cancelado_em: string | null
@@ -347,6 +377,7 @@ export type Database = {
           email: string | null
           id: string
           nome: string
+          papel: string
         }
         Insert: {
           ativo?: boolean
@@ -354,6 +385,7 @@ export type Database = {
           email?: string | null
           id?: string
           nome: string
+          papel?: string
         }
         Update: {
           ativo?: boolean
@@ -361,6 +393,7 @@ export type Database = {
           email?: string | null
           id?: string
           nome?: string
+          papel?: string
         }
         Relationships: []
       }
@@ -572,6 +605,7 @@ export type Database = {
           created_at: string
           foto_url: string | null
           id: string
+          modelo_id: string | null
           nome: string
           preco: number | null
           variante: string | null
@@ -582,6 +616,7 @@ export type Database = {
           created_at?: string
           foto_url?: string | null
           id?: string
+          modelo_id?: string | null
           nome: string
           preco?: number | null
           variante?: string | null
@@ -592,11 +627,20 @@ export type Database = {
           created_at?: string
           foto_url?: string | null
           id?: string
+          modelo_id?: string | null
           nome?: string
           preco?: number | null
           variante?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pecas_clube_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "clube_modelos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pedido_eventos: {
         Row: {
@@ -2211,6 +2255,7 @@ export type Database = {
           numero: string
         }[]
       }
+      encontrar_peca: { Args: { p_item: string }; Returns: undefined }
       enviar_troca: { Args: { p_troca: string }; Returns: undefined }
       excluir_membro: { Args: { p_membro: string }; Returns: undefined }
       excluir_pedido: { Args: { p_pedido: string }; Returns: undefined }
@@ -2298,6 +2343,7 @@ export type Database = {
       romaneio_publico: { Args: { p_token: string }; Returns: Json }
       sair_do_desvio: { Args: { p_pedido: string }; Returns: string }
       saldo_financeiro: { Args: { p_pedido: string }; Returns: number }
+      salvar_modelo_clube: { Args: { p: Json }; Returns: Json }
       sincronizar_shopify_agendado: { Args: never; Returns: number }
       somar_venda: {
         Args: {
@@ -2308,6 +2354,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      sou_gestor: { Args: never; Returns: boolean }
       substituir_item: {
         Args: { p_item: string; p_itens: Json }
         Returns: string
