@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { avisoSemPecas, etapaCompleta, etapaDaPeca, pecasPorEtapa, separarAdicionais, statusPelasPecas } from "@/lib/etapa"
+import { avisoSemPecas, etapaCompleta, etapaDaPeca, pecasPorEtapa, pendenciasDaEtapa, separarAdicionais, statusPelasPecas } from "@/lib/etapa"
 import { destinoAoConcluir, ETAPAS, etapaAtual, FASE_DE, PASSOS, passoAtual, proximaEtapa, STATUS_DA_FASE } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 
@@ -100,4 +100,17 @@ test("cada peça anda sozinha e o pedido fica na etapa da peça mais atrasada", 
   expect(statusPelasPecas("separacao", [peca({ status: "falta" })])).toBeNull() // desvio: o banco decide
   expect(statusPelasPecas("faturamento", [peca()])).toBeNull() // documentos não são decididos pelas peças
   expect(statusPelasPecas("separacao", [])).toBeNull()
+})
+
+test("V95: o que 'Concluir etapa' vai marcar como feito, por etapa", () => {
+  const itens = [peca({ id: "a", status: "pendente" }), peca({ id: "b", conferido_em: "2026-11-12T12:00:00Z" }), peca({ id: "c", status: "removido" }), peca({ id: "d", conferido_em: "2026-11-12T12:00:00Z", qtd_bipada: 2 })]
+  expect(pendenciasDaEtapa("separacao", itens, {})).toEqual({ qtd: 1, texto: "1 peça ainda não foi achada" })
+  expect(pendenciasDaEtapa("conferencia", itens, {})).toEqual({ qtd: 1, texto: "1 peça ainda não foi conferida" })
+  expect(pendenciasDaEtapa("bipagem", itens, {})).toEqual({ qtd: 2, texto: "2 peças ainda não foram bipadas" })
+  expect(pendenciasDaEtapa("separacao", [itens[1]], {})).toEqual({ qtd: 0, texto: "" })
+  expect(pendenciasDaEtapa("faturamento", itens, { nf_emitida_em: "x" }).texto).toBe("Ainda falta marcar o pedido LR")
+  expect(pendenciasDaEtapa("faturamento", itens, {}).texto).toBe("Ainda falta marcar a nota fiscal e o pedido LR")
+  expect(pendenciasDaEtapa("faturamento", itens, { nf_emitida_em: "x", pedido_fornecedor_em: "x" })).toEqual({ qtd: 0, texto: "" })
+  expect(pendenciasDaEtapa("frete", itens, {}).qtd).toBe(1)
+  expect(pendenciasDaEtapa("pronto_envio", itens, { postado_em: "x" }).qtd).toBe(0)
 })

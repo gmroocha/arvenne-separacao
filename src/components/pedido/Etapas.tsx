@@ -1,12 +1,9 @@
-import { useState } from "react"
 import { Check, ChevronDown } from "lucide-react"
 import FaixaRolavel from "@/components/FaixaRolavel"
 import MenuAcoes from "@/components/MenuAcoes"
-import RespDialog from "@/components/RespDialog"
 import SeloStatus from "@/components/SeloStatus"
 import AvatarMembro from "@/components/AvatarMembro"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { pecasPorEtapa } from "@/lib/etapa"
 import { useEquipe } from "@/lib/api"
 import { ehDesvio } from "@/lib/selo"
@@ -14,6 +11,7 @@ import { quando } from "@/lib/formato"
 import { ICONE_ETAPA, PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
 import type { Evento, Item } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
+import { useIrParaEtapa } from "./useIrParaEtapa"
 
 type Props = {
   status: StatusPedido
@@ -26,14 +24,10 @@ type Props = {
   pecas?: Item[] // as peças do pedido: a linha mostra quantas esperam em cada etapa de peça
 }
 
-const lista = (nomes: string[]) => (nomes.length > 1 ? `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}` : nomes[0])
-
 // Esteira do pedido: Separação → Conferência → Bipagem → Nota fiscal → Embalagem → Frete → Postagem → Concluído.
 // Tocar numa etapa só muda o que aparece na tela, nunca o status do pedido. Cada peça anda sozinha: as etapas de
 // peça (Separação, Conferência, Bipagem) abrem sempre, com as peças que já chegaram lá; as de documentos à
 // frente da atual pedem aviso (Dialog) antes de abrir.
-const ETAPAS_DE_PECA = ["separacao", "conferencia", "bipagem"]
-
 export default function Etapas({ status, etapaAntesDesvio, eventos, responsaveis, vista, aoVer, pecas = [] }: Props) {
   const emCada = pecasPorEtapa(pecas)
   const contagem = (id: string) => (id in emCada ? emCada[id as keyof typeof emCada] : 0)
@@ -42,7 +36,6 @@ export default function Etapas({ status, etapaAntesDesvio, eventos, responsaveis
   const quemFaz = (etapa: string) => membros.find((m) => m.id === (responsaveis ?? {})[etapa])?.nome
   const atual = passoAtual({ status, etapa_antes_desvio: etapaAntesDesvio })
   const vistaIdx = vista ? passoDe(vista) : atual
-  const [bloqueada, setBloqueada] = useState<number | null>(null) // etapa à frente que a pessoa tentou abrir
 
   const quem = (i: number) => {
     const sts = PASSOS[i].statuses as readonly string[]
@@ -50,13 +43,7 @@ export default function Etapas({ status, etapaAntesDesvio, eventos, responsaveis
   }
   const detalhe = vistaIdx >= 0 && vistaIdx < atual ? quem(vistaIdx) : null
 
-  const abrir = (i: number) => {
-    if (atual < 0) return
-    if (i === atual) return aoVer(null)
-    if (i > atual && !ETAPAS_DE_PECA.includes(PASSOS[i].id)) return setBloqueada(i)
-    aoVer(PASSOS[i].id)
-  }
-  const faltam = bloqueada !== null ? PASSOS.slice(atual, bloqueada).map((p) => p.nome) : []
+  const { ir: abrir, dialogo } = useIrParaEtapa(atual, aoVer)
 
   return (
     <div className="flex flex-col gap-2">
@@ -150,28 +137,7 @@ export default function Etapas({ status, etapaAntesDesvio, eventos, responsaveis
         </p>
       )}
 
-      <RespDialog
-        aberto={bloqueada !== null}
-        aoMudar={(a) => !a && setBloqueada(null)}
-        titulo="Etapa ainda não liberada"
-        descricao={bloqueada !== null ? `Para chegar em ${PASSOS[bloqueada].nome}, conclua antes: ${lista(faltam)}.` : undefined}
-      >
-        <div className="flex flex-col gap-2 pt-2 sm:flex-row-reverse sm:justify-start">
-          <Button size="toque" onClick={() => setBloqueada(null)}>
-            Ok
-          </Button>
-          <Button
-            size="toque"
-            variant="outline"
-            onClick={() => {
-              if (bloqueada !== null) aoVer(PASSOS[bloqueada].id)
-              setBloqueada(null)
-            }}
-          >
-            Ver mesmo assim
-          </Button>
-        </div>
-      </RespDialog>
+      {dialogo}
     </div>
   )
 }

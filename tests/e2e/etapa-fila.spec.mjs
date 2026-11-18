@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import { criarSimulacao, SUPABASE_FICTICIO } from "../../scripts/simulacao/banco.mjs"
+import { continuarAviso } from "./auxiliar.mjs"
 
 let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
@@ -37,6 +38,7 @@ test("V60: peças ainda gravando não deixam a tela voltar para a Separação", 
   await expect(page.getByRole("button", { name: "Achei", exact: true })).toHaveCount(0)
   liberar()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("conferencia")
+  await continuarAviso(page, "Separação", "Conferência")
   await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(4)
   expect(await page.evaluate(() => window.__voltouSeparacao)).toBe(false)
   expect(sim.bloqueadas).toEqual([])
@@ -70,6 +72,7 @@ test("V62: abrir o pedido com a etapa atual já completa o leva para a próxima"
   await sim.banco.query("update pedidos set status='conferencia' where id=$1", [sim.pedido.id])
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("bipagem")
+  await continuarAviso(page, "Conferência", "Bipagem")
   await expect(page.getByRole("textbox", { name: "Código da peça" })).toBeVisible()
   expect(sim.bloqueadas).toEqual([])
 })

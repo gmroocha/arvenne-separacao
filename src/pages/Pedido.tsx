@@ -5,7 +5,9 @@ import AlteracoesDialog from "@/components/pedido/AlteracoesDialog"
 import { AlteracoesContexto } from "@/components/pedido/alteracoesContexto"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
 import AvisoCredito from "@/components/pedido/AvisoCredito"
+import BarraEtapa from "@/components/pedido/BarraEtapa"
 import Cabecalho from "@/components/pedido/Cabecalho"
+import EtapaConcluida, { type Concluida } from "@/components/pedido/EtapaConcluida"
 import DadosCliente from "@/components/pedido/DadosCliente"
 import Etapas from "@/components/pedido/Etapas"
 import PainelEtapa from "@/components/pedido/PainelEtapa"
@@ -16,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAcoesItem, useSubstituirItem, usePatchPedido, useAlteracoes, usePedido, useRecalcularEtapa, type PedidoDetalhe } from "@/lib/api"
 import { ETAPAS_DE_PECAS, statusPelasPecas } from "@/lib/etapa"
 import { haMarcasNaFila } from "@/lib/lotePecas"
-import { passoAtual, passoDe, type StatusPedido } from "@/lib/status"
+import { PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
 import { useQueryClient } from "@tanstack/react-query"
 import type { Item, NovoItem } from "@/lib/tipos"
 
@@ -34,6 +36,16 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   if (statusVisto !== pedido.status) {
     setStatusVisto(pedido.status)
     setVista(null)
+  }
+  // Qualquer avanço de etapa (botão da barra, última peça marcada, botão do documento, menu) mostra "Etapa X concluída →
+  // agora Y". Só para frente: voltar de etapa ou reiniciar não avisa.
+  const idxAtual = passoAtual(pedido)
+  const [idxVisto, setIdxVisto] = useState(idxAtual)
+  const [concluida, setConcluida] = useState<Concluida | null>(null)
+  if (idxVisto !== idxAtual) {
+    setIdxVisto(idxAtual)
+    if (idxAtual > idxVisto && idxVisto >= 0)
+      setConcluida({ de: PASSOS[idxVisto].nome, ate: PASSOS[idxAtual - 1].nome, agora: PASSOS[idxAtual].nome, pedidoConcluido: pedido.status === "enviado" })
   }
   // O pedido muda de etapa sozinho quando a última peça termina (o banco calcula na mesma gravação). Um pedido que
   // já estava com a etapa completa antes desta versão (ou mexido por outra tela) fica parado: ao abrir, pede o
@@ -96,6 +108,9 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         />
         {!foco && <DadosCliente pedido={pedido} />}
       </div>
+
+      <BarraEtapa pedido={pedido} vista={vista} aoVer={setVista} />
+      <EtapaConcluida dados={concluida} aoContinuar={() => { setConcluida(null); setVista(null) }} />
 
       <Sheet open={verDados} onOpenChange={setVerDados}>
         <SheetContent className="overflow-y-auto sm:max-w-md">

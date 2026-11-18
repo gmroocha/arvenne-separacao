@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import { criarSimulacao, SUPABASE_FICTICIO } from "../../scripts/simulacao/banco.mjs"
+import { continuarAviso } from "./auxiliar.mjs"
 
 let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
@@ -32,7 +33,7 @@ test("V75: falha de tempo limite repete o lote sem reler o pedido por cima das p
   await expect.poll(encontradas, { timeout: 15_000 }).toBe(4)
   expect(chamadas).toBeGreaterThanOrEqual(3)
   expect(leituras.n).toBe(0)
-  await expect(page.getByRole("dialog")).toBeHidden()
+  await continuarAviso(page, "Separação", "Conferência") // o aviso de etapa concluída é o único diálogo
   expect(sim.bloqueadas).toEqual([])
 })
 
@@ -47,8 +48,9 @@ test("V76: sequência de peças vai em lote e não recarrega o pedido a cada cli
     if (n < 4) await page.waitForTimeout(60)
   }
   await expect.poll(encontradas).toBe(4)
-  // O pedido avança sozinho para a Conferência e a tela vai junto, sem diálogo e sem reler nada.
+  // O pedido avança sozinho para a Conferência (com o aviso de etapa concluída) e a tela vai junto, sem reler nada.
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("conferencia")
+  await continuarAviso(page, "Separação", "Conferência")
   await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(4)
   expect(lotes).toBeLessThanOrEqual(2)
   expect(leituras.n).toBe(0)
@@ -137,6 +139,7 @@ test("V75: trinta cliques rápidos sobrevivem a refoco durante a gravação e o 
   await expect.poll(async () => Number((await sim.one("select count(*) n from pedido_itens where pedido_id=$1 and status='encontrado'", [sim.pedido.id])).n)).toBe(30)
   await page.clock.resume()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("conferencia")
+  await continuarAviso(page, "Separação", "Conferência")
   await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(30)
   expect(chamadas).toBeLessThanOrEqual(2)
   expect(sim.bloqueadas).toEqual([])

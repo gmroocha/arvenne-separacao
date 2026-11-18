@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test'
 import {criarSimulacao,SUPABASE_FICTICIO} from '../../scripts/simulacao/banco.mjs'
+import {continuarAviso} from './auxiliar.mjs'
 let sim
 
 let outro
@@ -44,6 +45,7 @@ test('V57: resposta perdida depois da gravação é repetida sem contar duas vez
  await page.getByRole('button',{name:'Achei',exact:true}).click()
  // A tela não desfaz e a fila repete as mesmas marcas (valores absolutos): o resultado é o mesmo da primeira vez.
  await expect.poll(()=>chamadas,{timeout:15000}).toBeGreaterThanOrEqual(2)
+ await continuarAviso(page,'Separação','Conferência')
  await expect(page.getByRole('button',{name:'Conferida',exact:true})).toBeVisible()
  expect((await sim.one('select status from pedidos where id=$1',[sim.pedido.id])).status).toBe('conferencia')
  expect((await sim.one('select qtd from pedido_itens where id=$1',[sim.item.id])).qtd).toBe(2)

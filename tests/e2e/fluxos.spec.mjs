@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test"
 import { mkdirSync } from "node:fs"
 import { criarSimulacao, SUPABASE_FICTICIO } from "../../scripts/simulacao/banco.mjs"
+import { continuarAviso } from "./auxiliar.mjs"
 
 let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
@@ -68,13 +69,16 @@ test("separação, conferência e bipagem preservam as duas unidades e o pedido 
   await page.keyboard.press("Escape")
   await expect(concluido).toBeHidden()
   await page.getByRole("button", { name: "Achei", exact: true }).click()
+  await continuarAviso(page, "Separação", "Conferência")
   await page.getByRole("button", { name: "Conferida", exact: true }).click()
+  await continuarAviso(page, "Conferência", "Bipagem")
   const campo = page.getByRole("textbox", { name: "Código da peça" })
   await campo.fill("FORA-DO-PEDIDO"); await campo.press("Enter")
   await expect(page.getByText("SKU FORA-DO-PEDIDO não é deste pedido.")).toBeVisible()
   await campo.fill("AN-1"); await campo.press("Enter")
   await expect.poll(async () => Number((await sim.one("select qtd_bipada from pedido_itens where id=$1", [sim.item.id])).qtd_bipada)).toBe(1)
   await campo.fill("AN-1"); await campo.press("Enter")
+  await continuarAviso(page, "Bipagem", "Nota fiscal")
   await expect(page.getByRole("button", { name: /^Nota fiscal: / })).toBeVisible()
   expect(Number((await sim.one("select qtd_bipada from pedido_itens where id=$1", [sim.item.id])).qtd_bipada)).toBe(2)
   expect((await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("faturamento")
@@ -444,9 +448,11 @@ test("etapa Frete: sem peso; \"Frete gerado\" leva o pedido para a Postagem e \"
   await expect(page.getByRole("button", { name: "Concluir frete" })).toHaveCount(0)
   await page.getByRole("button", { name: "Frete gerado", exact: true }).click()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("pronto_envio")
+  await continuarAviso(page, "Frete", "Postagem")
   await expect(page.getByRole("button", { name: "Postado", exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Postado", exact: true }).click()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("enviado")
+  await continuarAviso(page, "Postagem", "Concluído")
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
 })

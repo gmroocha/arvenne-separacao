@@ -791,7 +791,7 @@ export function useMarcarFalta(pedidoId: string) {
 // Mover o pedido de etapa à mão (menu "Mover para outra etapa") e "Concluir pedido" (= mover para "enviado").
 // Para frente o banco marca como feito tudo o que vem antes (e grava etapas_puladas); para trás zera o trabalho do
 // destino em diante. Recusa troca em andamento, acerto pendente e peça em falta (a mensagem vem do banco).
-export function useMoverEtapa(pedidoId: string) {
+export function useMoverEtapa(pedidoId: string, { avisar = true }: { avisar?: boolean } = {}) {
   const qc = useQueryClient()
   return useMutation({
     mutationKey: ["mover-etapa", pedidoId],
@@ -802,8 +802,9 @@ export function useMoverEtapa(pedidoId: string) {
       if (error) throw new Error(msgBanco(error))
       return data as string
     },
-    onSuccess: (_, a) => toast.success(a.destino === "enviado" ? "Pedido concluído" : `Pedido movido para ${NOME_ETAPA[a.destino]}`),
-    onError: (e) => toast.error(msg(e)),
+    // Com avisar=false quem chamou mostra o resultado (barra da etapa: o diálogo traz o erro e o aviso de etapa concluída).
+    onSuccess: (_, a) => { if (avisar) toast.success(a.destino === "enviado" ? "Pedido concluído" : `Pedido movido para ${NOME_ETAPA[a.destino]}`) },
+    onError: (e) => { if (avisar) toast.error(msg(e)) },
     onSettled: () => [...TODAS, ["troca"]].forEach((queryKey) => qc.invalidateQueries({ queryKey })),
   })
 }

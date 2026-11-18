@@ -71,3 +71,24 @@ export function avisoSemPecas(itens: Pick<Item, "status">[]): string {
     return "Nenhuma peça para enviar: todas viraram crédito ou foram retiradas. Resolva o acerto e cancele o pedido no menu de etapas."
   return "Nenhuma peça pendente."
 }
+
+// O que ainda não foi feito na etapa atual e será marcado como feito ao "Concluir etapa" (mover_etapa para a próxima).
+// Peças: conta as linhas; documentos: o nome do que falta. `texto` é vazio quando a etapa já está toda feita.
+type CamposDocs = { nf_emitida_em?: string | null; pedido_fornecedor_em?: string | null; embalado_em?: string | null; frete_gerado_em?: string | null; postado_em?: string | null }
+export function pendenciasDaEtapa(etapa: string, itens: Item[], p: CamposDocs): { qtd: number; texto: string } {
+  const v = vivas(itens).filter((i) => i.status === "pendente" || i.status === "encontrado")
+  const pecas = (n: number, ato: string) => ({ qtd: n, texto: n === 0 ? "" : `${n} ${n === 1 ? "peça ainda não foi" : "peças ainda não foram"} ${ato}${n === 1 ? "" : "s"}` })
+  switch (etapa) {
+    case "separacao": return pecas(v.filter((i) => i.status === "pendente").length, "achada")
+    case "conferencia": return pecas(v.filter((i) => i.status === "pendente" || !i.conferido_em).length, "conferida")
+    case "bipagem": return pecas(v.filter((i) => i.status === "pendente" || !i.conferido_em || i.qtd_bipada < i.qtd).length, "bipada")
+    case "faturamento": {
+      const falta = [!p.nf_emitida_em && "a nota fiscal", !p.pedido_fornecedor_em && "o pedido LR"].filter(Boolean) as string[]
+      return { qtd: falta.length, texto: falta.length ? `Ainda falta marcar ${falta.join(" e ")}` : "" }
+    }
+    case "embalagem": return { qtd: p.embalado_em ? 0 : 1, texto: p.embalado_em ? "" : "A embalagem ainda não foi marcada" }
+    case "frete": return { qtd: p.frete_gerado_em ? 0 : 1, texto: p.frete_gerado_em ? "" : "O frete ainda não foi gerado" }
+    case "pronto_envio": return { qtd: p.postado_em ? 0 : 1, texto: p.postado_em ? "" : "A postagem ainda não foi marcada" }
+    default: return { qtd: 0, texto: "" }
+  }
+}

@@ -86,6 +86,16 @@ async function irParaEtapa(page, nome) {
   }
 }
 
+// Depois de qualquer avanço aparece "Etapa X concluída → agora Y" (barra, última peça, botão do documento): confere o
+// texto e toca em "Continuar" (sem isso o aviso cobre a tela e o resto do teste não alcança os botões).
+async function continuar(page, de, agora) {
+  const aviso = page.getByRole("dialog", { name: `Etapa ${de} concluída` })
+  await expect(aviso, `aviso "Etapa ${de} concluída"`).toBeVisible()
+  await expect(aviso).toContainText(agora === "Concluído" ? "pedido concluído" : `agora ${agora}`)
+  await aviso.getByRole("button", { name: "Continuar", exact: true }).click()
+  await expect(aviso).toBeHidden()
+}
+
 async function pagar(page) {
   await page.goto(`/vendas/${sim.pedido.id}`)
   await expect(page.getByRole("textbox", { name: "Nome", exact: true })).toHaveValue("Cliente de teste")
@@ -150,12 +160,14 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   await irParaEtapa(page, "Separação")
   await rajada(page, "Achei")
   await expect.poll(status).toBe("conferencia")
+  await continuar(page, "Separação", "Conferência")
   await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(6)
   await conferirEtapa(page, o, pago, "separação (completa)")
 
   // 5) Conferir o resto: segue sozinho para a Bipagem.
   await rajada(page, "Conferida")
   await expect.poll(status).toBe("bipagem")
+  await continuar(page, "Conferência", "Bipagem")
   await conferirEtapa(page, o, pago, "conferência (completa)")
 
   // 6) Bipar o resto: segue sozinho para a Nota fiscal.
@@ -163,6 +175,7 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   expect(restantes.length).toBe(6)
   for (const { sku, qtd } of restantes) for (let n = 0; n < qtd; n++) { await campo.fill(sku); await campo.press("Enter") }
   await expect.poll(status).toBe("faturamento")
+  await continuar(page, "Bipagem", "Nota fiscal")
   expect(await contar("qtd_bipada=qtd")).toBe(12)
   await conferirEtapa(page, o, pago, "bipagem (completa)")
 
@@ -175,12 +188,14 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   expect(await status()).toBe("faturamento")
   await page.getByRole("button", { name: "Pedido LR feito", exact: true }).click()
   await expect.poll(status).toBe("embalagem")
+  await continuar(page, "Nota fiscal", "Embalagem")
   await conferirEtapa(page, o, pago, "nota fiscal")
 
   // 8) Embalagem: um botão.
   for (const item of ["Caixa do tamanho certo", "Nota impressa dentro", "Caixa fechada"]) await page.getByRole("checkbox", { name: item }).click()
   await page.getByRole("button", { name: "Embalado", exact: true }).click()
   await expect.poll(status).toBe("frete")
+  await continuar(page, "Embalagem", "Frete")
   await conferirEtapa(page, o, pago, "embalagem")
 
   // 9) Frete: sem peso; "Frete gerado" avança; o link de rastreio é colado aqui.
@@ -188,14 +203,23 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   const link = page.getByRole("textbox", { name: "Link de rastreio (opcional)" })
   await link.fill("https://rastreio.exemplo/AB123"); await link.press("Enter")
   await expect.poll(async () => (await sim.one("select rastreio_url from pedidos where id=$1", [sim.pedido.id])).rastreio_url).toBe("https://rastreio.exemplo/AB123")
-  await page.getByRole("button", { name: "Frete gerado", exact: true }).click()
+  // "Concluir etapa" da barra inferior: o diálogo diz o que falta e para onde o pedido vai; confirmar marca o frete como gerado.
+  await page.getByRole("button", { name: "Concluir etapa", exact: true }).click()
+  const confirmar = page.getByRole("dialog", { name: "Concluir Frete?" })
+  await expect(confirmar).toContainText("O frete ainda não foi gerado")
+  await expect(confirmar).toContainText("o pedido vai para Postagem")
+  await confirmar.getByRole("button", { name: "Concluir etapa", exact: true }).click()
   await expect.poll(status).toBe("pronto_envio")
+  await continuar(page, "Frete", "Postagem")
+  expect((await sim.one("select frete_gerado_em from pedidos where id=$1", [sim.pedido.id])).frete_gerado_em).not.toBeNull()
   await conferirEtapa(page, o, pago, "frete")
 
   // 10) Postagem: um botão, sem campo de rastreio; "Postado" conclui o pedido.
   await expect(page.getByRole("textbox", { name: /rastreio/i })).toHaveCount(0)
   await page.getByRole("button", { name: "Postado", exact: true }).click()
   await expect.poll(status).toBe("enviado")
+  await continuar(page, "Postagem", "Concluído")
+  await expect(page.getByRole("button", { name: "Concluir etapa", exact: true })).toHaveCount(0) // pedido concluído: sem "Concluir etapa"
   await conferirEtapa(page, o, pago, "postagem")
 
   // 11) Concluídos: enviar rastreio (WhatsApp), a caminho, entregue.
@@ -235,14 +259,17 @@ test("esteira com pedido da Shopify: sem mensagem de rastreio, vai direto para a
   await expect(page.getByRole("button", { name: "Achei", exact: true })).toHaveCount(4)
   await rajada(page, "Achei")
   await expect.poll(status).toBe("conferencia")
+  await continuar(page, "Separação", "Conferência")
   await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(4)
   await rajada(page, "Conferida")
   await expect.poll(status).toBe("bipagem")
+  await continuar(page, "Conferência", "Bipagem")
   await expect(page.getByRole("button", { name: "Contar 1", exact: true })).toHaveCount(4)
   await rajada(page, "Contar 1")
   await expect.poll(() => contar("qtd_bipada>=1")).toBe(4)
   await rajada(page, "Contar 1")
   await expect.poll(status).toBe("faturamento")
+  await continuar(page, "Bipagem", "Nota fiscal")
   expect(o.maxVoo).toBeLessThanOrEqual(1)
   expect(await o.avisos()).toEqual([])
   await sim.banco.query("select mover_etapa($1,'enviado')", [sim.pedido.id]) // o resto da esteira (documentos) já foi coberto acima
@@ -278,6 +305,7 @@ test("latência e um tempo limite do banco no meio: a fila se recupera sem perde
   await expect(page.getByRole("button", { name: "Achei", exact: true })).toHaveCount(0)
   await expect.poll(() => contar("status='encontrado'"), { timeout: 20_000 }).toBe(8)
   await expect.poll(status).toBe("conferencia")
+  await continuar(page, "Separação", "Conferência")
   expect(chamadas).toBeGreaterThanOrEqual(3)
   expect(o.maxVoo).toBeLessThanOrEqual(1)
   expect(o.alterar).toBe(0)
@@ -316,12 +344,19 @@ test("duas telas com Broadcast: a tela de quem marca não relê o pedido; a outr
   })
   await rajada(page, "Achei")
   await expect.poll(status).toBe("conferencia")
+  await continuar(page, "Separação", "Conferência")
+  await expect(page.getByRole("button", { name: "Conferida", exact: true })).toHaveCount(6)
   await rajada(page, "Conferida")
   await expect.poll(status).toBe("bipagem")
+  await continuar(page, "Conferência", "Bipagem")
   await page.waitForTimeout(1800)
   expect(leiturasDaMinhaTela, "o eco do próprio lote não relê o pedido").toBe(0)
   // A outra tela (outra pessoa) recebeu o aviso, releu uma vez e mostra a Bipagem.
   await expect.poll(() => leiturasDaOutra).toBeGreaterThanOrEqual(1)
+  // A outra pessoa também vê o aviso de etapa concluída (aqui o pedido andou duas etapas entre uma leitura e outra).
+  const avisoOutra = outra.getByRole("dialog", { name: /concluíd/ })
+  await expect(avisoOutra).toContainText("agora Bipagem")
+  await avisoOutra.getByRole("button", { name: "Continuar", exact: true }).click()
   await expect(outra.getByText("Bipagem", { exact: true }).first()).toBeVisible()
   await expect(outra.getByRole("textbox", { name: "Código da peça" })).toBeVisible()
   expect(o.maxVoo).toBeLessThanOrEqual(1)
