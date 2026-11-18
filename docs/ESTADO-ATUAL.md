@@ -1,5 +1,14 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Peças repetidas em etapas avançadas (18/11/2026) — **migration ainda não aplicada**
+
+Caixa **"Incluir pedidos em etapas avançadas"** em Peças repetidas: soma os pedidos que já passaram da separação
+(Conferência até Enviar rastreio, mais Avisar/Aguardando cliente), contando peça pendente ou já encontrada; **concluídos,
+cancelados, perdidos e somados nunca entram**; peça em falta ou removida não conta. Cada pedido mostra a etapa em que está.
+A escolha fica guardada no aparelho. Migration `20261124090000_repetidas_avancadas.sql` (função `pecas_repetidas` ganha
+`p_avancadas`, padrão desligado; a view do selo continua igual). **A tela de sempre funciona sem a migration; só a caixa
+depende dela.** Testes: `tests/banco/repetidas.test.mjs` e a tela "opção inclui pedidos em etapas avançadas" em `fluxos.spec.mjs`.
+
 ## Rodada 3 (18/11/2026): página do pedido, troca, rastreio, permissões e Clube — **migration aplicada em 18/11 e app publicado**
 
 16 pedidos do Gustavo ao usar o app. Tudo o que mexe no banco está em **uma migration só**,

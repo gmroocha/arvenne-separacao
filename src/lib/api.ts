@@ -247,14 +247,16 @@ export function useRomaneio(token: string | undefined) {
 }
 
 // Peças repetidas entre os pedidos escolhidos (null = todos em Novo/Separação). Contagens e prazo vêm do banco.
-export function useRepetidas(selecao: string[] | null = null, habilitado = true) {
+// avancadas: soma os pedidos que já passaram da separação (nunca os concluídos) e as peças já encontradas.
+export function useRepetidas(selecao: string[] | null = null, habilitado = true, avancadas = false) {
   return useQuery({
-    queryKey: ["repetidas", "lista", selecao],
+    queryKey: ["repetidas", "lista", selecao, avancadas],
     enabled: habilitado,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc("pecas_repetidas", { p_pedidos: selecao })
+        // p_avancadas só vai quando ligado: a tela de sempre não depende da migration nova.
+        .rpc("pecas_repetidas", avancadas ? { p_pedidos: selecao, p_avancadas: true } : { p_pedidos: selecao })
         .order("qtd_pedidos", { ascending: false })
       if (error) throw error
       return data as PecaRepetida[]

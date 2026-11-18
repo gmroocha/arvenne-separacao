@@ -47,7 +47,8 @@ export async function gerarTiposPendentes() {
     colecoes[r.relkind === "r" ? "Tables" : "Views"].push(`    ${r.nome}: {\n${registro}\n      Relationships: []\n    }`)
   }
   for (const f of novo.funcoes) {
-    if (base.funcoes.some((x) => x.nome === f.nome)) continue
+    // Função nova ou com assinatura/retorno alterados (ex.: parâmetro novo) entra no complemento.
+    if (base.funcoes.some((x) => JSON.stringify(x) === JSON.stringify(f))) continue
     const args = f.entradas.length ? `{ ${f.entradas.map((c) => `${c.nome}${c.opcional ? "?" : ""}: ${tipo(c.tipo)} | null`).join("; ")} }` : "Record<PropertyKey, never>"
     const retorno = f.saidas.length ? `{ ${f.saidas.map((c) => `${c.nome}: ${tipo(c.tipo)} | null`).join("; ")} }[]` : tipo(f.retorno) + (f.proretset ? "[]" : " | null")
     colecoes.Functions.push(`    ${f.nome}: { Args: ${args}; Returns: ${retorno} }`)

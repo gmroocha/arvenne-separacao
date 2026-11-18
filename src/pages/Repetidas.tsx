@@ -17,12 +17,29 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { usePedidosExpedicao, useRepetidas } from "@/lib/api"
 import { formatarPrazo } from "@/lib/formato"
 import { categoriaDoNome, paraBusca } from "@/lib/categoria"
+import { NOME_ETAPA } from "@/lib/status"
 import type { PecaRepetida, Pedido } from "@/lib/tipos"
 import { cn } from "@/lib/utils"
 
 // Seleção e destaques do dia ficam neste aparelho (conveniência): somem sozinhos quando os pedidos saem da separação.
 const CHAVE = "repetidas:selecao"
 const CHAVE_DESTAQUE = "repetidas:destaque"
+const CHAVE_AVANCADAS = "repetidas:avancadas"
+function lerAvancadas(): boolean {
+  try {
+    return localStorage.getItem(CHAVE_AVANCADAS) === "1"
+  } catch {
+    return false
+  }
+}
+function gravarAvancadas(sim: boolean) {
+  try {
+    if (sim) localStorage.setItem(CHAVE_AVANCADAS, "1")
+    else localStorage.removeItem(CHAVE_AVANCADAS)
+  } catch {
+    /* sem armazenamento: vale só nesta visita */
+  }
+}
 function lerLista(chave: string): string[] {
   try {
     const v = JSON.parse(localStorage.getItem(chave) ?? "[]")
@@ -65,9 +82,19 @@ const atrasado = (p: Pick<Pedido, "prazo" | "prazo_horas_uteis">) => formatarPra
 export default function Repetidas() {
   const [selecao, setSelecao] = useState<string[]>(lerSelecao)
   const [escolhendo, setEscolhendo] = useState(false)
+  // Etapas avançadas: soma os pedidos que já passaram da separação (os concluídos nunca entram).
+  const [avancadas, setAvancadas] = useState(lerAvancadas)
+  function mudarAvancadas(sim: boolean) {
+    setAvancadas(sim)
+    gravarAvancadas(sim)
+  }
   const expedicao = usePedidosExpedicao()
-  // Pedidos que podem ser separados, do prazo mais curto ao mais longo (a consulta já vem nessa ordem).
-  const candidatos = useMemo(() => (expedicao.data ?? []).filter((p) => EM_SEPARACAO.has(p.status)), [expedicao.data])
+  // Pedidos que podem entrar, do prazo mais curto ao mais longo (a consulta já vem nessa ordem).
+  // A lista da expedição já deixa de fora os concluídos.
+  const candidatos = useMemo(
+    () => (expedicao.data ?? []).filter((p) => avancadas || EM_SEPARACAO.has(p.status)),
+    [expedicao.data, avancadas],
+  )
   // Só vale o que ainda está na separação; se nada sobrar, volta a mostrar todos.
   const efetiva = useMemo(() => {
     if (!expedicao.data) return selecao.length ? [...selecao].sort() : null
@@ -75,7 +102,7 @@ export default function Repetidas() {
     const validos = selecao.filter((id) => ids.has(id)).sort()
     return validos.length ? validos : null
   }, [selecao, candidatos, expedicao.data])
-  const { data, isLoading, isError, isFetching, refetch } = useRepetidas(efetiva, !selecao.length || !expedicao.isLoading)
+  const { data, isLoading, isError, isFetching, refetch } = useRepetidas(efetiva, !selecao.length || !expedicao.isLoading, avancadas)
   const [busca, setBusca] = useState("")
   const [categoria, setCategoria] = useState("todas")
   const [ordem, setOrdem] = useState<Ordem>("pedidos")
@@ -109,7 +136,9 @@ export default function Repetidas() {
         <p className="min-w-48 flex-1 text-sm text-muted-foreground">
           {efetiva
             ? `Repetidas entre ${efetiva.length} de ${candidatos.length} pedidos.`
-            : "Pegue o saco uma vez e separe para todos os pedidos."}
+            : avancadas
+              ? "Peças de todos os pedidos em andamento, menos os concluídos."
+              : "Pegue o saco uma vez e separe para todos os pedidos."}
         </p>
         {efetiva && (
           <Button variant="ghost" size="toque" onClick={() => mudar([])}>
@@ -121,12 +150,20 @@ export default function Repetidas() {
           {efetiva && <Badge variant="secondary" className="tabular-nums">{efetiva.length}</Badge>}
         </Button>
       </div>
+      <label className="-my-1 flex min-h-11 cursor-pointer items-center gap-3 self-start text-sm">
+        <Checkbox checked={avancadas} onCheckedChange={(c) => mudarAvancadas(c === true)} />
+        Incluir pedidos em etapas avançadas
+      </label>
 
       <RespDialog
         aberto={escolhendo}
         aoMudar={setEscolhendo}
         titulo="Pedidos para separar"
-        descricao="Marque os pedidos que vão ser separados agora. Só as peças repetidas entre eles aparecem."
+        descricao={
+          avancadas
+            ? "Marque os pedidos que quer comparar. Só as peças repetidas entre eles aparecem."
+            : "Marque os pedidos que vão ser separados agora. Só as peças repetidas entre eles aparecem."
+        }
       >
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +184,9 @@ export default function Repetidas() {
           {expedicao.isLoading ? (
             <Skeleton className="h-40 w-full" />
           ) : !candidatos.length ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">Nenhum pedido esperando separação.</p>
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              {avancadas ? "Nenhum pedido em andamento." : "Nenhum pedido esperando separação."}
+            </p>
           ) : (
             // Só a lista rola: filtros em cima e "Pronto" embaixo ficam sempre à vista.
             <ul className="-mx-0.5 flex max-h-[calc(80svh-17rem)] min-h-24 flex-col gap-2 overflow-y-auto overscroll-contain p-0.5 sm:max-h-[calc(94svh-15rem)]">
@@ -163,7 +202,10 @@ export default function Repetidas() {
                       <span className="text-xs text-muted-foreground tabular-nums">
                         {p.numero.replace(/^#/, "")} · {p.qtd_pecas} {p.qtd_pecas === 1 ? "peça" : "peças"}
                       </span>
-                      <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} className="mt-1 self-start" />
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {p.status && !EM_SEPARACAO.has(p.status) && <Badge variant="secondary">{NOME_ETAPA[p.status]}</Badge>}
+                        <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
+                      </span>
                     </span>
                   </label>
                 </li>
@@ -225,7 +267,9 @@ export default function Repetidas() {
             <EmptyDescription>
               {efetiva
                 ? "Nenhuma peça se repete entre os pedidos escolhidos."
-                : "Aparecem aqui peças pendentes que estão em mais de um pedido."}
+                : avancadas
+                  ? "Aparecem aqui peças que estão em mais de um pedido em andamento."
+                  : "Aparecem aqui peças pendentes que estão em mais de um pedido."}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -275,6 +319,7 @@ export default function Repetidas() {
                               <ItemTitle>{p.cliente ?? "Sem nome"}</ItemTitle>
                               <ItemDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
                                 {p.numero.replace(/^#/, "")}
+                                {p.status && !EM_SEPARACAO.has(p.status) && <Badge variant="secondary">{NOME_ETAPA[p.status]}</Badge>}
                                 <Prazo prazo={p.prazo} horasUteis={p.prazo_horas_uteis} />
                               </ItemDescription>
                             </ItemContent>

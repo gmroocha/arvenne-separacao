@@ -86,7 +86,7 @@ export type PecaRepetida = {
   foto_url: string | null
   qtd_total: number
   qtd_pedidos: number
-  pedidos: { pedido_id: string; numero: string; cliente: string | null; qtd: number; prazo: string | null; prazo_horas_uteis: number | null }[]
+  pedidos: { pedido_id: string; numero: string; cliente: string | null; qtd: number; status: StatusPedido; prazo: string | null; prazo_horas_uteis: number | null }[]
 }
 
 export type Endereco = {

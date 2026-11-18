@@ -51,3 +51,40 @@ test("só a equipe logada consulta as repetidas", async () => {
   await db.exec("reset role; set local role anon")
   await recusa(() => linhas(null), /permission denied/)
 })
+
+// Põe o cenário direto na etapa desejada, sem os gatilhos da esteira (que exigiriam conferir cada peça).
+async function semGatilhos(sql) {
+  await db.exec(`set local session_replication_role = replica; ${sql}; set local session_replication_role = origin`)
+}
+const avancadas = async (sel = null) => (await db.query("select * from pecas_repetidas($1, true) order by chave", [sel])).rows
+
+test("opção de etapas avançadas: soma pedidos já separados, nunca os concluídos", async () => {
+  const [p1, p2, p3] = await cenario()
+  // O 2 já está na conferência (peças encontradas) e o 3 foi concluído.
+  await semGatilhos(`update pedido_itens set status = 'encontrado' where pedido_id in ('${p2}', '${p3}');
+    update pedidos set status = 'conferencia' where id = '${p2}'; update pedidos set status = 'enviado' where id = '${p3}'`)
+  // Sem a opção, nada se repete: só o pedido 1 continua na separação.
+  expect(await linhas(null)).toEqual([])
+  const todas = await avancadas()
+  expect(todas.map((r) => [r.chave, r.qtd_total, r.qtd_pedidos])).toEqual([["A1", 3, 2], ["B1", 2, 2]])
+  const a1 = todas.find((r) => r.chave === "A1")
+  expect(a1.pedidos.map((p) => [p.pedido_id, p.status])).toEqual([[p2, "conferencia"], [p1, "novo"]])
+  // Pedido concluído não entra nem quando escolhido.
+  expect(await avancadas([p1, p3])).toEqual([])
+})
+
+test("opção de etapas avançadas ignora peça em falta ou removida", async () => {
+  const [p1, p2] = await cenario()
+  await semGatilhos(`update pedido_itens set status = 'encontrado' where pedido_id = '${p2}';
+    update pedido_itens set status = 'falta' where pedido_id = '${p2}' and sku = 'B1';
+    update pedido_itens set status = 'removido' where pedido_id = '${p1}' and sku = 'A1';
+    update pedidos set status = 'embalagem' where id = '${p2}'`)
+  expect((await avancadas()).map((r) => [r.chave, r.qtd_pedidos])).toEqual([["A1", 2]])
+})
+
+test("chamada só com a seleção continua igual (padrão sem etapas avançadas)", async () => {
+  const [p1, p2] = await cenario()
+  await semGatilhos(`update pedido_itens set status = 'encontrado' where pedido_id = '${p2}'; update pedidos set status = 'bipagem' where id = '${p2}'`)
+  const sel = (await db.query("select * from pecas_repetidas(p_pedidos => $1) order by chave", [[p1, p2]])).rows
+  expect(sel).toEqual([])
+})

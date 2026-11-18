@@ -294,6 +294,39 @@ test("peças repetidas: seleciona os pedidos do dia e mostra o prazo de cada ped
   await semQuebra(page)
 })
 
+test("peças repetidas: opção inclui pedidos em etapas avançadas, menos os concluídos", async ({ page, context, baseURL }, info) => {
+  await iniciar(context, baseURL, { status: "novo" })
+  // Mesmo anel AN-1 num pedido já na Conferência (peça encontrada) e num concluído; o pedido semeado segue em Novo.
+  await sim.banco.exec("set session_replication_role = replica")
+  for (const [nome, status] of [["Daniela Conferindo", "conferencia"], ["Elisa Concluida", "enviado"]]) {
+    const p = await sim.one(`insert into pedidos(origem,status,cliente_nome,numero,pago_em) values ('whatsapp',$1,$2,$3,now() - interval '1 hour') returning id`, [status, nome, `W09${nome.length}`])
+    await sim.banco.query(`insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,status,ordem)
+      values ($1,'avulso','Anel de teste','AN-1',1,50,'encontrado',0)`, [p.id])
+  }
+  await sim.banco.exec("set session_replication_role = origin")
+  await page.goto("/repetidas")
+  const anel = page.getByText("AN-1", { exact: true })
+  await expect(page.getByText("Nenhuma peça repetida")).toBeVisible()
+
+  const opcao = page.getByRole("checkbox", { name: "Incluir pedidos em etapas avançadas" })
+  await opcao.click()
+  await expect(anel).toBeVisible()
+  const daniela = page.getByRole("link", { name: /Daniela Conferindo/ })
+  await expect(daniela.getByText("Conferência", { exact: true })).toBeVisible()
+  await expect(page.getByRole("link", { name: /Elisa Concluida/ })).toHaveCount(0)
+  mkdirSync("capturas", { recursive: true })
+  await page.screenshot({ path: `capturas/repetidas-avancadas-${info.project.name}.png`, fullPage: true, animations: "disabled" })
+
+  // A escolha fica guardada neste aparelho; desmarcar volta à regra da separação.
+  await page.reload()
+  await expect(opcao).toBeChecked()
+  await expect(anel).toBeVisible()
+  await opcao.click()
+  await expect(anel).toHaveCount(0)
+  expect(sim.bloqueadas).toEqual([])
+  await semQuebra(page)
+})
+
 test("V33: Clube carrega mais peças além das 30 primeiras", async ({ page, context, baseURL }, info) => {
   await iniciar(context, baseURL)
   await sim.banco.query(`insert into pecas_clube(codigo,nome,preco,created_at)
