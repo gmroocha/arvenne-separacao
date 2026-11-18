@@ -53,7 +53,7 @@ remota autorizada. O vigia está programado para 06h UTC (03h em São Paulo); er
   de erro, requisições e rolagem lateral a 390 px. Gera `capturas/esteira-*` (claro e escuro).
 - `tests/banco/esteira.test.mjs`: `marcar_pecas`, `mover_etapa`, avanço automático, `excluir_membro`, permissões e a
   migração dos pedidos que estavam em Etiquetagem. `tests/unidade/lotePecas.test.ts`: a fila de gravação.
-- `npm run capturas -- --simulado` roda também esses cenários e o `time-celular.spec.mjs`.
+- `npm run capturas -- --simulado` roda também esses cenários, o `time-celular.spec.mjs`, `celular-largura`, `barra-etapa` e `detalhe-peca`.
 
 ## Celular de verdade (Rodada 2, 17/11/2026)
 

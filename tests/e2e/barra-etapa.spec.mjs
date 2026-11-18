@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import { criarSimulacao } from "../../scripts/simulacao/banco.mjs"
+import { capturarTemas } from "./auxiliar.mjs"
 
 let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
@@ -14,7 +15,7 @@ const status = async () => (await sim.one("select status from pedidos where id=$
 
 // V95: barra inferior das etapas. As setas só trocam a etapa que aparece (nunca o status), "Concluir etapa" confirma e usa
 // mover_etapa, e todo avanço mostra "Etapa X concluída → agora Y".
-test("V95: a barra fica presa no rodapé e as setas só navegam, sem mudar o status", async ({ page, context, baseURL }) => {
+test("V95: a barra fica presa no rodapé e as setas só navegam, sem mudar o status", async ({ page, context, baseURL }, info) => {
   await montar(context, baseURL, 12)
   await page.goto(`/pedidos/${sim.pedido.id}`)
   const barra = page.getByRole("button", { name: "Concluir etapa", exact: true })
@@ -27,6 +28,7 @@ test("V95: a barra fica presa no rodapé e as setas só navegam, sem mudar o sta
   const caixa = await barra.boundingBox()
   expect(caixa.y + caixa.height).toBeGreaterThan(altura - 70)
   expect(caixa.y + caixa.height).toBeLessThanOrEqual(altura)
+  await capturarTemas(page, "barra-etapa", info)
   await proxima.click()
   await expect(page.getByRole("button", { name: "Próxima etapa: Bipagem", exact: true })).toBeEnabled() // a tela agora está na Conferência
   await expect(page.getByRole("button", { name: "Etapa anterior: Separação", exact: true })).toBeEnabled()
@@ -44,12 +46,13 @@ test("V95: a barra fica presa no rodapé e as setas só navegam, sem mudar o sta
   expect(sim.bloqueadas).toEqual([])
 })
 
-test("V95: Concluir etapa confirma, marca o que falta, avança e mostra 'Etapa Separação concluída'", async ({ page, context, baseURL }) => {
+test("V95: Concluir etapa confirma, marca o que falta, avança e mostra 'Etapa Separação concluída'", async ({ page, context, baseURL }, info) => {
   await montar(context, baseURL, 3)
   await sim.banco.query("update pedido_itens set status='encontrado' where pedido_id=$1 and sku='PC-01'", [sim.pedido.id])
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await page.getByRole("button", { name: "Concluir etapa", exact: true }).click()
   const confirmar = page.getByRole("dialog", { name: "Concluir Separação?" })
+  await capturarTemas(page, "barra-etapa-confirmar", info)
   await expect(confirmar).toContainText("3 peças ainda não foram achadas") // AN-1 e PC-02 e PC-03 (PC-01 já foi achada)
   await expect(confirmar).toContainText("o pedido vai para Conferência")
   await confirmar.getByRole("button", { name: "Voltar", exact: true }).click()
@@ -58,6 +61,7 @@ test("V95: Concluir etapa confirma, marca o que falta, avança e mostra 'Etapa S
   await confirmar.getByRole("button", { name: "Concluir etapa", exact: true }).click()
   const aviso = page.getByRole("dialog", { name: "Etapa Separação concluída" })
   await expect(aviso).toContainText("agora Conferência")
+  await capturarTemas(page, "etapa-concluida", info)
   expect(await status()).toBe("conferencia")
   expect(Number((await sim.one("select count(*) n from pedido_itens where pedido_id=$1 and status='encontrado'", [sim.pedido.id])).n)).toBe(4)
   await aviso.getByRole("button", { name: "Continuar", exact: true }).click()

@@ -10,7 +10,8 @@ import { mkdirSync, readFileSync, existsSync } from "node:fs"
 if (process.argv.includes("--simulado")) {
   const { spawnSync } = await import("node:child_process")
   const resultado = spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test",
-    "tests/e2e/venda-pagamento.spec.mjs", "tests/e2e/editar-dados.spec.mjs", "tests/e2e/esteira-ponta-a-ponta.spec.mjs", "tests/e2e/time-celular.spec.mjs"], { stdio: "inherit" })
+    "tests/e2e/venda-pagamento.spec.mjs", "tests/e2e/editar-dados.spec.mjs", "tests/e2e/esteira-ponta-a-ponta.spec.mjs", "tests/e2e/time-celular.spec.mjs",
+    "tests/e2e/celular-largura.spec.mjs", "tests/e2e/barra-etapa.spec.mjs", "tests/e2e/detalhe-peca.spec.mjs"], { stdio: "inherit" })
   process.exit(resultado.status ?? 1)
 }
 

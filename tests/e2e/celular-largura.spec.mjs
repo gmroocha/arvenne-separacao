@@ -125,6 +125,7 @@ async function comTeclado(page, onde, campo, problemas, caixa) {
   await page.setViewportSize({ width: L, height: 470 }) // teclado aberto
   await page.waitForTimeout(400)
   await conferir(page, `${onde} (teclado aberto)`, problemas)
+  await page.screenshot({ path: `capturas/celular-toque-teclado-${onde.replace(/[^a-z]+/gi, "-").toLowerCase()}.png` })
   const r = await caixa.evaluate((e) => { const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom } })
   const c = await campo.evaluate((e) => { const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom } })
   const altura = await page.evaluate(() => innerHeight)
