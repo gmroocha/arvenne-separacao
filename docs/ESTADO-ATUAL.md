@@ -1,5 +1,13 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Reembolso ou crédito direto no "Avise a cliente" (18/11/2026)
+
+Cada peça em falta ganhou o botão **"Reembolso ou crédito"** no próprio cartão (celular: linha de baixo; PC: ao lado de
+Trocar), sem precisar montar nem enviar a troca. Por trás usa o caminho que já existia: `garantir_troca` (rascunho com todas
+as faltas) e `troca_aprovar` com crédito; o destino (reembolsar ou guardar) é registrado na hora quando a troca toda fica
+resolvida, senão vai para o "Acerto do pedido". Some quando a peça já tem escolha. Só interface, sem migration.
+Testes em `tests/e2e/troca-reembolso.spec.mjs`.
+
 ## Pedido LR com check e peças com nota separadas; fotos da falta na frente (18/11/2026)
 
 - **Pedido de venda LR** (etapa Nota fiscal): cada linha tem um check; copiar o código, a quantidade ou "Copiar SKUs" marca

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/ui/spinner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { useConcluirTroca, useEncontrarPeca, useEnviarTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
+import { useAprovarTroca, useConcluirTroca, useCriarTroca, useEncontrarPeca, useEnviarTroca, useMudarStatus, useTroca, type AcaoItem, type PedidoDetalhe } from "@/lib/api"
 import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { linkWhatsApp } from "@/lib/formato"
 import { detalheDoItem } from "@/lib/detalhePeca"
@@ -132,6 +133,28 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
   const emRascunho = !troca || troca.status === "rascunho"
 
   const enviar = useEnviarTroca()
+  // Reembolso ou crédito direto no cartão, sem montar nem enviar a troca: garante a troca em rascunho (com todas as
+  // faltas, como "Montar troca") e a equipe aprova o crédito desta peça (troca_aprovar, valores do banco).
+  const criar = useCriarTroca()
+  const aprovar = useAprovarTroca()
+  const [preparandoCredito, setPreparandoCredito] = useState<string | null>(null)
+  const [credito, setCredito] = useState<{ troca: Troca; peca: TrocaPeca; item: Item } | null>(null)
+  async function abrirCredito(item: Item) {
+    const atual = pecaDe(item)
+    if (troca && atual) return setCredito({ troca, peca: atual, item })
+    setPreparandoCredito(item.id)
+    try {
+      await criar.mutateAsync({ pedidoId: pedido.id, itemIds: faltas.map((i) => i.id) })
+      const t = (await trocaQ.refetch()).data
+      const p = t?.pecas.find((x) => x.item_id === item.id && !x.concluida_em)
+      if (t && p) setCredito({ troca: t, peca: p, item })
+      else toast.error("Não foi possível preparar o crédito desta peça. Tente de novo.")
+    } catch {
+      /* o aviso de erro já aparece (useAcao) */
+    } finally {
+      setPreparandoCredito(null)
+    }
+  }
   const naTroca = faltas.filter((i) => pecaDe(i))
   const linkTroca = troca ? `${window.location.origin}/t/${troca.token}` : ""
   // Todas as peças ativas precisam de pelo menos uma opção para a cliente ver a troca.
@@ -186,9 +209,10 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
           <CardContent className="flex flex-col gap-3">
             {problemas.map((i) => (
               <div key={i.id} className="flex flex-col gap-2">
-                {/* Cartão grande: foto, código, variante, quanto falta, nota e desde quando, com as ações à vista. */}
-                <div className="flex gap-3 rounded-xl bg-card p-2.5 ring-1 ring-foreground/10">
-                  <Foto url={i.foto_url} alt={i.nome} ampliar peca={detalheDoItem(i)} className="size-28 shrink-0 sm:size-32" />
+                {/* Cartão grande: foto, código, variante, quanto falta, nota e desde quando, com as ações à vista.
+                    Celular: ações embaixo, na largura toda (Trocar e o menu; "Reembolso ou crédito" na linha de baixo). PC: ao lado da foto. */}
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-xl bg-card p-2.5 ring-1 ring-foreground/10 sm:grid-rows-[1fr_auto]">
+                  <Foto url={i.foto_url} alt={i.nome} ampliar peca={detalheDoItem(i)} className="size-28 shrink-0 sm:row-span-2 sm:size-32" />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex items-start justify-between gap-2">
                       <span className="min-w-0 font-mono text-lg leading-tight font-semibold break-all">{i.sku ?? "sem código"}</span>
@@ -201,22 +225,34 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
                     <div className="line-clamp-2 text-xs text-muted-foreground">{i.nome}</div>
                     <div className="text-xs text-muted-foreground">Em falta há {tempoDesde(i.updated_at)}</div>
                     {i.nota && <NotaNaPeca nota={i.nota} />}
-                    <div className="mt-auto flex items-center gap-1.5 pt-1">
-                      <Button size="bloco" className="min-w-0 flex-1" variant="secondary" onClick={() => aoTrocar(i)}>
-                        <ArrowLeftRight /> Trocar
+                  </div>
+                  <div className="col-span-2 grid grid-cols-[minmax(0,1fr)_auto] gap-1.5 sm:col-span-1 sm:col-start-2 sm:flex sm:items-center">
+                    <Button size="bloco" className="min-w-0 sm:flex-1" variant="secondary" onClick={() => aoTrocar(i)}>
+                      <ArrowLeftRight /> Trocar
+                    </Button>
+                    {/* Sem escolha ainda (troca não montada, em rascunho ou aguardando): reembolso ou crédito na hora. */}
+                    {!pecaDe(i)?.escolha_tipo && (
+                      <Button
+                        size="bloco"
+                        className="col-span-2 row-start-2 min-w-0 sm:flex-1"
+                        variant="secondary"
+                        disabled={preparandoCredito !== null || aprovar.isPending}
+                        onClick={() => void abrirCredito(i)}
+                      >
+                        {preparandoCredito === i.id ? <Spinner /> : <HandCoins />} Reembolso ou crédito
                       </Button>
-                      <MenuPeca
-                        rotulo="Resolver"
-                        itens={[
-                          { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
-                          { rotulo: "Encontrada", icone: PackageCheck, aoClicar: () => encontrar.mutate(i) },
-                          { rotulo: "Voltar a pendente", icone: Undo2, aoClicar: () => marcar(i, "pendente", null) },
-                          etiqueta.acao(i),
-                          nota.acao(i),
-                          feedback.acao(i),
-                        ]}
-                      />
-                    </div>
+                    )}
+                    <MenuPeca
+                      rotulo="Resolver"
+                      itens={[
+                        { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
+                        { rotulo: "Encontrada", icone: PackageCheck, aoClicar: () => encontrar.mutate(i) },
+                        { rotulo: "Voltar a pendente", icone: Undo2, aoClicar: () => marcar(i, "pendente", null) },
+                        etiqueta.acao(i),
+                        nota.acao(i),
+                        feedback.acao(i),
+                      ]}
+                    />
                   </div>
                 </div>
                 <EstadoTroca troca={troca} peca={pecaDe(i)} item={i} aoAbrir={() => setTrocando(i.id)} wa={wa} />
@@ -279,6 +315,26 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
         pedido={pedido}
         itens={faltas}
         inicial={trocando ?? undefined}
+      />
+      <ConfirmarTroca
+        aberto={!!credito}
+        aoMudar={(a) => !a && setCredito(null)}
+        sai={credito?.item ?? null}
+        peca={credito?.peca ?? null}
+        entra={[]}
+        pendente={aprovar.isPending}
+        aoConfirmar={(destino) =>
+          credito &&
+          aprovar.mutate(
+            { troca: credito.troca, peca: credito.peca, tipo: "credito", destino },
+            {
+              onSuccess: (registrou) => {
+                setCredito(null)
+                toast.success(avisoCredito(destino, registrou))
+              },
+            },
+          )
+        }
       />
       {feedback.dialogo}
       {nota.dialogo}
