@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from "react"
 import { useNavigate } from "react-router"
-import { CheckCheck, ClipboardList, ExternalLink, FolderOpen, RotateCcw, XCircle } from "lucide-react"
+import { CheckCheck, ClipboardList, ExternalLink, FolderOpen, Link2, MessageCircle, RotateCcw, XCircle } from "lucide-react"
 import type { GrupoAcoes } from "@/components/MenuAcoes"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useMoverEtapa, useMudarStatus, useReiniciar } from "@/lib/api"
+import { mensagemRomaneio } from "@/lib/agente"
+import { copiar } from "@/lib/copiar"
+import { linkWhatsApp } from "@/lib/formato"
 import { ETAPAS_MOVER, ICONE_ETAPA, NOME_ETAPA, passoAtual, passoDe, passosDe, temEnviarRastreio, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
 
@@ -14,7 +17,14 @@ type Opcoes = {
   aoCancelado?: () => void
 }
 
-export type PedidoMenu = Pick<Pedido, "id" | "status" | "fase" | "shopify_url" | "origem"> & { etapa_antes_desvio?: Pedido["etapa_antes_desvio"] }
+export type PedidoMenu = Pick<Pedido, "id" | "status" | "fase" | "shopify_url" | "origem"> & {
+  etapa_antes_desvio?: Pedido["etapa_antes_desvio"]
+  // Romaneio (resumo público do pedido): só onde o pedido vem completo (tela do pedido).
+  token_publico?: string | null
+  numero?: string
+  cliente_nome?: string | null
+  cliente_telefone?: string | null
+}
 
 // O que o diálogo de "Mover para outra etapa" explica: o que será marcado como feito (para frente) ou zerado (para trás).
 function textoMover(origem: number, destino: number, origemPedido?: string | null): string {
@@ -40,6 +50,10 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
   const naEsteira = pedido.fase === "expedicao"
   const origem = passoAtual(pedido)
   const destinoIdx = movendo ? passoDe(movendo, pedido.origem) : -1
+  // Romaneio em qualquer etapa (venda, esteira ou concluído): copiar o link ou abrir o WhatsApp com a mensagem pronta.
+  const linkRomaneio = pedido.token_publico ? `${window.location.origin}/r/${pedido.token_publico}` : null
+  const waRomaneio =
+    linkRomaneio && pedido.numero ? linkWhatsApp(pedido.cliente_telefone ?? null, mensagemRomaneio({ numero: pedido.numero, cliente_nome: pedido.cliente_nome ?? null }, linkRomaneio)) : null
 
   const grupos: GrupoAcoes[] = [
     {
@@ -48,6 +62,14 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
         ...(opcoes.aoVerDados ? [{ rotulo: "Ver dados do pedido", icone: ClipboardList, aoClicar: opcoes.aoVerDados }] : []),
         ...(naEsteira ? [{ rotulo: "Concluir pedido", icone: CheckCheck, aoClicar: () => setMovendo("enviado") }] : []),
       ],
+    },
+    {
+      itens: linkRomaneio
+        ? [
+            { rotulo: "Copiar link do romaneio", icone: Link2, aoClicar: () => copiar(linkRomaneio, "Link do romaneio copiado") },
+            ...(waRomaneio ? [{ rotulo: "Enviar romaneio no WhatsApp", icone: MessageCircle, aoClicar: () => window.open(waRomaneio, "_blank", "noreferrer") }] : []),
+          ]
+        : [],
     },
     {
       titulo: "Mover para outra etapa",

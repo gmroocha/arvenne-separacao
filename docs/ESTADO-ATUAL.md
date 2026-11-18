@@ -1,5 +1,11 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Romaneio em qualquer etapa (18/11/2026)
+
+No "⋯" do pedido (logo abaixo de "Concluir pedido"): **Copiar link do romaneio** e **Enviar romaneio no WhatsApp** (abre o
+WhatsApp da cliente com a mensagem pronta, `mensagemRomaneio` em `src/lib/agente.ts`). Vale na esteira, nos concluídos e
+no arquivo; a página `/r/:token` já funcionava em qualquer etapa. Só interface. Teste `tests/e2e/romaneio-etapas.spec.mjs`.
+
 ## Reembolso ou crédito direto no "Avise a cliente" (18/11/2026)
 
 Cada peça em falta ganhou o botão **"Reembolso ou crédito"** no próprio cartão (celular: linha de baixo; PC: ao lado de

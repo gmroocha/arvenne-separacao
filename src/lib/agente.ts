@@ -61,6 +61,13 @@ export function mensagemTroca(pedido: Pedido, itens: Item[], link: string, cobri
   ].join("\n")
 }
 
+// Link do romaneio (resumo do pedido com peças e valores) para mandar à cliente em qualquer etapa.
+export function mensagemRomaneio(pedido: Pick<Pedido, "cliente_nome" | "numero">, link: string): string {
+  const n = pedido.cliente_nome?.split(" ")[0]
+  const nome = n && !n.includes("@") ? n : null
+  return `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas 🤍 Este é o resumo do seu pedido ${pedido.numero.replace(/^#/, "")}, com as peças e os valores: ${link}`
+}
+
 export function mensagemFaltaSimples(pedido: Pedido, itens: Item[]): string {
   const nome = primeiroNome(pedido)
   const faltas = itens.filter((i) => i.status === "falta" || i.status === "defeito")
