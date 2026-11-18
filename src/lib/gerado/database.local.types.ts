@@ -4,13 +4,41 @@ import type { Database as Remoto } from './database.types'
 
 type Adicoes = {
   Tables: {
-
+    equipe: {
+      Row: {
+        id: string
+        nome: string
+        email: string | null
+        ativo: boolean
+        created_at: string
+        papel: string
+      }
+      Insert: {
+        id?: string
+        nome: string
+        email?: string | null
+        ativo?: boolean
+        created_at?: string
+        papel?: string
+      }
+      Update: {
+        id?: string
+        nome?: string
+        email?: string | null
+        ativo?: boolean
+        created_at?: string
+        papel?: string
+      }
+      Relationships: []
+    }
   }
   Views: {
 
   }
   Functions: {
     encontrar_peca: { Args: { p_item: string | null }; Returns: undefined | null }
+    sou_gestor: { Args: Record<PropertyKey, never>; Returns: boolean | null }
+    tg_equipe_ultimo_gestor: { Args: Record<PropertyKey, never>; Returns: string | null }
   }
 }
 

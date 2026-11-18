@@ -12,7 +12,7 @@ import { agendarAtualizacaoOperacional } from "@/lib/atualizacaoOperacional"
 import { gravarPeca } from "@/lib/gravarPeca"
 import { enfileirarMarca, type Destino, type RespostaLote } from "@/lib/lotePecas"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, Membro, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, Membro, Papel, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 // Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
@@ -1822,7 +1822,7 @@ export function useEquipe() {
     queryKey: ["equipe"],
     staleTime: 10 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("equipe").select("id, nome, email, ativo").order("nome")
+      const { data, error } = await supabase.from("equipe").select("id, nome, email, ativo, papel").order("nome")
       if (error) {
         if (semFuncao(error)) return [] as Membro[]
         throw error
@@ -1834,11 +1834,12 @@ export function useEquipe() {
 
 export function useSalvarMembro() {
   return useAcao(
-    async (m: { id?: string; nome: string; email: string | null; ativo?: boolean }) => {
-      const dados = { nome: m.nome.trim(), email: m.email?.trim() || null, ...(m.ativo === undefined ? {} : { ativo: m.ativo }) }
+    async (m: { id?: string; nome: string; email: string | null; ativo?: boolean; papel?: Papel }) => {
+      const dados = { nome: m.nome.trim(), email: m.email?.trim() || null, ...(m.ativo === undefined ? {} : { ativo: m.ativo }), ...(m.papel === undefined ? {} : { papel: m.papel }) }
       const { error } = m.id ? await supabase.from("equipe").update(dados).eq("id", m.id) : await supabase.from("equipe").insert(dados)
       if (error) {
         if (error.code === "23505") throw new Error("Este e-mail já está cadastrado no time")
+        if (error.code === "42501") throw new Error("Só o gestor pode mexer no time")
         throw new Error(msgBanco(error))
       }
     },

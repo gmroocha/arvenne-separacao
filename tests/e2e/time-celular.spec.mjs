@@ -8,6 +8,8 @@ const semRolagemLateral = async (page) => expect(await page.evaluate(() => docum
 
 test("Time: Excluir de verdade tira a pessoa da lista e dos pedidos, depois de confirmar", async ({ page, context, baseURL }) => {
   sim = await criarSimulacao({ status: "novo" })
+  // V109: só o gestor exclui; o login de teste é o da "Gestora".
+  await sim.banco.query("insert into equipe(nome,email,papel) values('Gestora','teste@example.test','gestor')")
   const ana = (await sim.one("insert into equipe(nome,email) values('Ana Paula','ana@arvenne.test') returning id")).id
   await sim.banco.query("insert into equipe(nome) values('Bia')")
   await sim.banco.query("update pedidos set responsaveis=jsonb_build_object('separacao',$2::text) where id=$1", [sim.pedido.id, ana])
@@ -15,17 +17,19 @@ test("Time: Excluir de verdade tira a pessoa da lista e dos pedidos, depois de c
   await page.goto("/time")
   await expect(page.getByText("Ana Paula")).toBeVisible()
   await semRolagemLateral(page)
+  // A lista é ordenada por nome: Ana Paula, Bia, Gestora. Exclui a primeira (Ana Paula, que era a responsável).
   await page.getByRole("button", { name: "Excluir", exact: true }).first().click()
   const dialogo = page.getByRole("dialog", { name: /^Excluir / })
   await expect(dialogo).toContainText("Os pedidos e o histórico continuam")
   await dialogo.getByRole("button", { name: "Voltar" }).click()
-  expect(Number((await sim.one("select count(*) n from equipe")).n)).toBe(2)
+  await expect(dialogo).toBeHidden() // a janela que fecha ainda tem o título "Excluir pessoa?": espera sumir antes de abrir de novo
+  expect(Number((await sim.one("select count(*) n from equipe")).n)).toBe(3)
   await page.getByRole("button", { name: "Excluir", exact: true }).first().click()
   await page.getByRole("dialog", { name: /^Excluir / }).getByRole("button", { name: "Excluir", exact: true }).click()
-  await expect.poll(async () => Number((await sim.one("select count(*) n from equipe")).n)).toBe(1)
+  await expect.poll(async () => Number((await sim.one("select count(*) n from equipe")).n)).toBe(2)
   // Quem tinha sido designada deixa de ser responsável; o pedido continua.
-  const restante = (await sim.one("select nome from equipe")).nome
-  if (restante === "Bia") expect((await sim.one("select responsaveis from pedidos where id=$1", [sim.pedido.id])).responsaveis).toEqual({})
+  expect((await sim.one("select count(*) n from equipe where nome='Ana Paula'")).n).toBe(0)
+  expect((await sim.one("select responsaveis from pedidos where id=$1", [sim.pedido.id])).responsaveis).toEqual({})
   expect(Number((await sim.one("select count(*) n from pedidos where id=$1", [sim.pedido.id])).n)).toBe(1)
   expect(sim.bloqueadas).toEqual([])
 })
@@ -35,6 +39,7 @@ test("celular: campos com 16 px (sem zoom ao tocar) e nenhuma rolagem lateral na
   // Peça em falta com nome e código longos: o cartão novo das faltas não pode alargar a página.
   await sim.banco.query("update pedido_itens set nome=$2, sku=$3, variante='N°16 · pedra verde-água muito comprida', nota='Nota longa '||repeat('palavra ',20) where id=$1", [sim.item.id, "Anel solitário com pedra grande e nome comprido".repeat(3), "AN-SOLITARIO-PEDRA-GRANDE-0001"])
   await sim.banco.query("update pedido_itens set status='falta' where id=$1", [sim.item.id])
+  await sim.banco.query("insert into equipe(nome,email,papel) values('Gestora','teste@example.test','gestor')")
   await sim.instalar(context, baseURL)
   const camposPequenos = () => page.evaluate(() => [...document.querySelectorAll("input:not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea")]
     .filter((e) => e.offsetParent !== null && parseFloat(getComputedStyle(e).fontSize) < 16).map((e) => e.getAttribute("aria-label") || e.id || e.placeholder || e.tagName))

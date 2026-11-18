@@ -630,3 +630,58 @@ revoke all on public.v_pedidos_operacao from public, anon;
 grant select on public.v_pedidos_operacao to authenticated, service_role;
 revoke all on public.v_producao_pessoa from public, anon;
 grant select on public.v_producao_pessoa to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- D) Papéis no time: gestor e funcionária. Só o gestor mexe no Time (adicionar, editar, desativar, excluir pessoas e
+-- trocar o papel); a funcionária vê o app inteiro e a lista do time. O gestor é a pessoa ativa da equipe cujo e-mail
+-- é o do login. Nenhum e-mail fica nesta migration: depois de aplicar, o Gustavo marca o próprio registro como
+-- gestor (um update único, com o "sim" dele) e promove a segunda pessoa pela tela do Time.
+-- ---------------------------------------------------------------------------------------------------------------
+alter table public.equipe add column papel text not null default 'funcionaria'
+  check (papel in ('gestor','funcionaria'));
+
+create or replace function public.sou_gestor() returns boolean
+language sql stable security definer set search_path to 'public','pg_temp' as $$
+  select exists (
+    select 1 from public.equipe e
+     where e.ativo and e.papel = 'gestor' and e.email is not null
+       and lower(btrim(e.email)) = lower(btrim(public.usuario_atual_email())))
+$$;
+revoke all on function public.sou_gestor() from public, anon;
+grant execute on function public.sou_gestor() to authenticated, service_role;
+
+-- Ler continua com todos; escrever só o gestor (a RLS recusa a funcionária).
+drop policy if exists equipe_cria on public.equipe;
+drop policy if exists equipe_edita on public.equipe;
+create policy equipe_cria on public.equipe for insert to authenticated with check (public.sou_gestor());
+create policy equipe_edita on public.equipe for update to authenticated
+  using (public.sou_gestor()) with check (public.sou_gestor());
+
+-- Excluir pessoa (esteira_leve + a regra nova): só o gestor.
+create or replace function public.excluir_membro(p_membro uuid) returns void
+language plpgsql security definer set search_path to 'public','pg_temp' as $$
+begin
+  if not public.sou_gestor() then raise exception 'Só o gestor pode excluir pessoas do time'; end if;
+  if not exists (select 1 from public.equipe where id = p_membro) then raise exception 'Pessoa não encontrada'; end if;
+  update public.pedidos set responsaveis = coalesce((
+      select jsonb_object_agg(e.key, e.value) from jsonb_each(responsaveis) e where e.value #>> '{}' <> p_membro::text), '{}'::jsonb)
+    where exists (select 1 from jsonb_each(responsaveis) e where e.value #>> '{}' = p_membro::text);
+  delete from public.equipe where id = p_membro;
+end $$;
+revoke all on function public.excluir_membro(uuid) from public, anon;
+grant execute on function public.excluir_membro(uuid) to authenticated, service_role;
+
+-- Ninguém tira o último gestor ativo (excluindo, desativando ou passando para funcionária).
+create or replace function public.tg_equipe_ultimo_gestor() returns trigger
+language plpgsql set search_path to 'public','pg_temp' as $$
+begin
+  if old.papel = 'gestor' and old.ativo
+     and (tg_op = 'DELETE' or new.papel <> 'gestor' or not new.ativo)
+     and not exists (select 1 from public.equipe e where e.id <> old.id and e.papel = 'gestor' and e.ativo) then
+    raise exception 'O time precisa de pelo menos um gestor ativo';
+  end if;
+  return case when tg_op = 'DELETE' then old else new end;
+end $$;
+revoke all on function public.tg_equipe_ultimo_gestor() from public, anon, authenticated;
+create trigger equipe_ultimo_gestor before update or delete on public.equipe
+  for each row execute function public.tg_equipe_ultimo_gestor();

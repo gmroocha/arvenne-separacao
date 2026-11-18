@@ -51,7 +51,8 @@ export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'st
 export type PedidoOperacao = Pick<Pedido, keyof Views<'v_pedidos_operacao'>>
 
 // Pessoa do Time Arvenne (tabela equipe). O e-mail liga a pessoa ao login ("Comigo").
-export type Membro = Pick<Tables<'equipe'>, 'id' | 'nome' | 'email' | 'ativo'>
+export type Papel = 'gestor' | 'funcionaria'
+export type Membro = Pick<Tables<'equipe'>, 'id' | 'nome' | 'email' | 'ativo'> & { papel: Papel }
 
 export type Item = Omit<Tables<'pedido_itens'>, 'origem' | 'status'> & { origem: OrigemItem; status: StatusItem }
 

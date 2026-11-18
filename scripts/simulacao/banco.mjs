@@ -98,7 +98,8 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     const valores = []
     const body = req.postDataJSON?.() ?? null
     const autenticado = req.headers().authorization === `Bearer ${jwt}`
-    await banco.exec(`begin; set local role ${autenticado ? "authenticated" : "anon"};`)
+    // Como o PostgREST: o e-mail do login vai nas claims da transação (sou_gestor() e o histórico leem dali).
+    await banco.exec(`begin; ${autenticado ? `select set_config('request.jwt.claims','${JSON.stringify({ email: user.email, role: "authenticated" })}',true); ` : ""}set local role ${autenticado ? "authenticated" : "anon"};`)
     try {
       if (url.pathname.includes("/rpc/")) {
         const f = funcoes.find((x) => x.proname === nome)

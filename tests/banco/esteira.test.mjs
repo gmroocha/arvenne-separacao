@@ -288,16 +288,18 @@ test('excluir_membro: tira a pessoa do Time e dos pedidos; eventos e pedidos con
   const p = await pedidoWhats('separacao')
   const ana = (await one("insert into equipe(nome,email) values('Ana','ana@arvenne.test') returning id")).id
   const bia = (await one("insert into equipe(nome) values('Bia') returning id")).id
+  // V109: só o gestor exclui pessoas; quem entra aqui (ana@arvenne.test) é a gestora e a excluída é outra pessoa.
+  await db.query("update equipe set papel='gestor' where id=$1", [ana])
   await entrar()
   await one("select designar($1,'separacao',$2)", [p.id, ana])
   await one("select designar($1,'frete',$2)", [p.id, bia])
-  await one("select designar($1,'conferencia',$2)", [p.id, ana])
-  await one('select excluir_membro($1)', [ana])
-  assert.deepEqual((await one('select responsaveis r from pedidos where id=$1', [p.id])).r, { frete: bia })
-  assert.equal((await one('select count(*) n from equipe where id=$1', [ana])).n, 0)
+  await one("select designar($1,'conferencia',$2)", [p.id, bia])
+  await one('select excluir_membro($1)', [bia])
+  assert.deepEqual((await one('select responsaveis r from pedidos where id=$1', [p.id])).r, { separacao: ana })
+  assert.equal((await one('select count(*) n from equipe where id=$1', [bia])).n, 0)
   assert.equal((await one("select count(*) n from pedido_eventos where pedido_id=$1 and tipo='designado'", [p.id])).n, 3)
   assert.equal((await one('select count(*) n from pedidos where id=$1', [p.id])).n, 1)
-  await recusa(() => one('select excluir_membro($1)', [ana]), /não encontrada/)
+  await recusa(() => one('select excluir_membro($1)', [bia]), /não encontrada/)
 })
 
 test('permissões: anon não executa nada novo; authenticated sem DELETE em equipe nem nas views', async () => {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { quemAvisar } from "../../src/lib/equipe"
 
-const mel = { id: "m1", nome: "Mel", email: null, ativo: true }
-const ana = { id: "m2", nome: "Ana", email: "a@x.test", ativo: true }
-const saiu = { id: "m3", nome: "Rê", email: null, ativo: false }
+const mel = { id: "m1", nome: "Mel", email: null, ativo: true, papel: "funcionaria" as const }
+const ana = { id: "m2", nome: "Ana", email: "a@x.test", ativo: true, papel: "gestor" as const }
+const saiu = { id: "m3", nome: "Rê", email: null, ativo: false, papel: "funcionaria" as const }
 
 describe("quem avisar ao concluir uma etapa", () => {
   it("avisa a pessoa da próxima etapa", () => {

@@ -468,13 +468,12 @@ test("etapa Frete: sem peso; \"Frete gerado\" leva o pedido para a Postagem e \"
 // Time Arvenne: cadastrar pessoas, designar por etapa, ver o avatar no cartão e filtrar na Expedição.
 test("time: cadastrar pessoa, designar a etapa do pedido e filtrar a Expedição", async ({ page, context, baseURL }) => {
   await iniciar(context, baseURL, { status: "novo" })
+  // V109: só o gestor mexe no Time. O login de teste é o da "Ana Paula", já cadastrada como gestora (no app real o
+  // Gustavo marca o próprio registro como gestor uma vez e promove a segunda pessoa pela tela).
+  await sim.banco.query("insert into equipe(nome,email,papel) values ('Ana Paula','teste@example.test','gestor')")
   await page.goto("/time")
-  await page.getByRole("button", { name: "Adicionar pessoa" }).click()
-  await page.getByRole("textbox", { name: "Nome" }).fill("Ana Paula")
-  await page.getByRole("textbox", { name: /E-mail do login/ }).fill("teste@example.test")
-  await page.getByRole("button", { name: "Salvar", exact: true }).click()
   await expect(page.getByText("Ana Paula")).toBeVisible()
-  expect((await sim.one("select email, ativo from equipe where nome='Ana Paula'")).email).toBe("teste@example.test")
+  expect((await sim.one("select email, ativo, papel from equipe where nome='Ana Paula'"))).toEqual({ email: "teste@example.test", ativo: true, papel: "gestor" })
   await page.getByRole("button", { name: "Adicionar pessoa" }).click()
   await page.getByRole("textbox", { name: "Nome" }).fill("Bia")
   await page.getByRole("button", { name: "Salvar", exact: true }).click()
