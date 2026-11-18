@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { mensagemTroca } from "@/lib/agente"
+import { mensagemFaltaSimples, mensagemTroca } from "@/lib/agente"
 import { COBRIR_TUDO, cobreTudo, fraseDiferencaCarrinho, fraseSituacao, rotuloPagamento, textoSituacao, valorPagoPeca } from "@/lib/trocaTexto"
 import type { Item, Pedido, TrocaValor, TrocaPeca } from "@/lib/tipos"
 
@@ -78,4 +78,30 @@ test("mensagem da troca: texto aprovado, com negrito do WhatsApp (asteriscos) e 
   const varias = mensagemTroca(pedido, [{ id: "a" }, { id: "b" }] as Item[], "https://x/t/1")
   expect(varias).toContain("vimos que algumas peças não estão disponíveis no nosso estoque 😕 Separamos algumas opções para você escolher as que mais gostar:")
   expect(mensagemTroca({ numero: "ARV-2", cliente_nome: null } as Pedido, [{ id: "a" }] as Item[], "l")).toMatch(/^Oi! Tudo bem\?/)
+})
+
+test("mensagem sem link (troca não montada): mesma estrutura da aprovada, com as peças em falta e as três saídas", () => {
+  const pedido = { numero: "W0023", cliente_nome: "José Roberto" } as Pedido
+  const itens = [
+    { id: "a", nome: "ANEL SOLITÁRIO MOISSANITE", variante: "10mm / N°18", status: "falta", qtd: 1 },
+    { id: "b", nome: "ANEL SOLITÁRIO MOISSANITE", variante: "10mm / N°24", status: "falta", qtd: 2 },
+    { id: "c", nome: "Colar", variante: null, status: "encontrado", qtd: 1 },
+  ] as Item[]
+  expect(mensagemFaltaSimples(pedido, itens)).toBe([
+    "Oi, José! Tudo bem? Aqui é do *time da expedição da Arvenne Pratas* 📦",
+    "",
+    "Durante a separação do seu pedido W0023, vimos que algumas peças não estão disponíveis no nosso estoque 😕",
+    "",
+    "*Peças em falta:*",
+    "• ANEL SOLITÁRIO MOISSANITE, 10mm / N°18",
+    "• ANEL SOLITÁRIO MOISSANITE, 10mm / N°24 (2 unidades)",
+    "",
+    "*O que você prefere?*",
+    "",
+    "1️⃣ Trocar por outra peça (separamos opções para você escolher)",
+    "2️⃣ Receber o valor como crédito para o próximo pedido",
+    "3️⃣ Receber o reembolso",
+    "",
+    "Qualquer dúvida, pode me chamar 🤍",
+  ].join("\n"))
 })

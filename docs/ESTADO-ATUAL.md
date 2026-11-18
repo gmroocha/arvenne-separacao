@@ -1,5 +1,18 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Troca para a cliente 40+, "Pago pela cliente" e mensagem sem link estruturada (18/11/2026)
+
+- **Página da troca (`/t/...`):** opção do **mesmo modelo** sai sem código e sem preço quando o valor é igual: frase grande
+  "Mesmo modelo, outro tamanho", foto maior, "Toque no tamanho que você quer:" e tamanhos em botões grandes. Valor só
+  quando muda ("Custa R$ 20,00 a mais" / "Custa menos: sobram R$ 10,00 de crédito"). Mesmo modelo e mesmo valor vem
+  primeiro. A peça que faltou mostra o tamanho ("Tamanho N°18") e o nome, sem código. Teste `troca-tamanhos.spec.mjs`;
+  imagens de `visual.spec.mjs` atualizadas.
+- **Dados do pedido:** "Pago após acertos" virou **"Pago pela cliente"**; quando peças saem depois do pagamento aparece
+  **"A devolver à cliente"** (valor de `v_pedidos.a_devolver`) com o porquê. Caso real: W0023 (pagou R$ 905,98, total
+  atual R$ 801,57, a devolver R$ 104,41). Teste `dados-devolver.spec.mjs`.
+- **"Copiar mensagem" sem troca montada:** agora segue a estrutura da mensagem aprovada (saudação do time da expedição,
+  peças em falta em lista e três saídas numeradas). Teste em `tests/unidade/trocaTexto.test.ts`.
+
 ## Romaneio em qualquer etapa (18/11/2026)
 
 No "⋯" do pedido (logo abaixo de "Concluir pedido"): **Copiar link do romaneio** e **Enviar romaneio no WhatsApp** (abre o

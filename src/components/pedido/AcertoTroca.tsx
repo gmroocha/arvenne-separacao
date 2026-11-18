@@ -157,7 +157,7 @@ export default function AcertoTroca({ pedidoId, aDevolver = 0 }: { pedidoId: str
           {(a.coberto ?? 0) > 0 && <Linha rotulo="A loja cobriu">−{reais(a.coberto ?? 0)}</Linha>}
           <Separator className="my-1" />
           <Linha rotulo="Total atual">{reais(a.novo_total)}</Linha>
-          {a.total_pago_atual != null && <Linha rotulo="Pago após acertos">{reais(a.total_pago_atual)}</Linha>}
+          {a.total_pago_atual != null && <Linha rotulo="Pago pela cliente">{reais(a.total_pago_atual)}</Linha>}
           <Linha rotulo={feito ? "Saldo acertado" : a.saldo > 0 ? "Saldo final a cobrar" : a.saldo < 0 ? "Saldo final a favor da cliente" : "Saldo final"} forte>
             {sinal(a.saldo)}
           </Linha>

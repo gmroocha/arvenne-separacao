@@ -31,6 +31,20 @@ function Linha({ rotulo, children }: { rotulo: React.ReactNode; children: React.
   )
 }
 
+// Peças tiradas depois do pagamento: o total caiu e a diferença volta para a cliente (a_devolver, do banco).
+function LinhaDevolver({ valor }: { valor: number | null | undefined }) {
+  if (valor == null || valor <= 0) return null
+  return (
+    <div className="flex flex-col gap-0.5 rounded-md bg-warning/10 px-2 py-1.5">
+      <div className="flex justify-between gap-3 text-sm font-semibold text-warning">
+        <span>A devolver à cliente</span>
+        <span className="text-right tabular-nums">{reais(valor)}</span>
+      </div>
+      <span className="text-xs text-muted-foreground">Peças saíram do pedido depois do pagamento: ela pagou mais do que o total atual.</span>
+    </div>
+  )
+}
+
 // Linha que abre o diálogo das peças trocadas/removidas.
 // Crédito da cliente no resumo: o valor que sai do "pago" (reembolso ou próximo pedido), com a situação.
 // Antes de a equipe escolher o destino, o saldo a favor aparece como "A definir". Valores vêm do banco.
@@ -234,10 +248,11 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
                   </Linha>
                 ))}
                 {pedido.total_pago != null && (
-                  <Linha rotulo="Pago após acertos">
+                  <Linha rotulo="Pago pela cliente">
                     <strong>{reais(pedido.total_pago)}</strong>
                   </Linha>
                 )}
+                <LinhaDevolver valor={pedido.a_devolver} />
               </div>
             )}
 
@@ -245,7 +260,9 @@ export default function DadosCliente({ pedido, semRecolher }: { pedido: PedidoDe
               <div className="flex flex-col gap-1.5 border-t pt-3">
                 <Linha rotulo="Pagamento">{pedido.forma_pagamento ?? "—"}</Linha>
                 {pedido.valor_pago != null && pedido.valor_pago !== pedido.total_pago && <Linha rotulo="Pagamento inicial">{reais(pedido.valor_pago)}</Linha>}
-                <Linha rotulo="Pago após acertos">{pedido.total_pago != null ? reais(pedido.total_pago) : "A conferir"}</Linha>
+                {/* Quanto a cliente pagou de fato, já contando diferenças de troca recebidas ou devolvidas (do banco). */}
+                <Linha rotulo="Pago pela cliente">{pedido.total_pago != null ? reais(pedido.total_pago) : "A conferir"}</Linha>
+                <LinhaDevolver valor={pedido.a_devolver} />
                 {pedido.pago_em && <Linha rotulo="Pago em">{quando(pedido.pago_em)}</Linha>}
               </div>
             )}

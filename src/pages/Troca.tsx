@@ -85,6 +85,32 @@ function SeloMesmoModelo({ outroTamanho }: { outroTamanho: boolean }) {
   )
 }
 
+// Mesmo modelo: a cliente (40+, pouco acostumada a lojas online) só precisa saber se muda o valor. Sem código e sem
+// preço quando o valor é o mesmo; quando muda, uma frase simples (valores prontos do banco: v_troca_valores).
+function ValorMesmoModelo({ o, varias }: { o: Opcao; varias: boolean }) {
+  if (o.situacao === "paga_diferenca")
+    return <p className="text-base font-medium tabular-nums">Custa {reais(o.diferenca)} a mais{varias ? " no total" : ""}</p>
+  if (o.situacao === "credito")
+    return <p className="text-base font-medium tabular-nums">Custa menos: sobram {reais(Math.abs(o.diferenca))} de crédito</p>
+  return <p className="text-base text-muted-foreground">Mesmo valor, sem pagar nada a mais</p>
+}
+
+// Cartão do mesmo modelo em outro tamanho: frase grande, foto maior, tamanhos em botões grandes.
+function CabecalhoMesmoModelo({ o, marcado, outroTamanho }: { o: Opcao; marcado: boolean; outroTamanho: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <div className="relative shrink-0">
+        <Foto url={fotoTamanho(o.foto_url, 300)} alt={o.nome} ampliar className="size-20" />
+        {marcado && <BolhaCheck className="pointer-events-none absolute -top-1.5 -right-1.5 ring-2 ring-card" />}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+        <p className="text-lg leading-snug font-semibold">{outroTamanho ? "Mesmo modelo, outro tamanho" : "Mesmo modelo"}</p>
+        {outroTamanho && separarTamanho(o.variante).base && <p className="text-sm text-muted-foreground">{separarTamanho(o.variante).base}</p>}
+      </div>
+    </div>
+  )
+}
+
 // [−] n [+]: o número já muda na hora; o banco grava em seguida. Aceita 0 (tirar a peça do carrinho).
 function Passo({ qtd, aoMudar, cheio, rotulo }: { qtd: number; aoMudar: (n: number) => void; cheio: boolean; rotulo: string }) {
   return (
@@ -110,6 +136,26 @@ type CartaoProps = {
 }
 
 function CartaoOpcao({ o, varias, mesmoModelo, qtd, vazio, cheio, carregando, ocupado, aoEscolher, aoQtd, secundario }: CartaoProps) {
+  const tamanho = separarTamanho(o.variante).tamanho
+  if (mesmoModelo)
+    return (
+      <li className={cn("relative flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10", qtd > 0 && "ring-2 ring-foreground/40")}>
+        <CabecalhoMesmoModelo o={o} marcado={qtd > 0} outroTamanho={!!tamanho} />
+        {tamanho ? <p className="text-xl font-semibold">Tamanho {tamanho}</p> : o.variante && <p className="text-lg font-semibold">{o.variante}</p>}
+        <ValorMesmoModelo o={o} varias={varias} />
+        {vazio ? (
+          <Button type="button" size="xl" variant={secundario ? "secondary" : "default"} className="w-full text-base" disabled={ocupado} onClick={aoEscolher}>
+            {carregando ? <Spinner /> : null}
+            {tamanho ? "Quero este tamanho" : "Quero esta"}
+          </Button>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-base text-muted-foreground">Quantas?</span>
+            <Passo qtd={qtd} aoMudar={aoQtd} cheio={cheio} rotulo={tamanho ? `Tamanho ${tamanho}` : titulo(o)} />
+          </div>
+        )}
+      </li>
+    )
   return (
     <li className={cn("relative flex flex-col gap-2.5 rounded-xl bg-card p-3 ring-1 ring-foreground/10", qtd > 0 && "ring-2 ring-foreground/40")}>
       <div className="flex gap-3">
@@ -158,6 +204,48 @@ function CartaoModelo({
   const marcados = grupo.filter((o) => (qtds[o.id] ?? 0) > 0)
   const base = marcados[0] ?? grupo[0]
   const modelo = separarTamanho(base.variante).base
+  const tamanhoDe = (o: Opcao) => separarTamanho(o.variante).tamanho ?? o.variante ?? o.nome
+  if (mesmoModelo)
+    return (
+      <li className={cn("relative flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10", marcados.length > 0 && "ring-2 ring-foreground/40")}>
+        <CabecalhoMesmoModelo o={base} marcado={marcados.length > 0} outroTamanho />
+        <ValorMesmoModelo o={base} varias={varias} />
+        <div className="flex flex-col gap-2.5">
+          <span className="text-base font-medium">Toque no tamanho que você quer:</span>
+          <div className="flex flex-wrap gap-2.5" role="group" aria-label="Tamanhos">
+            {grupo.map((o) => {
+              const n = qtds[o.id] ?? 0
+              const tam = tamanhoDe(o)
+              return (
+                <Toggle
+                  key={o.id}
+                  variant="outline"
+                  size="xl"
+                  pressed={n > 0}
+                  aria-label={n > 0 ? `Tamanho ${tam}, ${n} no carrinho. Toque para colocar mais uma` : `Tamanho ${tam}`}
+                  className="relative h-14 min-w-20 text-lg font-semibold tabular-nums"
+                  disabled={cheio}
+                  onPressedChange={() => aoQtd(o.id, n + 1)}
+                >
+                  {tam}
+                  {n > 0 && <BolhaContador n={n} className="absolute -top-2 -right-2 border border-background" />}
+                </Toggle>
+              )
+            })}
+          </div>
+        </div>
+        {marcados.length > 0 && (
+          <div className="flex flex-col gap-2 border-t pt-3">
+            {marcados.map((o) => (
+              <div key={o.id} className="flex items-center justify-between gap-3">
+                <span className="text-base font-medium">Tamanho {tamanhoDe(o)}</span>
+                <Passo qtd={qtds[o.id] ?? 0} aoMudar={(n) => aoQtd(o.id, n)} cheio={cheio} rotulo={`Tamanho ${separarTamanho(o.variante).tamanho ?? o.nome}`} />
+              </div>
+            ))}
+          </div>
+        )}
+      </li>
+    )
   return (
     <li className={cn("relative flex flex-col gap-3 rounded-xl bg-card p-3 ring-1 ring-foreground/10", marcados.length > 0 && "ring-2 ring-foreground/40")}>
       <div className="flex gap-3">
@@ -524,11 +612,15 @@ export default function Troca() {
                   <div className="flex gap-3">
                     <Foto url={fotoTamanho(p.foto_url, 600)} alt={p.nome} ampliar className="size-28 shrink-0" />
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      {/* Sem código: para a cliente vale o que ela reconhece (tamanho/cor e o nome da peça). */}
                       <div className="flex items-start justify-between gap-2">
-                        <div className="font-mono text-base leading-snug font-semibold text-foreground">{titulo(p)}</div>
+                        <div className="text-lg leading-snug font-semibold text-foreground">
+                          {separarTamanho(p.variante).tamanho ? `Tamanho ${separarTamanho(p.variante).tamanho}` : p.variante || p.nome}
+                        </div>
                         {varias && <Badge variant="secondary" className="h-6 shrink-0 px-2 text-sm font-medium tabular-nums">{p.qtd}×</Badge>}
                       </div>
-                      {p.variante && <div className="text-sm text-muted-foreground">{p.variante}</div>}
+                      {separarTamanho(p.variante).tamanho && separarTamanho(p.variante).base && <div className="text-sm text-muted-foreground">{separarTamanho(p.variante).base}</div>}
+                      {(separarTamanho(p.variante).tamanho || p.variante) && <div className="line-clamp-2 text-xs text-muted-foreground">{p.nome}</div>}
                       <div className="mt-auto text-sm text-muted-foreground tabular-nums">
                         {varias && p.valor_pago_unit != null
                           ? `${p.qtd} unidades de ${reais(p.valor_pago_unit)} · você pagou ${reais(p.valor_pago)}`
@@ -562,13 +654,16 @@ export default function Troca() {
                   </Alert>
                 ) : (
                   <div className="flex flex-col gap-3 pt-1">
-                    <h2 className="text-base font-semibold">{p.opcoes.length > 0 ? "Escolha o que vai no lugar dela" : "Sua opção"}</h2>
+                    <h2 className="text-lg font-semibold">{p.opcoes.length > 0 ? "Escolha o que vai no lugar dela" : "Sua opção"}</h2>
                     {unidades > 0 && p.valor_escolhido != null && <LinhaEscolhido escolhido={p.valor_escolhido} pago={p.valor_pago} />}
                     {p.opcoes.length > 0 && (
                       <>
                         {unidades > 0 && <p className="text-xs text-muted-foreground">Use + e − para escolher quantas de cada. Pode juntar peças diferentes.</p>}
                         <ul className="flex flex-col gap-3">
-                          {agrupar(p.opcoes).map((g) =>
+                          {/* Mesmo modelo com o mesmo valor vem primeiro: é a troca mais simples para a cliente. */}
+                          {agrupar(p.opcoes)
+                            .sort((a, b) => Number(!(mesmoModelo(a[0]) && a[0].situacao === "sem_diferenca")) - Number(!(mesmoModelo(b[0]) && b[0].situacao === "sem_diferenca")))
+                            .map((g) =>
                             g.length === 1 ? (
                               <CartaoOpcao
                                 key={g[0].id}

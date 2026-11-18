@@ -68,14 +68,26 @@ export function mensagemRomaneio(pedido: Pick<Pedido, "cliente_nome" | "numero">
   return `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne Pratas 🤍 Este é o resumo do seu pedido ${pedido.numero.replace(/^#/, "")}, com as peças e os valores: ${link}`
 }
 
+// Mensagem sem link de troca (troca ainda não montada): mesma estrutura da mensagem aprovada da troca, citando as
+// peças em falta (sem o link, a cliente não teria como saber quais são) e as três saídas numeradas.
 export function mensagemFaltaSimples(pedido: Pedido, itens: Item[]): string {
   const nome = primeiroNome(pedido)
   const faltas = itens.filter((i) => i.status === "falta" || i.status === "defeito")
-  const pecas = faltas.map((i) => `*${descricaoPeca(i)}*`).join(" e ")
   const plural = faltas.length > 1
   return [
-    `Oi${nome ? `, ${nome}` : ""}! Aqui é da Arvenne.`,
-    `${plural ? "As peças" : "A peça"} ${pecas} do seu pedido ${pedido.numero} ${plural ? "ficaram" : "ficou"} sem estoque 😕`,
-    "Podemos trocar por outra peça ou devolver o valor como crédito. O que você prefere?",
-  ].join(" ")
+    `Oi${nome ? `, ${nome}` : ""}! Tudo bem? Aqui é do *time da expedição da Arvenne Pratas* 📦`,
+    "",
+    `Durante a separação do seu pedido ${pedido.numero.replace(/^#/, "")}, vimos que ${plural ? "algumas peças não estão disponíveis" : "uma peça não está disponível"} no nosso estoque 😕`,
+    "",
+    `*${plural ? "Peças em falta" : "Peça em falta"}:*`,
+    ...faltas.map((i) => `• ${descricaoPeca(i)}${i.qtd > 1 ? ` (${i.qtd} unidades)` : ""}`),
+    "",
+    "*O que você prefere?*",
+    "",
+    "1️⃣ Trocar por outra peça (separamos opções para você escolher)",
+    "2️⃣ Receber o valor como crédito para o próximo pedido",
+    "3️⃣ Receber o reembolso",
+    "",
+    "Qualquer dúvida, pode me chamar 🤍",
+  ].join("\n")
 }
