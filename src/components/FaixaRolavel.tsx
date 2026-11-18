@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useArrastarComMouse } from "@/hooks/use-arrastar-mouse"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -9,9 +10,11 @@ type Props = {
 }
 
 // Faixa horizontal sem barra de rolagem. Um degradê suave nas bordas mostra que há mais conteúdo,
-// em vez de cortar o último item. A etapa ativa (aria-current ou aria-pressed) fica centralizada.
+// em vez de cortar o último item. A etapa ativa (aria-current ou aria-pressed) fica centralizada. No PC dá para
+// arrastar com o mouse (clique segurado).
 export default function FaixaRolavel({ children, className, chave }: Props) {
   const ref = useRef<HTMLDivElement>(null)
+  const arrastar = useArrastarComMouse()
   const [borda, setBorda] = useState({ esq: false, dir: false })
 
   useEffect(() => {
@@ -42,7 +45,8 @@ export default function FaixaRolavel({ children, className, chave }: Props) {
     <div
       ref={ref}
       style={{ maskImage: mascara, WebkitMaskImage: mascara }}
-      className={cn("sem-barra overflow-x-auto", className)}
+      className={cn("sem-barra overflow-x-auto", (borda.esq || borda.dir) && "cursor-grab", className)}
+      {...arrastar}
     >
       {children}
     </div>

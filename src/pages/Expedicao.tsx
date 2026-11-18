@@ -12,6 +12,7 @@ import { Vazio } from "@/components/comum/Vazio"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Toggle } from "@/components/ui/toggle"
 import FaixaRolavel from "@/components/FaixaRolavel"
+import { useArrastarComMouse } from "@/hooks/use-arrastar-mouse"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -114,6 +115,8 @@ function useMaisADireita() {
 
 export default function Expedicao() {
   const [esteiraRef, maisADireita] = useMaisADireita()
+  // Arrastar o fundo do quadro com o mouse rola a esteira; os cartões continuam arrastáveis para mudar de etapa.
+  const arrastarEsteira = useArrastarComMouse({ rolagem: (c) => c.querySelector("[data-slot=scroll-area-viewport]"), ignorar: "[draggable=true]" })
   const [params, setParams] = useSearchParams()
   const etapa = params.get("etapa")
   const soAtrasados = params.get("atrasados") === "1"
@@ -320,9 +323,9 @@ export default function Expedicao() {
       </div>
 
       {/* PC: quadro com uma coluna por etapa, na ordem da esteira. */}
-      <div ref={esteiraRef} className="relative hidden lg:block">
+      <div ref={esteiraRef} className="relative hidden lg:block" {...arrastarEsteira}>
       <ScrollArea className="w-full">
-        <div className="flex w-max items-start gap-1 pb-4">
+        <div className="flex w-max cursor-grab items-start gap-1 pb-4">
           {porColuna.map((c, i) => {
             const Icone = ICONE_ETAPA[c.icone]
             return (
