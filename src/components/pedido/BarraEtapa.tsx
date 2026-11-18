@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { useMoverEtapa, type PedidoDetalhe } from "@/lib/api"
 import { pendenciasDaEtapa } from "@/lib/etapa"
 import { ehDesvio } from "@/lib/selo"
-import { PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
+import { passoAtual, passoDe, passosDe, type StatusPedido } from "@/lib/status"
 import { useIrParaEtapa } from "./useIrParaEtapa"
 
 type Props = {
@@ -21,9 +21,10 @@ type Props = {
 // (mover_etapa: marca o que faltar e o banco recusa com falta, troca em andamento ou acerto pendente); o aviso de
 // "Etapa concluída" vem do pedido, em qualquer avanço.
 export default function BarraEtapa({ pedido, vista, aoVer }: Props) {
+  const PASSOS = passosDe(pedido.origem)
   const atual = passoAtual(pedido)
-  const vistaIdx = vista ? passoDe(vista) : atual
-  const { ir, dialogo } = useIrParaEtapa(atual, aoVer)
+  const vistaIdx = vista ? passoDe(vista, pedido.origem) : atual
+  const { ir, dialogo } = useIrParaEtapa(atual, aoVer, pedido.origem)
   const mover = useMoverEtapa(pedido.id, { avisar: false })
   const [confirmando, setConfirmando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)

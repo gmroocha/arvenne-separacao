@@ -16,6 +16,7 @@ export const ETAPAS = [
   { id: "embalagem", nome: "Embalagem" },
   { id: "frete", nome: "Frete" },
   { id: "pronto_envio", nome: "Postagem" },
+  { id: "enviar_rastreio", nome: "Enviar rastreio" }, // só pedidos que não são da Shopify (a loja avisa a cliente)
   { id: "enviado", nome: "Concluído" }, // o status continua "enviado" no banco
   { id: "cancelado", nome: "Cancelado" },
   { id: "perdida", nome: "Perdida" },
@@ -42,6 +43,7 @@ export const FASE_DE: Record<StatusPedido, Fase> = {
   embalagem: "expedicao",
   frete: "expedicao",
   pronto_envio: "expedicao",
+  enviar_rastreio: "expedicao",
   enviado: "arquivo",
   cancelado: "arquivo",
   perdida: "arquivo",
@@ -54,18 +56,18 @@ export const STATUS_DA_FASE: Record<Fase, StatusPedido[]> = {
   arquivo: ["enviado", "cancelado", "perdida", "somada"],
   expedicao: [
     "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "bipagem", "faturamento",
-    "embalagem", "frete", "pronto_envio",
+    "embalagem", "frete", "pronto_envio", "enviar_rastreio",
   ],
 }
 
 // Etapas de expedição (para arrastar cartões e descobrir a posição na esteira).
 export const ETAPAS_EXPEDICAO: StatusPedido[] = [
   "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "bipagem", "faturamento",
-  "embalagem", "frete", "pronto_envio", "enviado",
+  "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado",
 ]
 
 // Etapas oferecidas em "Mover para outra etapa" (o banco decide se pode: mover_etapa). Desvios não entram.
-export const ETAPAS_MOVER = ["separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado"] as const satisfies readonly StatusPedido[]
+export const ETAPAS_MOVER = ["separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado"] as const satisfies readonly StatusPedido[]
 
 // Linha de etapas da tela do pedido. "Avisar/Aguardando cliente" não são passos: é um desvio da Separação.
 export const PASSOS = [
@@ -76,19 +78,28 @@ export const PASSOS = [
   { id: "embalagem", nome: "Embalagem", statuses: ["embalagem"] },
   { id: "frete", nome: "Frete", statuses: ["frete"] },
   { id: "pronto_envio", nome: "Postagem", statuses: ["pronto_envio"] },
+  { id: "enviar_rastreio", nome: "Enviar rastreio", statuses: ["enviar_rastreio"] },
   { id: "enviado", nome: "Concluído", statuses: ["enviado"] },
 ] as const satisfies readonly { id: string; nome: string; statuses: readonly StatusPedido[] }[]
 
 export type Passo = (typeof PASSOS)[number]
 
-export function passoDe(s: StatusPedido): number {
-  return PASSOS.findIndex((p) => (p.statuses as readonly StatusPedido[]).includes(s))
+// Pedido da Shopify não tem "Enviar rastreio": a loja avisa a cliente. Todo cálculo de posição na esteira de UM pedido
+// usa a lista da origem dele (os índices de passoDe/passoAtual valem nesta lista, nunca na PASSOS inteira).
+type ComOrigem = { origem?: string | null }
+export const temEnviarRastreio = (origem?: string | null) => origem !== "shopify"
+export function passosDe(origem?: string | null): readonly Passo[] {
+  return temEnviarRastreio(origem) ? PASSOS : PASSOS.filter((p) => p.id !== "enviar_rastreio")
+}
+
+export function passoDe(s: StatusPedido, origem?: string | null): number {
+  return passosDe(origem).findIndex((p) => (p.statuses as readonly StatusPedido[]).includes(s))
 }
 
 // V37: "Avisar/Aguardando cliente" é um desvio da etapa onde a falta apareceu, não da Separação. O banco guarda
 // essa etapa em pedidos.etapa_antes_desvio; a tela trata o pedido em desvio como estando nela (com o selo do
 // desvio). Sem origem gravada (desvio antigo) ou com origem inválida, vale a Separação.
-type ComDesvio = { status: StatusPedido; etapa_antes_desvio?: string | null }
+type ComDesvio = ComOrigem & { status: StatusPedido; etapa_antes_desvio?: string | null }
 
 export function etapaAtual(p: ComDesvio): StatusPedido {
   if (p.status !== "avisar_cliente" && p.status !== "aguardando_cliente") return p.status
@@ -98,27 +109,31 @@ export function etapaAtual(p: ComDesvio): StatusPedido {
 
 // Índice (em PASSOS) da etapa atual do pedido: o desvio usa a etapa de origem.
 export function passoAtual(p: ComDesvio): number {
-  return passoDe(etapaAtual(p))
+  return passoDe(etapaAtual(p), p.origem)
 }
 
 // Etapas de trabalho que têm responsável (todas menos "Concluído"), na ordem da esteira.
 export const PASSOS_TRABALHO = PASSOS.filter((p) => p.id !== "enviado")
+export function passosTrabalhoDe(origem?: string | null) {
+  return PASSOS_TRABALHO.filter((p) => temEnviarRastreio(origem) || p.id !== "enviar_rastreio")
+}
 
 // Etapa atual do pedido (o desvio usa a etapa de origem) que pode ter responsável; "enviado"/arquivo não têm.
 export function etapaDoResponsavel(p: ComDesvio): (typeof PASSOS_TRABALHO)[number]["id"] | null {
-  const passo = PASSOS_TRABALHO[passoAtual(p)]
+  const passo = passosTrabalhoDe(p.origem)[passoAtual(p)]
   return passo ? passo.id : null
 }
 
 // Caminho normal da expedição. Etapas de venda, "avisar_cliente", "aguardando_cliente" e "cancelado" ficam fora.
 const FLUXO: StatusPedido[] = [
-  "novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
+  "novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado",
 ]
 
-export function proximaEtapa(s: StatusPedido): StatusPedido | null {
+export function proximaEtapa(s: StatusPedido, origem?: string | null): StatusPedido | null {
   if (s === "avisar_cliente" || s === "aguardando_cliente") return "separacao"
-  const i = FLUXO.indexOf(s)
-  return i >= 0 && i < FLUXO.length - 1 ? FLUXO[i + 1] : null
+  const fluxo = temEnviarRastreio(origem) ? FLUXO : FLUXO.filter((e) => e !== "enviar_rastreio")
+  const i = fluxo.indexOf(s)
+  return i >= 0 && i < fluxo.length - 1 ? fluxo[i + 1] : null
 }
 
 // Ícone de cada etapa (esteira da lista e linha de etapas do pedido).
@@ -134,6 +149,7 @@ export const ICONE_ETAPA: Record<string, LucideIcon> = {
   embalagem: Package,
   frete: Tag,
   pronto_envio: Truck,
+  enviar_rastreio: Send,
   enviado: Check,
   rastreio: Send,
 }
@@ -165,15 +181,20 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
   ],
   pronto_envio: [
     "Leve o pacote aos Correios e cole aqui o link de rastreio.",
-    "Marque \"Postado\": o pedido vai para Concluídos.",
+    "Marque \"Postado\": o pedido vai para Enviar rastreio (ou direto para Concluídos, se for da Shopify).",
+  ],
+  enviar_rastreio: [
+    "Confira o link de rastreio (cole se faltar).",
+    "Abra o WhatsApp com a mensagem pronta e envie à cliente.",
+    "Marque \"Mensagem enviada\": o pedido vai para Concluídos.",
   ],
   enviado: ["O pedido sai da expedição e vai para Concluídos."],
 }
 
 // Para onde o pedido vai ao concluir a etapa (a pessoa confirma no Dialog).
-export function destinoAoConcluir(s: StatusPedido): StatusPedido | null {
+export function destinoAoConcluir(s: StatusPedido, origem?: string | null): StatusPedido | null {
   if (s === "novo" || s === "avisar_cliente" || s === "aguardando_cliente") return "conferencia"
-  return proximaEtapa(s)
+  return proximaEtapa(s, origem)
 }
 
 export type StatusItem = "pendente" | "encontrado" | "falta" | "defeito" | "removido"

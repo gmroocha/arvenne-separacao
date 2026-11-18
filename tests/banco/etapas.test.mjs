@@ -194,7 +194,9 @@ test('V14: cada destino exige o trabalho das etapas anteriores, inclusive nota e
   await recusa(() => db.query("update pedidos set status='pronto_envio' where id=$1",[p.id]),/Gere o frete/)
   await db.query("update pedidos set frete_gerado_em=now(),frete_peso_g=450,status='pronto_envio' where id=$1",[p.id])
   await recusa(() => db.query("update pedidos set status='enviado' where id=$1",[p.id]),/postagem/)
-  await db.query("update pedidos set postado_em=now(),status='enviado' where id=$1",[p.id])
+  // V107: pedido do WhatsApp só conclui depois de enviar o rastreio à cliente.
+  await recusa(() => db.query("update pedidos set postado_em=now(),status='enviado' where id=$1",[p.id]),/rastreio/)
+  await db.query("update pedidos set postado_em=now(),rastreio_enviado_em=now(),status='enviado' where id=$1",[p.id])
   assert.equal((await one('select status from pedidos where id=$1',[p.id])).status,'enviado')
   await recusa(() => db.query("update pedidos set status='separacao' where id=$1",[p.id]),/arquivado/)
 })

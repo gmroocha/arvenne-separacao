@@ -11,7 +11,7 @@ import { criarSimulacao, SUPABASE_FICTICIO } from "../../scripts/simulacao/banco
 let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
 
-const ORDEM = ["novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado"]
+const ORDEM = ["novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado"]
 
 async function montar(context, baseURL, { pecas = 11, origem = "whatsapp" } = {}) {
   sim = await criarSimulacao({ status: "em_aberto" })
@@ -216,24 +216,34 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   expect((await sim.one("select frete_gerado_em from pedidos where id=$1", [sim.pedido.id])).frete_gerado_em).not.toBeNull()
   await conferirEtapa(page, o, pago, "frete")
 
-  // 10) Postagem: o link de rastreio é colado aqui; "Postado" conclui o pedido.
+  // 10) Postagem: o link de rastreio é colado aqui; "Postado" leva o pedido do WhatsApp para "Enviar rastreio".
   const link = page.getByRole("textbox", { name: "Link de rastreio (opcional)" })
   await link.fill("https://rastreio.exemplo/AB123"); await link.press("Enter")
   await expect.poll(async () => (await sim.one("select rastreio_url from pedidos where id=$1", [sim.pedido.id])).rastreio_url).toBe("https://rastreio.exemplo/AB123")
   await page.getByRole("button", { name: "Postado", exact: true }).click()
-  await expect.poll(status).toBe("enviado")
-  await continuar(page, "Postagem", "Concluído")
-  await expect(page.getByRole("button", { name: "Concluir etapa", exact: true })).toHaveCount(0) // pedido concluído: sem "Concluir etapa"
+  await expect.poll(status).toBe("enviar_rastreio")
+  await continuar(page, "Postagem", "Enviar rastreio")
   await conferirEtapa(page, o, pago, "postagem")
 
-  // 11) Concluídos: enviar rastreio (WhatsApp), a caminho, entregue.
+  // 10b) Enviar rastreio (só WhatsApp): link, WhatsApp com a mensagem pronta e "Mensagem enviada" concluem o pedido.
+  await expect(page.getByRole("textbox", { name: "Link de rastreio" })).toHaveValue("https://rastreio.exemplo/AB123")
+  await expect(page.getByRole("link", { name: "Abrir WhatsApp com a mensagem" })).toHaveAttribute("href", /wa\.me\/5511987654321\?text=/)
+  await semRolagemLateral(page)
+  await capturar(page, "enviar-rastreio", info)
+  await page.getByRole("button", { name: "Mensagem enviada", exact: true }).click()
+  await expect.poll(status).toBe("enviado")
+  await continuar(page, "Enviar rastreio", "Concluído")
+  expect((await sim.one("select rastreio_enviado_em from pedidos where id=$1", [sim.pedido.id])).rastreio_enviado_em).not.toBeNull()
+  await expect(page.getByRole("button", { name: "Concluir etapa", exact: true })).toHaveCount(0) // pedido concluído: sem "Concluir etapa"
+  await conferirEtapa(page, o, pago, "enviar rastreio")
+
+  // 11) Concluídos: a caminho e entregue (sem aba de rastreio: ele foi enviado na etapa anterior).
   await page.goto("/concluidos")
-  await expect(page.getByRole("tab", { name: /^Enviar rastreio/ })).toHaveAttribute("data-state", "active")
+  await expect(page.getByRole("tab", { name: /^A caminho \(1\)/ })).toHaveAttribute("data-state", "active")
+  await expect(page.getByRole("tab", { name: /Enviar rastreio/ })).toHaveCount(0)
   await expect(page.getByRole("link", { name: "Cliente de teste" })).toBeVisible()
   await capturar(page, "concluidos", info)
   await semRolagemLateral(page)
-  await page.getByRole("button", { name: "Mensagem enviada", exact: true }).click()
-  await page.getByRole("tab", { name: /^A caminho/ }).click()
   await page.getByRole("button", { name: "Marcar entregue", exact: true }).click()
   await page.getByRole("tab", { name: /^Entregues/ }).click()
   await expect(page.getByRole("link", { name: "Cliente de teste" })).toBeVisible()
@@ -276,11 +286,20 @@ test("esteira com pedido da Shopify: sem mensagem de rastreio, vai direto para a
   await continuar(page, "Bipagem", "Nota fiscal")
   expect(o.maxVoo).toBeLessThanOrEqual(1)
   expect(await o.avisos()).toEqual([])
-  await sim.banco.query("select mover_etapa($1,'enviado')", [sim.pedido.id]) // o resto da esteira (documentos) já foi coberto acima
-  expect(await status()).toBe("enviado")
+  await sim.banco.query("select mover_etapa($1,'pronto_envio')", [sim.pedido.id]) // o resto da esteira (documentos) já foi coberto acima
+  expect(await status()).toBe("pronto_envio")
+  await page.goto(`/pedidos/${sim.pedido.id}`)
+  // V107: pedido da Shopify não tem "Enviar rastreio": Postado leva direto para Concluído.
+  await expect(page.getByRole("list", { name: "Etapas do pedido" }).or(page.getByRole("button", { name: /^Etapa \d+ de 8/ })).first()).toBeVisible()
+  await page.getByRole("button", { name: "Postado", exact: true }).click()
+  await expect.poll(status).toBe("enviado")
+  await continuar(page, "Postagem", "Concluído")
+  const fases = (await sim.banco.query("select para from pedido_eventos where pedido_id=$1 and tipo='status'", [sim.pedido.id])).rows.map((r) => r.para)
+  expect(fases).not.toContain("enviar_rastreio")
+  await page.goto("/")
+  await expect(page.getByRole("region", { name: "Enviar rastreio" }).or(page.getByRole("button", { name: /Enviar rastreio/ })).first()).toBeVisible()
   await page.goto("/concluidos")
-  await expect(page.getByRole("tab", { name: /^Enviar rastreio/ })).toContainText("0")
-  await page.getByRole("tab", { name: /^A caminho/ }).click()
+  await expect(page.getByRole("tab", { name: /^A caminho \(1\)/ })).toBeVisible()
   await expect(page.getByRole("link", { name: "Cliente de teste" })).toBeVisible()
   expect(sim.bloqueadas).toEqual([])
 })
@@ -381,10 +400,12 @@ test("Concluir pedido pelo clique direito marca tudo como feito e vai para Concl
   await expect(dialogo).toContainText("marcado como feito")
   await dialogo.getByRole("button", { name: "Concluir pedido", exact: true }).click()
   await expect.poll(status).toBe("enviado")
-  const p = await sim.one("select nf_emitida_em,embalado_em,frete_gerado_em,postado_em from pedidos where id=$1", [sim.pedido.id])
+  const p = await sim.one("select nf_emitida_em,embalado_em,frete_gerado_em,postado_em,rastreio_enviado_em from pedidos where id=$1", [sim.pedido.id])
   expect(Object.values(p).every(Boolean)).toBe(true)
   expect(Number((await sim.one("select count(*) n from pedido_itens where pedido_id=$1 and qtd_bipada=qtd and conferido_em is not null", [sim.pedido.id])).n)).toBe(3)
   expect(Number((await sim.one("select count(*) n from pedido_eventos where pedido_id=$1 and tipo='etapas_puladas'", [sim.pedido.id])).n)).toBe(1)
+  // V107: concluir à mão também passa por cima de "Enviar rastreio" e anota isso no histórico.
+  expect((await sim.one("select texto from pedido_eventos where pedido_id=$1 and tipo='etapas_puladas'", [sim.pedido.id])).texto).toContain("Enviar rastreio")
   expect(await dinheiro()).toEqual(pago)
   await page.goto("/concluidos")
   await expect(page.getByRole("link", { name: "Cliente de teste" })).toBeVisible()

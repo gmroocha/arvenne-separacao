@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react"
 import RespDialog from "@/components/RespDialog"
 import { Button } from "@/components/ui/button"
-import { PASSOS, type StatusPedido } from "@/lib/status"
+import { passosDe, type StatusPedido } from "@/lib/status"
 
 // Etapas em que cada peça anda sozinha: abrem sempre, com as peças que já chegaram lá.
 const ETAPAS_DE_PECA = ["separacao", "conferencia", "bipagem"]
@@ -10,7 +10,8 @@ const lista = (nomes: string[]) => (nomes.length > 1 ? `${nomes.slice(0, -1).joi
 
 // Ir para uma etapa só muda o que aparece na tela (a "vista"), nunca o status do pedido. Etapas de peça abrem sempre; as de
 // documentos à frente da atual pedem aviso (Dialog) antes de abrir. Serve à linha de etapas e à barra inferior.
-export function useIrParaEtapa(atual: number, aoVer: (vista: StatusPedido | null) => void): { ir: (i: number) => void; dialogo: ReactNode } {
+export function useIrParaEtapa(atual: number, aoVer: (vista: StatusPedido | null) => void, origem?: string | null): { ir: (i: number) => void; dialogo: ReactNode } {
+  const PASSOS = passosDe(origem)
   const [bloqueada, setBloqueada] = useState<number | null>(null) // etapa à frente que a pessoa tentou abrir
   const ir = (i: number) => {
     if (atual < 0) return

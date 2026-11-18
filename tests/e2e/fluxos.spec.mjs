@@ -163,7 +163,7 @@ test("V37: falta na Conferência mantém o pedido na Conferência e resolver vol
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect(page.getByText("Avise a cliente", { exact: true })).toBeVisible()
   // A etapa atual da tela é a Conferência (e não a Separação), com o selo do desvio.
-  if ((page.viewportSize()?.width ?? 0) < 1024) await expect(page.getByRole("button", { name: /Etapa 2 de 8 · Conferência/ })).toBeVisible()
+  if ((page.viewportSize()?.width ?? 0) < 1024) await expect(page.getByRole("button", { name: /Etapa 2 de 9 · Conferência/ })).toBeVisible()
   else await expect(page.getByRole("listitem").filter({ hasText: "Conferência" }).getByText("(etapa atual)")).toBeAttached()
   await expect(page.getByRole("heading", { name: /A conferir/ })).toBeVisible()
   mkdirSync("capturas", { recursive: true })
@@ -455,8 +455,12 @@ test("etapa Frete: sem peso; \"Frete gerado\" leva o pedido para a Postagem e \"
   await continuarAviso(page, "Frete", "Postagem")
   await expect(page.getByRole("button", { name: "Postado", exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Postado", exact: true }).click()
+  // V107: pedido do WhatsApp passa por "Enviar rastreio" antes de Concluído.
+  await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("enviar_rastreio")
+  await continuarAviso(page, "Postagem", "Enviar rastreio")
+  await page.getByRole("button", { name: "Mensagem enviada", exact: true }).click()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("enviado")
-  await continuarAviso(page, "Postagem", "Concluído")
+  await continuarAviso(page, "Enviar rastreio", "Concluído")
   expect(sim.bloqueadas).toEqual([])
   await semQuebra(page)
 })

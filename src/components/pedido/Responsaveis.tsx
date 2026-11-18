@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useDesignar, useEquipe, type PedidoDetalhe } from "@/lib/api"
-import { PASSOS_TRABALHO, etapaDoResponsavel } from "@/lib/status"
+import { etapaDoResponsavel, passosTrabalhoDe } from "@/lib/status"
 
 const NINGUEM = "ninguem"
 
@@ -25,6 +25,7 @@ export default function Responsaveis({ pedido, className }: { pedido: PedidoDeta
   const resp = pedido.responsaveis ?? {}
   const nomeDe = (id: string | undefined) => membros.find((m) => m.id === id)?.nome
   const atual = nomeDe(resp[etapa])
+  const PASSOS_TRABALHO = passosTrabalhoDe(pedido.origem)
   const nomeEtapa = PASSOS_TRABALHO.find((p) => p.id === etapa)?.nome ?? ""
   const atualId = resp[etapa]
   const ativos = membros.filter((m) => m.ativo)

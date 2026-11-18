@@ -76,7 +76,7 @@ export function usePedidosExpedicao(busca = "") {
   })
 }
 
-// Pedidos do WhatsApp já enviados cuja cliente ainda não recebeu o rastreio (coluna "Enviar rastreio").
+// Pedidos do WhatsApp já postados que esperam a mensagem de rastreio (etapa "Enviar rastreio").
 export function usePendentesRastreio() {
   return useQuery({
     queryKey: ["pedidos", "rastreio"],
@@ -115,13 +115,14 @@ export function useArquivo(busca: string, limite: number) {
   })
 }
 
-// Pedidos concluídos (status "enviado"): postados, a caminho ou entregues. Leitura direta da tabela: a página só
+// Pedidos concluídos (status "enviado"): a caminho ou entregues. Leitura direta da tabela: a página só
 // precisa de cliente, rastreio e datas (nada financeiro).
-const COLUNAS_CONCLUIDO = "id, numero, origem, cliente_nome, cliente_telefone, rastreio, rastreio_url, rastreio_enviado_em, postado_em, entregue_em, status_desde, shopify_url" as const
+const COLUNAS_CONCLUIDO = "id, numero, origem, cliente_nome, cliente_telefone, rastreio, rastreio_url, rastreio_enviado_em, postado_em, entregue_em, status_desde, shopify_url, entrega_cidade, entrega_uf" as const
 export type PedidoConcluido = {
   id: string; numero: string; origem: "shopify" | "whatsapp"; cliente_nome: string | null; cliente_telefone: string | null
   rastreio: string | null; rastreio_url: string | null; rastreio_enviado_em: string | null; postado_em: string | null
   entregue_em: string | null; status_desde: string; shopify_url: string | null
+  entrega_cidade: string | null; entrega_uf: string | null
 }
 export function useConcluidos(busca: string) {
   const filtro = filtroBuscaPedidos(busca)

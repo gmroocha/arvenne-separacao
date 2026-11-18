@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button"
 import type { AcaoItem, CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { ehDesvio } from "@/lib/selo"
 import { contextoDaEtapa } from "@/lib/etapaVista"
-import { NOME_ETAPA, PASSOS, type StatusPedido } from "@/lib/status"
+import { NOME_ETAPA, passosDe, type StatusPedido } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 import Bipagem from "./Bipagem"
 import Conferencia from "./Conferencia"
 import Problemas from "./Problemas"
-import { Embalagem, Enviado, Postagem } from "./Fechamento"
+import { Embalagem, EnviarRastreio, Enviado, Postagem } from "./Fechamento"
 import Frete from "./Frete"
 import NotaFrete from "./NotaFrete"
 import Separacao from "./Separacao"
@@ -31,6 +31,7 @@ type Props = {
 // de peça as ações valem em qualquer uma delas, nas de documentos só a etapa atual trabalha.
 export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoTrocar, busca }: Props) {
   const { atualIdx, vistaIdx, etapa, somenteVer, cartaoDoDesvio, comBusca } = contextoDaEtapa(pedido, vista)
+  const PASSOS = passosDe(pedido.origem)
 
   const painel = () => {
     switch (etapa) {
@@ -48,6 +49,8 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoTr
         return <Frete pedido={pedido} patch={patch} />
       case "pronto_envio":
         return <Postagem pedido={pedido} patch={patch} />
+      case "enviar_rastreio":
+        return <EnviarRastreio pedido={pedido} patch={patch} />
       case "enviado":
         return <Enviado pedido={pedido} patch={patch} />
       default:

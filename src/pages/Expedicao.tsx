@@ -30,7 +30,7 @@ type Coluna = {
   nome: string
   icone: string
   statuses: StatusPedido[]
-  alerta?: "vermelho" | "amarelo"
+  alerta?: "vermelho" | "amarelo" | "laranja"
 }
 
 // Uma coluna por etapa, na ordem da esteira.
@@ -45,6 +45,8 @@ const COLUNAS: Coluna[] = [
   { id: "embalagem", nome: "Embalagem", icone: "embalagem", statuses: ["embalagem"] },
   { id: "frete", nome: "Frete", icone: "frete", statuses: ["frete"] },
   { id: "pronto_envio", nome: "Postagem", icone: "pronto_envio", statuses: ["pronto_envio"] },
+  // Só pedidos que não são da Shopify: já postados, esperando a mensagem de rastreio. Laranja, para chamar a atenção.
+  { id: "enviar_rastreio", nome: "Enviar rastreio", icone: "enviar_rastreio", statuses: ["enviar_rastreio"], alerta: "laranja" },
 ]
 
 // Pela ordem da esteira (src/lib/status.ts): o destino natural ao concluir a etapa (o mesmo do Dialog) ou
@@ -55,7 +57,8 @@ function podeSoltar(p: PedidoOperacao, c: Coluna) {
   const alvo = c.statuses[0]
   const para = ETAPAS_EXPEDICAO.indexOf(alvo)
   if (de < 0 || para < 0) return false
-  if (alvo === destinoAoConcluir(p.status)) return true
+  if (alvo === "enviar_rastreio" && p.origem === "shopify") return false // pedido da Shopify não tem esta etapa
+  if (alvo === destinoAoConcluir(p.status, p.origem)) return true
   const desvio = alvo === "avisar_cliente" || alvo === "aguardando_cliente"
   return para < de && !desvio
 }
@@ -74,6 +77,20 @@ const COR_ALERTA = {
     anel: "border-warning/40 inset-ring-[0.5px] inset-ring-warning/40 bg-warning/15 text-warning",
     contador: "warning",
   },
+  // Laranja (só borda de 1 px: o traço de 1,5 px é só de verde, amarelo e vermelho).
+  laranja: {
+    coluna: "bg-rastreio/10",
+    icone: "text-rastreio",
+    anel: "border-rastreio/40 bg-rastreio/10 text-rastreio",
+    contador: "secondary",
+  },
+} as const
+
+// Bolha do contador sobre o ícone (celular) e o contador da coluna (PC), por cor de alerta.
+const BOLHA_ALERTA = {
+  vermelho: "bg-destructive text-background",
+  amarelo: "bg-warning text-warning-foreground",
+  laranja: "bg-rastreio text-rastreio-foreground",
 } as const
 
 // Progresso da etapa no cartão ("3/5"), vindo das contagens da view.
@@ -166,7 +183,8 @@ export default function Expedicao() {
     setParams(n, { replace: true })
   }
 
-  const atrasado = (prazo: string | null) => prazo !== null && new Date(prazo).getTime() < agora
+  // Pedido já postado (esperando só a mensagem de rastreio) não conta como atrasado.
+  const atrasado = (p: PedidoOperacao) => p.status !== "enviar_rastreio" && p.prazo !== null && new Date(p.prazo).getTime() < agora
 
   const filtrados = useMemo(() => {
     const t = busca.trim().toLowerCase()
@@ -190,11 +208,11 @@ export default function Expedicao() {
   const dentro = (c: Coluna) =>
     filtrados
       .filter((p) => c.statuses.includes(p.status))
-      .filter((p) => !soAtrasados || atrasado(p.prazo))
+      .filter((p) => !soAtrasados || atrasado(p))
       .filter(daPessoa)
   const porColuna = COLUNAS.map((c) => ({ ...c, pedidos: dentro(c) }))
   // Sem busca, o total vem do banco (conta mesmo além do limite da lista); com busca, conta os da lista filtrada.
-  const totalAtrasados = busca.trim() || !contagens ? filtrados.filter((p) => atrasado(p.prazo)).length : contagens.atrasados
+  const totalAtrasados = busca.trim() || !contagens ? filtrados.filter(atrasado).length : contagens.atrasados
 
   // Celular: o padrão é a primeira etapa que tem pedidos. Com busca, mostra todas as colunas juntas.
   const primeiraComPedidos = porColuna.find((c) => c.pedidos.length > 0)?.id ?? COLUNAS[0].id
@@ -284,7 +302,7 @@ export default function Expedicao() {
                       {c.alerta && c.pedidos.length > 0 ? (
                         <Badge
                           variant={COR_ALERTA[c.alerta].contador}
-                          className={cn("absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums", c.alerta === "vermelho" ? "bg-destructive text-background" : "bg-warning text-warning-foreground")}
+                          className={cn("absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1 tabular-nums", BOLHA_ALERTA[c.alerta])}
                         >
                           {c.pedidos.length}
                         </Badge>
@@ -357,7 +375,7 @@ export default function Expedicao() {
                     <span className="truncate">{c.nome}</span>
                     <Badge
                       variant={c.alerta && c.pedidos.length > 0 ? COR_ALERTA[c.alerta].contador : "secondary"}
-                      className="ml-auto tabular-nums"
+                      className={cn("ml-auto tabular-nums", c.alerta === "laranja" && c.pedidos.length > 0 && BOLHA_ALERTA.laranja)}
                     >
                       {c.pedidos.length}
                     </Badge>

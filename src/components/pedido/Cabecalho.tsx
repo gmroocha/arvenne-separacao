@@ -54,7 +54,7 @@ export default function Cabecalho({ pedido, aoVerDados, semValores, children }: 
             <span className="tabular-nums">{pedido.numero.replace(/^#/, "")}</span>
             <span aria-hidden>·</span>
             <OrigemBadge origem={pedido.origem} />
-            {pedido.fase === "expedicao" && <Prazo prazo={pedido.prazo} horasUteis={pedido.prazo_horas_uteis} />}
+            {pedido.fase === "expedicao" && pedido.status !== "enviar_rastreio" && <Prazo prazo={pedido.prazo} horasUteis={pedido.prazo_horas_uteis} />}
             {alteracoes.length > 0 && abrir && (
               <Button variant="outline" size="xs" onClick={() => abrir({ comValores: !semValores })}>
                 <ArrowLeftRight /> {trocadas > 0 ? "Peças trocadas" : "Peças alteradas"}

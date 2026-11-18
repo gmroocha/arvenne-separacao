@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAcoesItem, useEquipe, useMeuMembro, useSubstituirItem, usePatchPedido, useAlteracoes, usePedido, useRecalcularEtapa, type PedidoDetalhe } from "@/lib/api"
 import { ETAPAS_DE_PECAS, statusPelasPecas } from "@/lib/etapa"
 import { haMarcasNaFila } from "@/lib/lotePecas"
-import { PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
+import { passoAtual, passoDe, passosDe, type StatusPedido } from "@/lib/status"
 import { useQueryClient } from "@tanstack/react-query"
 import type { Item, NovoItem } from "@/lib/tipos"
 
@@ -32,7 +32,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   const [vistaEscolhida, setVista] = useState<StatusPedido | null>(null) // etapa vista na esteira (null = a atual)
   // V61: "Ver mesmo assim" numa etapa à frente que, nesse meio-tempo, virou a atual é a própria etapa atual.
   // Tratada como "outra etapa", ela escondia o diálogo de concluir.
-  const vista = vistaEscolhida !== null && passoDe(vistaEscolhida) === passoAtual(pedido) ? null : vistaEscolhida
+  const vista = vistaEscolhida !== null && passoDe(vistaEscolhida, pedido.origem) === passoAtual(pedido) ? null : vistaEscolhida
   const acao = useAcoesItem(pedido.id)
   // Mudou a etapa do pedido: volta a mostrar a atual (ajuste durante a renderização, sem efeito). Falta marcada
   // na Conferência ou na Etiquetagem não muda a etapa que a tela mostra: o desvio guarda a etapa de origem (V37).
@@ -44,6 +44,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
   // Qualquer avanço de etapa (botão da barra, última peça marcada, botão do documento, menu) mostra "Etapa X concluída →
   // agora Y". Só para frente: voltar de etapa ou reiniciar não avisa.
   const idxAtual = passoAtual(pedido)
+  const passos = passosDe(pedido.origem)
   const membros = useEquipe().data ?? []
   const meuMembro = useMeuMembro()
   const [idxVisto, setIdxVisto] = useState(idxAtual)
@@ -52,11 +53,11 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
     setIdxVisto(idxAtual)
     if (idxAtual > idxVisto && idxVisto >= 0)
       setConcluida({
-        de: PASSOS[idxVisto].nome,
-        ate: PASSOS[idxAtual - 1].nome,
-        agora: PASSOS[idxAtual].nome,
+        de: passos[idxVisto].nome,
+        ate: passos[idxAtual - 1].nome,
+        agora: passos[idxAtual].nome,
         pedidoConcluido: pedido.status === "enviado",
-        avisar: quemAvisar(PASSOS[idxAtual].id, pedido.responsaveis, membros, meuMembro?.id),
+        avisar: quemAvisar(passos[idxAtual].id, pedido.responsaveis, membros, meuMembro?.id),
       })
   }
   // O pedido muda de etapa sozinho quando a última peça termina (o banco calcula na mesma gravação). Um pedido que
@@ -97,7 +98,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
         aoVerDados={foco ? () => setVerDados(true) : undefined}
         semValores={foco}
       >
-        <Etapas status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} responsaveis={pedido.responsaveis} vista={vista} aoVer={setVista} pecas={pedido.pedido_itens} />
+        <Etapas origem={pedido.origem} status={pedido.status} etapaAntesDesvio={pedido.etapa_antes_desvio} eventos={pedido.pedido_eventos} responsaveis={pedido.responsaveis} vista={vista} aoVer={setVista} pecas={pedido.pedido_itens} />
         {/* Busca de peça e responsável da etapa, na mesma linha; o responsável aparece mesmo sem busca. */}
         <div className="flex items-center gap-2 empty:hidden">
           {mostraBusca && <CampoBusca className="flex-1" valor={busca} aoMudar={setBusca} placeholder="Buscar peça: código, nome ou variante" />}

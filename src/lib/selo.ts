@@ -7,6 +7,9 @@ export const COR_SELO = {
   aguardando_cliente: "bg-warning/15 text-warning",
 } as const
 
+// Etapa "Enviar rastreio": laranja suave (borda de 1 px comum; o traço de 1,5 px é só de verde, amarelo e vermelho).
+export const COR_RASTREIO = "border-rastreio/40 bg-rastreio/10 text-rastreio"
+
 export function ehDesvio(status: StatusPedido): status is keyof typeof COR_SELO {
   return status === "avisar_cliente" || status === "aguardando_cliente"
 }

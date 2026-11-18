@@ -41,10 +41,11 @@ export default function AppSidebar() {
       nome: "Expedição",
       icone: Truck,
       ativo: pathname === "/" || pathname.startsWith("/pedidos/"),
-      badge: contagens?.atrasados,
-      alerta: true,
+      // Vermelho: pedidos atrasados. Sem atrasados, laranja: pedidos já postados esperando a mensagem de rastreio.
+      badge: contagens?.atrasados || semRastreio?.length,
+      alerta: contagens?.atrasados ? "vermelho" : "laranja",
     },
-    { to: "/concluidos", nome: "Concluídos", icone: CheckCheck, ativo: pathname === "/concluidos", badge: semRastreio?.length },
+    { to: "/concluidos", nome: "Concluídos", icone: CheckCheck, ativo: pathname === "/concluidos" },
     { to: "/repetidas", nome: "Peças repetidas", icone: Repeat, ativo: pathname === "/repetidas", badge: repetidas },
     { to: "/catalogo", nome: "Catálogo", icone: BookOpen, ativo: pathname === "/catalogo" },
     { to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
@@ -71,7 +72,7 @@ export default function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                   {i.badge ? (
-                    <SidebarMenuBadge className={i.alerta ? "bg-destructive/10 text-destructive" : undefined}>{i.badge}</SidebarMenuBadge>
+                    <SidebarMenuBadge className={i.alerta === "vermelho" ? "bg-destructive/10 text-destructive" : i.alerta === "laranja" ? "bg-rastreio/10 text-rastreio" : undefined}>{i.badge}</SidebarMenuBadge>
                   ) : null}
                 </SidebarMenuItem>
               ))}

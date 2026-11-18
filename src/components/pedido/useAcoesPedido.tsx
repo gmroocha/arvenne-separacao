@@ -5,7 +5,7 @@ import type { GrupoAcoes } from "@/components/MenuAcoes"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useMoverEtapa, useMudarStatus, useReiniciar } from "@/lib/api"
-import { ETAPAS_MOVER, ICONE_ETAPA, NOME_ETAPA, PASSOS, passoAtual, passoDe, type StatusPedido } from "@/lib/status"
+import { ETAPAS_MOVER, ICONE_ETAPA, NOME_ETAPA, passoAtual, passoDe, passosDe, temEnviarRastreio, type StatusPedido } from "@/lib/status"
 import type { Pedido } from "@/lib/tipos"
 
 type Opcoes = {
@@ -14,11 +14,11 @@ type Opcoes = {
   aoCancelado?: () => void
 }
 
-export type PedidoMenu = Pick<Pedido, "id" | "status" | "fase" | "shopify_url"> & { etapa_antes_desvio?: Pedido["etapa_antes_desvio"] }
+export type PedidoMenu = Pick<Pedido, "id" | "status" | "fase" | "shopify_url" | "origem"> & { etapa_antes_desvio?: Pedido["etapa_antes_desvio"] }
 
 // O que o diálogo de "Mover para outra etapa" explica: o que será marcado como feito (para frente) ou zerado (para trás).
-function textoMover(origem: number, destino: number): string {
-  const nomes = PASSOS.map((p) => p.nome)
+function textoMover(origem: number, destino: number, origemPedido?: string | null): string {
+  const nomes = passosDe(origemPedido).map((p) => p.nome)
   if (destino > origem) {
     const feitas = nomes.slice(origem, destino).join(", ")
     return `Vai marcar como feito: ${feitas}. O que ainda não foi feito não é conferido: use só quando o trabalho já foi feito por fora. O histórico guarda que estas etapas foram puladas.`
@@ -39,7 +39,7 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
   const [movendo, setMovendo] = useState<StatusPedido | null>(null) // destino pedido em "Mover para…" ou "Concluir pedido"
   const naEsteira = pedido.fase === "expedicao"
   const origem = passoAtual(pedido)
-  const destinoIdx = movendo ? passoDe(movendo) : -1
+  const destinoIdx = movendo ? passoDe(movendo, pedido.origem) : -1
 
   const grupos: GrupoAcoes[] = [
     {
@@ -53,10 +53,10 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
       titulo: "Mover para outra etapa",
       estilo: "ghost",
       itens: naEsteira
-        ? ETAPAS_MOVER.map((e) => ({
+        ? ETAPAS_MOVER.filter((e) => e !== "enviar_rastreio" || temEnviarRastreio(pedido.origem)).map((e) => ({
             rotulo: NOME_ETAPA[e],
             icone: ICONE_ETAPA[e],
-            atual: passoDe(e) === origem,
+            atual: passoDe(e, pedido.origem) === origem,
             aoClicar: () => setMovendo(e),
           }))
         : [],
@@ -88,9 +88,9 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
             <DialogTitle>{movendo === "enviado" ? "Concluir o pedido?" : movendo ? `Mover para ${NOME_ETAPA[movendo]}?` : ""}</DialogTitle>
             <DialogDescription>
               {movendo === "enviado"
-                ? "Tudo o que falta (separação, conferência, bipagem, nota, embalagem, frete e postagem) é marcado como feito e o pedido vai para Concluídos. O histórico guarda que estas etapas foram puladas."
+                ? `Tudo o que falta (separação, conferência, bipagem, nota, embalagem, frete, postagem${temEnviarRastreio(pedido.origem) ? " e o envio do rastreio à cliente" : ""}) é marcado como feito e o pedido vai para Concluídos. O histórico guarda que estas etapas foram puladas.`
                 : movendo && destinoIdx >= 0 && origem >= 0
-                  ? textoMover(origem, destinoIdx)
+                  ? textoMover(origem, destinoIdx, pedido.origem)
                   : ""}
             </DialogDescription>
           </DialogHeader>
@@ -115,7 +115,7 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
             <DialogTitle>{reiniciando ? "Reiniciar o pedido do zero?" : `Reiniciar ${NOME_ETAPA[pedido.status]}?`}</DialogTitle>
             <DialogDescription>
               {reiniciando
-                ? "Zera separação, conferência, bipagem, nota fiscal, embalagem, frete e postagem, e volta o pedido para Novo. Peças removidas voltam ao pedido e a troca em andamento é cancelada."
+                ? "Zera separação, conferência, bipagem, nota fiscal, embalagem, frete, postagem e rastreio, e volta o pedido para Novo. Peças removidas voltam ao pedido e a troca em andamento é cancelada."
                 : "Zera só o que foi feito nesta etapa, para refazer. O pedido continua nela."}
             </DialogDescription>
           </DialogHeader>

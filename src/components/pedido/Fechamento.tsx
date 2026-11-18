@@ -2,14 +2,11 @@ import { useState } from "react"
 import { Check, ExternalLink, MapPin, MessageCircle, Send, Truck } from "lucide-react"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { textoRastreio } from "@/lib/agente"
 import { linkWhatsApp, quando } from "@/lib/formato"
-import { cn } from "@/lib/utils"
 import CampoSalvo from "./CampoSalvo"
 
 type Patch = (campos: CamposPedido) => void
@@ -98,10 +95,46 @@ export function Postagem({ pedido, patch }: Props) {
   )
 }
 
+// Pedido que não é da Shopify, já postado: falta avisar a cliente. O link de rastreio, o WhatsApp com a mensagem pronta e
+// "Mensagem enviada" (que leva o pedido para Concluídos) ficam todos aqui.
+export function EnviarRastreio({ pedido, patch }: Props) {
+  const link = pedido.rastreio_url ?? pedido.rastreio
+  const wa = link ? linkWhatsApp(pedido.cliente_telefone, textoRastreio(pedido)) : null
+  return (
+    <div className="flex flex-col gap-4">
+      <TituloSecao as="h3">
+        <span className="flex items-center gap-2">
+          <Send className="size-4 text-rastreio" /> Enviar rastreio à cliente
+          {pedido.postado_em && <span className="font-normal text-muted-foreground">postado {quando(pedido.postado_em)}</span>}
+        </span>
+      </TituloSecao>
+      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
+        <li>Confira o link de rastreio (cole se faltar).</li>
+        <li>Abra o WhatsApp com a mensagem pronta e envie.</li>
+        <li>Depois marque &quot;Mensagem enviada&quot;: o pedido vai para Concluídos.</li>
+      </ul>
+      <CampoSalvo id="rastreio-url" rotulo="Link de rastreio" valor={pedido.rastreio_url} inputMode="url" aoSalvar={(v) => patch({ rastreio_url: v })} />
+      {wa ? (
+        <Button variant="outline" size="toque" className="w-full sm:w-fit" asChild>
+          <a href={wa} target="_blank" rel="noreferrer">
+            <MessageCircle /> Abrir WhatsApp com a mensagem
+          </a>
+        </Button>
+      ) : (
+        <Alert>
+          <AlertDescription>{link ? "Sem telefone válido para o WhatsApp." : "Cole o link de rastreio acima para montar a mensagem."}</AlertDescription>
+        </Alert>
+      )}
+      <Button size="xl" className="w-full" onClick={() => patch({ rastreio_enviado_em: new Date().toISOString() })}>
+        <Check /> Mensagem enviada
+      </Button>
+    </div>
+  )
+}
+
+// Pedido concluído: o resumo do que saiu e quando. A cliente do WhatsApp já recebeu a mensagem; a da Shopify é avisada pela loja.
 export function Enviado({ pedido, patch }: Omit<Props, "aoConcluir">) {
-  const wa = pedido.rastreio_url || pedido.rastreio ? linkWhatsApp(pedido.cliente_telefone, textoRastreio(pedido)) : null
   const whats = pedido.origem !== "shopify"
-  const feito = Boolean(pedido.rastreio_enviado_em)
   return (
     <div className="flex flex-col gap-4">
       <TituloSecao as="h3">Concluído{pedido.postado_em ? ` · postado em ${quando(pedido.postado_em)}` : ""}</TituloSecao>
@@ -112,44 +145,13 @@ export function Enviado({ pedido, patch }: Omit<Props, "aoConcluir">) {
           </a>
         </Button>
       ) : (
-        // Pedido concluído à mão (sem passar pelo Frete): este é o único lugar para colar o link depois.
+        // Pedido concluído à mão (sem passar pela Postagem): este é o único lugar para colar o link depois.
         <CampoSalvo id="rastreio-url" rotulo="Link de rastreio" valor={null} inputMode="url" aoSalvar={(v) => patch({ rastreio_url: v })} />
       )}
       {whats ? (
-        <Card size="sm" tom={feito ? "success" : undefined} className={cn(!feito && "ring-primary/40")}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Send className="size-4" /> Enviar rastreio à cliente
-              <Badge variant={feito ? "success" : "outline"} className="ml-auto">
-                {feito ? `Enviado ${quando(pedido.rastreio_enviado_em!)}` : "Pendente"}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {wa ? (
-              <Button variant="outline" size="toque" className="w-full sm:w-fit" asChild>
-                <a href={wa} target="_blank" rel="noreferrer">
-                  <MessageCircle /> Abrir WhatsApp com a mensagem
-                </a>
-              </Button>
-            ) : (
-              <Alert>
-                <AlertDescription>
-                  {pedido.rastreio_url ? "Sem telefone válido para o WhatsApp." : "Preencha o link de rastreio acima para montar a mensagem."}
-                </AlertDescription>
-              </Alert>
-            )}
-            {feito ? (
-              <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ rastreio_enviado_em: null })}>
-                Desfazer mensagem enviada
-              </Button>
-            ) : (
-              <Button size="xl" className="w-full" onClick={() => patch({ rastreio_enviado_em: new Date().toISOString() })}>
-                <Check /> Mensagem enviada
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground">
+          {pedido.rastreio_enviado_em ? `Mensagem de rastreio enviada ${quando(pedido.rastreio_enviado_em)}.` : "Mensagem de rastreio não registrada."}
+        </p>
       ) : (
         <p className="text-sm text-muted-foreground">A Shopify avisa a cliente automaticamente.</p>
       )}

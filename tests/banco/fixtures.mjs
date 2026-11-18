@@ -67,7 +67,7 @@ export const importar = async p => (await one('select importar_pedido_shopify($1
 
 // Prepara um estado operacional válido. Testes não pulam trabalho para chegar a uma etapa.
 export async function prepararEtapa(pedidoId, status) {
-  const niveis=['novo','separacao','conferencia','bipagem','faturamento','embalagem','frete','pronto_envio','enviado']
+  const niveis=['novo','separacao','conferencia','bipagem','faturamento','embalagem','frete','pronto_envio','enviar_rastreio','enviado']
   const n=niveis.indexOf(status)
   if (n>=2) await db.query("update pedido_itens set status='encontrado' where pedido_id=$1 and status<>'removido'",[pedidoId])
   if (n>=3) await db.query("update pedido_itens set conferido_em=now(),etiquetado_em=now() where pedido_id=$1 and status<>'removido'",[pedidoId])
@@ -76,6 +76,7 @@ export async function prepararEtapa(pedidoId, status) {
   if (n>=6) await db.query('update pedidos set embalado_em=now() where id=$1',[pedidoId])
   if (n>=7) await db.query('update pedidos set frete_gerado_em=now(),frete_peso_g=450 where id=$1',[pedidoId])
   if (n>=8) await db.query('update pedidos set postado_em=now() where id=$1',[pedidoId])
+  if (n>=9) await db.query("update pedidos set rastreio_enviado_em=case when origem<>'shopify' then now() end where id=$1",[pedidoId])
   await db.query('update pedidos set status=$2 where id=$1',[pedidoId,status])
 }
 

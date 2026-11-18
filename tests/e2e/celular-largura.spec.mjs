@@ -242,7 +242,7 @@ test("celular de verdade: nenhuma tela alarga a página, dá zoom ou quebra os d
   await page.screenshot({ path: `capturas/celular-toque-lr.png`, fullPage: true })
 
   // Embalagem, Frete, Postagem e Concluídos.
-  for (const [etapa, rotulo] of [["embalagem", "Embalagem"], ["frete", "Frete"], ["pronto_envio", "Postagem"]]) {
+  for (const [etapa, rotulo] of [["embalagem", "Embalagem"], ["frete", "Frete"], ["pronto_envio", "Postagem"], ["enviar_rastreio", "Enviar rastreio"]]) {
     await sim.banco.query("select mover_etapa($1,$2)", [id, etapa])
     await page.goto(`/pedidos/${id}`)
     await page.waitForLoadState("networkidle")

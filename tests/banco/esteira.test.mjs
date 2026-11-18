@@ -199,6 +199,9 @@ test('documentos: cada etapa avança sozinha quando termina; o acerto pendente s
   await db.query("update pedidos set frete_gerado_em=now() where id=$1", [p.id])
   assert.equal(await status(p.id), 'pronto_envio')
   await db.query("update pedidos set postado_em=now() where id=$1", [p.id])
+  // V107: pedido do WhatsApp passa por "Enviar rastreio" e só conclui com a mensagem enviada.
+  assert.equal(await status(p.id), 'enviar_rastreio')
+  await db.query("update pedidos set rastreio_enviado_em=now() where id=$1", [p.id])
   assert.equal(await status(p.id), 'enviado')
   await db.query("update pedidos set entregue_em=now() where id=$1", [p.id])
   assert.equal((await one("select count(*) n from pedido_eventos where pedido_id=$1 and tipo='entregue'", [p.id])).n, 1)
