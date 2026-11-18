@@ -121,8 +121,8 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   expect(await status()).toBe("novo")
   mkdirSync("capturas", { recursive: true })
 
-  // 12 linhas (AN-1 tem 2 unidades). Etiquetas: botão no topo da Separação.
-  await expect(page.getByRole("button", { name: /^Imprimir todas as etiquetas \(13\)/ })).toBeVisible()
+  // 12 linhas (AN-1 tem 2 unidades): uma etiqueta por código, 12. Botão no topo da Separação.
+  await expect(page.getByRole("button", { name: /^Imprimir todas as etiquetas \(12\)/ })).toBeVisible()
   await expect(page.getByRole("button", { name: "Achei", exact: true })).toHaveCount(12)
   await capturar(page, "separacao", info)
   await conferirEtapa(page, o, pago, "pagamento")

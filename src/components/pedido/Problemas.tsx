@@ -20,6 +20,7 @@ import { avisoCredito, listaEscolhida } from "@/lib/trocaTexto"
 import Foto from "@/components/Foto"
 import { NotaNaPeca } from "./NotaNaPeca"
 import { useFeedbackPeca } from "./useFeedbackPeca"
+import { useEtiquetaPeca } from "@/components/etiquetas/useEtiquetaPeca"
 import { useNotaPeca } from "@/components/pedido/useNotaPeca"
 import { MenuPeca } from "./TilePeca"
 import TrocaDialog from "./TrocaDialog"
@@ -117,6 +118,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
   const aguardando = pedido.status === "aguardando_cliente"
   const feedback = useFeedbackPeca()
   const nota = useNotaPeca()
+  const etiqueta = useEtiquetaPeca()
   // Com peça em problema e a cliente ainda não avisada, o cartão já nasce vermelho: não espera o status
   // do pedido mudar (a troca de status vem depois da marcação na tela e fazia o cartão piscar).
   const avisar = problemas.length > 0 && !aguardando
@@ -207,6 +209,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
                         itens={[
                           { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
                           { rotulo: "Voltar a pendente", icone: Undo2, aoClicar: () => marcar(i, "pendente", null) },
+                          etiqueta.acao(i),
                           nota.acao(i),
                           feedback.acao(i),
                         ]}
@@ -277,6 +280,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
       />
       {feedback.dialogo}
       {nota.dialogo}
+      {etiqueta.dialogo}
     </>
   )
 }

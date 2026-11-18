@@ -12,13 +12,15 @@ export type GrupoEtiquetas = {
   itemIds: string[] // peças do grupo, para marcar como etiquetadas depois
 }
 
-type ItemMin = Pick<Item, "id" | "sku" | "qtd">
+type ItemMin = Pick<Item, "id" | "sku" | "qtd"> & { variante?: string | null }
 
-// Uma etiqueta por unidade (qtd), na ordem do pedido. Peça sem SKU não tem o que imprimir: volta em semCodigo.
+// Uma etiqueta por código + variante, na ordem do pedido, nunca pela quantidade: a etiqueta vai no saquinho do modelo e a
+// peça com 3 unidades usa a mesma. Peça sem SKU não tem o que imprimir: volta em semCodigo.
 export function etiquetasDe<T extends ItemMin>(itens: T[]): { etiquetas: Etiqueta[]; semCodigo: T[]; itemIds: string[] } {
   const etiquetas: Etiqueta[] = []
   const semCodigo: T[] = []
   const itemIds: string[] = []
+  const vistos = new Set<string>()
   for (const i of itens) {
     const sku = i.sku?.trim()
     if (!sku) {
@@ -26,7 +28,10 @@ export function etiquetasDe<T extends ItemMin>(itens: T[]): { etiquetas: Etiquet
       continue
     }
     itemIds.push(i.id)
-    for (let n = 0; n < Math.max(1, i.qtd); n++) etiquetas.push({ tipo: "peca", sku, itemId: i.id })
+    const chave = `${sku}\u0000${(i.variante ?? "").trim().toLowerCase()}`
+    if (vistos.has(chave)) continue
+    vistos.add(chave)
+    etiquetas.push({ tipo: "peca", sku, itemId: i.id })
   }
   return { etiquetas, semCodigo, itemIds }
 }

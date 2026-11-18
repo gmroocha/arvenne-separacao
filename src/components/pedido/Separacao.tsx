@@ -3,6 +3,7 @@ import { ArrowLeftRight, Check, Info, MoreHorizontal, PackageX, Play, Printer, T
 import { Quantidade } from "@/components/comum/Quantidade"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import MenuAcoes from "@/components/MenuAcoes"
+import { acaoEtiquetaPeca } from "@/components/etiquetas/useEtiquetaPeca"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import RespDialog from "@/components/RespDialog"
@@ -100,6 +101,7 @@ export default function Separacao({ pedido, acao, aoTrocar }: Props) {
                     itens={[
                       { rotulo: "Falta", icone: PackageX, aoClicar: () => pedirFalta(g[0]) },
                       { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(g[0]) },
+                      acaoEtiquetaPeca(g[0], imprimir),
                       nota.acao(g[0]),
                       feedback.acao(g[0]),
                       { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(g[0], "removido", "cliente desistiu") },
@@ -120,6 +122,7 @@ export default function Separacao({ pedido, acao, aoTrocar }: Props) {
                       itens: [
                         { rotulo: "Em falta", icone: PackageX, aoClicar: () => pedirFalta(i) },
                         { rotulo: "Trocar", icone: ArrowLeftRight, aoClicar: () => aoTrocar(i) },
+                        acaoEtiquetaPeca(i, imprimir),
                         nota.acao(i),
                         feedback.acao(i),
                         { rotulo: "Remover", icone: Trash2, destrutivo: true, aoClicar: () => marcar(i, "removido", "cliente desistiu") },
