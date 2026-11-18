@@ -23,9 +23,10 @@ Cada peça anda sozinha; o pedido fica na etapa da peça mais atrasada e avança
 `avancar_pecas`, avanço automático dos documentos no gatilho `tg_pedidos_antes`). Mover de etapa à mão e "Concluir
 pedido" são `mover_etapa` (grava `etapas_puladas`). Progresso de peça vai em lote por `src/lib/lotePecas.ts`: valores
 absolutos, uma requisição em voo por pedido; não adicione gravação peça a peça nem gatilho caro por clique.
-**Papéis:** `equipe.papel` é `gestor` ou `funcionaria`. Só o gestor mexe no Time (adicionar, editar, desativar, excluir, trocar
-papel); a funcionária vê o app inteiro e a lista do time. O gestor é a pessoa ativa da equipe cujo e-mail é o do login
-(`sou_gestor()`); o time nunca fica sem gestor ativo. Nenhum e-mail vai em migration.
+**Papéis: suspensos desde 18/11/2026** (pedido do Gustavo: "depois fazemos"). Todo mundo logado faz tudo, inclusive no Time;
+`sou_gestor()` devolve sempre verdadeiro e o gatilho do "último gestor" saiu (`20261124100000_papeis_suspensos.sql`). A coluna
+`equipe.papel` continua guardada. Para voltar: recriar `sou_gestor()` e o gatilho como na `rodada3` e o seletor de Papel no
+Time (histórico do git). Nenhum e-mail vai em migration.
 **Métricas decididas:** prazo/atraso, produção por pessoa (`v_producao_pessoa`), mudanças depois de pago e tempo por
 etapa do pedido (`v_tempo_etapas`); nada de histórico clique a clique. Teste principal da esteira:
 `tests/e2e/esteira-ponta-a-ponta.spec.mjs` (precisa continuar passando em celular e PC).

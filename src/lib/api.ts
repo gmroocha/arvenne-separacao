@@ -1893,7 +1893,7 @@ export function useSalvarMembro() {
       const { error } = m.id ? await supabase.from("equipe").update(dados).eq("id", m.id) : await supabase.from("equipe").insert(dados)
       if (error) {
         if (error.code === "23505") throw new Error("Este e-mail já está cadastrado no time")
-        if (error.code === "42501") throw new Error("Só o gestor pode mexer no time")
+        if (error.code === "42501") throw new Error("Sem permissão para mexer no time")
         throw new Error(msgBanco(error))
       }
     },

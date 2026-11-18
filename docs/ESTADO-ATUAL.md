@@ -1,5 +1,13 @@
 # Estado atual (atualizado em 18/11/2026)
 
+## Papéis suspensos (18/11/2026) — **migration ainda não aplicada**
+
+Pedido do Gustavo: por enquanto todos podem fazer tudo. `20261124100000_papeis_suspensos.sql` faz `sou_gestor()` valer para
+qualquer login e tira o gatilho do "último gestor"; a tela do Time mostra Adicionar, Editar, Desativar e Excluir para todo
+mundo, sem seletor nem selo de Papel. A coluna `equipe.papel` fica guardada para quando os papéis voltarem. Testes:
+`tests/banco/time.test.mjs` (papéis suspensos) e `tests/e2e/rodada3-time.spec.mjs`. Até aplicar a migration, quem não é
+gestor vê os botões, mas o banco ainda recusa a gravação.
+
 ## Peças repetidas em etapas avançadas (18/11/2026) — **migration ainda não aplicada**
 
 Caixa **"Incluir pedidos em etapas avançadas"** em Peças repetidas: soma os pedidos que já passaram da separação
