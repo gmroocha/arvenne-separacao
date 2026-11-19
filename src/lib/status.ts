@@ -1,5 +1,5 @@
 import {
-  Check, Eye, FileText, Inbox, ListChecks, BellRing, MessageCircleWarning, Package, ScanBarcode, Send, Tag, Truck,
+  Check, Eye, FileText, Inbox, ListChecks, BellRing, MessageCircleWarning, MessageSquareCheck, Package, ScanBarcode, Send, Tag, Truck,
   type LucideIcon,
 } from "lucide-react"
 
@@ -143,6 +143,7 @@ export const ICONE_ETAPA: Record<string, LucideIcon> = {
   separacao: Eye,
   avisar_cliente: BellRing,
   aguardando_cliente: MessageCircleWarning,
+  cliente_decidiu: MessageSquareCheck, // só coluna da Expedição (não é status)
   conferencia: ListChecks,
   bipagem: ScanBarcode,
   faturamento: FileText,

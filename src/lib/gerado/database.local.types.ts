@@ -365,11 +365,15 @@ type Adicoes = {
         nf_chave: string | null
         horas_na_etapa: number | null
         termometro: string | null
+        troca_decididas: number | null
+        troca_pecas_abertas: number | null
+        cliente_decidiu: boolean | null
       }
       Relationships: []
     }
   }
   Functions: {
+    decisao_troca: { Args: { p_pedido: string | null; p_status: string | null }; Returns: Json | null }
     termometro_etapa: { Args: { p_status: string | null; p_horas: number | null }; Returns: string | null }
   }
 }

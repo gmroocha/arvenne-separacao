@@ -1,5 +1,21 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Cliente decidiu (19/11/2026) — **migration NÃO aplicada**
+
+- Pedido do Gustavo: ver na Expedição os pedidos em que a cliente já escolheu na página da troca, mesmo sem a equipe ter
+  concluído. Nova coluna **"Cliente decidiu"** (verde), logo depois de "Aguardando cliente". **Não é status novo**: a máquina de
+  estados segue com `avisar_cliente` e `aguardando_cliente`; a coluna é derivada.
+- Regra (no banco): pedido em `avisar_cliente`/`aguardando_cliente` cuja troca ativa (`enviada` ou `respondida`) tem peça com
+  `escolha_tipo` preenchido e `concluida_em` vazio. Esses pedidos saem das colunas Avisar/Aguardando. O cartão mostra "Decidiu X de Y"
+  (X = peças escolhidas e não concluídas, Y = peças da troca ainda não concluídas). Quando a equipe conclui a troca o pedido sai sozinho.
+- Migration `20261125160000_cliente_decidiu.sql`: função `decisao_troca(pedido, status)` (invoker; zeros fora de Avisar/Aguardando, sem
+  tocar nas tabelas da troca) e `v_pedidos_operacao` com 3 colunas novas no fim (`troca_decididas`, `troca_pecas_abertas`, `cliente_decidiu`).
+  `v_pedidos` NÃO ganhou as colunas (como `horas_na_etapa`/`termometro`, só existem na lista da esteira); `operacao-leve.test.mjs` as ignora
+  na comparação das duas views.
+- Tela: `Expedicao.tsx` (filtro `decidiu` por coluna; a coluna nova não aceita soltar cartão), `CardPedido.tsx`, ícone em `status.ts`.
+  Antes do `db push` a tela não quebra, mas a coluna fica vazia e os pedidos continuam em Avisar/Aguardando.
+- Testes: `tests/banco/cliente-decidiu.test.mjs`, `tests/e2e/expedicao-cliente-decidiu.spec.mjs`.
+
 ## Falta na Separação espera as outras peças (V114, 19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo**
 
 - Pedido do Gustavo: marcar falta na primeira peça não manda mais o pedido para "Avisar cliente". Ele fica na Separação até

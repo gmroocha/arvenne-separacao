@@ -1,4 +1,5 @@
 import { Link } from "react-router"
+import { MessageSquareCheck } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import Miniaturas from "@/components/Miniaturas"
@@ -35,6 +36,12 @@ export default function CardPedido({ p, progresso }: { p: PedidoOperacao; progre
           <Miniaturas fotos={p.fotos} total={p.qtd_linhas} />
           {progresso && <span className="ml-auto text-sm font-medium tabular-nums">{progresso}</span>}
         </div>
+        {p.cliente_decidiu && (
+          <span className="flex items-center gap-1 text-xs font-medium text-success">
+            <MessageSquareCheck className="size-3.5" aria-hidden />
+            <span className="tabular-nums">Decidiu {p.troca_decididas} de {p.troca_pecas_abertas}</span>
+          </span>
+        )}
         <div className="flex flex-wrap items-center gap-1.5">
           <Prazo prazo={p.status === "enviar_rastreio" ? null : p.prazo} horasUteis={p.prazo_horas_uteis} />
           <TempoNaEtapa status={p.status} desde={p.status_desde} termometro={p.termometro} />

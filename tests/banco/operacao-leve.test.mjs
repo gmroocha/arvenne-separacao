@@ -7,7 +7,8 @@ async function conferir(id) {
   const completo = await one("select * from v_pedidos where id=$1", [id])
   expect(leve).toBeDefined()
   // horas_na_etapa e termometro só existem na lista da esteira (metas_etapa): têm teste próprio em termometro.test.mjs.
-  for (const [campo, valor] of Object.entries(leve)) if (!['horas_na_etapa', 'termometro'].includes(campo)) expect(valor, campo).toEqual(completo[campo])
+  // troca_decididas, troca_pecas_abertas e cliente_decidiu (coluna "Cliente decidiu" da Expedição): cliente-decidiu.test.mjs.
+  for (const [campo, valor] of Object.entries(leve)) if (!['horas_na_etapa', 'termometro', 'troca_decididas', 'troca_pecas_abertas', 'cliente_decidiu'].includes(campo)) expect(valor, campo).toEqual(completo[campo])
 }
 
 test("V79: lista operacional preserva progresso, prazos e regras em todas as etapas", async () => {

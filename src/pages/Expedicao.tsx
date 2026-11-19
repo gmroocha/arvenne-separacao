@@ -30,15 +30,20 @@ type Coluna = {
   nome: string
   icone: string
   statuses: StatusPedido[]
-  alerta?: "vermelho" | "amarelo" | "laranja"
+  alerta?: "vermelho" | "amarelo" | "laranja" | "verde"
+  // Coluna derivada do desvio (não é status): true = só pedidos em que a cliente já escolheu; false = os que não.
+  decidiu?: boolean
 }
 
 // Uma coluna por etapa, na ordem da esteira.
 const COLUNAS: Coluna[] = [
   { id: "fila", nome: "Fila", icone: "fila", statuses: ["novo"] },
   { id: "separacao", nome: "Separação", icone: "separacao", statuses: ["separacao"] },
-  { id: "avisar_cliente", nome: "Avisar cliente", icone: "avisar_cliente", statuses: ["avisar_cliente"], alerta: "vermelho" },
-  { id: "aguardando_cliente", nome: "Aguardando cliente", icone: "aguardando_cliente", statuses: ["aguardando_cliente"], alerta: "amarelo" },
+  { id: "avisar_cliente", nome: "Avisar cliente", icone: "avisar_cliente", statuses: ["avisar_cliente"], alerta: "vermelho", decidiu: false },
+  { id: "aguardando_cliente", nome: "Aguardando cliente", icone: "aguardando_cliente", statuses: ["aguardando_cliente"], alerta: "amarelo", decidiu: false },
+  // Não é uma etapa: pedidos em Avisar/Aguardando cuja troca ativa já tem peça escolhida pela cliente (conta do banco,
+  // `cliente_decidiu`). Some sozinho quando a equipe conclui a troca. Não aceita soltar cartão.
+  { id: "cliente_decidiu", nome: "Cliente decidiu", icone: "cliente_decidiu", statuses: ["avisar_cliente", "aguardando_cliente"], alerta: "verde", decidiu: true },
   { id: "conferencia", nome: "Conferência", icone: "conferencia", statuses: ["conferencia"] },
   { id: "bipagem", nome: "Bipagem", icone: "bipagem", statuses: ["bipagem"] },
   { id: "faturamento", nome: "Nota fiscal", icone: "faturamento", statuses: ["faturamento"] },
@@ -52,6 +57,7 @@ const COLUNAS: Coluna[] = [
 // qualquer etapa anterior do fluxo principal. "Avisar" e "Aguardando cliente" são desvios: só entram
 // como destino quando são o destino natural.
 function podeSoltar(p: PedidoOperacao, c: Coluna) {
+  if (c.decidiu) return false // "Cliente decidiu" é só um filtro do desvio: não se solta cartão nela
   const de = ETAPAS_EXPEDICAO.indexOf(p.status)
   const alvo = c.statuses[0]
   const para = ETAPAS_EXPEDICAO.indexOf(alvo)
@@ -76,6 +82,13 @@ const COR_ALERTA = {
     anel: "border-warning/40 inset-ring-[0.5px] inset-ring-warning/40 bg-warning/15 text-warning",
     contador: "warning",
   },
+  // Verde: o mesmo "success" do bloco "Cliente escolheu" da página do pedido.
+  verde: {
+    coluna: "bg-success/10",
+    icone: "text-success",
+    anel: "border-success/40 inset-ring-[0.5px] inset-ring-success/40 bg-success/10 text-success",
+    contador: "secondary",
+  },
   // Laranja (só borda de 1 px: o traço de 1,5 px é só de verde, amarelo e vermelho).
   laranja: {
     coluna: "bg-rastreio/10",
@@ -90,6 +103,7 @@ const BOLHA_ALERTA = {
   vermelho: "bg-destructive text-background",
   amarelo: "bg-warning text-warning-foreground",
   laranja: "bg-rastreio text-rastreio-foreground",
+  verde: "bg-success text-success-foreground",
 } as const
 
 // Progresso da etapa no cartão ("3/5"), vindo das contagens da view.
@@ -155,7 +169,7 @@ export default function Expedicao() {
     const p = arrastando
     setArrastando(null)
     setAlvo(null)
-    if (!p || c.statuses.includes(p.status)) return
+    if (!p || (!c.decidiu && c.statuses.includes(p.status))) return
     if (!podeSoltar(p, c)) {
       toast.info("Arraste para a próxima etapa")
       return
@@ -207,6 +221,7 @@ export default function Expedicao() {
   const dentro = (c: Coluna) =>
     filtrados
       .filter((p) => c.statuses.includes(p.status))
+      .filter((p) => c.decidiu === undefined || p.cliente_decidiu === c.decidiu)
       .filter((p) => !soAtrasados || atrasado(p))
       .filter(daPessoa)
   const porColuna = COLUNAS.map((c) => ({ ...c, pedidos: dentro(c) }))
@@ -374,7 +389,7 @@ export default function Expedicao() {
                     <span className="truncate">{c.nome}</span>
                     <Badge
                       variant={c.alerta && c.pedidos.length > 0 ? COR_ALERTA[c.alerta].contador : "secondary"}
-                      className={cn("ml-auto tabular-nums", c.alerta === "laranja" && c.pedidos.length > 0 && BOLHA_ALERTA.laranja)}
+                      className={cn("ml-auto tabular-nums", (c.alerta === "laranja" || c.alerta === "verde") && c.pedidos.length > 0 && BOLHA_ALERTA[c.alerta])}
                     >
                       {c.pedidos.length}
                     </Badge>

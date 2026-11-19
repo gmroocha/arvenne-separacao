@@ -24,6 +24,7 @@ depende da origem do pedido (`passosDe(origem)` em `src/lib/status.ts`).
 **Tempo na etapa e termômetro (19/11/2026):** cada etapa tem uma meta em horas úteis (`metas_etapa`, editável no Time); a view
 `v_pedidos_operacao` entrega `horas_na_etapa` e `termometro` (verde até a meta, amarelo até o dobro, vermelho acima; nulo fora
 da esteira). A conta é do banco (`termometro_etapa`); o cartão só exibe, com traço de 1,5 px nessas três cores.
+Na Expedição existe ainda a coluna derivada **"Cliente decidiu"** (não é status): pedidos em `avisar_cliente`/`aguardando_cliente` cuja troca já tem peça escolhida pela cliente e não concluída (`cliente_decidiu` em `v_pedidos_operacao`).
 Cada peça anda sozinha; o pedido fica na etapa da peça mais atrasada e avança sozinho (função `marcar_pecas` em lote,
 `avancar_pecas`, avanço automático dos documentos no gatilho `tg_pedidos_antes`). Mover de etapa à mão e "Concluir
 pedido" são `mover_etapa` (grava `etapas_puladas`). Progresso de peça vai em lote por `src/lib/lotePecas.ts`: valores
