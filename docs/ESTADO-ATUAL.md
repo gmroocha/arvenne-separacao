@@ -1,10 +1,9 @@
 # Estado atual (atualizado em 19/11/2026)
 
-## Fase 1: Embalagem e frete juntas, chave da nota e termômetro de tempo (19/11/2026) — **migrations NÃO aplicadas**
+## Fase 1: Embalagem e frete juntas, chave da nota e termômetro de tempo (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo**
 
-Primeira de quatro fases (1 Rápidas, 2 Logins, 3 Erros, 4 Indicadores). **As três migrations abaixo estão só no repositório: o app
-publicado por `git push` depende delas (`nf_chave`, `metas_etapa`, `horas_na_etapa`, `termometro`, etapa única).** Antes do
-`db push --remote --yes` precisa do "sim" do Gustavo; o dry-run lista só as três.
+Primeira de quatro fases (1 Rápidas, 2 Logins, 3 Erros, 4 Indicadores). As três migrations abaixo foram aplicadas no Supabase em
+19/11/2026 com o "sim" do Gustavo; conferido: nenhum pedido ficou em `frete`, 7 metas gravadas, `authenticated` lê `termometro`.
 
 - **Embalagem e frete (`20261125130000_embalagem_e_frete.sql`):** etapa única, status `embalagem`, nome "Embalagem e frete". Dois
   passos com botão próprio, "Embalado" e "Frete gerado", em qualquer ordem; o pedido só vai para a Postagem com `embalado_em` E

@@ -491,6 +491,21 @@ export type Database = {
         }
         Relationships: []
       }
+      metas_etapa: {
+        Row: {
+          etapa: string
+          meta_horas_uteis: number
+        }
+        Insert: {
+          etapa: string
+          meta_horas_uteis: number
+        }
+        Update: {
+          etapa?: string
+          meta_horas_uteis?: number
+        }
+        Relationships: []
+      }
       movimentos_financeiros: {
         Row: {
           detalhes: Json
@@ -946,6 +961,7 @@ export type Database = {
           frete_servico: string | null
           frete_tipo: string | null
           id: string
+          nf_chave: string | null
           nf_emitida_em: string | null
           nf_numero: string | null
           numero: string
@@ -1016,6 +1032,7 @@ export type Database = {
           frete_servico?: string | null
           frete_tipo?: string | null
           id?: string
+          nf_chave?: string | null
           nf_emitida_em?: string | null
           nf_numero?: string | null
           numero?: string
@@ -1086,6 +1103,7 @@ export type Database = {
           frete_servico?: string | null
           frete_tipo?: string | null
           id?: string
+          nf_chave?: string | null
           nf_emitida_em?: string | null
           nf_numero?: string | null
           numero?: string
@@ -1908,6 +1926,7 @@ export type Database = {
           frete_servico: string | null
           frete_tipo: string | null
           id: string | null
+          nf_chave: string | null
           nf_emitida_em: string | null
           nf_numero: string | null
           numero: string | null
@@ -2004,7 +2023,9 @@ export type Database = {
           etapas_permitidas: Json | null
           fase: string | null
           fotos: Json | null
+          horas_na_etapa: number | null
           id: string | null
+          nf_chave: string | null
           numero: string | null
           origem: string | null
           pedido_em: string | null
@@ -2020,6 +2041,7 @@ export type Database = {
           shopify_url: string | null
           status: string | null
           status_desde: string | null
+          termometro: string | null
         }
         Relationships: []
       }
@@ -2386,6 +2408,10 @@ export type Database = {
           variante: string
           vende_sem_estoque: boolean
         }[]
+      }
+      termometro_etapa: {
+        Args: { p_horas: number; p_status: string }
+        Returns: string
       }
       troca_acerto: {
         Args: { p_status: string; p_troca: string }
