@@ -23,10 +23,19 @@ beforeEach(async()=>{
  await vi.advanceTimersByTimeAsync(0)
 })
 afterEach(()=>{limpar();vi.useRealTimers()})
-test('tempo real: queda volta ao polling curto e reconexão recarrega dados possivelmente perdidos',()=>{
+test('tempo real: queda volta ao polling curto e reconexão recarrega dados possivelmente perdidos',async()=>{
  sim.status?.('SUBSCRIBED');expect(intervalo()).toBe(300000)
  sim.status?.('CHANNEL_ERROR');expect(intervalo()).toBe(60000)
- sim.status?.('SUBSCRIBED');expect(sim.invalidate).toHaveBeenCalledWith()
+ sim.status?.('SUBSCRIBED');await vi.advanceTimersByTimeAsync(15000)
+ expect(sim.invalidate).toHaveBeenCalledWith({refetchType:'active'})
+})
+test('V115: reconexão não relê na mesma hora (espalha os aparelhos entre 2 e 15 s) e relê uma vez só',async()=>{
+ sim.status?.('SUBSCRIBED');sim.status?.('CHANNEL_ERROR');sim.status?.('SUBSCRIBED')
+ expect(sim.invalidate).not.toHaveBeenCalled()
+ await vi.advanceTimersByTimeAsync(1999);expect(sim.invalidate).not.toHaveBeenCalled()
+ await vi.advanceTimersByTimeAsync(13001);expect(sim.invalidate).toHaveBeenCalledTimes(1)
+ const {atrasoReconexao}=await import('@/lib/tempoReal')
+ for(let n=0;n<200;n++){const a=atrasoReconexao();expect(a).toBeGreaterThanOrEqual(2000);expect(a).toBeLessThan(15000)}
 })
 test('tempo real: agrupa eventos de outra pessoa e aguarda a fila local antes de recarregar',async()=>{
  const canal=sim.inscricoes.find(x=>x.filtro.event==='mudou')

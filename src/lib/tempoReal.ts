@@ -8,6 +8,9 @@ import { PACOTE_ATUAL, haVersaoNova, lerPacotePublicado, recarregarUmaVez } from
 let canalAtivo = false
 export const intervaloListas = () => (canalAtivo ? 300_000 : 60_000)
 
+// Espera antes de reler tudo depois de uma queda do canal: espalha os aparelhos (2 a 15 s).
+export const atrasoReconexao = () => 2_000 + Math.floor(Math.random() * 13_000)
+
 type Aviso = { t?: string; p?: unknown }
 const idDe = (v: unknown) => (typeof v === "string" ? v : null)
 const escondida = () => typeof document !== "undefined" && document.hidden
@@ -58,6 +61,7 @@ export function useTempoReal() {
     }
 
     let ativo = true
+    let releitura: ReturnType<typeof setTimeout> | undefined
     // Canal privado: a autorização do Realtime confere o login (política em realtime.messages).
     const canal = supabase.channel("pedidos", { config: { private: true } }).on("broadcast", { event: "mudou" }, (m: { payload?: Aviso }) => {
       if (m.payload) anotar(m.payload)
@@ -70,7 +74,14 @@ export function useTempoReal() {
         if (canalAtivo && teveQueda) {
           teveQueda = false
           if (escondida()) adiado = true
-          else qc.invalidateQueries()
+          // V115: quando o banco engasga, todos os aparelhos caem e voltam juntos; reler tudo na mesma hora derruba o banco de
+          // novo. Cada aparelho espera um tempo aleatório (2 a 15 s) e relê só o que está na tela (consultas ativas).
+          else {
+            clearTimeout(releitura)
+            releitura = setTimeout(() => {
+              if (ativo) qc.invalidateQueries({ refetchType: "active" })
+            }, atrasoReconexao())
+          }
         } else if (!canalAtivo) teveQueda = true
       })
     }
@@ -80,6 +91,7 @@ export function useTempoReal() {
       .then(assinar)
     return () => {
       ativo = false
+      clearTimeout(releitura)
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", aoMostrar)
       }

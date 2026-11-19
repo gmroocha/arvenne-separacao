@@ -64,8 +64,10 @@ export function usePedidosExpedicao(busca = "") {
   const filtro = filtroBuscaPedidos(busca)
   return useQuery({
     queryKey: ["pedidos", "expedicao", filtro ?? ""],
-    // O termômetro muda com o passar das horas, sem nenhum aviso do banco: a esteira relê a cada 60 s, com ou sem canal ao vivo.
-    refetchInterval: 60_000,
+    // Lista mais lida do app: com o canal ao vivo, só a reserva de 5 min (o aviso do banco já atualiza na hora). Ler a cada
+    // 60 s fixos em 6 aparelhos sobrecarregou o banco gratuito em 19/11/2026 (V115). O tempo na etapa anda na tela sozinho;
+    // a cor do termômetro pode atrasar até 5 min.
+    refetchInterval: intervaloListas,
     placeholderData: keepPreviousData,
     queryFn: async ({ signal }) => {
       let q = supabase.from("v_pedidos_operacao").select("*")

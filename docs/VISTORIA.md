@@ -534,6 +534,12 @@ viria "Há acerto ou devolução pendente" sem o botão Devolvido na tela. Migra
 | --- | --- | --- | --- |
 | V114 | Média | Na Separação, marcar a primeira peça como falta levava o pedido na hora para "Avisar cliente", antes de a separadora terminar as outras peças. Junto: `sair_do_desvio` ainda tinha a antiga etapa Frete na ordem (vindo da Postagem sem embalagem tentaria voltar para Frete) e, chamado com peça ainda em falta, tirava o pedido do aviso. | O pedido só vai para "Avisar cliente" quando há peça em falta/defeito e nenhuma pendente (`alterar_item`, `marcar_falta`, `avancar_pecas`); com peça pendente fica na Separação. `sair_do_desvio` não sai do aviso com falta e não usa mais Frete. Migration `20261125153000_falta_espera_separacao.sql`, `tests/banco/falta-espera-separacao.test.mjs`. |
 
+## App fora do ar por sobrecarga do banco (V115, 19/11/2026)
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V115 | Alta | Com 6 aparelhos, o banco gratuito (Nano) esgotou o tempo de 278 consultas entre 15:56 e 16:40 e o app ficou ~10 min fora. A Expedição relia a lista a cada 60 s fixos (desde a Fase 1), e quando o canal ao vivo caía todos os aparelhos voltavam juntos e reliam tudo na mesma hora (efeito cascata). | Expedição volta ao intervalo das listas (5 min com canal ao vivo); reconexão espera 2 a 15 s aleatórios e relê só o que está na tela. `tests/unidade/expedicaoLeitura.test.ts`, `tests/unidade/tempoReal.test.ts`. Otimização das consultas pesadas (RLS, troca_painel, alterar_item) em seguida. |
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na
