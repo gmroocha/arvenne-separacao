@@ -1,4 +1,36 @@
-# Estado atual (atualizado em 18/11/2026)
+# Estado atual (atualizado em 19/11/2026)
+
+## Fase 1: Embalagem e frete juntas, chave da nota e termômetro de tempo (19/11/2026) — **migrations NÃO aplicadas**
+
+Primeira de quatro fases (1 Rápidas, 2 Logins, 3 Erros, 4 Indicadores). **As três migrations abaixo estão só no repositório: o app
+publicado por `git push` depende delas (`nf_chave`, `metas_etapa`, `horas_na_etapa`, `termometro`, etapa única).** Antes do
+`db push --remote --yes` precisa do "sim" do Gustavo; o dry-run lista só as três.
+
+- **Embalagem e frete (`20261125130000_embalagem_e_frete.sql`):** etapa única, status `embalagem`, nome "Embalagem e frete". Dois
+  passos com botão próprio, "Embalado" e "Frete gerado", em qualquer ordem; o pedido só vai para a Postagem com `embalado_em` E
+  `frete_gerado_em` (gatilho `tg_pedidos_antes`). `avancar_pecas` pula direto de embalagem a Postagem quando os dois já estavam
+  feitos; `mover_etapa`, `regras_etapas`, `reavaliar_etapa`, `reiniciar_pedido` e `designar` perderam o `frete`. Os pedidos que
+  estavam em `frete` voltam para `embalagem` (a embalagem já feita fica marcada, só falta o frete) e o responsável do Frete passa
+  para a Embalagem e frete se esta estava vazia; `status_desde` e histórico não mudam. `frete` continua aceito no CHECK de status
+  só por causa dos eventos antigos. `v_producao_pessoa` não mudou (a lista de etapas com `frete` conta o histórico antigo e o salto
+  embalagem → Postagem). Teste: `tests/banco/embalagem-frete.test.mjs` (inclui a migração dos pedidos em Frete).
+- **Chave de acesso da nota (`20261125140000_nf_chave.sql`):** `pedidos.nf_chave`, só 44 dígitos, opcional; `v_pedidos` e
+  `v_pedidos_operacao` ganham a coluna no fim. Na Nota fiscal o campo aceita colar com espaços e pontos, mostra em grupos de 4 e
+  avisa "Faltam/Sobram N números" (não grava com tamanho errado). No bloco Frete, linha "Chave da nota" com Copiar (só os números)
+  e dentro do "Copiar tudo". Testes: `tests/unidade/chaveNota.test.ts`, `tests/banco/nf-chave.test.mjs`.
+- **Tempo na etapa e termômetro (`20261125150000_metas_etapa.sql`):** tabela `metas_etapa` (horas úteis; padrões separação 2,
+  conferência 1, bipagem 1, nota 2, embalagem e frete 2, postagem 4, enviar rastreio 2; todos leem, edita quem passa em
+  `sou_gestor()`, sem DELETE). `v_pedidos_operacao` ganha `horas_na_etapa` e `termometro` (verde até a meta, amarelo até o
+  dobro, vermelho acima; nulo fora da esteira e em Avisar/Aguardando cliente); a conta está em `termometro_etapa(status, horas)`.
+  O cartão da Expedição mostra "Nesta etapa há X" em todas as etapas, com ponto e traço de 1,5 px na cor; a lista da Expedição
+  relê a cada 60 s. Time ganhou "Metas de tempo por etapa". Teste: `tests/banco/termometro.test.mjs`.
+- **Compatibilidade enquanto o banco não tem a migration:** a tela trata o status antigo `frete` como Embalagem e frete (passo e
+  coluna da Expedição), então publicar o app antes do `db push` não deixa pedido sem painel. As cores do termômetro, a chave e as
+  metas só aparecem depois da migration (a tela esconde as metas e ignora a cor se o banco ainda não tem as colunas).
+- Falha que já existia antes desta fase: `acessibilidade.spec.mjs` (tema claro, tela `troca`, contraste 4,08 num Badge vermelho;
+  falha também no HEAD anterior). Não mexida aqui.
+- Telas testadas: `tests/e2e/embalagem-frete.spec.mjs` (chave, ordem livre, termômetro, metas); `esteira-ponta-a-ponta`, `fluxos`,
+  `celular-largura`, `rodada3-pedido` e os de banco foram ajustados à etapa única.
 
 ## Troca fantasma e devolução na Conferência (18/11/2026)
 

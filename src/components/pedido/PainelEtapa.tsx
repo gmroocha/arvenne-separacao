@@ -10,8 +10,8 @@ import type { Item } from "@/lib/tipos"
 import Bipagem from "./Bipagem"
 import Conferencia from "./Conferencia"
 import Problemas from "./Problemas"
-import { Embalagem, EnviarRastreio, Enviado, Postagem } from "./Fechamento"
-import Frete from "./Frete"
+import EmbalagemFrete from "./EmbalagemFrete"
+import { EnviarRastreio, Enviado, Postagem } from "./Fechamento"
 import NotaFrete from "./NotaFrete"
 import Separacao from "./Separacao"
 import { BuscaPecaContexto } from "./buscaPecaContexto"
@@ -44,9 +44,7 @@ export default function PainelEtapa({ pedido, vista, aoVoltar, acao, patch, aoTr
       case "faturamento":
         return <NotaFrete pedido={pedido} patch={patch} />
       case "embalagem":
-        return <Embalagem pedido={pedido} patch={patch} />
-      case "frete":
-        return <Frete pedido={pedido} patch={patch} />
+        return <EmbalagemFrete pedido={pedido} patch={patch} />
       case "pronto_envio":
         return <Postagem pedido={pedido} patch={patch} />
       case "enviar_rastreio":

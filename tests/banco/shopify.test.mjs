@@ -133,7 +133,7 @@ test('Shopify despachada antes da embalagem só avisa (uma vez), sem mover o ped
   assert.equal(await eventos(p.id, 'shopify_alerta'), 1)
 })
 
-test('Shopify despachada: na embalagem ou no frete ainda sem etiqueta só avisa; do frete gerado ou da postagem vai a enviado', async () => {
+test('Shopify despachada: na embalagem e frete sem o frete gerado só avisa; da postagem (embalagem e frete prontos) vai a enviado', async () => {
   const preparar = async (shopifyId, etapa, extra = '') => {
     await importar(payloadV2({ shopify_order_id: String(shopifyId) }))
     const p = await pedidoDe(shopifyId)
@@ -145,12 +145,10 @@ test('Shopify despachada: na embalagem ou no frete ainda sem etiqueta só avisa;
   const embalagem = await preparar(888101, 'embalagem')
   assert.equal(embalagem.status, 'embalagem')
   assert.equal(await eventos(embalagem.id, 'shopify_alerta'), 1)
-  const semEtiqueta = await preparar(888102, 'frete')
-  assert.equal(semEtiqueta.status, 'frete')
+  // Embalagem e frete é uma etapa só: embalado, mas sem frete gerado, o pedido ainda não pode ser dado como enviado.
+  const semEtiqueta = await preparar(888102, 'embalagem', 'update pedidos set embalado_em = now() where id = $1')
+  assert.equal(semEtiqueta.status, 'embalagem')
   assert.equal(await eventos(semEtiqueta.id, 'shopify_alerta'), 1)
-  const comEtiqueta = await preparar(888103, 'frete', 'update pedidos set frete_gerado_em = now(), frete_peso_g = 300 where id = $1')
-  assert.equal(comEtiqueta.status, 'enviado')
-  assert.ok(comEtiqueta.postado_em)
   assert.equal((await preparar(888104, 'pronto_envio')).status, 'enviado')
 })
 

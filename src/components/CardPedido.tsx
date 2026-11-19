@@ -1,14 +1,16 @@
 import { Link } from "react-router"
 import { Card } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import Miniaturas from "@/components/Miniaturas"
 import MenuContexto from "@/components/MenuContexto"
 import Prazo from "@/components/pedido/Prazo"
+import TempoNaEtapa from "@/components/pedido/TempoNaEtapa"
+import { tracoDoTermometro } from "@/lib/termometro"
 import { SeloAcerto } from "@/components/SeloAcerto"
 import AvatarMembro from "@/components/AvatarMembro"
 import { useEquipe, useReembolsosPendentes } from "@/lib/api"
 import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { OrigemBadge } from "@/components/StatusBadge"
-import { tempoNaEtapa } from "@/lib/status"
 import type { PedidoOperacao } from "@/lib/tipos"
 
 // Cartão do pedido na esteira: a cliente em destaque, o número pequeno. Clique direito (ou toque longo) abre as ações.
@@ -18,7 +20,7 @@ export default function CardPedido({ p, progresso }: { p: PedidoOperacao; progre
   const resp = p.fase === "expedicao" ? responsavelDaEtapaAtual(p, membros) : null
   return (
     <MenuContexto pedido={p}>
-      <Card size="sm" className="transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring">
+      <Card size="sm" className={cn("transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring", tracoDoTermometro(p.termometro))}>
         <Link to={`/pedidos/${p.id}`} draggable={false} className="flex flex-col gap-2 px-3 outline-none">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-col">
@@ -35,7 +37,7 @@ export default function CardPedido({ p, progresso }: { p: PedidoOperacao; progre
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Prazo prazo={p.status === "enviar_rastreio" ? null : p.prazo} horasUteis={p.prazo_horas_uteis} />
-          {(p.status === "novo" || p.status === "separacao") && <span className="text-xs text-muted-foreground">{tempoNaEtapa(p.status, p.status_desde)}</span>}
+          <TempoNaEtapa status={p.status} desde={p.status_desde} termometro={p.termometro} />
           {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
           {reembolsar && !p.acerto_pendente && <SeloAcerto reembolsar />}
         </div>

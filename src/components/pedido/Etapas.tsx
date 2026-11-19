@@ -25,7 +25,7 @@ type Props = {
   pecas?: Item[] // as peças do pedido: a linha mostra quantas esperam em cada etapa de peça
 }
 
-// Esteira do pedido: Separação → Conferência → Bipagem → Nota fiscal → Embalagem → Frete → Postagem → Concluído.
+// Esteira do pedido: Separação → Conferência → Bipagem → Nota fiscal → Embalagem e frete → Postagem → Concluído.
 // Tocar numa etapa só muda o que aparece na tela, nunca o status do pedido. Cada peça anda sozinha: as etapas de
 // peça (Separação, Conferência, Bipagem) abrem sempre, com as peças que já chegaram lá; as de documentos à
 // frente da atual pedem aviso (Dialog) antes de abrir.

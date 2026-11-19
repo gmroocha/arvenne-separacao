@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button"
 import type { PedidoDetalhe } from "@/lib/api"
 import { mascaraCep, mascaraDocumento, reais } from "@/lib/formato"
 import { cn } from "@/lib/utils"
-import { CopiarTudo, Faltando, FreteCusto, LinhaDado, ModalidadeFrete, Passo, type Dado, type Patch } from "./NotaFrete"
+import { formatarChaveNota } from "@/lib/chaveNota"
+import { CopiarTudo, FreteCusto, LinhaDado, ModalidadeFrete, Passo, type Dado, type Patch } from "./NotaFrete"
 
 type Props = { pedido: PedidoDetalhe; patch: Patch }
 
-// Etapa Frete (depois da Embalagem): gera-se o frete na Frenet e cola-se o link de rastreio. Sem peso. Um botão só:
-// "Frete gerado" leva o pedido para a Postagem (o banco avança sozinho).
+// Parte "Frete" da etapa Embalagem e frete: gera-se o frete na Frenet. Sem peso. Um botão: "Frete gerado". Com a embalagem
+// também feita (em qualquer ordem), o banco leva o pedido para a Postagem sozinho. O bloco "Dados faltando" fica em
+// EmbalagemFrete, acima dos dois passos.
 export default function Frete({ pedido, patch }: Props) {
   const cpf = pedido.cliente_cpf ? mascaraDocumento(pedido.cliente_cpf) : null
   const cep = pedido.entrega_cep ? mascaraCep(pedido.entrega_cep) : null
@@ -20,6 +22,8 @@ export default function Frete({ pedido, patch }: Props) {
 
   const dadosFrete: Dado[] = [
     { rotulo: "CEP", valor: cep },
+    // Opcional (guardada na Nota fiscal): mostrada em grupos de 4 e copiada só com os números.
+    ...(pedido.nf_chave ? [{ rotulo: "Chave da nota", valor: formatarChaveNota(pedido.nf_chave), copia: pedido.nf_chave }] : []),
     { rotulo: "Valor das peças (com desconto)", valor: reais(pedido.valor_pecas_pacote ?? pedido.valor_pecas_com_desconto) },
     { rotulo: "Tipo de envio", valor: pedido.frete_tipo },
     { rotulo: "CPF/CNPJ", valor: cpf },
@@ -35,9 +39,7 @@ export default function Frete({ pedido, patch }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Faltando pedido={pedido} patch={patch} />
-
-      <Passo numero={1} icone={<Truck />} titulo="Frete" feito={gerado} feitoEm={pedido.frete_gerado_em} aoDesfazer={() => patch({ frete_gerado_em: null })} textoDesfazer="Desfazer frete gerado">
+      <Passo numero={2} icone={<Truck />} titulo="Frete" feito={gerado} feitoEm={pedido.frete_gerado_em} aoDesfazer={() => patch({ frete_gerado_em: null })} textoDesfazer="Desfazer frete gerado">
         <div className="flex flex-col">
           {dadosFrete.map((d) => (
             <LinhaDado key={d.rotulo} {...d} />

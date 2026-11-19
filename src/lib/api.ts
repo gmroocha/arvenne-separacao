@@ -63,7 +63,8 @@ export function usePedidosExpedicao(busca = "") {
   const filtro = filtroBuscaPedidos(busca)
   return useQuery({
     queryKey: ["pedidos", "expedicao", filtro ?? ""],
-    refetchInterval: intervaloListas,
+    // O termômetro muda com o passar das horas, sem nenhum aviso do banco: a esteira relê a cada 60 s, com ou sem canal ao vivo.
+    refetchInterval: 60_000,
     placeholderData: keepPreviousData,
     queryFn: async ({ signal }) => {
       let q = supabase.from("v_pedidos_operacao").select("*")
@@ -576,7 +577,7 @@ export type CamposPedido = Partial<
     | "frete_tipo" | "frete_pago_por" | "frete_cobrado" | "frete_custo"
     | "forma_pagamento" | "valor_pago" | "pago_em" | "data_compra" | "somar_em"
     | "status" | "rastreio" | "observacoes"
-    | "nf_numero" | "nf_emitida_em" | "frete_gerado_em" | "frete_peso_g" | "frete_servico" | "rastreio_url"
+    | "nf_numero" | "nf_chave" | "nf_emitida_em" | "frete_gerado_em" | "frete_peso_g" | "frete_servico" | "rastreio_url"
     | "pedido_fornecedor_numero" | "pedido_fornecedor_em" | "embalado_em" | "postado_em" | "rastreio_enviado_em"
   >
 > & {
@@ -1898,6 +1899,33 @@ export function useSalvarMembro() {
       }
     },
     [["equipe"]],
+  )
+}
+
+// Metas de tempo por etapa (horas úteis): o termômetro dos cartões compara o tempo na etapa com elas (conta feita no banco).
+export type MetaEtapa = { etapa: string; meta_horas_uteis: number }
+export function useMetasEtapa() {
+  return useQuery({
+    queryKey: ["metas"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("metas_etapa").select("etapa, meta_horas_uteis")
+      if (error) {
+        if (semFuncao(error)) return [] as MetaEtapa[] // banco ainda sem a migration: sem metas, sem termômetro
+        throw error
+      }
+      return data as MetaEtapa[]
+    },
+  })
+}
+
+export function useSalvarMeta() {
+  return useAcao(
+    async (m: { etapa: string; horas: number }) => {
+      const { error } = await supabase.from("metas_etapa").update({ meta_horas_uteis: m.horas }).eq("etapa", m.etapa)
+      if (error) throw new Error(error.code === "42501" ? "Sem permissão para mudar as metas" : msgBanco(error))
+    },
+    [["metas"], ["pedidos"]],
   )
 }
 

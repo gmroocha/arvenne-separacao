@@ -86,8 +86,10 @@ export function pendenciasDaEtapa(etapa: string, itens: Item[], p: CamposDocs): 
       const falta = [!p.nf_emitida_em && "a nota fiscal", !p.pedido_fornecedor_em && "o pedido LR"].filter(Boolean) as string[]
       return { qtd: falta.length, texto: falta.length ? `Ainda falta marcar ${falta.join(" e ")}` : "" }
     }
-    case "embalagem": return { qtd: p.embalado_em ? 0 : 1, texto: p.embalado_em ? "" : "A embalagem ainda não foi marcada" }
-    case "frete": return { qtd: p.frete_gerado_em ? 0 : 1, texto: p.frete_gerado_em ? "" : "O frete ainda não foi gerado" }
+    case "embalagem": {
+      const falta = [!p.embalado_em && "a embalagem", !p.frete_gerado_em && "o frete"].filter(Boolean) as string[]
+      return { qtd: falta.length, texto: falta.length ? `Ainda falta marcar ${falta.join(" e ")}` : "" }
+    }
     case "pronto_envio": return { qtd: p.postado_em ? 0 : 1, texto: p.postado_em ? "" : "A postagem ainda não foi marcada" }
     case "enviar_rastreio": return { qtd: p.rastreio_enviado_em ? 0 : 1, texto: p.rastreio_enviado_em ? "" : "A mensagem de rastreio ainda não foi marcada como enviada" }
     default: return { qtd: 0, texto: "" }

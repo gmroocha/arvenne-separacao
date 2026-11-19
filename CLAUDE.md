@@ -12,13 +12,18 @@ em esteira (separação, conferência, etiquetagem, bipagem, nota e frete, embal
 O Gustavo **não é dev**: explique em português simples, passo a passo, e faça você mesmo tudo o que não
 exige navegador, senha ou segredo.
 
-## A esteira (desde 17/11/2026)
+## A esteira (desde 17/11/2026; Embalagem e Frete juntas desde 19/11/2026)
 
-Separação (com "Imprimir todas as etiquetas") → Conferência (cola a etiqueta) → Bipagem → Nota fiscal → Embalagem →
-Frete → Postagem (aqui se cola o link de rastreio) → **Enviar rastreio** (status `enviar_rastreio`, só pedidos que não são da
+Separação (com "Imprimir todas as etiquetas") → Conferência (cola a etiqueta) → Bipagem → Nota fiscal (com a **chave de acesso**
+da nota, 44 números, opcional, em `pedidos.nf_chave`; ela aparece no bloco Frete com botão Copiar) → **Embalagem e frete** (uma
+etapa só, status `embalagem`, dois botões: "Embalado" e "Frete gerado", em qualquer ordem; só vai para a Postagem com os dois;
+o status `frete` continua aceito no banco só por causa do histórico, nenhum pedido novo entra nele) → Postagem (aqui se cola o link de rastreio) → **Enviar rastreio** (status `enviar_rastreio`, só pedidos que não são da
 Shopify: link, WhatsApp com a mensagem pronta e "Mensagem enviada"; pedido da Shopify pula esta etapa) → **Concluído** (status
 `enviado` no banco; página `/concluidos`, só abas A caminho e Entregues). Não existe etapa Etiquetagem. A posição de uma etapa
 depende da origem do pedido (`passosDe(origem)` em `src/lib/status.ts`).
+**Tempo na etapa e termômetro (19/11/2026):** cada etapa tem uma meta em horas úteis (`metas_etapa`, editável no Time); a view
+`v_pedidos_operacao` entrega `horas_na_etapa` e `termometro` (verde até a meta, amarelo até o dobro, vermelho acima; nulo fora
+da esteira). A conta é do banco (`termometro_etapa`); o cartão só exibe, com traço de 1,5 px nessas três cores.
 Cada peça anda sozinha; o pedido fica na etapa da peça mais atrasada e avança sozinho (função `marcar_pecas` em lote,
 `avancar_pecas`, avanço automático dos documentos no gatilho `tg_pedidos_antes`). Mover de etapa à mão e "Concluir
 pedido" são `mover_etapa` (grava `etapas_puladas`). Progresso de peça vai em lote por `src/lib/lotePecas.ts`: valores

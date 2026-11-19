@@ -42,8 +42,7 @@ const COLUNAS: Coluna[] = [
   { id: "conferencia", nome: "Conferência", icone: "conferencia", statuses: ["conferencia"] },
   { id: "bipagem", nome: "Bipagem", icone: "bipagem", statuses: ["bipagem"] },
   { id: "faturamento", nome: "Nota fiscal", icone: "faturamento", statuses: ["faturamento"] },
-  { id: "embalagem", nome: "Embalagem", icone: "embalagem", statuses: ["embalagem"] },
-  { id: "frete", nome: "Frete", icone: "frete", statuses: ["frete"] },
+  { id: "embalagem", nome: "Embalagem e frete", icone: "embalagem", statuses: ["embalagem", "frete"] },
   { id: "pronto_envio", nome: "Postagem", icone: "pronto_envio", statuses: ["pronto_envio"] },
   // Só pedidos que não são da Shopify: já postados, esperando a mensagem de rastreio. Laranja, para chamar a atenção.
   { id: "enviar_rastreio", nome: "Enviar rastreio", icone: "enviar_rastreio", statuses: ["enviar_rastreio"], alerta: "laranja" },

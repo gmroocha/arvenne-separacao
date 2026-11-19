@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 import { avisoSemPecas, etapaCompleta, etapaDaPeca, pecasPorEtapa, pendenciasDaEtapa, separarAdicionais, statusPelasPecas } from "@/lib/etapa"
-import { destinoAoConcluir, ETAPAS, etapaAtual, etapaDoResponsavel, FASE_DE, PASSOS, passoAtual, passosDe, proximaEtapa, STATUS_DA_FASE } from "@/lib/status"
+import { destinoAoConcluir, ETAPAS, etapaAtual, etapaDoResponsavel, FASE_DE, PASSOS, passoAtual, passoDe, passosDe, proximaEtapa, STATUS_DA_FASE } from "@/lib/status"
 import type { Item } from "@/lib/tipos"
 
 const peca = (campos: Partial<Item> = {}): Item => ({
@@ -27,27 +27,26 @@ test("o fluxo normal não pula uma etapa", () => {
   expect(proximaEtapa("enviado")).toBeNull()
   expect(proximaEtapa("aguardando_cliente")).toBe("separacao")
 })
-test("esteira sem Etiquetagem: Nota fiscal → Embalagem → Frete → Postagem → Concluído", () => {
+test("esteira sem Etiquetagem: Nota fiscal → Embalagem e frete → Postagem → Concluído", () => {
   expect(proximaEtapa("faturamento")).toBe("embalagem")
-  expect(proximaEtapa("embalagem")).toBe("frete")
-  expect(proximaEtapa("frete")).toBe("pronto_envio")
+  expect(proximaEtapa("embalagem")).toBe("pronto_envio") // Embalagem e frete é uma etapa só
   // V107: pedido do WhatsApp passa por "Enviar rastreio"; o da Shopify vai direto para Concluído.
   expect(proximaEtapa("pronto_envio")).toBe("enviar_rastreio")
   expect(proximaEtapa("pronto_envio", "whatsapp")).toBe("enviar_rastreio")
   expect(proximaEtapa("pronto_envio", "shopify")).toBe("enviado")
   expect(proximaEtapa("enviar_rastreio")).toBe("enviado")
   expect(destinoAoConcluir("pronto_envio", "shopify")).toBe("enviado")
-  expect(destinoAoConcluir("embalagem")).toBe("frete")
+  expect(destinoAoConcluir("embalagem")).toBe("pronto_envio")
   expect(PASSOS.map((p) => p.id)).toEqual([
-    "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado",
+    "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviar_rastreio", "enviado",
   ])
   expect(passosDe("shopify").map((p) => p.id)).toEqual([
-    "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviado",
+    "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviado",
   ])
   expect(passosDe("whatsapp")).toEqual(PASSOS)
-  expect(passoAtual({ status: "enviado", origem: "shopify" })).toBe(7)
-  expect(passoAtual({ status: "enviado", origem: "whatsapp" })).toBe(8)
-  expect(passoAtual({ status: "enviar_rastreio", origem: "whatsapp" })).toBe(7)
+  expect(passoAtual({ status: "enviado", origem: "shopify" })).toBe(6)
+  expect(passoAtual({ status: "enviado", origem: "whatsapp" })).toBe(7)
+  expect(passoAtual({ status: "enviar_rastreio", origem: "whatsapp" })).toBe(6)
   expect(passoAtual({ status: "enviar_rastreio", origem: "shopify" })).toBe(-1)
   expect(etapaDoResponsavel({ status: "enviar_rastreio", origem: "whatsapp" })).toBe("enviar_rastreio")
   expect(etapaDoResponsavel({ status: "enviado", origem: "whatsapp" })).toBeNull()
@@ -56,8 +55,12 @@ test("esteira sem Etiquetagem: Nota fiscal → Embalagem → Frete → Postagem 
   expect(pendenciasDaEtapa("enviar_rastreio", [], { rastreio_enviado_em: "2026-11-18T10:00:00Z" }).qtd).toBe(0)
   expect(PASSOS.at(-1)?.nome).toBe("Concluído")
   expect(PASSOS.find((p) => p.id === "faturamento")?.nome).toBe("Nota fiscal")
+  expect(PASSOS.find((p) => p.id === "embalagem")?.nome).toBe("Embalagem e frete")
+  expect(PASSOS.some((p) => (p.id as string) === "frete")).toBe(false)
+  // A etapa antiga continua conhecida (histórico e banco ainda sem a migration) e vale como Embalagem e frete.
   expect(FASE_DE.frete).toBe("expedicao")
-  expect(etapaAtual({ status: "avisar_cliente", etapa_antes_desvio: "frete" })).toBe("frete")
+  expect(passoDe("frete")).toBe(passoDe("embalagem"))
+  expect(proximaEtapa("frete")).toBe("pronto_envio")
 })
 test("peça pendente, inclusive adicional, impede completar conferência", () => {
   const pronta = peca({ conferido_em: "2026-11-12T12:00:00Z" })
@@ -129,6 +132,9 @@ test("V95: o que 'Concluir etapa' vai marcar como feito, por etapa", () => {
   expect(pendenciasDaEtapa("faturamento", itens, { nf_emitida_em: "x" }).texto).toBe("Ainda falta marcar o pedido LR")
   expect(pendenciasDaEtapa("faturamento", itens, {}).texto).toBe("Ainda falta marcar a nota fiscal e o pedido LR")
   expect(pendenciasDaEtapa("faturamento", itens, { nf_emitida_em: "x", pedido_fornecedor_em: "x" })).toEqual({ qtd: 0, texto: "" })
-  expect(pendenciasDaEtapa("frete", itens, {}).qtd).toBe(1)
+  expect(pendenciasDaEtapa("embalagem", itens, {})).toEqual({ qtd: 2, texto: "Ainda falta marcar a embalagem e o frete" })
+  expect(pendenciasDaEtapa("embalagem", itens, { embalado_em: "x" }).texto).toBe("Ainda falta marcar o frete")
+  expect(pendenciasDaEtapa("embalagem", itens, { frete_gerado_em: "x" }).texto).toBe("Ainda falta marcar a embalagem")
+  expect(pendenciasDaEtapa("embalagem", itens, { embalado_em: "x", frete_gerado_em: "x" })).toEqual({ qtd: 0, texto: "" })
   expect(pendenciasDaEtapa("pronto_envio", itens, { postado_em: "x" }).qtd).toBe(0)
 })

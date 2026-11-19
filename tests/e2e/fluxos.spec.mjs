@@ -163,7 +163,7 @@ test("V37: falta na Conferência mantém o pedido na Conferência e resolver vol
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect(page.getByText("Avise a cliente", { exact: true })).toBeVisible()
   // A etapa atual da tela é a Conferência (e não a Separação), com o selo do desvio.
-  if ((page.viewportSize()?.width ?? 0) < 1024) await expect(page.getByRole("button", { name: /Etapa 2 de 9 · Conferência/ })).toBeVisible()
+  if ((page.viewportSize()?.width ?? 0) < 1024) await expect(page.getByRole("button", { name: /Etapa 2 de 8 · Conferência/ })).toBeVisible()
   else await expect(page.getByRole("listitem").filter({ hasText: "Conferência" }).getByText("(etapa atual)")).toBeAttached()
   await expect(page.getByRole("heading", { name: /A conferir/ })).toBeVisible()
   mkdirSync("capturas", { recursive: true })
@@ -474,18 +474,18 @@ test("peças trocadas: selo, diálogo com valores do banco e histórico por filt
   await semQuebra(page)
 })
 
-// Esteira: Nota fiscal → Embalagem → Frete → Postagem → Concluído. Sem peso; um botão por etapa e o pedido avança sozinho.
-test("etapa Frete: sem peso; \"Frete gerado\" leva o pedido para a Postagem e \"Postado\" para Concluídos", async ({ page, context, baseURL }) => {
+// Esteira: Nota fiscal → Embalagem e frete → Postagem → Concluído. Sem peso; um botão por passo e o pedido avança sozinho.
+test("etapa Embalagem e frete: sem peso; \"Frete gerado\" (com a embalagem feita) leva o pedido para a Postagem e \"Postado\" para Concluídos", async ({ page, context, baseURL }) => {
   await iniciar(context, baseURL, { status: "novo" })
   await sim.banco.query("update pedido_itens set status='encontrado',conferido_em=now(),etiquetado_em=now(),qtd_bipada=qtd,bipado_em=now() where pedido_id=$1", [sim.pedido.id])
-  await sim.banco.query("update pedidos set nf_emitida_em=now(),pedido_fornecedor_em=now(),embalado_em=now(),status='frete',entrega_cep='01001000',entrega_logradouro='Rua A',entrega_numero='1',entrega_bairro='Centro',entrega_cidade='São Paulo',entrega_uf='SP',cliente_cpf='12345678909' where id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedidos set nf_emitida_em=now(),pedido_fornecedor_em=now(),embalado_em=now(),status='embalagem',entrega_cep='01001000',entrega_logradouro='Rua A',entrega_numero='1',entrega_bairro='Centro',entrega_cidade='São Paulo',entrega_uf='SP',cliente_cpf='12345678909' where id=$1", [sim.pedido.id])
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect(page.getByText("Peso da caixa fechada")).toHaveCount(0)
   await expect(page.getByRole("textbox", { name: /Peso da caixa/ })).toHaveCount(0)
   await expect(page.getByRole("button", { name: "Concluir frete" })).toHaveCount(0)
   await page.getByRole("button", { name: "Frete gerado", exact: true }).click()
   await expect.poll(async () => (await sim.one("select status from pedidos where id=$1", [sim.pedido.id])).status).toBe("pronto_envio")
-  await continuarAviso(page, "Frete", "Postagem")
+  await continuarAviso(page, "Embalagem e frete", "Postagem")
   await expect(page.getByRole("button", { name: "Postado", exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Postado", exact: true }).click()
   // V107: pedido do WhatsApp passa por "Enviar rastreio" antes de Concluído.

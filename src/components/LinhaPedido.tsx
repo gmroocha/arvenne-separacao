@@ -2,6 +2,7 @@ import type { ComponentProps } from "react"
 import { Link } from "react-router"
 import Miniaturas from "@/components/Miniaturas"
 import Prazo from "@/components/pedido/Prazo"
+import TempoNaEtapa from "@/components/pedido/TempoNaEtapa"
 import { SeloAcerto } from "@/components/SeloAcerto"
 import AvatarMembro from "@/components/AvatarMembro"
 import { useEquipe, useReembolsosPendentes } from "@/lib/api"
@@ -9,11 +10,12 @@ import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { OrigemBadge, StatusBadge } from "@/components/StatusBadge"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { quando, reais } from "@/lib/formato"
-import { tempoDesde, tempoNaEtapa } from "@/lib/status"
-import type { Pedido } from "@/lib/tipos"
+import { tempoDesde } from "@/lib/status"
+import type { Pedido, PedidoOperacao } from "@/lib/tipos"
 
 // `resto` vai para o <li>: permite envolver a linha num menu de clique direito (asChild).
-export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentProps<"li">) {
+// `termometro` só vem da esteira (v_pedidos_operacao); as outras listas não têm e mostram só o tempo.
+export default function LinhaPedido({ p, ...resto }: { p: Pedido & Partial<Pick<PedidoOperacao, "termometro">> } & ComponentProps<"li">) {
   const reembolsar = useReembolsosPendentes().data?.has(p.id) ?? false
   const membros = useEquipe().data ?? []
   const resp = p.fase === "expedicao" ? responsavelDaEtapaAtual(p, membros) : null
@@ -47,7 +49,7 @@ export default function LinhaPedido({ p, ...resto }: { p: Pedido } & ComponentPr
               <StatusBadge status={p.status} somadaA={p.somada_a_numero} />
               {resp && <AvatarMembro nome={resp.nome} />}
               <Prazo prazo={p.status === "enviar_rastreio" ? null : p.prazo} horasUteis={p.prazo_horas_uteis} />
-              {(p.status === "novo" || p.status === "separacao") && <span className="text-xs text-muted-foreground">{tempoNaEtapa(p.status, p.status_desde)}</span>}
+              <TempoNaEtapa status={p.status} desde={p.status_desde} termometro={p.termometro} />
               {p.acerto_pendente && <SeloAcerto devolver={(p.a_devolver ?? 0) > 0} />}
               {reembolsar && !p.acerto_pendente && <SeloAcerto reembolsar />}
             </>

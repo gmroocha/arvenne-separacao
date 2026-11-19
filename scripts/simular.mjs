@@ -1,7 +1,7 @@
 // Abre uma tela do app com dados REAIS, mas trocando campos do pedido na resposta (ex.: status) e
 // BLOQUEANDO qualquer gravação (POST/PATCH/DELETE e RPC). Nada é escrito no Supabase.
 // Uso: npm run simular -- <rota> '<json com campos do pedido a trocar>' <nome> ["botão > outro botão"] [texto para rolar até]
-// Ex.: npm run simular -- /pedidos/<id> '{"status":"frete","frete_peso_g":450}' frete   (precisa do npm run dev e de um npm run capturas antes, para a sessão)
+// Ex.: npm run simular -- /pedidos/<id> '{"status":"embalagem","frete_peso_g":450}' embalagem   (precisa do npm run dev e de um npm run capturas antes, para a sessão)
 import { chromium } from "@playwright/test"
 import { mkdirSync, readFileSync } from "node:fs"
 import { instalarRedeSemGravacao } from "./simulacao/rede.mjs"

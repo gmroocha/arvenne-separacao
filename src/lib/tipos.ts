@@ -48,7 +48,12 @@ export type Pedido = Omit<Obrigatorios<Views<'v_pedidos'>, 'id' | 'numero' | 'st
 }
 
 // Projeção usada na esteira; valores financeiros completos ficam no detalhe do pedido.
-export type PedidoOperacao = Pick<Pedido, keyof Views<'v_pedidos_operacao'>>
+export type Termometro = 'verde' | 'amarelo' | 'vermelho'
+// O tempo na etapa e a faixa do termômetro vêm do banco (horas úteis contra a meta da etapa em metas_etapa); a tela só exibe.
+export type PedidoOperacao = Pick<Pedido, Exclude<keyof Views<'v_pedidos_operacao'>, 'horas_na_etapa' | 'termometro'>> & {
+  horas_na_etapa: number | null
+  termometro: Termometro | null // nulo fora da esteira (venda, arquivo, avisar/aguardando cliente)
+}
 
 // Pessoa do Time Arvenne (tabela equipe). O e-mail liga a pessoa ao login ("Comigo").
 export type Papel = 'gestor' | 'funcionaria'

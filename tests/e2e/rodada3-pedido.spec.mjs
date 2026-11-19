@@ -136,12 +136,12 @@ test("V103: quantidade digitada na venda vale ao sair do campo, com limites e um
   expect(sim.bloqueadas).toEqual([])
 })
 
-// V104: o link de rastreio é colado na Postagem (não no Frete).
-test("V104: o link de rastreio fica na Postagem, não no Frete", async ({ page, context, baseURL }) => {
+// V104: o link de rastreio é colado na Postagem (não na Embalagem e frete).
+test("V104: o link de rastreio fica na Postagem, não na Embalagem e frete", async ({ page, context, baseURL }) => {
   await montar(context, baseURL, { pecas: 1 })
   await sim.banco.query("update pedido_itens set status='encontrado',conferido_em=now(),etiquetado_em=now(),qtd_bipada=qtd,bipado_em=now() where pedido_id=$1", [sim.pedido.id])
   await sim.banco.query("update pedidos set nf_emitida_em=now(),pedido_fornecedor_em=now(),embalado_em=now() where id=$1", [sim.pedido.id])
-  await sim.banco.query("update pedidos set status='frete' where id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedidos set status='embalagem' where id=$1", [sim.pedido.id])
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await expect(page.getByRole("button", { name: "Frete gerado", exact: true })).toBeVisible()
   await expect(page.getByRole("textbox", { name: /rastreio/i })).toHaveCount(0)

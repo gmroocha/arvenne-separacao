@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { useEquipe, useExcluirMembro, useSalvarMembro } from "@/lib/api"
+import CampoSalvo from "@/components/pedido/CampoSalvo"
+import { useEquipe, useExcluirMembro, useMetasEtapa, useSalvarMembro, useSalvarMeta } from "@/lib/api"
+import { PASSOS_TRABALHO } from "@/lib/status"
 import type { Membro } from "@/lib/tipos"
 
 // Papéis (gestor/funcionária) suspensos por enquanto: todo mundo faz tudo no Time. A coluna papel fica guardada no
@@ -51,6 +53,43 @@ function FormMembro({ membro, aoSalvar }: { membro?: Membro; aoSalvar: () => voi
         {salvar.isPending && <Spinner />} Salvar
       </Button>
     </form>
+  )
+}
+
+// Meta de tempo de cada etapa da esteira, em horas úteis (sem fim de semana nem feriado). O cartão do pedido fica verde até
+// a meta, amarelo até o dobro e vermelho acima; a conta é feita no banco.
+function MetasDeTempo() {
+  const { data, isLoading } = useMetasEtapa()
+  const salvar = useSalvarMeta()
+  const metas = new Map((data ?? []).map((m) => [m.etapa, m.meta_horas_uteis]))
+  if (isLoading || metas.size === 0) return null
+  const aoSalvar = (etapa: string, texto: string | null) => {
+    const horas = Number((texto ?? "").replace(",", "."))
+    if (!texto || !Number.isFinite(horas) || horas <= 0) return void toast.error("Digite as horas da meta (um número maior que zero)")
+    salvar.mutate({ etapa, horas }, { onSuccess: () => toast.success("Meta salva") })
+  }
+  return (
+    <section aria-labelledby="metas-titulo" className="flex flex-col gap-3 border-t pt-4">
+      <div className="flex flex-col gap-1">
+        <h2 id="metas-titulo" className="text-base font-semibold">Metas de tempo por etapa</h2>
+        <p className="text-sm text-muted-foreground">
+          Quantas horas úteis (sem fim de semana nem feriado) cada etapa deve levar. O pedido fica verde até a meta, amarelo até o dobro
+          e vermelho acima.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {PASSOS_TRABALHO.filter((p) => metas.has(p.id)).map((p) => (
+          <CampoSalvo
+            key={p.id}
+            id={`meta-${p.id}`}
+            rotulo={`${p.nome} (horas)`}
+            valor={String(metas.get(p.id)).replace(".", ",")}
+            inputMode="decimal"
+            aoSalvar={(v) => aoSalvar(p.id, v)}
+          />
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -116,6 +155,8 @@ export default function Time() {
           ))}
         </ItemGroup>
       )}
+
+      <MetasDeTempo />
 
       <RespDialog
         aberto={excluindo !== null}

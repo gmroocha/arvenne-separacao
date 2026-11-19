@@ -48,7 +48,7 @@ test("V94: faixa da esteira no celular/estreito — arrastar com o mouse rola e 
   await expect(faixa).toBeVisible()
   expect(await faixa.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeGreaterThan(100)
   const url = page.url()
-  const botao = page.getByRole("button", { name: /Frete/ }).first()
+  const botao = page.getByRole("button", { name: /Embalagem e frete/ }).first()
   const b = await faixa.getByRole("button").nth(1).boundingBox()
   const marcado = await page.getByRole("button", { pressed: true }).first().textContent()
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)

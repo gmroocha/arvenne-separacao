@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Check, ExternalLink, MapPin, MessageCircle, Send, Truck } from "lucide-react"
+import { Check, ExternalLink, MapPin, MessageCircle, Package, Send, Truck } from "lucide-react"
 import { TituloSecao } from "@/components/comum/TituloSecao"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -8,18 +8,20 @@ import type { CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { textoRastreio } from "@/lib/agente"
 import { linkWhatsApp, quando } from "@/lib/formato"
 import CampoSalvo from "./CampoSalvo"
+import { Passo } from "./NotaFrete"
 
 type Patch = (campos: CamposPedido) => void
 type Props = { pedido: PedidoDetalhe; patch: Patch }
 
 const ITENS_EMBALAGEM = ["Caixa do tamanho certo", "Nota impressa dentro", "Caixa fechada"]
 
-// Um botão só: marcar a embalagem como feita leva o pedido para o Frete (o banco avança sozinho).
+// Parte "Embalagem" da etapa Embalagem e frete: um botão, "Embalado". Com o frete também gerado (em qualquer ordem), o
+// banco leva o pedido para a Postagem sozinho.
 export function Embalagem({ pedido, patch }: Props) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set())
+  const feito = Boolean(pedido.embalado_em)
   return (
-    <div className="flex flex-col gap-4">
-      <TituloSecao as="h3">Embalagem</TituloSecao>
+    <Passo numero={1} icone={<Package />} titulo="Embalagem" feito={feito} feitoEm={pedido.embalado_em} aoDesfazer={() => patch({ embalado_em: null })} textoDesfazer="Desfazer embalagem">
       <ul className="flex flex-col gap-2">
         {ITENS_EMBALAGEM.map((t, n) => (
           <li key={t}>
@@ -41,7 +43,7 @@ export function Embalagem({ pedido, patch }: Props) {
           </li>
         ))}
       </ul>
-      {pedido.embalado_em ? (
+      {feito ? (
         <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ embalado_em: null })}>
           Desfazer embalagem
         </Button>
@@ -50,7 +52,7 @@ export function Embalagem({ pedido, patch }: Props) {
           <Check /> Embalado
         </Button>
       )}
-    </div>
+    </Passo>
   )
 }
 

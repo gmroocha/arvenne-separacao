@@ -13,8 +13,8 @@ export const ETAPAS = [
   { id: "conferencia", nome: "Conferência" },
   { id: "bipagem", nome: "Bipagem" },
   { id: "faturamento", nome: "Nota fiscal" },
-  { id: "embalagem", nome: "Embalagem" },
-  { id: "frete", nome: "Frete" },
+  { id: "embalagem", nome: "Embalagem e frete" },
+  { id: "frete", nome: "Frete" }, // etapa antiga: nenhum pedido novo entra nela; fica por causa do histórico
   { id: "pronto_envio", nome: "Postagem" },
   { id: "enviar_rastreio", nome: "Enviar rastreio" }, // só pedidos que não são da Shopify (a loja avisa a cliente)
   { id: "enviado", nome: "Concluído" }, // o status continua "enviado" no banco
@@ -56,18 +56,18 @@ export const STATUS_DA_FASE: Record<Fase, StatusPedido[]> = {
   arquivo: ["enviado", "cancelado", "perdida", "somada"],
   expedicao: [
     "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "bipagem", "faturamento",
-    "embalagem", "frete", "pronto_envio", "enviar_rastreio",
+    "embalagem", "frete", "pronto_envio", "enviar_rastreio", // "frete" é a etapa antiga (sem pedidos novos)
   ],
 }
 
 // Etapas de expedição (para arrastar cartões e descobrir a posição na esteira).
 export const ETAPAS_EXPEDICAO: StatusPedido[] = [
   "novo", "separacao", "avisar_cliente", "aguardando_cliente", "conferencia", "bipagem", "faturamento",
-  "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado",
+  "embalagem", "pronto_envio", "enviar_rastreio", "enviado",
 ]
 
 // Etapas oferecidas em "Mover para outra etapa" (o banco decide se pode: mover_etapa). Desvios não entram.
-export const ETAPAS_MOVER = ["separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado"] as const satisfies readonly StatusPedido[]
+export const ETAPAS_MOVER = ["separacao", "conferencia", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviar_rastreio", "enviado"] as const satisfies readonly StatusPedido[]
 
 // Linha de etapas da tela do pedido. "Avisar/Aguardando cliente" não são passos: é um desvio da Separação.
 export const PASSOS = [
@@ -75,8 +75,8 @@ export const PASSOS = [
   { id: "conferencia", nome: "Conferência", statuses: ["conferencia"] },
   { id: "bipagem", nome: "Bipagem", statuses: ["bipagem"] },
   { id: "faturamento", nome: "Nota fiscal", statuses: ["faturamento"] },
-  { id: "embalagem", nome: "Embalagem", statuses: ["embalagem"] },
-  { id: "frete", nome: "Frete", statuses: ["frete"] },
+  // "frete" é a etapa antiga: enquanto sobrar pedido nela (banco ainda sem a migration), a tela o trata como Embalagem e frete.
+  { id: "embalagem", nome: "Embalagem e frete", statuses: ["embalagem", "frete"] },
   { id: "pronto_envio", nome: "Postagem", statuses: ["pronto_envio"] },
   { id: "enviar_rastreio", nome: "Enviar rastreio", statuses: ["enviar_rastreio"] },
   { id: "enviado", nome: "Concluído", statuses: ["enviado"] },
@@ -126,13 +126,13 @@ export function etapaDoResponsavel(p: ComDesvio): (typeof PASSOS_TRABALHO)[numbe
 
 // Caminho normal da expedição. Etapas de venda, "avisar_cliente", "aguardando_cliente" e "cancelado" ficam fora.
 const FLUXO: StatusPedido[] = [
-  "novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado",
+  "novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviar_rastreio", "enviado",
 ]
 
 export function proximaEtapa(s: StatusPedido, origem?: string | null): StatusPedido | null {
   if (s === "avisar_cliente" || s === "aguardando_cliente") return "separacao"
   const fluxo = temEnviarRastreio(origem) ? FLUXO : FLUXO.filter((e) => e !== "enviar_rastreio")
-  const i = fluxo.indexOf(s)
+  const i = fluxo.indexOf(s === "frete" ? "embalagem" : s) // "frete" (antigo) vale como Embalagem e frete
   return i >= 0 && i < fluxo.length - 1 ? fluxo[i + 1] : null
 }
 
@@ -172,12 +172,9 @@ export const DESCRICAO_ETAPA: Partial<Record<StatusPedido, string[]>> = {
     "Faça o pedido de venda no fornecedor.",
   ],
   embalagem: [
-    "Coloque as peças na caixa com a nota impressa.",
-    "Feche a caixa.",
-  ],
-  frete: [
-    "Gere o frete na Frenet.",
-    "Cole a etiqueta de envio na caixa.",
+    "Coloque as peças na caixa com a nota impressa e feche a caixa.",
+    "Gere o frete na Frenet e cole a etiqueta de envio na caixa.",
+    "Marque \"Embalado\" e \"Frete gerado\", em qualquer ordem: o pedido vai para a Postagem quando os dois estiverem marcados.",
   ],
   pronto_envio: [
     "Leve o pacote aos Correios e cole aqui o link de rastreio.",

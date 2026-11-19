@@ -188,11 +188,14 @@ test('V14: cada destino exige o trabalho das etapas anteriores, inclusive nota e
   await recusa(() => db.query("update pedidos set status='embalagem' where id=$1",[p.id]),/nota fiscal/)
   // O gatilho considera as datas NOVAS desta mesma gravação.
   await db.query("update pedidos set nf_emitida_em=now(),pedido_fornecedor_em=now(),status='embalagem' where id=$1",[p.id])
-  // Nova esteira: o frete só vem depois da embalagem (a caixa fechada é pesada) e antes da postagem.
-  await recusa(() => db.query("update pedidos set status='frete' where id=$1",[p.id]),/embalagem/)
-  await db.query("update pedidos set embalado_em=now(),status='frete' where id=$1",[p.id])
+  // Embalagem e frete é uma etapa só: 'frete' deixou de ser etapa e a Postagem exige a embalagem E o frete.
+  await recusa(() => db.query("update pedidos set status='frete' where id=$1",[p.id]),/Etapa inválida/)
+  await recusa(() => db.query("update pedidos set status='pronto_envio' where id=$1",[p.id]),/Confirme a embalagem/)
+  await db.query("update pedidos set embalado_em=now() where id=$1",[p.id])
+  assert.equal((await one('select status from pedidos where id=$1',[p.id])).status,'embalagem','só a embalagem: continua na etapa')
   await recusa(() => db.query("update pedidos set status='pronto_envio' where id=$1",[p.id]),/Gere o frete/)
-  await db.query("update pedidos set frete_gerado_em=now(),frete_peso_g=450,status='pronto_envio' where id=$1",[p.id])
+  await db.query("update pedidos set frete_gerado_em=now(),frete_peso_g=450 where id=$1",[p.id])
+  assert.equal((await one('select status from pedidos where id=$1',[p.id])).status,'pronto_envio','embalagem e frete feitos: avança sozinho')
   await recusa(() => db.query("update pedidos set status='enviado' where id=$1",[p.id]),/postagem/)
   // V107: pedido do WhatsApp só conclui depois de enviar o rastreio à cliente.
   await recusa(() => db.query("update pedidos set postado_em=now(),status='enviado' where id=$1",[p.id]),/rastreio/)
@@ -205,8 +208,8 @@ test('V14: acerto pendente bloqueia embalagem mesmo com peças e documentos pron
   const f=await fixture({desconto:0})
   await escolher(f); await concluir(f)
   await recusa(() => prepararEtapa(f.pedido.id,'embalagem'),/acertos/)
-  // A regra vale também para as etapas seguintes (Frete e Postagem).
-  for (const etapa of ['frete','pronto_envio']) await recusa(() => prepararEtapa(f.pedido.id,etapa),/acertos/)
+  // A regra vale também para a etapa seguinte (Postagem).
+  for (const etapa of ['pronto_envio']) await recusa(() => prepararEtapa(f.pedido.id,etapa),/acertos/)
   await one("select troca_acerto($1,'recebido')",[f.troca.id])
   await prepararEtapa(f.pedido.id,'embalagem')
   assert.equal((await one('select status from pedidos where id=$1',[f.pedido.id])).status,'embalagem')
@@ -243,7 +246,7 @@ test('V16: restaurar uma removida retorna à separação; pedido enviado recusa 
   await recusa(() => db.query("update pedido_itens set status='pendente' where pedido_id=$1",[enviado.id]),/arquivado|enviado/)
 })
 
-test.each([['nf_emitida_em','faturamento'],['embalado_em','embalagem'],['frete_gerado_em','frete']])('V16: desfazer %s retorna os documentos para %s', async (campo,destino) => {
+test.each([['nf_emitida_em','faturamento'],['embalado_em','embalagem'],['frete_gerado_em','embalagem']])('V16: desfazer %s retorna os documentos para %s', async (campo,destino) => {
   const p=await pedidoWhats('pronto_envio')
   await db.exec('set local role authenticated')
   await db.query(`update pedidos set ${campo}=null where id=$1`,[p.id])
@@ -254,30 +257,30 @@ test.each([['nf_emitida_em','faturamento'],['embalado_em','embalagem'],['frete_g
   for (const k of ['nf_emitida_em','frete_gerado_em','embalado_em']) assert.equal(depois[k]===null, k===campo, k)
 })
 
-test('Frete: desfazer a embalagem ou a nota na etapa Frete volta para onde o trabalho foi reaberto', async () => {
-  for (const [campo,destino] of [['embalado_em','embalagem'],['nf_emitida_em','faturamento']]) {
-    const p=await pedidoWhats('frete')
+test('Embalagem e frete: desfazer a embalagem, o frete ou a nota na Postagem volta para onde o trabalho foi reaberto', async () => {
+  for (const [campo,destino] of [['embalado_em','embalagem'],['frete_gerado_em','embalagem'],['nf_emitida_em','faturamento']]) {
+    const p=await pedidoWhats('pronto_envio')
     await db.exec('set local role authenticated')
     await db.query(`update pedidos set ${campo}=null where id=$1`,[p.id])
     assert.equal((await one('select status from pedidos where id=$1',[p.id])).status,destino,campo)
     await db.exec('reset role')
   }
-  // Reabrir uma peça já na etapa Frete volta para a bipagem, preservando as datas da esteira.
-  const q=await pedidoWhats('frete')
+  // Reabrir uma peça já na Postagem volta para a bipagem, preservando as datas da esteira.
+  const q=await pedidoWhats('pronto_envio')
   await db.exec('set local role authenticated')
   await db.query("update pedido_itens set qtd_bipada=0,bipado_em=null where pedido_id=$1 and sku='A1'",[q.id])
   assert.equal((await one('select status from pedidos where id=$1',[q.id])).status,'bipagem')
 })
 
-test('Frete: reiniciar a etapa Frete limpa o frete gerado e o peso; a nota e a embalagem ficam', async () => {
+test('Embalagem e frete: reiniciar a etapa limpa a embalagem, o frete gerado e o peso; a nota fica', async () => {
   const p=await pedidoWhats('pronto_envio')
   assert.equal((await one('select frete_peso_g from pedidos where id=$1',[p.id])).frete_peso_g,450)
   await db.exec('set local role authenticated')
-  await one("select reiniciar_pedido($1,'frete',false)",[p.id])
+  await one("select reiniciar_pedido($1,'embalagem',false)",[p.id])
   const d=await one('select status,nf_emitida_em,embalado_em,frete_gerado_em,frete_peso_g from pedidos where id=$1',[p.id])
-  assert.equal(d.status,'frete')
-  assert.equal(d.frete_gerado_em,null); assert.equal(d.frete_peso_g,null)
-  assert.ok(d.nf_emitida_em); assert.ok(d.embalado_em)
+  assert.equal(d.status,'embalagem')
+  assert.equal(d.frete_gerado_em,null); assert.equal(d.frete_peso_g,null); assert.equal(d.embalado_em,null)
+  assert.ok(d.nf_emitida_em)
   // Reiniciar a nota fiscal não mexe no frete (que vem depois); reiniciar o pedido inteiro zera tudo.
   const q=await pedidoWhats('pronto_envio')
   await one("select reiniciar_pedido($1,'faturamento',false)",[q.id])
@@ -291,7 +294,7 @@ test('Frete: reiniciar a etapa Frete limpa o frete gerado e o peso; a nota e a e
 })
 
 test('Frete: peso da caixa só entre 1 g e 30 kg; evento de frete gerado leva o peso', async () => {
-  const p=await pedidoWhats('frete')
+  const p=await pedidoWhats('embalagem')
   await db.exec('set local role authenticated')
   for (const ruim of [0,-5,30001]) await recusa(() => db.query('update pedidos set frete_peso_g=$2 where id=$1',[p.id,ruim]),/check/)
   await db.query("update pedidos set frete_peso_g=1250,frete_servico='PAC' where id=$1",[p.id])

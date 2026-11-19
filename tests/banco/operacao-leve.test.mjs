@@ -6,12 +6,13 @@ async function conferir(id) {
   const leve = await one("select * from v_pedidos_operacao where id=$1", [id])
   const completo = await one("select * from v_pedidos where id=$1", [id])
   expect(leve).toBeDefined()
-  for (const [campo, valor] of Object.entries(leve)) expect(valor, campo).toEqual(completo[campo])
+  // horas_na_etapa e termometro só existem na lista da esteira (metas_etapa): têm teste próprio em termometro.test.mjs.
+  for (const [campo, valor] of Object.entries(leve)) if (!['horas_na_etapa', 'termometro'].includes(campo)) expect(valor, campo).toEqual(completo[campo])
 }
 
 test("V79: lista operacional preserva progresso, prazos e regras em todas as etapas", async () => {
   const p = await pedidoWhats()
-  for (const etapa of ['novo','separacao','conferencia','bipagem','faturamento','embalagem','frete','pronto_envio','enviado']) {
+  for (const etapa of ['novo','separacao','conferencia','bipagem','faturamento','embalagem','pronto_envio','enviado']) {
     await prepararEtapa(p.id, etapa)
     await conferir(p.id)
   }

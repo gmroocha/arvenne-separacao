@@ -11,7 +11,7 @@ import { criarSimulacao, SUPABASE_FICTICIO } from "../../scripts/simulacao/banco
 let sim
 test.afterEach(async () => { await sim?.fechar(); sim = null })
 
-const ORDEM = ["novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "frete", "pronto_envio", "enviar_rastreio", "enviado"]
+const ORDEM = ["novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviar_rastreio", "enviado"]
 
 async function montar(context, baseURL, { pecas = 11, origem = "whatsapp" } = {}) {
   sim = await criarSimulacao({ status: "em_aberto" })
@@ -183,7 +183,7 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   expect(await contar("qtd_bipada=qtd")).toBe(12)
   await conferirEtapa(page, o, pago, "bipagem (completa)")
 
-  // 7) Nota fiscal e pedido LR (com copiar por peça): os dois feitos levam à Embalagem sozinhos.
+  // 7) Nota fiscal e pedido LR (com copiar por peça): os dois feitos levam à Embalagem e frete sozinhos.
   await expect(page.getByRole("button", { name: /^Copiar código PC-01/ })).toBeVisible()
   await semRolagemLateral(page)
   await capturar(page, "nota", info)
@@ -192,29 +192,29 @@ test("esteira inteira em rajada: venda → separação → conferência → bipa
   expect(await status()).toBe("faturamento")
   await page.getByRole("button", { name: "Pedido LR feito", exact: true }).click()
   await expect.poll(status).toBe("embalagem")
-  await continuar(page, "Nota fiscal", "Embalagem")
+  await continuar(page, "Nota fiscal", "Embalagem e frete")
   await conferirEtapa(page, o, pago, "nota fiscal")
 
-  // 8) Embalagem: um botão.
+  // 8) Embalagem e frete: "Embalado" sozinho NÃO avança (falta o frete); o pedido continua na mesma etapa.
   for (const item of ["Caixa do tamanho certo", "Nota impressa dentro", "Caixa fechada"]) await page.getByRole("checkbox", { name: item }).click()
   await page.getByRole("button", { name: "Embalado", exact: true }).click()
-  await expect.poll(status).toBe("frete")
-  await continuar(page, "Embalagem", "Frete")
+  await expect.poll(async () => (await sim.one("select embalado_em from pedidos where id=$1", [sim.pedido.id])).embalado_em).not.toBeNull()
+  expect(await status()).toBe("embalagem")
   await conferirEtapa(page, o, pago, "embalagem")
 
-  // 9) Frete: sem peso e sem link de rastreio (o link é colado na Postagem); "Frete gerado" avança.
+  // 9) Frete (mesma etapa): sem peso e sem link de rastreio (o link é colado na Postagem); "Frete gerado" avança.
   await expect(page.getByRole("textbox", { name: /Peso da caixa/ })).toHaveCount(0)
   await expect(page.getByRole("textbox", { name: /rastreio/i })).toHaveCount(0)
   // "Concluir etapa" da barra inferior: o diálogo diz o que falta e para onde o pedido vai; confirmar marca o frete como gerado.
   await page.getByRole("button", { name: "Concluir etapa", exact: true }).click()
-  const confirmar = page.getByRole("dialog", { name: "Concluir Frete?" })
-  await expect(confirmar).toContainText("O frete ainda não foi gerado")
+  const confirmar = page.getByRole("dialog", { name: "Concluir Embalagem e frete?" })
+  await expect(confirmar).toContainText("Ainda falta marcar o frete")
   await expect(confirmar).toContainText("o pedido vai para Postagem")
   await confirmar.getByRole("button", { name: "Concluir etapa", exact: true }).click()
   await expect.poll(status).toBe("pronto_envio")
-  await continuar(page, "Frete", "Postagem")
+  await continuar(page, "Embalagem e frete", "Postagem")
   expect((await sim.one("select frete_gerado_em from pedidos where id=$1", [sim.pedido.id])).frete_gerado_em).not.toBeNull()
-  await conferirEtapa(page, o, pago, "frete")
+  await conferirEtapa(page, o, pago, "embalagem e frete")
 
   // 10) Postagem: o link de rastreio é colado aqui; "Postado" leva o pedido do WhatsApp para "Enviar rastreio".
   const link = page.getByRole("textbox", { name: "Link de rastreio (opcional)" })
@@ -290,7 +290,7 @@ test("esteira com pedido da Shopify: sem mensagem de rastreio, vai direto para a
   expect(await status()).toBe("pronto_envio")
   await page.goto(`/pedidos/${sim.pedido.id}`)
   // V107: pedido da Shopify não tem "Enviar rastreio": Postado leva direto para Concluído.
-  await expect(page.getByRole("list", { name: "Etapas do pedido" }).or(page.getByRole("button", { name: /^Etapa \d+ de 8/ })).first()).toBeVisible()
+  await expect(page.getByRole("list", { name: "Etapas do pedido" }).or(page.getByRole("button", { name: /^Etapa \d+ de 7/ })).first()).toBeVisible()
   await page.getByRole("button", { name: "Postado", exact: true }).click()
   await expect.poll(status).toBe("enviado")
   await continuar(page, "Postagem", "Concluído")

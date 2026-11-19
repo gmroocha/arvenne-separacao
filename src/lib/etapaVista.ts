@@ -15,9 +15,9 @@ export function contextoDaEtapa(pedido: PedidoDetalhe, vista: StatusPedido | nul
   const etapa = vistaIdx >= 0 ? passos[vistaIdx].id : null
   const somenteVer = vista !== null && vistaIdx !== atualIdx && !ETAPAS_DE_PECA.includes(etapa ?? "")
   // O cartão "Avise a cliente" mora nas etapas de peças. Desvio vindo de uma etapa sem ele (Bipagem, Nota fiscal,
-  // Embalagem, Frete, Postagem) mostra o cartão aqui em cima, para a falta não ficar escondida.
+  // Embalagem e frete, Postagem) mostra o cartão aqui em cima, para a falta não ficar escondida.
   const cartaoDoDesvio =
-    ehDesvio(pedido.status) && !somenteVer && ["bipagem", "faturamento", "embalagem", "frete", "pronto_envio"].includes(etapa ?? "")
+    ehDesvio(pedido.status) && !somenteVer && ["bipagem", "faturamento", "embalagem", "pronto_envio"].includes(etapa ?? "")
   const comBusca = ["separacao", "conferencia"].includes(etapa ?? "") || cartaoDoDesvio
   const vivas = pedido.pedido_itens.filter((i) => i.status !== "removido")
   return { atualIdx, vistaIdx, etapa, somenteVer, cartaoDoDesvio, comBusca, mostraBusca: comBusca && vivas.length > 1 }

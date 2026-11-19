@@ -55,7 +55,7 @@ test("V74: correção recusada não grava os outros dados pela metade", async ({
 test("editar dados do pedido: trocar o frete e a Arvenne paga a diferença", async ({ page, context, baseURL }) => {
   sim = await criarSimulacao({ status: "novo" })
   await sim.banco.query("update pedido_itens set status='encontrado',conferido_em=now(),etiquetado_em=now(),qtd_bipada=qtd,bipado_em=now() where pedido_id=$1", [sim.pedido.id])
-  await sim.banco.query("update pedidos set nf_emitida_em=now(), pedido_fornecedor_em=now(), embalado_em=now(), status='frete', frete_pago_por='cliente', frete_cobrado=22.08 where id=$1", [sim.pedido.id])
+  await sim.banco.query("update pedidos set nf_emitida_em=now(), pedido_fornecedor_em=now(), embalado_em=now(), status='embalagem', frete_pago_por='cliente', frete_cobrado=22.08 where id=$1", [sim.pedido.id])
   await sim.instalar(context, baseURL)
   await page.goto(`/pedidos/${sim.pedido.id}`)
   await page.getByRole("button", { name: "Editar", exact: true }).first().click()

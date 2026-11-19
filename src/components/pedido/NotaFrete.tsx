@@ -9,12 +9,14 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldLabel } from "@/components/ui/field"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { MarcaCheck } from "@/components/comum/Bolha"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { CamposPedido, PedidoDetalhe } from "@/lib/api"
 import { buscarCnpj } from "@/lib/cnpj"
+import { avisoChaveNota, chaveNotaValida, formatarChaveNota, limparChaveNota } from "@/lib/chaveNota"
 import { copiar } from "@/lib/copiar"
 import { COR_PAC, COR_SEDEX } from "@/lib/selo"
 import { digitos, mascaraCep, mascaraDocumento, numeroParaTexto, quando, reais } from "@/lib/formato"
@@ -27,10 +29,12 @@ const LINK_BLING = import.meta.env.VITE_URL_BLING as string | undefined
 export type Patch = (campos: CamposPedido) => void
 type Props = { pedido: PedidoDetalhe; patch: Patch }
 
-export type Dado = { rotulo: string; valor: string | null }
+// `copia`: o que vai para a área de transferência quando é diferente do que aparece (ex.: a chave da nota, mostrada em
+// grupos de 4 e copiada só com os números).
+export type Dado = { rotulo: string; valor: string | null; copia?: string }
 
 // Linha "rótulo, valor, copiar". Sem valor, mostra o que falta.
-export function LinhaDado({ rotulo, valor }: Dado) {
+export function LinhaDado({ rotulo, valor, copia }: Dado) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-2 border-b py-1 last:border-b-0 sm:min-h-9">
       <div className="min-w-0">
@@ -43,11 +47,48 @@ export function LinhaDado({ rotulo, valor }: Dado) {
         className="shrink-0"
         aria-label={`Copiar ${rotulo}`}
         disabled={!valor}
-        onClick={() => valor && copiar(valor, `${rotulo} copiado`)}
+        onClick={() => valor && copiar(copia ?? valor, `${rotulo} copiado`)}
       >
         <Copy />
       </Button>
     </div>
+  )
+}
+
+// Chave de acesso da nota (44 números, opcional). Aceita colar com espaços e pontos; mostra em grupos de 4 para conferir.
+// Só grava com 44 números (ou vazia, para apagar); com outro tamanho avisa e não grava.
+function CampoChaveNota({ chave, patch }: { chave: string | null; patch: Patch }) {
+  const [v, setV] = useState(formatarChaveNota(chave))
+  const aviso = avisoChaveNota(v)
+  const salvar = () => {
+    const limpa = limparChaveNota(v)
+    if (limpa === "" && chave) patch({ nf_chave: null })
+    else if (chaveNotaValida(limpa) && limpa !== chave) patch({ nf_chave: limpa })
+  }
+  return (
+    <Field>
+      <FieldLabel htmlFor="nf-chave">Chave de acesso (44 números, opcional)</FieldLabel>
+      <Textarea
+        id="nf-chave"
+        className="min-h-0 resize-none font-mono md:text-sm"
+        rows={2}
+        value={v}
+        inputMode="numeric"
+        autoComplete="off"
+        aria-invalid={aviso ? true : undefined}
+        aria-describedby="nf-chave-ajuda"
+        onChange={(e) => setV(formatarChaveNota(e.target.value))}
+        onBlur={salvar}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return
+          e.preventDefault()
+          e.currentTarget.blur()
+        }}
+      />
+      <FieldDescription id="nf-chave-ajuda" className={aviso ? "text-warning" : undefined}>
+        {aviso ?? "Cole a chave da nota: os espaços e pontos saem sozinhos."}
+      </FieldDescription>
+    </Field>
   )
 }
 
@@ -76,14 +117,14 @@ export function CopiarTudo({ dados }: { dados: Dado[] }) {
       variant="outline"
       size="toque"
       className="w-full sm:w-fit"
-      onClick={() => copiar(dados.map((d) => `${d.rotulo}: ${d.valor ?? ""}`).join("\n"), "Dados copiados")}
+      onClick={() => copiar(dados.map((d) => `${d.rotulo}: ${d.copia ?? d.valor ?? ""}`).join("\n"), "Dados copiados")}
     >
       <Copy /> Copiar tudo
     </Button>
   )
 }
 
-// Passo da nota fiscal, do pedido LR e do frete. Pendente: aberto. Feito: recolhe, fica verde e mostra "Desfazer"; tocar no
+// Passo da nota fiscal, do pedido LR, da embalagem e do frete. Pendente: aberto. Feito: recolhe, fica verde e mostra "Desfazer"; tocar no
 // cabeçalho abre de novo para conferir os dados.
 export function Passo({
   numero, icone, titulo, feito, feitoEm, aoDesfazer, textoDesfazer, children,
@@ -135,7 +176,7 @@ export function Passo({
   )
 }
 
-// Dado que a nota ou o frete (etapa Frete) precisam e o pedido não trouxe: preenche ali mesmo e grava no pedido.
+// Dado que a nota ou o frete (etapa Embalagem e frete) precisam e o pedido não trouxe: preenche ali mesmo e grava no pedido.
 export function Faltando({ pedido, patch }: { pedido: PedidoDetalhe; patch: Patch }) {
   const campos: { chave: keyof CamposPedido; rotulo: string; mascara?: (t: string) => string; limpar?: (t: string) => string }[] = [
     { chave: "cliente_nome", rotulo: "Nome ou razão social" },
@@ -299,7 +340,7 @@ function CopiarLr({ codigo, qtd, aoCopiar }: { codigo: string; qtd: number; aoCo
   )
 }
 
-// Nota fiscal e pedido LR: quando os dois estão feitos o pedido vai sozinho para a Embalagem (o banco avança).
+// Nota fiscal e pedido LR: quando os dois estão feitos o pedido vai sozinho para a Embalagem e frete (o banco avança).
 export default function NotaFrete({ pedido, patch }: Props) {
   const [pecasAbertas, setPecasAbertas] = useState(false)
   const itens = pedido.pedido_itens.filter((i) => i.status === "encontrado")
@@ -407,6 +448,7 @@ export default function NotaFrete({ pedido, patch }: Props) {
           )}
         </div>
         <CampoSalvo id="nf" rotulo="Nº da nota (opcional)" valor={pedido.nf_numero} aoSalvar={(v) => patch({ nf_numero: v })} />
+        <CampoChaveNota key={pedido.nf_chave ?? ""} chave={pedido.nf_chave} patch={patch} />
         {nf ? (
           <Button variant="ghost" size="toque" className="w-fit" onClick={() => patch({ nf_emitida_em: null })}>
             Desfazer nota emitida

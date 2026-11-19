@@ -15,17 +15,17 @@ test('designar: grava, troca e tira o responsável de uma etapa, com evento e le
   await db.exec('set local role authenticated')
   assert.deepEqual(await responsaveis(p.id), {})
   await one("select designar($1, 'separacao', $2)", [p.id, ana])
-  await one("select designar($1, 'frete', $2)", [p.id, bia])
-  assert.deepEqual(await responsaveis(p.id), { separacao: ana, frete: bia })
-  assert.deepEqual((await one('select responsaveis r from v_pedidos where id = $1', [p.id])).r, { separacao: ana, frete: bia })
+  await one("select designar($1, 'embalagem', $2)", [p.id, bia])
+  assert.deepEqual(await responsaveis(p.id), { separacao: ana, embalagem: bia })
+  assert.deepEqual((await one('select responsaveis r from v_pedidos where id = $1', [p.id])).r, { separacao: ana, embalagem: bia })
   await one("select designar($1, 'separacao', $2)", [p.id, bia])
-  assert.deepEqual(await responsaveis(p.id), { separacao: bia, frete: bia })
+  assert.deepEqual(await responsaveis(p.id), { separacao: bia, embalagem: bia })
   await one("select designar($1, 'separacao', null)", [p.id])
-  assert.deepEqual(await responsaveis(p.id), { frete: bia })
+  assert.deepEqual(await responsaveis(p.id), { embalagem: bia })
   await db.exec('reset role')
   const eventos = (await db.query("select para, texto from pedido_eventos where pedido_id = $1 and tipo = 'designado' order by id", [p.id])).rows
   assert.deepEqual(eventos, [
-    { para: 'separacao', texto: 'Ana' }, { para: 'frete', texto: 'Bia' },
+    { para: 'separacao', texto: 'Ana' }, { para: 'embalagem', texto: 'Bia' },
     { para: 'separacao', texto: 'Bia' }, { para: 'separacao', texto: 'ninguém' },
   ])
 })

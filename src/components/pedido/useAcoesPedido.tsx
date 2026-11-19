@@ -110,7 +110,7 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
             <DialogTitle>{movendo === "enviado" ? "Concluir o pedido?" : movendo ? `Mover para ${NOME_ETAPA[movendo]}?` : ""}</DialogTitle>
             <DialogDescription>
               {movendo === "enviado"
-                ? `Tudo o que falta (separação, conferência, bipagem, nota, embalagem, frete, postagem${temEnviarRastreio(pedido.origem) ? " e o envio do rastreio à cliente" : ""}) é marcado como feito e o pedido vai para Concluídos. O histórico guarda que estas etapas foram puladas.`
+                ? `Tudo o que falta (separação, conferência, bipagem, nota, embalagem e frete, postagem${temEnviarRastreio(pedido.origem) ? " e o envio do rastreio à cliente" : ""}) é marcado como feito e o pedido vai para Concluídos. O histórico guarda que estas etapas foram puladas.`
                 : movendo && destinoIdx >= 0 && origem >= 0
                   ? textoMover(origem, destinoIdx, pedido.origem)
                   : ""}
@@ -137,7 +137,7 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
             <DialogTitle>{reiniciando ? "Reiniciar o pedido do zero?" : `Reiniciar ${NOME_ETAPA[pedido.status]}?`}</DialogTitle>
             <DialogDescription>
               {reiniciando
-                ? "Zera separação, conferência, bipagem, nota fiscal, embalagem, frete, postagem e rastreio, e volta o pedido para Novo. Peças removidas voltam ao pedido e a troca em andamento é cancelada."
+                ? "Zera separação, conferência, bipagem, nota fiscal, embalagem e frete, postagem e rastreio, e volta o pedido para Novo. Peças removidas voltam ao pedido e a troca em andamento é cancelada."
                 : "Zera só o que foi feito nesta etapa, para refazer. O pedido continua nela."}
             </DialogDescription>
           </DialogHeader>

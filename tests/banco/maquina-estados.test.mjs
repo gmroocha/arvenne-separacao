@@ -20,7 +20,7 @@ test('propriedade: nenhuma combinação de peças ou documentos libera etapa sem
    const faturado=bipado&&c.nota&&c.fornecedor
    const embalado=faturado&&c.embalado
    const freteGerado=embalado&&c.frete
-   const esperado={conferencia:separado,bipagem:conferido,faturamento:bipado,embalagem:faturado,frete:embalado,pronto_envio:freteGerado,enviado:freteGerado&&c.postado}
+   const esperado={conferencia:separado,bipagem:conferido,faturamento:bipado,embalagem:faturado,pronto_envio:freteGerado,enviado:freteGerado&&c.postado}
    const regras=(await one('select etapas_permitidas e from v_pedidos where id=$1',[p.id])).e
    await db.exec('set local role authenticated')
    for(const [destino,pode]of Object.entries(esperado)){
