@@ -52,6 +52,171 @@ type Adicoes = {
       }
       Relationships: []
     }
+    ocorrencias: {
+      Row: {
+        id: string
+        pedido_id: string
+        item_id: string | null
+        tipo: string
+        motivo: string
+        etapa: string
+        responsavel_id: string | null
+        conferente_id: string | null
+        registrado_por: string | null
+        observacao: string | null
+        created_at: string
+        anulada_em: string | null
+        anulada_por: string | null
+      }
+      Insert: {
+        id?: string
+        pedido_id: string
+        item_id?: string | null
+        tipo: string
+        motivo: string
+        etapa: string
+        responsavel_id?: string | null
+        conferente_id?: string | null
+        registrado_por?: string | null
+        observacao?: string | null
+        created_at?: string
+        anulada_em?: string | null
+        anulada_por?: string | null
+      }
+      Update: {
+        id?: string
+        pedido_id?: string
+        item_id?: string | null
+        tipo?: string
+        motivo?: string
+        etapa?: string
+        responsavel_id?: string | null
+        conferente_id?: string | null
+        registrado_por?: string | null
+        observacao?: string | null
+        created_at?: string
+        anulada_em?: string | null
+        anulada_por?: string | null
+      }
+      Relationships: []
+    }
+    pedido_itens: {
+      Row: {
+        id: string
+        pedido_id: string
+        origem: string
+        shopify_variant_id: number | null
+        peca_clube_id: string | null
+        sku: string | null
+        nome: string
+        variante: string | null
+        foto_url: string | null
+        qtd: number
+        preco: number | null
+        status: string
+        observacao: string | null
+        ordem: number
+        created_at: string
+        updated_at: string
+        conferido_em: string | null
+        etiquetado_em: string | null
+        etiqueta_previa: boolean
+        qtd_bipada: number
+        bipado_em: string | null
+        preco_pago: number | null
+        shopify_line_id: string | null
+        removido_em: string | null
+        devolvido_em: string | null
+        reembolsado_shopify_em: string | null
+        adicional: boolean
+        venda_origem_id: string | null
+        valor_pago_linha: number | null
+        troca_peca_origem_id: string | null
+        entrada: string | null
+        nota: string | null
+        separado_por: string | null
+        conferido_por: string | null
+        bipado_por: string | null
+        falta_por: string | null
+      }
+      Insert: {
+        id?: string
+        pedido_id: string
+        origem: string
+        shopify_variant_id?: number | null
+        peca_clube_id?: string | null
+        sku?: string | null
+        nome: string
+        variante?: string | null
+        foto_url?: string | null
+        qtd?: number
+        preco?: number | null
+        status?: string
+        observacao?: string | null
+        ordem?: number
+        created_at?: string
+        updated_at?: string
+        conferido_em?: string | null
+        etiquetado_em?: string | null
+        etiqueta_previa?: boolean
+        qtd_bipada?: number
+        bipado_em?: string | null
+        preco_pago?: number | null
+        shopify_line_id?: string | null
+        removido_em?: string | null
+        devolvido_em?: string | null
+        reembolsado_shopify_em?: string | null
+        adicional?: boolean
+        venda_origem_id?: string | null
+        valor_pago_linha?: number | null
+        troca_peca_origem_id?: string | null
+        entrada?: string | null
+        nota?: string | null
+        separado_por?: string | null
+        conferido_por?: string | null
+        bipado_por?: string | null
+        falta_por?: string | null
+      }
+      Update: {
+        id?: string
+        pedido_id?: string
+        origem?: string
+        shopify_variant_id?: number | null
+        peca_clube_id?: string | null
+        sku?: string | null
+        nome?: string
+        variante?: string | null
+        foto_url?: string | null
+        qtd?: number
+        preco?: number | null
+        status?: string
+        observacao?: string | null
+        ordem?: number
+        created_at?: string
+        updated_at?: string
+        conferido_em?: string | null
+        etiquetado_em?: string | null
+        etiqueta_previa?: boolean
+        qtd_bipada?: number
+        bipado_em?: string | null
+        preco_pago?: number | null
+        shopify_line_id?: string | null
+        removido_em?: string | null
+        devolvido_em?: string | null
+        reembolsado_shopify_em?: string | null
+        adicional?: boolean
+        venda_origem_id?: string | null
+        valor_pago_linha?: number | null
+        troca_peca_origem_id?: string | null
+        entrada?: string | null
+        nota?: string | null
+        separado_por?: string | null
+        conferido_por?: string | null
+        bipado_por?: string | null
+        falta_por?: string | null
+      }
+      Relationships: []
+    }
     pedidos: {
       Row: {
         id: string
@@ -285,6 +450,32 @@ type Adicoes = {
     }
   }
   Views: {
+    v_ocorrencias: {
+      Row: {
+        id: string | null
+        pedido_id: string | null
+        item_id: string | null
+        tipo: string | null
+        motivo: string | null
+        etapa: string | null
+        responsavel_id: string | null
+        conferente_id: string | null
+        registrado_por: string | null
+        observacao: string | null
+        created_at: string | null
+        anulada_em: string | null
+        anulada_por: string | null
+        responsavel_nome: string | null
+        conferente_nome: string | null
+        registrado_por_nome: string | null
+        numero: string | null
+        cliente_nome: string | null
+        sku: string | null
+        item_nome: string | null
+        variante: string | null
+      }
+      Relationships: []
+    }
     v_pedidos: {
       Row: {
         id: string | null
@@ -421,8 +612,11 @@ type Adicoes = {
     }
   }
   Functions: {
+    anular_ocorrencia: { Args: { p_id: string | null }; Returns: undefined | null }
+    autor_da_etapa: { Args: { p_pedido: string | null; p_etapa: string | null }; Returns: string | null }
     decisao_troca: { Args: { p_pedido: string | null; p_status: string | null }; Returns: Json | null }
     etapa_da_esteira: { Args: { p_status: string | null; p_antes: string | null }; Returns: string | null }
+    etapa_da_ocorrencia: { Args: { p_motivo: string | null }; Returns: string | null }
     exigir_gestor: { Args: Record<PropertyKey, never>; Returns: undefined | null }
     exigir_pedido: { Args: { p_pedido: string | null }; Returns: undefined | null }
     exigir_pedido_da_peca_troca: { Args: { p_peca: string | null }; Returns: undefined | null }
@@ -432,9 +626,16 @@ type Adicoes = {
     membro_atual: { Args: Record<PropertyKey, never>; Returns: string | null }
     pode_ver_pedido: { Args: { p_pedido: string | null }; Returns: boolean | null }
     preencher_responsaveis_padrao: { Args: Record<PropertyKey, never>; Returns: number | null }
+    registrado_por_atual: { Args: Record<PropertyKey, never>; Returns: string | null }
+    registrar_erro_bipagem: { Args: { p_item: string | null; p_motivo: string | null; p_obs?: string | null; p_responsavel?: string | null }; Returns: string | null }
+    registrar_falta_indevida: { Args: { p_item: string | null }; Returns: undefined | null }
+    registrar_problema_entrega: { Args: { p_pedido: string | null; p_motivo: string | null; p_etapa?: string | null; p_responsavel?: string | null; p_item?: string | null; p_obs?: string | null }; Returns: string | null }
     responsavel_padrao_de: { Args: { p_etapa: string | null }; Returns: string | null }
+    responsavel_sugerido: { Args: { p_pedido: string | null; p_etapa: string | null; p_item?: string | null }; Returns: string | null }
+    rotulo_motivo: { Args: { p_motivo: string | null }; Returns: string | null }
     sou_sistema: { Args: Record<PropertyKey, never>; Returns: boolean | null }
     termometro_etapa: { Args: { p_status: string | null; p_horas: number | null }; Returns: string | null }
+    tg_itens_limpa_por: { Args: Record<PropertyKey, never>; Returns: string | null }
   }
 }
 

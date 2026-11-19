@@ -12,6 +12,7 @@ import { agendarAtualizacaoOperacional } from "@/lib/atualizacaoOperacional"
 import { gravarPeca } from "@/lib/gravarPeca"
 import { enfileirarMarca, type Destino, type RespostaLote } from "@/lib/lotePecas"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
+import type { Ocorrencia } from "@/lib/ocorrencias"
 import type { AcertoPedido, Membro, ModeloClube, Papel, ResponsavelPadrao, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
@@ -2092,6 +2093,120 @@ export function useDesignar(pedidoId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: chavePedido(pedidoId) })
       qc.invalidateQueries({ queryKey: ["pedidos"] })
+    },
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Ocorrências (Fase 3): erro na bipagem, falta indevida e problema na entrega. Quem faz o quê vem do banco
+// (autor_da_etapa, responsavel_sugerido); a tela só mostra e envia. Banco sem a migration: listas vazias.
+// ---------------------------------------------------------------------------
+export function useOcorrencias(pedidoId: string | undefined, ativo = true) {
+  return useQuery({
+    queryKey: ["ocorrencias", pedidoId],
+    enabled: !!pedidoId && ativo,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.from("v_ocorrencias").select("*").eq("pedido_id", pedidoId!).order("created_at", { ascending: false }).abortSignal(signal)
+      if (error) {
+        if (semFuncao(error)) return [] as Ocorrencia[]
+        throw error
+      }
+      return data as unknown as Ocorrencia[]
+    },
+  })
+}
+
+// Erro achado na Bipagem: a peça volta para a Separação e o pedido volta sozinho para lá (função registrar_erro_bipagem).
+export function useRegistrarErroBipagem(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: ["erro-peca", pedidoId],
+    scope: { id: `pedido-${pedidoId}` },
+    mutationFn: async ({ item, motivo, obs, responsavel }: { item: Item; motivo: string; obs?: string; responsavel: string | null }) => {
+      await esperarFilaDoPedido(qc, pedidoId) // as marcas de bipagem a caminho chegam antes
+      const { error } = await supabase.rpc("registrar_erro_bipagem", { p_item: item.id, p_motivo: motivo, p_obs: obs?.trim() || null, p_responsavel: responsavel })
+      if (error) throw new Error(msgBanco(error))
+    },
+    onSuccess: () => toast.success("Erro registrado. A peça voltou para a Separação."),
+    onError: (e) => toast.error(msg(e)),
+    onSettled: () => [...TODAS, ["troca"], ["ocorrencias", pedidoId]].forEach((queryKey) => qc.invalidateQueries({ queryKey })),
+  })
+}
+
+// Quem provavelmente fez a etapa (sugestão, sempre editável). Sem a função no banco, nada.
+export function useResponsavelSugerido(pedidoId: string | undefined, etapa: string | null, itemId: string | null, ativo = true) {
+  return useQuery({
+    queryKey: ["ocorrencias", "sugerido", pedidoId, etapa, itemId],
+    enabled: !!pedidoId && !!etapa && ativo,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("responsavel_sugerido", { p_pedido: pedidoId!, p_etapa: etapa!, p_item: itemId })
+      if (error) {
+        if (semFuncao(error)) return null
+        throw error
+      }
+      return (data as string | null) ?? null
+    },
+  })
+}
+
+export function useRegistrarProblemaEntrega(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (a: { motivo: string; etapa: string | null; responsavel: string | null; item: string | null; obs?: string }) => {
+      const { error } = await supabase.rpc("registrar_problema_entrega", {
+        p_pedido: pedidoId, p_motivo: a.motivo, p_etapa: a.etapa, p_responsavel: a.responsavel, p_item: a.item, p_obs: a.obs?.trim() || null,
+      })
+      if (error) throw new Error(msgBanco(error))
+    },
+    onSuccess: () => toast.success("Problema registrado"),
+    onError: (e) => toast.error(msg(e)),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["ocorrencias", pedidoId] }),
+  })
+}
+
+export function useAnularOcorrencia(pedidoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("anular_ocorrencia", { p_id: id })
+      if (error) throw new Error(msgBanco(error))
+    },
+    onSuccess: () => toast.success("Ocorrência anulada"),
+    onError: (e) => toast.error(msg(e)),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["ocorrencias", pedidoId] }),
+  })
+}
+
+// Detalhe de um pedido concluído (Sheet de Concluídos): peças, responsáveis e passagens por etapa. Nada financeiro.
+export type PassagemEtapa = { etapa: string; visita: number; entrou_em: string; saiu_em: string | null; saiu_por: string | null }
+export type DetalheConcluido = {
+  responsaveis: Record<string, string>
+  itens: Pick<Item, "id" | "sku" | "nome" | "variante" | "foto_url" | "qtd" | "status" | "ordem" | "separado_por" | "conferido_por" | "bipado_por">[]
+  passagens: PassagemEtapa[]
+}
+export function useDetalheConcluido(pedidoId: string | undefined) {
+  return useQuery({
+    queryKey: ["pedido", "concluido", pedidoId],
+    enabled: !!pedidoId,
+    queryFn: async ({ signal }) => {
+      const [p, i0, t] = await Promise.all([
+        supabase.from("pedidos").select("responsaveis").eq("id", pedidoId!).abortSignal(signal).single(),
+        supabase.from("pedido_itens").select("id, sku, nome, variante, foto_url, qtd, status, ordem, separado_por, conferido_por, bipado_por").eq("pedido_id", pedidoId!).neq("status", "removido").order("ordem").abortSignal(signal),
+        supabase.from("v_tempo_etapas").select("etapa, visita, entrou_em, saiu_em, saiu_por").eq("pedido_id", pedidoId!).order("entrou_em").abortSignal(signal),
+      ])
+      // Banco sem a migration da Fase 3 (colunas *_por): lê as peças sem elas.
+      const i = i0.error?.code === "42703"
+        ? await supabase.from("pedido_itens").select("id, sku, nome, variante, foto_url, qtd, status, ordem").eq("pedido_id", pedidoId!).neq("status", "removido").order("ordem").abortSignal(signal)
+        : i0
+      if (p.error) throw p.error
+      if (i.error) throw i.error
+      if (t.error) throw t.error
+      return {
+        responsaveis: ((p.data as { responsaveis: Record<string, string> | null }).responsaveis ?? {}),
+        itens: i.data as unknown as DetalheConcluido["itens"],
+        passagens: t.data as unknown as PassagemEtapa[],
+      } satisfies DetalheConcluido
     },
   })
 }

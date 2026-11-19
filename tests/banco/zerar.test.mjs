@@ -14,6 +14,7 @@ test("zerar-testes.sql apaga pedidos, trocas e movimentos e mantém catálogo e 
       values ($1, 'shopify', 'Anel', 'A1', 1, 100, 'falta', 0) returning id`, [ped.id])
     await b.query("insert into bipagens (pedido_id, item_id, codigo, resultado) values ($1, $2, 'A1', 'ok')", [ped.id, item.id])
     await b.query("insert into pedido_eventos (pedido_id, tipo) values ($1, 'nota')", [ped.id])
+    await b.query("insert into ocorrencias (pedido_id, item_id, tipo, motivo, etapa) values ($1, $2, 'falta_indevida', 'peca_encontrada', 'separacao')", [ped.id, item.id])
     const troca = await um("insert into trocas (pedido_id) values ($1) returning id", [ped.id])
     const peca = await um("insert into troca_pecas (troca_id, item_id) values ($1, $2) returning id", [troca.id, item.id])
     const op = await um(`insert into troca_opcoes (troca_peca_id, origem, nome, sku, preco)
@@ -28,7 +29,7 @@ test("zerar-testes.sql apaga pedidos, trocas e movimentos e mantém catálogo e 
     await b.exec(readFileSync("scripts/zerar-testes.sql", "utf8"))
 
     for (const t of ["creditos_cliente", "movimentos_financeiros", "troca_escolhas", "troca_opcoes", "troca_pecas", "trocas",
-      "bipagens", "feedbacks", "pedido_eventos", "pedido_itens", "pedidos", "clientes"]) {
+      "bipagens", "ocorrencias", "feedbacks", "pedido_eventos", "pedido_itens", "pedidos", "clientes"]) {
       expect(Number((await um(`select count(*) n from ${t}`)).n), t).toBe(0)
     }
     expect(Number((await um("select count(*) n from feriados")).n)).toBe(feriados)

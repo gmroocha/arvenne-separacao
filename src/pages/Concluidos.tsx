@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router"
-import { CheckCheck, ExternalLink, MoreHorizontal, PackageCheck, Undo2 } from "lucide-react"
+import { CheckCheck, ExternalLink, ListChecks, MoreHorizontal, PackageCheck, Undo2 } from "lucide-react"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Vazio } from "@/components/comum/Vazio"
+import DetalheConcluido from "@/components/concluidos/DetalheConcluido"
 import MenuAcoes from "@/components/MenuAcoes"
 import { useReabrirConcluido } from "@/components/pedido/useReabrirConcluido"
 import { OrigemBadge } from "@/components/StatusBadge"
@@ -27,12 +28,21 @@ const abaDe = (p: PedidoConcluido): Aba => (p.entregue_em ? "entregues" : "camin
 function Cartao({ p, aba }: { p: PedidoConcluido; aba: Aba }) {
   const atualizar = useAtualizarPedido()
   const reabrir = useReabrirConcluido({ id: p.id, origem: p.origem, status: "enviado" }) // só gestor
+  const [detalhe, setDetalhe] = useState(false)
   const gravar = (campos: Parameters<typeof atualizar.mutate>[0]["campos"]) => atualizar.mutate({ pedidoId: p.id, campos })
   const local = [p.entrega_cidade, p.entrega_uf].filter(Boolean).join("/")
   const quando = aba === "entregues" && p.entregue_em ? `entregue há ${tempoDesde(p.entregue_em)}` : `postado há ${tempoDesde(p.postado_em ?? p.status_desde)}`
   return (
     <li>
-      <Item variant="outline" className="gap-3">
+      {/* Tocar na linha abre o detalhe; links, botões e menus continuam com a própria ação (o menu também tem "Ver detalhes"). */}
+      <Item
+        variant="outline"
+        className="cursor-pointer gap-3"
+        onClick={(e) => {
+          if (!e.currentTarget.contains(e.target as Node) || (e.target as HTMLElement).closest("a, button")) return
+          setDetalhe(true)
+        }}
+      >
         <ItemContent className="min-w-0 flex-1 basis-56">
           <ItemTitle className="min-w-0">
             <Link to={`/pedidos/${p.id}`} className="truncate underline-offset-4 hover:underline">
@@ -65,25 +75,25 @@ function Cartao({ p, aba }: { p: PedidoConcluido; aba: Aba }) {
               <PackageCheck /> Marcar entregue
             </Button>
           )}
-          {(aba === "entregues" || reabrir.grupo.itens.length > 0) && (
-            <MenuAcoes
-              titulo="Ações do pedido"
-              grupos={[
-                ...(aba === "entregues"
-                  ? [{ itens: [{ rotulo: "Desfazer entrega", icone: Undo2, desabilitado: atualizar.isPending, aoClicar: () => gravar({ entregue_em: null }) }] }]
-                  : []),
-                reabrir.grupo,
-              ]}
-              gatilho={
-                <Button variant="outline" size="icon-toque" aria-label="Mais ações" className="ml-auto shrink-0">
-                  <MoreHorizontal />
-                </Button>
-              }
-            />
-          )}
+          <MenuAcoes
+            titulo="Ações do pedido"
+            grupos={[
+              { itens: [{ rotulo: "Ver detalhes", icone: ListChecks, aoClicar: () => setDetalhe(true) }] },
+              ...(aba === "entregues"
+                ? [{ itens: [{ rotulo: "Desfazer entrega", icone: Undo2, desabilitado: atualizar.isPending, aoClicar: () => gravar({ entregue_em: null }) }] }]
+                : []),
+              reabrir.grupo,
+            ]}
+            gatilho={
+              <Button variant="outline" size="icon-toque" aria-label="Mais ações" className="ml-auto shrink-0">
+                <MoreHorizontal />
+              </Button>
+            }
+          />
         </ItemActions>
       </Item>
       {reabrir.dialogo}
+      <DetalheConcluido p={p} aberto={detalhe} aoMudar={setDetalhe} />
     </li>
   )
 }

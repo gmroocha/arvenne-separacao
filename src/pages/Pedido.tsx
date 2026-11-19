@@ -6,6 +6,7 @@ import { AlteracoesContexto } from "@/components/pedido/alteracoesContexto"
 import AcertoTroca from "@/components/pedido/AcertoTroca"
 import AvisoCredito from "@/components/pedido/AvisoCredito"
 import BarraEtapa from "@/components/pedido/BarraEtapa"
+import CartaoOcorrencias from "@/components/pedido/CartaoOcorrencias"
 import Responsaveis from "@/components/pedido/Responsaveis"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import { quemAvisar } from "@/lib/equipe"
@@ -112,6 +113,7 @@ function Conteudo({ pedido }: { pedido: PedidoDetalhe }) {
           <AlertDescription>Confira o pedido na Shopify antes de seguir: as quantidades não batem mais com as peças daqui.</AlertDescription>
         </Alert>
       )}
+      <CartaoOcorrencias pedidoId={pedido.id} />
       {/* Etapas de peças não mostram dinheiro: o acerto e o "a devolver" aparecem de Nota fiscal em diante. */}
       {!foco && <AcertoTroca pedidoId={pedido.id} aDevolver={pedido.a_devolver} />}
       {!foco && <AvisoCredito pedidoId={pedido.id} />}

@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import type { AcaoItem, PedidoDetalhe } from "@/lib/api"
 import { sons } from "@/lib/sons"
 import type { Item, ResultadoBipagem } from "@/lib/tipos"
-import { FaixaFeitas, GradePecas, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
+import { useErroPeca } from "./useErroPeca"
+import { FaixaFeitas, GradePecas, MenuPeca, ProgressoEtapa, TilePeca, Vazio } from "./TilePeca"
 
 type Props = { pedido: PedidoDetalhe; acao: AcaoItem }
 type Aviso = { tipo: ResultadoBipagem; texto: string }
@@ -28,6 +29,7 @@ function lerSilencio(): boolean {
 // Bipagem: o leitor USB digita o código e dá Enter, como um teclado. O campo fica sempre focado.
 export default function Bipagem({ pedido, acao }: Props) {
   const campo = useRef<HTMLInputElement>(null)
+  const erro = useErroPeca(pedido.id)
   const [valor, setValor] = useState("")
   const [mudo, setMudo] = useState(lerSilencio)
   const [aviso, setAviso] = useState<Aviso | null>(null)
@@ -77,8 +79,8 @@ export default function Bipagem({ pedido, acao }: Props) {
                       </Badge>
                     }
                   >
-                    {/* Contagem à mão (peça sem código legível): os dois botões direto, sem menu. */}
-                    <div className="flex w-full items-center gap-1.5">
+                    {/* Contagem à mão (peça sem código legível): os dois botões direto; o menu "…" traz o erro na peça. */}
+                    <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       <Button
                         variant="secondary"
                         size="bloco"
@@ -99,6 +101,7 @@ export default function Bipagem({ pedido, acao }: Props) {
                         <Plus /> 1
                       </Button>
                     </div>
+                    <MenuPeca itens={[erro.acao(i)]} />
                   </TilePeca>
   )
 
@@ -246,6 +249,7 @@ export default function Bipagem({ pedido, acao }: Props) {
         </>
       )}
 
+      {erro.dialogo}
     </div>
   )
 }

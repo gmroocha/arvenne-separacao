@@ -1,5 +1,30 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Fase 3: quem fez cada peça e ocorrências (19/11/2026) — **migration `20261126130000_fase3_ocorrencias.sql` NÃO aplicada** (falta o "sim" do Gustavo: `db push --remote --dry-run`, depois `--yes`)
+
+- **Regra de "quem fez" (decisão do Gustavo):** quem fez o passo = o **responsável da etapa no pedido** (`pedidos.responsaveis ->> etapa`); sem
+  responsável, quem clicou (`membro_atual()`). Está numa função só, `autor_da_etapa(pedido, etapa)`. As colaboradoras ainda não têm login, então
+  quase tudo sai no nome do Gustavo/da responsável designada; **as métricas de hoje serão zeradas depois** (`scripts/zerar-testes.sql` agora também
+  esvazia `ocorrencias`). Com todas logadas, a funcionária só vê o pedido em que é responsável e os dois valores coincidem.
+- `pedido_itens` ganhou `separado_por`, `conferido_por`, `bipado_por`, `falta_por` (só o **último** autor, nada clique a clique). `marcar_pecas`
+  (lote) grava no mesmo update e limpa ao desfazer; `alterar_item` e `marcar_falta` preenchem `falta_por`. O gatilho mínimo `itens_limpa_por`
+  limpa o autor sempre que o passo some (mover etapa, reiniciar, falta na linha inteira).
+- Tabela `ocorrencias` (tipos `erro_bipagem`, `falta_indevida`, `problema_entrega`, CHECK dos motivos por tipo; "outro" exige texto). RLS: lê quem vê o
+  pedido; gravar só pelas funções; sem DELETE; anon nada. View `v_ocorrencias` (security_invoker, com nomes). Funções: `registrar_erro_bipagem`
+  (peça volta a pendente, zera conferência/bipagem/autores e o pedido volta sozinho para a Separação; só com o pedido em separação/conferência/bipagem),
+  `registrar_problema_entrega` (só pedido `enviado`; etapa sugerida pelo motivo, editável), `responsavel_sugerido`, `anular_ocorrencia` (só gestor),
+  `etapa_da_ocorrencia`. **Falta indevida** sai de dentro de `alterar_item` (vale também para `encontrar_peca`): peça em falta/defeito achada por
+  outra pessoa gera a ocorrência em nome de quem marcou a falta, sem gatilho novo.
+- Cópias das funções vigentes: `marcar_pecas` (20261126100000), `alterar_item` e `marcar_falta` (20261125153000, V114 mantido).
+- **Tela:** menu "⋯" da peça na Bipagem ganhou "Erro na peça" (Dialog com motivos, texto para "Outro", "Separada por" sugerido e editável,
+  botão Continuar). Concluídos: tocar na linha (ou "Ver detalhes" no menu) abre um Sheet (de baixo no celular, lateral no PC) com peças, "Quem fez",
+  ocorrências (Anular para gestor) e "Registrar problema na entrega". Página do pedido mostra um cartão discreto "Ocorrências" se houver. Novo
+  componente `src/components/ui/radio-group.tsx`. Sem dinheiro em nenhuma dessas telas.
+- Antes do `db push` o app tolera o banco antigo (listas de ocorrências vazias; o Sheet lê as peças sem as colunas novas), mas "Erro na peça" e
+  "Registrar problema" recusam com "Atualize o banco para usar esta função".
+- Testes: `tests/banco/ocorrencias.test.mjs`, `tests/e2e/fase3-ocorrencias.spec.mjs`; `zerar.test.mjs` e o `rede.mjs` do simulador (leitura de
+  `v_ocorrencias`, `v_tempo_etapas` e `responsavel_sugerido`) atualizados.
+
 ## Termômetro: ajustes, 19/11/2026 — **aplicada em 19/11 com o "sim" do Gustavo**
 
 Falta o "sim" do Gustavo para `db push` (rotina: `--dry-run` e depois `--yes`). O app novo já tolera o banco antigo: a Fila nunca mostra
