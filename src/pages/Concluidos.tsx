@@ -5,6 +5,7 @@ import { CampoBusca } from "@/components/comum/CampoBusca"
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Vazio } from "@/components/comum/Vazio"
 import MenuAcoes from "@/components/MenuAcoes"
+import { useReabrirConcluido } from "@/components/pedido/useReabrirConcluido"
 import { OrigemBadge } from "@/components/StatusBadge"
 import { Button } from "@/components/ui/button"
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item"
@@ -25,6 +26,7 @@ const abaDe = (p: PedidoConcluido): Aba => (p.entregue_em ? "entregues" : "camin
 
 function Cartao({ p, aba }: { p: PedidoConcluido; aba: Aba }) {
   const atualizar = useAtualizarPedido()
+  const reabrir = useReabrirConcluido({ id: p.id, origem: p.origem, status: "enviado" }) // só gestor
   const gravar = (campos: Parameters<typeof atualizar.mutate>[0]["campos"]) => atualizar.mutate({ pedidoId: p.id, campos })
   const local = [p.entrega_cidade, p.entrega_uf].filter(Boolean).join("/")
   const quando = aba === "entregues" && p.entregue_em ? `entregue há ${tempoDesde(p.entregue_em)}` : `postado há ${tempoDesde(p.postado_em ?? p.status_desde)}`
@@ -63,10 +65,15 @@ function Cartao({ p, aba }: { p: PedidoConcluido; aba: Aba }) {
               <PackageCheck /> Marcar entregue
             </Button>
           )}
-          {aba === "entregues" && (
+          {(aba === "entregues" || reabrir.grupo.itens.length > 0) && (
             <MenuAcoes
               titulo="Ações do pedido"
-              grupos={[{ itens: [{ rotulo: "Desfazer entrega", icone: Undo2, desabilitado: atualizar.isPending, aoClicar: () => gravar({ entregue_em: null }) }] }]}
+              grupos={[
+                ...(aba === "entregues"
+                  ? [{ itens: [{ rotulo: "Desfazer entrega", icone: Undo2, desabilitado: atualizar.isPending, aoClicar: () => gravar({ entregue_em: null }) }] }]
+                  : []),
+                reabrir.grupo,
+              ]}
               gatilho={
                 <Button variant="outline" size="icon-toque" aria-label="Mais ações" className="ml-auto shrink-0">
                   <MoreHorizontal />
@@ -76,6 +83,7 @@ function Cartao({ p, aba }: { p: PedidoConcluido; aba: Aba }) {
           )}
         </ItemActions>
       </Item>
+      {reabrir.dialogo}
     </li>
   )
 }

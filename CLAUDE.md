@@ -19,7 +19,8 @@ da nota, 44 números, opcional, em `pedidos.nf_chave`; ela aparece no bloco Fret
 etapa só, status `embalagem`, dois botões: "Embalado" e "Frete gerado", em qualquer ordem; só vai para a Postagem com os dois;
 o status `frete` continua aceito no banco só por causa do histórico, nenhum pedido novo entra nele) → Postagem (aqui se cola o link de rastreio) → **Enviar rastreio** (status `enviar_rastreio`, só pedidos que não são da
 Shopify: link, WhatsApp com a mensagem pronta e "Mensagem enviada"; pedido da Shopify pula esta etapa) → **Concluído** (status
-`enviado` no banco; página `/concluidos`, só abas A caminho e Entregues). Não existe etapa Etiquetagem. A posição de uma etapa
+`enviado` no banco; página `/concluidos`, só abas A caminho e Entregues; **só o gestor** reabre um pedido concluído com `mover_etapa`, que
+volta para uma etapa anterior e desfaz o trabalho dali em diante, inclusive a entrega). Não existe etapa Etiquetagem. A posição de uma etapa
 depende da origem do pedido (`passosDe(origem)` em `src/lib/status.ts`).
 **Tempo na etapa e termômetro (19/11/2026):** cada etapa tem uma meta em horas úteis (`metas_etapa`, editável no Time); a view
 `v_pedidos_operacao` entrega `horas_na_etapa` e `termometro` (verde até a meta, amarelo até o dobro, vermelho acima; nulo na Fila,
@@ -29,7 +30,7 @@ Expedição leva a `/time#metas`.
 Na Expedição existe ainda a coluna derivada **"Cliente decidiu"** (não é status): pedidos em `avisar_cliente`/`aguardando_cliente` cuja troca já tem peça escolhida pela cliente e não concluída (`cliente_decidiu` em `v_pedidos_operacao`).
 Cada peça anda sozinha; o pedido fica na etapa da peça mais atrasada e avança sozinho (função `marcar_pecas` em lote,
 `avancar_pecas`, avanço automático dos documentos no gatilho `tg_pedidos_antes`). Mover de etapa à mão e "Concluir
-pedido" são `mover_etapa` (grava `etapas_puladas`). Progresso de peça vai em lote por `src/lib/lotePecas.ts`: valores
+pedido" são `mover_etapa` (grava `etapas_puladas`; voltar grava `reiniciado`). Progresso de peça vai em lote por `src/lib/lotePecas.ts`: valores
 absolutos, uma requisição em voo por pedido; não adicione gravação peça a peça nem gatilho caro por clique.
 **Papéis e quem vê o quê (Fase 2, desde 19/11/2026):** `gestor` vê e faz tudo; `funcionaria` vê SÓ os pedidos em que é responsável
 pela **etapa atual** (`pedidos.responsaveis ->> etapa atual = membro_atual()`; desvio vale como a etapa de origem, `novo` como

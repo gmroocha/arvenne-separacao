@@ -233,7 +233,7 @@ test('mover_etapa: para frente marca o que falta como feito e registra etapas_pu
   assert.equal((await one("select mover_etapa($1,'enviado') s", [p.id])).s, 'enviado')
   const fim = await one('select embalado_em,frete_gerado_em,postado_em from pedidos where id=$1', [p.id])
   assert.ok(fim.embalado_em && fim.frete_gerado_em && fim.postado_em)
-  await recusa(() => one("select mover_etapa($1,'separacao')", [p.id]), /concluído/)
+  // Reabrir um pedido concluído (só gestor, volta para etapa anterior) tem os testes em reabrir-concluido.test.mjs.
   assert.equal(lista.length, 3)
 })
 
