@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from "vitest"
 import { db, one } from './suporte.mjs'
 import { criarBanco } from './suporte.mjs'
-import { fixture, escolher, concluir, pedidoWhats, recusa } from './fixtures.mjs'
+import { fixture, escolher, concluir, pedidoWhats, recusa, entrarComo } from './fixtures.mjs'
 
 // Esteira leve (20261122180000): marcar_pecas em lote, avanço automático, mover_etapa, excluir_membro.
-const entrar = (email = 'ana@arvenne.test') => db.exec(`select set_config('request.jwt.claims','{"email":"${email}"}',true); set local role authenticated`)
+const entrar = (email = 'ana@arvenne.test') => entrarComo(email)
 const marcar = async (pedido, marcas) => (await one('select marcar_pecas($1,$2::jsonb) as r', [pedido, JSON.stringify(marcas)])).r
 const itens = async (id) => (await db.query('select * from pedido_itens where pedido_id=$1 and status<>$2 order by ordem,id', [id, 'removido'])).rows
 const status = async (id) => (await one('select status from pedidos where id=$1', [id])).status

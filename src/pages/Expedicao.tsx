@@ -17,7 +17,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { useDebounce } from "@/lib/useDebounce"
-import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePedidosExpedicao, useSincronizarShopify } from "@/lib/api"
+import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePedidosExpedicao, useSincronizarShopify, useSouGestor } from "@/lib/api"
 import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { digitos } from "@/lib/formato"
 import { destinoAoConcluir, ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
@@ -154,6 +154,8 @@ export default function Expedicao() {
   const pessoa = params.get("pessoa")
   const membros = useEquipe().data ?? []
   const meuMembro = useMeuMembro()
+  // A funcionária vê só os pedidos da etapa dela: sem filtro por pessoa e sem sincronizar com a Shopify.
+  const gestor = useSouGestor() === true
   const [busca, setBusca] = useState("")
   const termo = useDebounce(busca, 300)
   const { data, isLoading, isError, isFetching, refetch } = usePedidosExpedicao(termo)
@@ -250,19 +252,21 @@ export default function Expedicao() {
         >
           Atrasados <Badge variant={totalAtrasados ? "destructive" : "secondary"}>{totalAtrasados}</Badge>
         </Toggle>
-        <Button
-          variant="outline"
-          size="toque"
-          aria-label="Sincronizar com a Shopify"
-          className="w-11 shrink-0 px-0 lg:w-auto lg:px-2.5"
-          onClick={() => sincronizar.mutate(undefined)}
-          disabled={sincronizar.isPending}
-        >
-          {sincronizar.isPending ? <Spinner /> : <RefreshCw />} <span className="hidden lg:inline">Sincronizar</span>
-        </Button>
+        {gestor && (
+          <Button
+            variant="outline"
+            size="toque"
+            aria-label="Sincronizar com a Shopify"
+            className="w-11 shrink-0 px-0 lg:w-auto lg:px-2.5"
+            onClick={() => sincronizar.mutate(undefined)}
+            disabled={sincronizar.isPending}
+          >
+            {sincronizar.isPending ? <Spinner /> : <RefreshCw />} <span className="hidden lg:inline">Sincronizar</span>
+          </Button>
+        )}
       </div>
 
-      {membros.length > 0 && (
+      {gestor && membros.length > 0 && (
         <Select value={!pessoa || (pessoa === "eu" && !meuMembro) ? "todos" : pessoa} onValueChange={(v) => atualizar({ pessoa: v === "todos" ? null : v })}>
           <SelectTrigger className="h-11 w-full sm:w-64 lg:h-8" aria-label="Filtrar por pessoa">
             <Users className="text-muted-foreground" />

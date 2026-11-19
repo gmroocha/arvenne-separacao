@@ -38,7 +38,14 @@ async function semear(banco, { status, troca, aviso, somada }) {
 
 // Pequeno adaptador PostgREST só para testes: operações usam as migrations e o PostgreSQL em memória.
 // Não há cálculo financeiro copiado para o simulador, conexão remota ou credencial real.
-export async function criarSimulacao({ status = "novo", troca = false, aviso = false, somada = false } = {}) {
+//
+// Quem está logado na simulação (opção `papel`):
+// - sem `papel` (padrão dos testes antigos): login "livre", como service_role; o banco não confere papel nem etapa;
+// - `papel: "gestor"`: pessoa do Time com papel gestor (vê tudo, mexe em tudo);
+// - `papel: "funcionaria"`: pessoa do Time funcionária; vê só o pedido semeado, de que é a responsável da etapa atual
+//   (`responsavel: false` deixa o pedido sem ninguém). O login chega ao banco só com `sub` e e-mail, como o do Supabase.
+// `logins` ({ "e-mail": "senha" }) vale para o formulário de entrada (/auth/v1/token); `tentativasLogin` guarda os e-mails tentados.
+export async function criarSimulacao({ status = "novo", troca = false, aviso = false, somada = false, papel, responsavel = true, logins } = {}) {
   let legado
   const opcoes={status,troca,aviso,somada}
   // Caso de dados antigos: semeia a incoerência ANTES da migration que passa a impedi-la.
@@ -52,6 +59,13 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     coalesce((select jsonb_object_agg(p.proargnames[a.n],format_type(a.t,null)) from unnest(p.proargtypes) with ordinality a(t,n)), '{}'::jsonb) as args
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'`)).rows
   const user = { id: "00000000-0000-0000-0000-000000000001", email: "teste@example.test", aud: "authenticated", role: "authenticated" }
+  if (papel) {
+    const eu = await one("insert into equipe(nome,papel,user_id) values ($1,$2,$3) returning id", [papel === "gestor" ? "Gestora de teste" : "Funcionária de teste", papel, user.id])
+    if (papel === "funcionaria" && responsavel)
+      await banco.query("update pedidos set responsaveis = jsonb_build_object(public.etapa_da_esteira(status, etapa_antes_desvio), $2::text) where id = $1", [p.id, eu.id])
+  }
+  const tentativasLogin = [], chamadasAcesso = []
+  const senhas = new Map(Object.entries(logins ?? { [user.email]: "senha-ficticia" }))
   const exp = Math.floor(Date.now() / 1000) + 3600
   const jwt = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"), Buffer.from(JSON.stringify({ ...user, sub: user.id, exp })).toString("base64url"), "ficticio"].join(".")
   const sessao = { access_token: jwt, refresh_token: "ficticio", expires_in: 3600, expires_at: exp, token_type: "bearer", user }
@@ -92,6 +106,23 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     if (req.method() === "GET" && url.href === "http://localhost:9100/default?type=printer") return { status: 200, json: {}, headers }
     if (url.origin !== SUPABASE_FICTICIO) return null
     requisicoes.push({ path: url.pathname, metodo: req.method() })
+    // Função Edge equipe-acesso (criar login): só registra o pedido e responde de mentira; nenhuma Edge é acionada.
+    if (url.pathname === "/functions/v1/equipe-acesso") {
+      const cors = { ...headers, "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" }
+      if (req.method() === "OPTIONS") return { status: 204, body: "", headers: cors }
+      const dados = req.postDataJSON?.() ?? {}
+      chamadasAcesso.push(dados)
+      if (dados.acao === "criar") await banco.query("update equipe set usuario = $2, user_id = gen_random_uuid() where id = $1", [dados.membro_id, dados.usuario])
+      return { status: 200, json: { ok: true, usuario: dados.usuario }, headers: cors }
+    }
+    // Formulário de entrada: só aceita os logins fictícios combinados; o resto continua bloqueado pela barreira.
+    if (url.pathname === "/auth/v1/token" && req.method() === "POST" && url.searchParams.get("grant_type") === "password") {
+      const dados = req.postDataJSON?.() ?? {}
+      tentativasLogin.push(dados.email)
+      return senhas.get(dados.email) === dados.password
+        ? { status: 200, json: sessao, headers }
+        : { status: 400, json: { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" }, headers }
+    }
     if (url.pathname === "/auth/v1/user") return { status: 200, json: user, headers }
     if (!url.pathname.startsWith("/rest/v1/")) return null
     const nome = url.pathname.split("/").pop()
@@ -99,7 +130,7 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     const body = req.postDataJSON?.() ?? null
     const autenticado = req.headers().authorization === `Bearer ${jwt}`
     // Como o PostgREST: o e-mail do login vai nas claims da transação (sou_gestor() e o histórico leem dali).
-    await banco.exec(`begin; ${autenticado ? `select set_config('request.jwt.claims','${JSON.stringify({ email: user.email, role: "authenticated" })}',true); ` : ""}set local role ${autenticado ? "authenticated" : "anon"};`)
+    await banco.exec(`begin; ${autenticado ? `select set_config('request.jwt.claims','${JSON.stringify(papel ? { sub: user.id, email: user.email, role: "authenticated" } : { email: user.email, role: "service_role" })}',true); ` : ""}set local role ${autenticado ? "authenticated" : "anon"};`)
     try {
       if (url.pathname.includes("/rpc/")) {
         const f = funcoes.find((x) => x.proname === nome)
@@ -154,14 +185,19 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
       } else throw new Error("Operação não suportada no banco fictício")
       await banco.exec("commit")
       if (req.method() === "HEAD") return { status: 200, body: "", headers: { ...headers, "content-range": `0-0/${rows.length}` } }
-      return { status: 200, json: req.headers().accept?.includes("application/vnd.pgrst.object+json") ? rows[0] ?? null : rows, headers }
+      if (req.headers().accept?.includes("application/vnd.pgrst.object+json")) {
+        // Como o PostgREST: .single() sem exatamente uma linha dá 406 (acontece quando a RLS esconde o pedido).
+        if (rows.length !== 1) return { status: 406, json: { code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned", details: `The result contains ${rows.length} rows`, hint: null }, headers }
+        return { status: 200, json: rows[0], headers }
+      }
+      return { status: 200, json: rows, headers }
     } catch (e) {
       await banco.exec("rollback")
       return { status: 400, json: { message: e.message, code: e.code ?? "SIMULACAO" }, headers }
     }
   }
   return {
-    pedido: p, item: i, troca: t, vendaSomada, banco, one, requisicoes, bloqueadas, ocioso: () => fila,
+    pedido: p, item: i, troca: t, vendaSomada, banco, one, requisicoes, bloqueadas, tentativasLogin, chamadasAcesso, ocioso: () => fila,
     falharProximaEscolha: () => { falharEscolha = true },
     fechar: () => banco.close(),
     async instalar(context, baseUrl, { logado = true } = {}) {

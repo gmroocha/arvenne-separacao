@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { pedidoWhats, recusa } from './fixtures.mjs'
+import { pedidoWhats, recusa, entrarComo } from './fixtures.mjs'
 
 // V110/V111: Clube com produto "pai" e variantes (clube_modelos + pecas_clube.modelo_id) e gravação em lote.
 const salvar = async (p) => (await one('select salvar_modelo_clube($1::jsonb) as r', [JSON.stringify(p)])).r
@@ -8,7 +8,7 @@ const contar = async () => ({
   modelos: (await one('select count(*)::int n from clube_modelos')).n,
   pecas: (await one('select count(*)::int n from pecas_clube')).n,
 })
-const entrar = () => db.exec("select set_config('request.jwt.claims','{\"email\":\"ana@arvenne.test\"}',true); set local role authenticated")
+const entrar = () => entrarComo('ana@arvenne.test')
 
 test('V110: produto com variantes: o pai guarda nome, foto, código e preço; cada variante é uma peça do Clube com o preço do pai', async () => {
   await entrar()

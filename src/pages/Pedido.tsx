@@ -179,10 +179,14 @@ export default function Pedido() {
         <Skeleton className="h-40 w-full" />
       </div>
     )
+  // O banco só mostra o pedido a quem cuida da etapa dele: depois de concluir a etapa, ele segue para a próxima pessoa.
+  const foiEmbora = (error as { code?: string } | null)?.code === "PGRST116"
   if (!data)
     return (
       <Alert variant="destructive">
-        <AlertDescription>{error ? "Não foi possível carregar o pedido. Tente de novo." : "Pedido não encontrado."}</AlertDescription>
+        <AlertDescription>
+          {foiEmbora ? "Este pedido não está com você. Ele segue com quem cuida da etapa dele." : error ? "Não foi possível carregar o pedido. Tente de novo." : "Pedido não encontrado."}
+        </AlertDescription>
       </Alert>
     )
   if (data.fase === "venda") return <Navigate to={`/vendas/${data.id}`} replace />
@@ -190,7 +194,7 @@ export default function Pedido() {
   if (data.status === "somada" && data.somar_em) return <Navigate to={`/pedidos/${data.somar_em}`} replace />
   return (
     <>
-      {error && <p className="mb-2 text-xs text-muted-foreground">Sem conexão com o servidor: mostrando o último dado carregado.</p>}
+      {error && <p className="mb-2 text-xs text-muted-foreground">{foiEmbora ? "Este pedido já seguiu para a próxima etapa e não está mais com você." : "Sem conexão com o servidor: mostrando o último dado carregado."}</p>}
       <Conteudo key={data.id} pedido={data} />
     </>
   )

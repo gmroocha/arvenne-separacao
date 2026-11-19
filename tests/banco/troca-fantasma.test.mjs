@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'vitest'
 import { db, one } from './suporte.mjs'
-import { concluir, escolher, fixture, pedidoWhats, recusa } from './fixtures.mjs'
+import { concluir, escolher, fixture, pedidoWhats, recusa, entrarComo } from './fixtures.mjs'
 
-const entrar = () => db.exec(`select set_config('request.jwt.claims','{"email":"ana@arvenne.test"}',true); set local role authenticated`)
+const entrar = () => entrarComo('ana@arvenne.test')
 const status = async (id) => (await one('select status from pedidos where id=$1', [id])).status
 const ativas = async (id) =>
   (await one("select count(*)::int n from trocas where pedido_id=$1 and status in ('rascunho','enviada','respondida')", [id])).n

@@ -505,7 +505,7 @@ test("time: cadastrar pessoa, designar a etapa do pedido e filtrar a Expedição
   // Gustavo marca o próprio registro como gestor uma vez e promove a segunda pessoa pela tela).
   await sim.banco.query("insert into equipe(nome,email,papel) values ('Ana Paula','teste@example.test','gestor')")
   await page.goto("/time")
-  await expect(page.getByText("Ana Paula")).toBeVisible()
+  await expect(page.getByText("teste@example.test")).toBeVisible()
   expect((await sim.one("select email, ativo, papel from equipe where nome='Ana Paula'"))).toEqual({ email: "teste@example.test", ativo: true, papel: "gestor" })
   await page.getByRole("button", { name: "Adicionar pessoa" }).click()
   await page.getByRole("textbox", { name: "Nome" }).fill("Bia")

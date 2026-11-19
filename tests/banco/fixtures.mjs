@@ -194,3 +194,12 @@ export async function somaFixture({ principal = {}, venda = {} } = {}) {
   await db.exec('set local role authenticated')
   return { p, w, i1, i2 }
 }
+
+// Entra como uma pessoa do Time (JWT de login com e-mail). Sem cadastro no Time, a pessoa é criada com o papel dado
+// (gestor por padrão): desde a Fase 2 o banco só mostra pedidos a quem está no Time, e a funcionária só vê os da etapa dela.
+export async function entrarComo(email, papel = 'gestor') {
+  await db.exec('reset role')
+  await db.query('insert into equipe (nome, email, papel) select $1, $2, $3 where not exists (select 1 from equipe where lower(email) = lower($2))',
+    [email.split('@')[0], email, papel])
+  await db.exec(`select set_config('request.jwt.claims','${JSON.stringify({ email, role: 'authenticated' })}',true); set local role authenticated`)
+}

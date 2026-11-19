@@ -72,7 +72,7 @@ test('designar: recusa etapa inválida, pessoa inativa ou inexistente, pedido ar
 test('time: equipe lê, cria e edita; não apaga; anon não acessa; e-mail não repete (sem diferença de caixa)', async () => {
   // V109: criar e editar é do gestor (aqui, o login de teste é o de "Gestora").
   await membro('Gestora', 'gestora@arvenne.test', true, 'gestor')
-  await db.exec("select set_config('request.jwt.claims','{\"email\":\"Gestora@Arvenne.test\"}',true); set local role authenticated")
+  await db.exec("select set_config('request.jwt.claims','{\"email\":\"Gestora@Arvenne.test\",\"role\":\"authenticated\"}',true); set local role authenticated")
   const ana = await membro('Ana', 'Ana@Arvenne.test')
   await recusa(() => membro('Outra', 'ana@arvenne.test'), /duplicate|unique|único/)
   await membro('Sem e-mail 1'); await membro('Sem e-mail 2') // e-mail é opcional e nulo pode repetir
@@ -98,36 +98,62 @@ test('time: só designar() grava responsaveis válidos (objeto JSON) e as telas 
   assert.ok(avisos.some((m) => m.t === 'equipe' && m.p.length === 0))
 })
 
-// Papéis suspensos (18/11/2026): todo mundo logado faz tudo no Time; papel fica guardado, mas não vale.
-// (V109 voltará quando o Gustavo pedir os papéis de novo.)
-const entrarComo = (email) => db.exec(`select set_config('request.jwt.claims','{"email":"${email}"}',true); set local role authenticated`)
+// V109: papéis. Só o gestor (pessoa ativa da equipe com o e-mail do login) adiciona, edita, desativa e exclui pessoas e
+// troca o papel; a funcionária lê tudo. O time nunca fica sem gestor ativo.
+const entrarComo = (email) => db.exec(`select set_config('request.jwt.claims','{"email":"${email}","role":"authenticated"}',true); set local role authenticated`)
 
-test('papéis suspensos: qualquer login cria, edita, desativa, troca papel e exclui pessoas', async () => {
-  await membro('Gestor', 'gestor@arvenne.test', true, 'gestor')
-  const func = await membro('Funcionária', 'func@arvenne.test')
-  const outra = await membro('Outra')
-  for (const email of ['func@arvenne.test', 'ninguem@arvenne.test']) {
-    await db.exec('reset role')
-    await entrarComo(email)
-    assert.equal((await one('select sou_gestor() s')).s, true)
-  }
-  await db.exec('reset role')
-  await entrarComo('func@arvenne.test')
-  await one("insert into equipe (nome) values ('Nova')")
-  await db.query("update equipe set ativo=false, papel='gestor' where id=$1", [outra])
-  assert.deepEqual(await one('select ativo, papel from equipe where id=$1', [outra]), { ativo: false, papel: 'gestor' })
-  await db.query("update equipe set nome='Funcionária 2' where id=$1", [func])
-  await one('select excluir_membro($1)', [outra])
-  assert.equal((await one('select count(*)::int n from equipe where id=$1', [outra])).n, 0)
+test('V109: sou_gestor vale só para pessoa ativa, com papel de gestor e o e-mail do login (sem diferença de caixa)', async () => {
+  await membro('Gestor', 'Gestor@Arvenne.test', true, 'gestor')
+  await membro('Funcionária', 'func@arvenne.test')
+  await membro('Gestor inativo', 'inativo@arvenne.test', false, 'gestor')
+  const quem = async (email) => { await db.exec('reset role'); await entrarComo(email); return (await one('select sou_gestor() s')).s }
+  assert.equal(await quem('gestor@arvenne.test'), true)
+  assert.equal(await quem('FUNC@arvenne.test'), false)
+  assert.equal(await quem('inativo@arvenne.test'), false)
+  assert.equal(await quem('ninguem@arvenne.test'), false)
+  // Sem JWT de pessoa (cron, gatilhos, service_role) vale como sistema e passa.
+  await db.exec("reset role; select set_config('request.jwt.claims','',true); set local role authenticated")
+  assert.equal((await one('select sou_gestor() s')).s, true, 'sem login de pessoa ("sistema")')
+  await db.exec(`reset role; select set_config('request.jwt.claims','{"role":"authenticated"}',true); set local role authenticated`)
+  assert.equal((await one('select sou_gestor() s')).s, false, 'login de pessoa sem e-mail nem user_id')
 })
 
-test('papéis suspensos: a única gestora pode ser desativada, rebaixada ou excluída', async () => {
+test('V109: a funcionária lê a lista, mas não cria, edita, desativa nem exclui ninguém; o gestor faz tudo', async () => {
+  const ger = await membro('Gestor', 'gestor@arvenne.test', true, 'gestor')
+  const func = await membro('Funcionária', 'func@arvenne.test')
+  const outra = await membro('Outra')
+  await entrarComo('func@arvenne.test')
+  assert.equal((await db.query('select * from equipe')).rows.length, 3, 'lê o time inteiro')
+  await recusa(() => one("insert into equipe (nome) values ('Nova')"), /row-level security|policy/)
+  // Sem política de UPDATE para a funcionária, a atualização não encontra linha (nada muda).
+  await db.query("update equipe set ativo=false, papel='gestor' where id=$1", [outra])
+  await db.query("update equipe set papel='gestor' where id=$1", [func])
+  assert.deepEqual((await one('select ativo, papel from equipe where id=$1', [outra])), { ativo: true, papel: 'funcionaria' })
+  assert.equal((await one('select papel from equipe where id=$1', [func])).papel, 'funcionaria', 'ninguém se promove sozinha')
+  await recusa(() => one('select excluir_membro($1)', [outra]), /Só o gestor/)
+  await db.exec('reset role')
+  await entrarComo('gestor@arvenne.test')
+  await one("insert into equipe (nome, email) values ('Nova', 'nova@arvenne.test')")
+  await db.query("update equipe set papel='gestor' where id=$1", [func]) // o gestor promove a segunda pessoa
+  assert.equal((await one('select papel from equipe where id=$1', [func])).papel, 'gestor')
+  await db.query("update equipe set ativo=false where id=$1", [outra])
+  await one('select excluir_membro($1)', [outra])
+  assert.equal((await one('select count(*)::int n from equipe where id=$1', [outra])).n, 0)
+  assert.ok(ger)
+})
+
+test('V109: o último gestor ativo não sai (nem excluindo, nem desativando, nem passando para funcionária)', async () => {
   const ger = await membro('Gestor', 'gestor@arvenne.test', true, 'gestor')
   await entrarComo('gestor@arvenne.test')
+  await recusa(() => db.query("update equipe set papel='funcionaria' where id=$1", [ger]), /pelo menos um gestor/)
+  await recusa(() => db.query("update equipe set ativo=false where id=$1", [ger]), /pelo menos um gestor/)
+  await recusa(() => one('select excluir_membro($1)', [ger]), /pelo menos um gestor/)
+  // Com um segundo gestor, o primeiro pode sair; o segundo vira o último.
+  const seg = await membro('Segunda', 'segunda@arvenne.test', true, 'gestor')
   await db.query("update equipe set papel='funcionaria' where id=$1", [ger])
-  await db.query("update equipe set ativo=false where id=$1", [ger])
-  await one('select excluir_membro($1)', [ger])
-  assert.equal((await one('select count(*)::int n from equipe')).n, 0)
+  await db.exec('reset role')
+  await entrarComo('segunda@arvenne.test')
+  await recusa(() => db.query("update equipe set papel='funcionaria' where id=$1", [seg]), /pelo menos um gestor/)
 })
 
 test('V109: permissões novas: sou_gestor não é público, equipe continua sem DELETE e a migration não traz e-mail', async () => {
@@ -136,6 +162,8 @@ test('V109: permissões novas: sou_gestor não é público, equipe continua sem 
     has_table_privilege('authenticated','public.equipe','delete') as apaga`)
   assert.deepEqual(priv, { auth: true, anon: false, apaga: false })
   const { readFileSync } = await import('node:fs')
-  const sql = readFileSync('supabase/migrations/20261123090000_rodada3.sql', 'utf8')
-  assert.equal(/@/.test(sql), false, 'a migration não pode ter e-mail')
+  for (const arq of ['20261123090000_rodada3', '20261126090000_acesso_e_papeis', '20261126100000_visibilidade_pedidos']) {
+    const sql = readFileSync(`supabase/migrations/${arq}.sql`, 'utf8')
+    assert.equal(/@/.test(sql), false, `a migration ${arq} não pode ter e-mail`)
+  }
 })

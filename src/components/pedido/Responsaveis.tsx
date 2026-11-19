@@ -7,7 +7,7 @@ import RespDialog from "@/components/RespDialog"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { useDesignar, useEquipe, type PedidoDetalhe } from "@/lib/api"
+import { useDesignar, useEquipe, useSouGestor, type PedidoDetalhe } from "@/lib/api"
 import { etapaDoResponsavel, passosTrabalhoDe } from "@/lib/status"
 
 const NINGUEM = "ninguem"
@@ -19,8 +19,9 @@ export default function Responsaveis({ pedido, className }: { pedido: PedidoDeta
   const [aberto, setAberto] = useState(false)
   const membros = useEquipe().data ?? []
   const designar = useDesignar(pedido.id)
+  const gestor = useSouGestor() === true // só o gestor designa (o banco também recusa)
   const etapa = etapaDoResponsavel(pedido)
-  if (pedido.fase !== "expedicao" || etapa === null || membros.length === 0) return null
+  if (!gestor || pedido.fase !== "expedicao" || etapa === null || membros.length === 0) return null
 
   const resp = pedido.responsaveis ?? {}
   const nomeDe = (id: string | undefined) => membros.find((m) => m.id === id)?.nome

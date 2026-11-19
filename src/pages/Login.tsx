@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
+import { emailDoLogin } from "@/lib/loginInterno"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -10,16 +11,16 @@ import { Spinner } from "@/components/ui/spinner"
 
 export default function Login() {
   const navegar = useNavigate()
-  const [email, setEmail] = useState("")
+  const [usuario, setUsuario] = useState("")
   const [senha, setSenha] = useState("")
   const [entrando, setEntrando] = useState(false)
 
   async function entrar(e: FormEvent) {
     e.preventDefault()
     setEntrando(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+    const { error } = await supabase.auth.signInWithPassword({ email: emailDoLogin(usuario), password: senha })
     setEntrando(false)
-    if (error) return toast.error("E-mail ou senha incorretos")
+    if (error) return toast.error("Usuário ou senha incorretos")
     navegar("/", { replace: true })
   }
 
@@ -33,8 +34,8 @@ export default function Login() {
           <form onSubmit={entrar}>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="email">E-mail</FieldLabel>
-                <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <FieldLabel htmlFor="usuario">Usuário ou e-mail</FieldLabel>
+                <Input id="usuario" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required value={usuario} onChange={(e) => setUsuario(e.target.value)} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="senha">Senha</FieldLabel>

@@ -4,6 +4,39 @@ import type { Database as Remoto, Json } from './database.types'
 
 type Adicoes = {
   Tables: {
+    equipe: {
+      Row: {
+        id: string
+        nome: string
+        email: string | null
+        ativo: boolean
+        created_at: string
+        papel: string
+        usuario: string | null
+        user_id: string | null
+      }
+      Insert: {
+        id?: string
+        nome: string
+        email?: string | null
+        ativo?: boolean
+        created_at?: string
+        papel?: string
+        usuario?: string | null
+        user_id?: string | null
+      }
+      Update: {
+        id?: string
+        nome?: string
+        email?: string | null
+        ativo?: boolean
+        created_at?: string
+        papel?: string
+        usuario?: string | null
+        user_id?: string | null
+      }
+      Relationships: []
+    }
     metas_etapa: {
       Row: {
         etapa: string
@@ -235,6 +268,21 @@ type Adicoes = {
       }
       Relationships: []
     }
+    responsavel_padrao: {
+      Row: {
+        etapa: string
+        membro_id: string | null
+      }
+      Insert: {
+        etapa: string
+        membro_id?: string | null
+      }
+      Update: {
+        etapa?: string
+        membro_id?: string | null
+      }
+      Relationships: []
+    }
   }
   Views: {
     v_pedidos: {
@@ -374,6 +422,18 @@ type Adicoes = {
   }
   Functions: {
     decisao_troca: { Args: { p_pedido: string | null; p_status: string | null }; Returns: Json | null }
+    etapa_da_esteira: { Args: { p_status: string | null; p_antes: string | null }; Returns: string | null }
+    exigir_gestor: { Args: Record<PropertyKey, never>; Returns: undefined | null }
+    exigir_pedido: { Args: { p_pedido: string | null }; Returns: undefined | null }
+    exigir_pedido_da_peca_troca: { Args: { p_peca: string | null }; Returns: undefined | null }
+    exigir_pedido_da_troca: { Args: { p_troca: string | null }; Returns: undefined | null }
+    exigir_pedido_do_credito: { Args: { p_credito: string | null }; Returns: undefined | null }
+    exigir_pedido_do_item: { Args: { p_item: string | null }; Returns: undefined | null }
+    membro_atual: { Args: Record<PropertyKey, never>; Returns: string | null }
+    pode_ver_pedido: { Args: { p_pedido: string | null }; Returns: boolean | null }
+    preencher_responsaveis_padrao: { Args: Record<PropertyKey, never>; Returns: number | null }
+    responsavel_padrao_de: { Args: { p_etapa: string | null }; Returns: string | null }
+    sou_sistema: { Args: Record<PropertyKey, never>; Returns: boolean | null }
     termometro_etapa: { Args: { p_status: string | null; p_horas: number | null }; Returns: string | null }
   }
 }

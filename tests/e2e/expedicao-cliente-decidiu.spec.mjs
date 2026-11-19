@@ -28,7 +28,7 @@ async function clienteEscolhe() {
 }
 async function equipeConclui() {
   await sim.ocioso()
-  await sim.banco.exec(`begin; select set_config('request.jwt.claims','{"email":"teste@example.test","role":"authenticated"}',true); set local role authenticated`)
+  await sim.banco.exec(`begin; select set_config('request.jwt.claims','{"email":"teste@example.test","role":"service_role"}',true); set local role authenticated`)
   const peca = (await sim.banco.query("select id from troca_pecas where troca_id = $1", [sim.troca.id])).rows[0]
   await sim.banco.query("select troca_concluir_peca($1, $2, 'credito', null, 'credito')", [sim.troca.id, peca.id])
   await sim.banco.exec("commit")
