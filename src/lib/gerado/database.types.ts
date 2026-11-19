@@ -58,6 +58,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bipagens_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_pago"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bipagens_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
@@ -337,6 +344,20 @@ export type Database = {
             foreignKeyName: "creditos_cliente_troca_id_fkey"
             columns: ["troca_id"]
             isOneToOne: false
+            referencedRelation: "v_troca_alvo"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
             referencedRelation: "v_troca_resumo"
             referencedColumns: ["troca_id"]
           },
@@ -450,6 +471,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedbacks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_pago"
             referencedColumns: ["id"]
           },
           {
@@ -614,6 +642,20 @@ export type Database = {
             foreignKeyName: "movimentos_financeiros_troca_id_fkey"
             columns: ["troca_id"]
             isOneToOne: false
+            referencedRelation: "v_troca_alvo"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "movimentos_financeiros_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
             referencedRelation: "v_troca_resumo"
             referencedColumns: ["troca_id"]
           },
@@ -685,6 +727,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_pago"
             referencedColumns: ["id"]
           },
           {
@@ -815,6 +864,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_eventos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_pago"
             referencedColumns: ["id"]
           },
           {
@@ -1038,6 +1094,13 @@ export type Database = {
             columns: ["troca_peca_origem_id"]
             isOneToOne: false
             referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_troca_peca_origem_id_fkey"
+            columns: ["troca_peca_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
             referencedColumns: ["troca_peca_id"]
           },
           {
@@ -1310,6 +1373,20 @@ export type Database = {
             foreignKeyName: "pedidos_acerto_troca_id_fkey"
             columns: ["acerto_troca_id"]
             isOneToOne: false
+            referencedRelation: "v_troca_alvo"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "pedidos_acerto_troca_id_fkey"
+            columns: ["acerto_troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "pedidos_acerto_troca_id_fkey"
+            columns: ["acerto_troca_id"]
+            isOneToOne: false
             referencedRelation: "v_troca_resumo"
             referencedColumns: ["troca_id"]
           },
@@ -1427,6 +1504,13 @@ export type Database = {
             referencedRelation: "v_cobertura_troca_peca"
             referencedColumns: ["troca_peca_id"]
           },
+          {
+            foreignKeyName: "troca_escolhas_troca_peca_id_fkey"
+            columns: ["troca_peca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
+            referencedColumns: ["troca_peca_id"]
+          },
         ]
       }
       troca_opcoes: {
@@ -1488,6 +1572,13 @@ export type Database = {
             columns: ["troca_peca_id"]
             isOneToOne: false
             referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
+          },
+          {
+            foreignKeyName: "troca_opcoes_troca_peca_id_fkey"
+            columns: ["troca_peca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
             referencedColumns: ["troca_peca_id"]
           },
         ]
@@ -1552,6 +1643,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "troca_pecas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_pago"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "troca_pecas_troca_id_fkey"
             columns: ["troca_id"]
             isOneToOne: false
@@ -1570,6 +1668,20 @@ export type Database = {
             columns: ["troca_id"]
             isOneToOne: false
             referencedRelation: "v_pedido_acerto"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "troca_pecas_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_alvo"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "troca_pecas_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
             referencedColumns: ["troca_id"]
           },
           {
@@ -1830,6 +1942,20 @@ export type Database = {
             foreignKeyName: "creditos_cliente_troca_id_fkey"
             columns: ["troca_id"]
             isOneToOne: false
+            referencedRelation: "v_troca_alvo"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
+            referencedColumns: ["troca_id"]
+          },
+          {
+            foreignKeyName: "creditos_cliente_troca_id_fkey"
+            columns: ["troca_id"]
+            isOneToOne: false
             referencedRelation: "v_troca_resumo"
             referencedColumns: ["troca_id"]
           },
@@ -1931,6 +2057,94 @@ export type Database = {
           },
         ]
       }
+      v_item_pago: {
+        Row: {
+          id: string | null
+          pedido_id: string | null
+          troca_peca_origem_id: string | null
+          valor: number | null
+          venda_origem_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_troca_peca_origem_id_fkey"
+            columns: ["troca_peca_origem_id"]
+            isOneToOne: false
+            referencedRelation: "troca_pecas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_troca_peca_origem_id_fkey"
+            columns: ["troca_peca_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_troca_peca_origem_id_fkey"
+            columns: ["troca_peca_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
+            referencedColumns: ["troca_peca_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_venda_origem_id_fkey"
+            columns: ["venda_origem_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_ocorrencias: {
         Row: {
           anulada_em: string | null
@@ -1974,6 +2188,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_pago"
             referencedColumns: ["id"]
           },
           {
@@ -2362,6 +2583,109 @@ export type Database = {
           },
         ]
       }
+      v_troca_alvo: {
+        Row: {
+          acerto_em: string | null
+          acerto_por: string | null
+          acerto_status: string | null
+          pedido_id: string | null
+          troca_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_troca_base: {
+        Row: {
+          cobrir_ate: number | null
+          denominador: number | null
+          item_id: string | null
+          numerador: number | null
+          pago: number | null
+          pedido_id: string | null
+          qtd: number | null
+          troca_id: string | null
+          troca_peca_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "troca_pecas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "pedido_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "troca_pecas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "troca_pecas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_pago"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_troca_carrinho: {
         Row: {
           cliente_paga_previsto: number | null
@@ -2389,6 +2713,13 @@ export type Database = {
             columns: ["troca_peca_id"]
             isOneToOne: false
             referencedRelation: "v_cobertura_troca_peca"
+            referencedColumns: ["troca_peca_id"]
+          },
+          {
+            foreignKeyName: "troca_escolhas_troca_peca_id_fkey"
+            columns: ["troca_peca_id"]
+            isOneToOne: false
+            referencedRelation: "v_troca_base"
             referencedColumns: ["troca_peca_id"]
           },
         ]
@@ -2612,6 +2943,10 @@ export type Database = {
         Args: { p_ate: string; p_de: string }
         Returns: Json
       }
+      item_coberto: {
+        Args: { p_item: string; p_origem: string; p_valor: number }
+        Returns: number
+      }
       listar_inconsistencias: {
         Args: never
         Returns: {
@@ -2638,6 +2973,18 @@ export type Database = {
         Returns: undefined
       }
       membro_atual: { Args: never; Returns: string }
+      membro_ve_peca_troca: {
+        Args: { p_membro: string; p_peca: string }
+        Returns: boolean
+      }
+      membro_ve_pedido: {
+        Args: { p_membro: string; p_pedido: string }
+        Returns: boolean
+      }
+      membro_ve_troca: {
+        Args: { p_membro: string; p_troca: string }
+        Returns: boolean
+      }
       mesma_cliente: {
         Args: {
           a: Database["public"]["Tables"]["pedidos"]["Row"]

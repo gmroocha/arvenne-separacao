@@ -1,6 +1,6 @@
 # Estado atual (atualizado em 19/11/2026)
 
-## Desempenho V115: banco mais leve (19/11/2026) — **migration NÃO aplicada** (`20261126150000_desempenho.sql`)
+## Desempenho V115: banco mais leve (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (`20261126150000_desempenho.sql`). No banco real, como gestor: acerto 20→6 ms; troca_painel ~125 ms (resumo 41 ms, carrinho 19 ms, valores 16 ms por peça: próximo alvo se voltar a pesar)
 
 - Motivo: no plano gratuito (Nano, CPU compartilhada, 0,5 GB) 6 aparelhos esgotaram o limite de 8 s em 278 consultas. O front já foi corrigido (5 min de
   releitura, reconexão espalhada); aqui está a parte do banco. **Nenhum comportamento muda:** mesmas respostas, menos conta.
