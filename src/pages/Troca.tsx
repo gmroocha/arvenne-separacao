@@ -203,12 +203,12 @@ function CartaoModelo({
   )
 }
 
-// A peça que faltou: mesmo molde dos cartões, com o selo "Sem estoque" (sem bloco vermelho, que assusta).
+// A peça que faltou: mesmo molde dos cartões, com fundo avermelhado e o selo "Sem estoque".
 function PecaQueFaltou({ p }: { p: Peca }) {
   const { base, tamanho } = separarTamanho(p.variante)
   const varias = p.qtd > 1
   return (
-    <div className={CARTAO}>
+    <div className={cn(CARTAO, "bg-destructive/10 ring-0 border border-destructive/30 inset-ring-[0.5px] inset-ring-destructive/30")}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium text-muted-foreground">Peça do seu pedido</span>
         <Badge variant="destructive" size="lg">
