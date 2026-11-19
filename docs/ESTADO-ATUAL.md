@@ -17,7 +17,7 @@ cor (guarda `termometroDaEtapa` em `src/lib/termometro.ts`), e "Avisar cliente" 
   aparece para gestor (`useSouGestor`, Fase 2), como o próprio Time.
 - Testes: `tests/banco/termometro.test.mjs`, `tests/unidade/termometro.test.ts`, `tests/e2e/termometro.spec.mjs`, `embalagem-frete.spec.mjs` (metas).
 - A Fase 2 (já aplicada) não mexeu em `v_pedidos_operacao` nem em `termometro_etapa`; a migration parte da versão de `20261125160000`.
-## Reabrir pedido concluído (19/11/2026) — **migration NÃO aplicada** (falta o "sim" do Gustavo para o `db push`)
+## Reabrir pedido concluído (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo**
 
 - Pedido do Gustavo: "Em um pedido concluído tem que ter como mudar ele de etapa... Pode acontecer de marcar como concluído sem querer."
 - Só o **gestor** reabre. Menu "Mover para outra etapa" no "⋯" da tela do pedido concluído e no menu de cada linha de Concluídos
