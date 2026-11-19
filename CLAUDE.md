@@ -22,8 +22,10 @@ Shopify: link, WhatsApp com a mensagem pronta e "Mensagem enviada"; pedido da Sh
 `enviado` no banco; página `/concluidos`, só abas A caminho e Entregues). Não existe etapa Etiquetagem. A posição de uma etapa
 depende da origem do pedido (`passosDe(origem)` em `src/lib/status.ts`).
 **Tempo na etapa e termômetro (19/11/2026):** cada etapa tem uma meta em horas úteis (`metas_etapa`, editável no Time); a view
-`v_pedidos_operacao` entrega `horas_na_etapa` e `termometro` (verde até a meta, amarelo até o dobro, vermelho acima; nulo fora
-da esteira). A conta é do banco (`termometro_etapa`); o cartão só exibe, com traço de 1,5 px nessas três cores.
+`v_pedidos_operacao` entrega `horas_na_etapa` e `termometro` (verde até a meta, amarelo até o dobro, vermelho acima; nulo na Fila,
+em "Aguardando cliente" e fora da esteira; "Avisar cliente" tem meta própria). A conta é do banco (`termometro_etapa`); o cartão só
+exibe: traço de 1,5 px só em amarelo e vermelho (verde = cartão normal, só o pontinho verde ao lado do tempo). Atalho "Metas" na
+Expedição leva a `/time#metas`.
 Na Expedição existe ainda a coluna derivada **"Cliente decidiu"** (não é status): pedidos em `avisar_cliente`/`aguardando_cliente` cuja troca já tem peça escolhida pela cliente e não concluída (`cliente_decidiu` em `v_pedidos_operacao`).
 Cada peça anda sozinha; o pedido fica na etapa da peça mais atrasada e avança sozinho (função `marcar_pecas` em lote,
 `avancar_pecas`, avanço automático dos documentos no gatilho `tg_pedidos_antes`). Mover de etapa à mão e "Concluir

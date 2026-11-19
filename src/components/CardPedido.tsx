@@ -6,7 +6,7 @@ import Miniaturas from "@/components/Miniaturas"
 import MenuContexto from "@/components/MenuContexto"
 import Prazo from "@/components/pedido/Prazo"
 import TempoNaEtapa from "@/components/pedido/TempoNaEtapa"
-import { tracoDoTermometro } from "@/lib/termometro"
+import { termometroDaEtapa, tracoDoTermometro } from "@/lib/termometro"
 import { SeloAcerto } from "@/components/SeloAcerto"
 import AvatarMembro from "@/components/AvatarMembro"
 import { useEquipe, useReembolsosPendentes } from "@/lib/api"
@@ -21,7 +21,7 @@ export default function CardPedido({ p, progresso }: { p: PedidoOperacao; progre
   const resp = p.fase === "expedicao" ? responsavelDaEtapaAtual(p, membros) : null
   return (
     <MenuContexto pedido={p}>
-      <Card size="sm" className={cn("transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring", tracoDoTermometro(p.termometro))}>
+      <Card size="sm" className={cn("transition-colors hover:bg-muted/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring", tracoDoTermometro(termometroDaEtapa(p.status, p.termometro)))}>
         <Link to={`/pedidos/${p.id}`} draggable={false} className="flex flex-col gap-2 px-3 outline-none">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-col">

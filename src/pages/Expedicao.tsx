@@ -1,8 +1,8 @@
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Fragment, useEffect, useMemo, useRef, useState } from "react"
-import { useSearchParams } from "react-router"
+import { Link, useSearchParams } from "react-router"
 import { toast } from "sonner"
-import { ChevronRight, PackageOpen, RefreshCw, Users } from "lucide-react"
+import { ChevronRight, PackageOpen, RefreshCw, Thermometer, Users } from "lucide-react"
 import CardPedido from "@/components/CardPedido"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -262,27 +262,35 @@ export default function Expedicao() {
         </Button>
       </div>
 
-      {membros.length > 0 && (
-        <Select value={!pessoa || (pessoa === "eu" && !meuMembro) ? "todos" : pessoa} onValueChange={(v) => atualizar({ pessoa: v === "todos" ? null : v })}>
-          <SelectTrigger className="h-11 w-full sm:w-64 lg:h-8" aria-label="Filtrar por pessoa">
-            <Users className="text-muted-foreground" />
-            <SelectValue className="flex-1 text-left" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            {meuMembro && <SelectItem value="eu">Comigo ({meuMembro.nome})</SelectItem>}
-            {membros
-              .filter((m) => m.ativo || m.id === pessoa)
-              .map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.nome}
-                  {m.ativo ? "" : " (inativo)"}
-                </SelectItem>
-              ))}
-            <SelectItem value="sem">Sem responsável</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
+      <div className="flex items-center gap-2">
+        {membros.length > 0 && (
+          <Select value={!pessoa || (pessoa === "eu" && !meuMembro) ? "todos" : pessoa} onValueChange={(v) => atualizar({ pessoa: v === "todos" ? null : v })}>
+            <SelectTrigger className="h-11 min-w-0 flex-1 sm:w-64 sm:flex-none lg:h-8" aria-label="Filtrar por pessoa">
+              <Users className="text-muted-foreground" />
+              <SelectValue className="flex-1 text-left" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              {meuMembro && <SelectItem value="eu">Comigo ({meuMembro.nome})</SelectItem>}
+              {membros
+                .filter((m) => m.ativo || m.id === pessoa)
+                .map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.nome}
+                    {m.ativo ? "" : " (inativo)"}
+                  </SelectItem>
+                ))}
+              <SelectItem value="sem">Sem responsável</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {/* Atalho para editar as metas de tempo (no Time). TODO Fase 2: mostrar só para quem pode editar (useSouGestor); hoje sou_gestor() vale para todos. */}
+        <Button asChild variant="outline" size="toque" className="w-11 shrink-0 px-0 sm:ml-auto lg:w-auto lg:px-2.5">
+          <Link to="/time#metas" aria-label="Metas de tempo por etapa" title="Metas de tempo por etapa">
+            <Thermometer /> <span className="hidden lg:inline">Metas</span>
+          </Link>
+        </Button>
+      </div>
 
       {(data?.length ?? 0) >= LIMITE_LISTA && (
         <p className="text-xs text-muted-foreground">Mostrando os {LIMITE_LISTA} primeiros pedidos da expedição: pode haver mais. Use a busca para achar os outros.</p>

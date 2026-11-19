@@ -1,5 +1,24 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Termômetro: ajustes, 19/11/2026, migration NÃO aplicada
+
+Falta o "sim" do Gustavo para `db push` (rotina: `--dry-run` e depois `--yes`). O app novo já tolera o banco antigo: a Fila nunca mostra
+cor (guarda `termometroDaEtapa` em `src/lib/termometro.ts`), e "Avisar cliente" só ganha cor depois da migration.
+
+- Pedido do Gustavo: (1) a **Fila** não tem termômetro (sem contorno e sem pontinho; o texto "Na fila há X" fica); o termômetro começa na
+  Separação. (2) O **contorno** do cartão só aparece em amarelo e vermelho; verde = cartão normal, só o pontinho verde ao lado do tempo.
+  (3) **"Avisar cliente"** passa a ter termômetro, com meta própria (padrão 2 h úteis, editável); "Aguardando cliente" continua sem.
+  (4) Atalho **"Metas"** (ícone de termômetro) na Expedição, ao lado do filtro por pessoa, leva a `/time#metas`.
+- Migration `20261125170000_termometro_ajustes.sql`: CHECK de `metas_etapa.etapa` ganha `avisar_cliente` (constraint recriada com nome
+  explícito), meta de 2 h para ela, `termometro_etapa` devolve nulo para `novo` e usa a própria meta de `avisar_cliente`, e
+  `v_pedidos_operacao` (cópia de `20261125160000_cliente_decidiu.sql`, mesmas colunas) calcula `horas_na_etapa` também em `avisar_cliente`.
+- Tela: `tracoDoTermometro` só em amarelo/vermelho; `TempoNaEtapa` sem ponto quando não há termômetro; Time lista "Avisar cliente" logo
+  depois de "Separação" e tem `id="metas"` (rola até lá com `#metas`) e um botão "Metas de tempo" no topo. O atalho da Expedição aparece
+  para todos: na Fase 2 trocar por `useSouGestor` (há um TODO no código).
+- Testes: `tests/banco/termometro.test.mjs`, `tests/unidade/termometro.test.ts`, `tests/e2e/termometro.spec.mjs`, `embalagem-frete.spec.mjs` (metas).
+- Conflito possível no merge com a Fase 2: se ela recriar `v_pedidos_operacao` (migrations 20261126...), a lista de status de `te.horas`
+  precisa manter `avisar_cliente`.
+
 ## Cliente decidiu (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (2 pedidos já entraram na coluna)
 
 - Pedido do Gustavo: ver na Expedição os pedidos em que a cliente já escolheu na página da troca, mesmo sem a equipe ter

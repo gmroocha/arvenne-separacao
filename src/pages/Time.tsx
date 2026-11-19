@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
+import { useLocation } from "react-router"
 import { toast } from "sonner"
-import { Pencil, Plus, Trash2, UserCheck, UserX, Users } from "lucide-react"
+import { Pencil, Plus, Thermometer, Trash2, UserCheck, UserX, Users } from "lucide-react"
 import AvatarMembro from "@/components/AvatarMembro"
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { Vazio } from "@/components/comum/Vazio"
@@ -14,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import CampoSalvo from "@/components/pedido/CampoSalvo"
 import { useEquipe, useExcluirMembro, useMetasEtapa, useSalvarMembro, useSalvarMeta } from "@/lib/api"
-import { PASSOS_TRABALHO } from "@/lib/status"
+import { NOME_ETAPA, PASSOS_TRABALHO } from "@/lib/status"
 import type { Membro } from "@/lib/tipos"
 
 // Papéis (gestor/funcionária) suspensos por enquanto: todo mundo faz tudo no Time. A coluna papel fica guardada no
@@ -56,10 +57,19 @@ function FormMembro({ membro, aoSalvar }: { membro?: Membro; aoSalvar: () => voi
   )
 }
 
-// Meta de tempo de cada etapa da esteira, em horas úteis (sem fim de semana nem feriado). O cartão do pedido fica verde até
-// a meta, amarelo até o dobro e vermelho acima; a conta é feita no banco.
-function MetasDeTempo() {
+// Etapas com meta, na ordem da esteira: "Avisar cliente" (desvio da Separação) vem logo depois da Separação. A Fila não tem meta.
+const ETAPAS_COM_META = PASSOS_TRABALHO.flatMap((p) => (p.id === "separacao" ? [p, { id: "avisar_cliente", nome: NOME_ETAPA.avisar_cliente }] : [p]))
+
+// Meta de tempo de cada etapa da esteira, em horas úteis (sem fim de semana nem feriado). O cartão do pedido fica sem cor até
+// a meta, amarelo até o dobro e vermelho acima; a conta é feita no banco. O alvo `#metas` é o atalho da Expedição.
+function MetasDeTempo({ esperar }: { esperar: boolean }) {
   const { data, isLoading } = useMetasEtapa()
+  const { hash } = useLocation()
+  const pronto = !esperar && !isLoading && (data?.length ?? 0) > 0
+  // react-router não rola até o #âncora sozinho: rola quando o time e as metas já estão na tela (senão a lista empurra a seção).
+  useEffect(() => {
+    if (pronto && hash === "#metas") document.getElementById("metas")?.scrollIntoView({ block: "start" })
+  }, [pronto, hash])
   const salvar = useSalvarMeta()
   const metas = new Map((data ?? []).map((m) => [m.etapa, m.meta_horas_uteis]))
   if (isLoading || metas.size === 0) return null
@@ -69,16 +79,16 @@ function MetasDeTempo() {
     salvar.mutate({ etapa, horas }, { onSuccess: () => toast.success("Meta salva") })
   }
   return (
-    <section aria-labelledby="metas-titulo" className="flex flex-col gap-3 border-t pt-4">
+    <section id="metas" aria-labelledby="metas-titulo" className="flex scroll-mt-4 flex-col gap-3 border-t pt-4">
       <div className="flex flex-col gap-1">
         <h2 id="metas-titulo" className="text-base font-semibold">Metas de tempo por etapa</h2>
         <p className="text-sm text-muted-foreground">
-          Quantas horas úteis (sem fim de semana nem feriado) cada etapa deve levar. O pedido fica verde até a meta, amarelo até o dobro
-          e vermelho acima.
+          Quantas horas úteis (sem fim de semana nem feriado) cada etapa deve levar. O pedido fica amarelo quando passa da meta e vermelho
+          quando passa do dobro. A Fila não tem meta.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {PASSOS_TRABALHO.filter((p) => metas.has(p.id)).map((p) => (
+        {ETAPAS_COM_META.filter((p) => metas.has(p.id)).map((p) => (
           <CampoSalvo
             key={p.id}
             id={`meta-${p.id}`}
@@ -109,9 +119,15 @@ export default function Time() {
           Quem trabalha nos pedidos. Dentro de cada pedido você escolhe quem faz cada etapa.
           Desativar pausa a pessoa; excluir tira de vez.
         </p>
-        <Button size="toque" className="shrink-0" onClick={() => setAberto("novo")}>
-          <Plus /> Adicionar pessoa
-        </Button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          {/* Atalho para as metas, lá embaixo (no celular a lista do time empurra a seção para longe). */}
+          <Button asChild variant="outline" size="toque">
+            <a href="#metas"><Thermometer /> Metas de tempo</a>
+          </Button>
+          <Button size="toque" onClick={() => setAberto("novo")}>
+            <Plus /> Adicionar pessoa
+          </Button>
+        </div>
       </div>
 
       {isError && <ErroConsulta aoTentar={() => void refetch()} carregando={isFetching} comDados={!!data} />}
@@ -156,7 +172,7 @@ export default function Time() {
         </ItemGroup>
       )}
 
-      <MetasDeTempo />
+      <MetasDeTempo esperar={isLoading} />
 
       <RespDialog
         aberto={excluindo !== null}
