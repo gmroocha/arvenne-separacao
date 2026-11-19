@@ -1,6 +1,6 @@
 # Estado atual (atualizado em 19/11/2026)
 
-## Cliente decidiu (19/11/2026) — **migration NÃO aplicada**
+## Cliente decidiu (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (2 pedidos já entraram na coluna)
 
 - Pedido do Gustavo: ver na Expedição os pedidos em que a cliente já escolheu na página da troca, mesmo sem a equipe ter
   concluído. Nova coluna **"Cliente decidiu"** (verde), logo depois de "Aguardando cliente". **Não é status novo**: a máquina de
