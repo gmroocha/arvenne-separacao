@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useMoverEtapa, useMudarStatus, useReiniciar } from "@/lib/api"
 import { mensagemRomaneio } from "@/lib/agente"
+import { useReabrirConcluido } from "@/components/pedido/useReabrirConcluido"
 import { copiar } from "@/lib/copiar"
 import { linkWhatsApp } from "@/lib/formato"
 import { ETAPAS_MOVER, ICONE_ETAPA, NOME_ETAPA, passoAtual, passoDe, passosDe, temEnviarRastreio, type StatusPedido } from "@/lib/status"
@@ -44,6 +45,7 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
   const mudarStatus = useMudarStatus()
   const mover = useMoverEtapa(pedido.id)
   const reiniciar = useReiniciar(pedido.id)
+  const reabrir = useReabrirConcluido(pedido) // pedido concluído: só o gestor volta para uma etapa anterior
   const [cancelando, setCancelando] = useState(false)
   const [reiniciando, setReiniciando] = useState<boolean | null>(null) // true = pedido todo, false = só a etapa
   const [movendo, setMovendo] = useState<StatusPedido | null>(null) // destino pedido em "Mover para…" ou "Concluir pedido"
@@ -83,6 +85,7 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
           }))
         : [],
     },
+    reabrir.grupo,
     {
       itens:
         pedido.fase === "expedicao"
@@ -104,6 +107,7 @@ export function useAcoesPedido(pedido: PedidoMenu, opcoes: Opcoes = {}) {
 
   const dialogos: ReactNode = (
     <>
+      {reabrir.dialogo}
       <Dialog open={movendo !== null} onOpenChange={(a) => !a && setMovendo(null)}>
         <DialogContent>
           <DialogHeader>

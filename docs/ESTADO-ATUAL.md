@@ -1,5 +1,23 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Reabrir pedido concluído (19/11/2026) — **migration NÃO aplicada** (falta o "sim" do Gustavo para o `db push`)
+
+- Pedido do Gustavo: "Em um pedido concluído tem que ter como mudar ele de etapa... Pode acontecer de marcar como concluído sem querer."
+- Só o **gestor** reabre. Menu "Mover para outra etapa" no "⋯" da tela do pedido concluído e no menu de cada linha de Concluídos
+  (abas A caminho e Entregues): lista só as etapas anteriores da origem do pedido (Shopify sem "Enviar rastreio") e o diálogo avisa
+  "O que foi feito desta etapa em diante será desfeito (...)". Depois de mover, o pedido sai de Concluídos e aparece na Expedição.
+- Migration `20261126120000_reabrir_concluido.sql`: `mover_etapa` aceita sair de `enviado` só para trás e só para gestor ("Só gestor
+  pode reabrir um pedido concluído."); zera o trabalho do destino em diante como em qualquer volta e também `entregue_em`; grava o
+  evento `reiniciado` ("reaberto: voltou para X") além do `status`. Cópias de `regras_etapas`, `tg_pedidos_antes` e
+  `tg_trabalho_reaberto` aceitam a saída de `enviado` **só** enquanto `mover_etapa` liga `arvenne.reabrir`; gravar `status` ou peça
+  direto num concluído continua recusado.
+- **Decisão:** `rastreio` e `rastreio_url` (e `nf_numero`, `nf_chave`, número do fornecedor) **ficam** ao reabrir, para a Postagem
+  mostrar o link já preenchido e a equipe só conferir ou trocar. Dinheiro não é tocado. Não volta sozinho para Concluído: os carimbos
+  do destino em diante saem e o avanço automático só dispara quando um carimbo passa de vazio para preenchido.
+- Antes do `db push` a tela mostra o menu, mas o banco antigo recusa com "já está concluído" (mensagem em toast).
+- Testes: `tests/banco/reabrir-concluido.test.mjs`, `tests/e2e/reabrir-concluido.spec.mjs`; `esteira.test.mjs` perdeu a linha que
+  esperava a recusa antiga.
+
 ## Cliente decidiu (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (2 pedidos já entraram na coluna)
 
 - Pedido do Gustavo: ver na Expedição os pedidos em que a cliente já escolheu na página da troca, mesmo sem a equipe ter
