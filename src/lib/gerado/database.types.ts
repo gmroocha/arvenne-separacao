@@ -2576,6 +2576,42 @@ export type Database = {
       }
       horas_uteis: { Args: { ate: string; de: string }; Returns: number }
       importar_pedido_shopify: { Args: { p: Json }; Returns: boolean }
+      indicadores_fila: { Args: never; Returns: Json }
+      indicadores_passagens: {
+        Args: { p_ate: string; p_de: string }
+        Returns: {
+          etapa: string
+          horas: number
+          meta: number
+          numero: string
+          pecas: number
+          pedido_id: string
+          pessoa: string
+          saiu_em: string
+        }[]
+      }
+      indicadores_pessoas: {
+        Args: { p_ate: string; p_de: string }
+        Returns: {
+          bipagem: number
+          conferencia: number
+          embalagem: number
+          enviar_rastreio: number
+          erros_pegos_bipagem: number
+          faltas_indevidas: number
+          faturamento: number
+          minutos_por_peca_separacao: number
+          nome: string
+          pessoa_id: string
+          problemas_cliente: number
+          pronto_envio: number
+          separacao: number
+        }[]
+      }
+      indicadores_resumo: {
+        Args: { p_ate: string; p_de: string }
+        Returns: Json
+      }
       listar_inconsistencias: {
         Args: never
         Returns: {
@@ -2629,6 +2665,39 @@ export type Database = {
         }[]
       }
       pode_ver_pedido: { Args: { p_pedido: string }; Returns: boolean }
+      pontuacao_componentes: {
+        Args: {
+          p_media_pecas: number
+          p_ocorrencias: number
+          p_pecas: number
+          p_prazo_pct: number
+        }
+        Returns: {
+          prazo: number
+          producao: number
+          qualidade: number
+          total: number
+        }[]
+      }
+      pontuacao_mes: {
+        Args: { p_mes: string }
+        Returns: {
+          barra: number
+          bonus: boolean
+          nome: string
+          ocorrencias: number
+          ocorrencias_por_100: number
+          pecas: number
+          pessoa_id: string
+          pontuacao: number
+          posicao: number
+          prazo: number
+          prazo_pct: number
+          problemas_cliente: number
+          producao: number
+          qualidade: number
+        }[]
+      }
       prazo_envio: { Args: { pago: string }; Returns: string }
       preencher_responsaveis_padrao: { Args: never; Returns: number }
       quem_fez_etapas: {

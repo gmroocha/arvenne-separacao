@@ -1,6 +1,6 @@
 # Estado atual (atualizado em 19/11/2026)
 
-## Fase 4: Indicadores (19/11/2026) — **migration NÃO aplicada** (`20261126140000_indicadores.sql`; falta o "sim" do Gustavo para o `db push`)
+## Fase 4: Indicadores (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (`20261126140000_indicadores.sql`)
 
 - Página `/indicadores`, só gestor (`SoGestor`, item "Indicadores" no menu). Segue o livro *Gestão de Alta Performance*: resultado e não atividade,
   quantidade ao lado de qualidade, o que antecipa problema (fila e pedido mais antigo), gargalo, defeito pego na etapa mais barata, no máximo 6 números
