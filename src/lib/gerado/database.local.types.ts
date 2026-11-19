@@ -450,6 +450,16 @@ type Adicoes = {
     }
   }
   Views: {
+    v_item_pago: {
+      Row: {
+        id: string | null
+        pedido_id: string | null
+        venda_origem_id: string | null
+        troca_peca_origem_id: string | null
+        valor: number | null
+      }
+      Relationships: []
+    }
     v_ocorrencias: {
       Row: {
         id: string | null
@@ -609,6 +619,30 @@ type Adicoes = {
       }
       Relationships: []
     }
+    v_troca_alvo: {
+      Row: {
+        pedido_id: string | null
+        troca_id: string | null
+        acerto_status: string | null
+        acerto_em: string | null
+        acerto_por: string | null
+      }
+      Relationships: []
+    }
+    v_troca_base: {
+      Row: {
+        troca_peca_id: string | null
+        troca_id: string | null
+        pedido_id: string | null
+        item_id: string | null
+        qtd: number | null
+        cobrir_ate: number | null
+        numerador: number | null
+        denominador: number | null
+        pago: number | null
+      }
+      Relationships: []
+    }
   }
   Functions: {
     anular_ocorrencia: { Args: { p_id: string | null }; Returns: undefined | null }
@@ -626,7 +660,11 @@ type Adicoes = {
     indicadores_passagens: { Args: { p_de: string | null; p_ate: string | null }; Returns: { pedido_id: string | null; numero: string | null; etapa: string | null; saiu_em: string | null; horas: number | null; meta: number | null; pecas: number | null; pessoa: string | null }[] }
     indicadores_pessoas: { Args: { p_de: string | null; p_ate: string | null }; Returns: { pessoa_id: string | null; nome: string | null; separacao: number | null; conferencia: number | null; bipagem: number | null; faturamento: number | null; embalagem: number | null; pronto_envio: number | null; enviar_rastreio: number | null; minutos_por_peca_separacao: number | null; erros_pegos_bipagem: number | null; faltas_indevidas: number | null; problemas_cliente: number | null }[] }
     indicadores_resumo: { Args: { p_de: string | null; p_ate: string | null }; Returns: Json | null }
+    item_coberto: { Args: { p_item: string | null; p_origem: string | null; p_valor: number | null }; Returns: number | null }
     membro_atual: { Args: Record<PropertyKey, never>; Returns: string | null }
+    membro_ve_peca_troca: { Args: { p_peca: string | null; p_membro: string | null }; Returns: boolean | null }
+    membro_ve_pedido: { Args: { p_pedido: string | null; p_membro: string | null }; Returns: boolean | null }
+    membro_ve_troca: { Args: { p_troca: string | null; p_membro: string | null }; Returns: boolean | null }
     pode_ver_pedido: { Args: { p_pedido: string | null }; Returns: boolean | null }
     pontuacao_componentes: { Args: { p_ocorrencias: number | null; p_pecas: number | null; p_media_pecas: number | null; p_prazo_pct: number | null }; Returns: { qualidade: number | null; producao: number | null; prazo: number | null; total: number | null }[] }
     pontuacao_mes: { Args: { p_mes: string | null }; Returns: { posicao: number | null; pessoa_id: string | null; nome: string | null; pecas: number | null; ocorrencias: number | null; problemas_cliente: number | null; ocorrencias_por_100: number | null; prazo_pct: number | null; qualidade: number | null; producao: number | null; prazo: number | null; pontuacao: number | null; barra: number | null; bonus: boolean | null }[] }

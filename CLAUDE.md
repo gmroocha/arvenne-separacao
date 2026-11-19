@@ -58,6 +58,9 @@ chave certa via `core.sshCommand` já configurado neste repositório.
 
 ## Regras que não se renegociam
 
+- **RLS e funções em política sempre com `(select fn())`** (vira initPlan, uma vez por consulta, e o gestor sai de cara); nada de função por linha nem de
+  janela (`sum() over`) em view que o app filtra por pedido (o Postgres não empurra o filtro para dentro da janela). **O banco é Nano** (plano gratuito,
+  CPU compartilhada): consulta, view ou função nova em caminho quente é medida com o volume de `tests/banco/volume.mjs` (V115).
 - **Segredos nunca no chat nem em arquivo aberto no editor** (a seleção do VS Code vai junto na
   conversa). Shopify client secret, token da Frenet, `CRON_SECRET`, chave `service_role`: o Gustavo grava
   direto no painel do Supabase. Houve dois vazamentos assim no outro projeto.

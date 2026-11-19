@@ -1,5 +1,25 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Desempenho V115: banco mais leve (19/11/2026) — **migration NÃO aplicada** (`20261126150000_desempenho.sql`)
+
+- Motivo: no plano gratuito (Nano, CPU compartilhada, 0,5 GB) 6 aparelhos esgotaram o limite de 8 s em 278 consultas. O front já foi corrigido (5 min de
+  releitura, reconexão espalhada); aqui está a parte do banco. **Nenhum comportamento muda:** mesmas respostas, menos conta.
+- O que pesava: (1) a RLS da Fase 2 chamava `pode_ver_pedido()` por LINHA em todas as tabelas filhas; (2) `v_cobertura_troca_peca` e `v_item_liquido` tinham
+  janelas (`sum() over`), então qualquer consulta por pedido (`troca_painel`, `v_pedidos`, `v_pedido_acerto`, `v_pedido_alteracoes`, `v_troca_resumo`,
+  `troca_publica`) recalculava as peças de TODOS os pedidos, conferindo a RLS de cada uma; (3) `prazo_envio` e `horas_uteis` faziam uma consulta por dia, por linha das listas.
+- O que mudou: políticas `(select sou_gestor()) or membro_ve_pedido(pedido_id, (select membro_atual()))` (e `membro_ve_troca`, `membro_ve_peca_troca` para peça, opção e escolha);
+  rateio da cobertura por peça (`item_coberto`, sem janela); `v_troca_base`, `v_item_pago`, `v_troca_alvo` (views novas) no lugar de CTEs usados duas vezes;
+  `v_troca_resumo` com lateral; `prazo_envio`/`horas_uteis` com uma leitura de feriados; `contagens_pedidos` com a comparação barata na frente;
+  `pecas_repetidas` com o prazo por pedido; índices `trocas_pedido_recente`, `pedido_eventos_item_tipo`, `pedido_itens_pendentes`; `metas_etapa` com `(select sou_gestor())`.
+- Ganhos medidos (banco de teste com 300 pedidos, ~2 mil peças, 150 trocas; tempo da consulta inteira, mínimo de 9 rodadas, gestor / funcionária):
+  `troca_painel` 44 → 4 ms / 530 → 5 ms; `v_troca_resumo` 44 → 15 ms / 330 → 12 ms; `v_pedido_alteracoes` 28 → 9 ms / 314 → 7 ms; `v_pedido_acerto` 40 → 28 ms / 248 → 41 ms;
+  `v_pedidos` por id 15 → 9 ms / 23 → 10 ms; `contagens_pedidos` 6,2 → 3,6 ms; `contagem_repetidas` (selo) 31 → 1,5 ms (funcionária); `v_pecas_em_varios_pedidos` 47 → 5,5 ms;
+  lista da Expedição 49 → 47 ms / 23 → 12 ms; `troca_publica` (cliente, anon) 254 → 14 ms. Os tempos reais no Nano são bem maiores; o que vale é a proporção.
+- Não mudou (e por quê): `alterar_item` e `marcar_pecas` custam 2 a 5 ms no teste, com ou sem a migration; o que pesa no Nano é a fila (CPU, travas do mesmo pedido, `realtime.send` por comando,
+  que também alimenta a leitura do WAL pelo Realtime, o maior consumidor de tempo do banco). Reduzir os avisos do Realtime muda comportamento, então ficou para decisão do Gustavo.
+- Testes: `tests/banco/desempenho-v115.test.mjs` (políticas, plano sem janela, limites de tempo folgados e **comparação com o banco anterior**, resposta por resposta, como gestor e funcionária) com o volume de `tests/banco/volume.mjs`.
+  Falha antes da migration e passa depois. Regra nova no CLAUDE.md: função em política sempre em `(select fn())` e medir consulta nova (banco Nano).
+
 ## Fase 4: Indicadores (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (`20261126140000_indicadores.sql`)
 
 - Página `/indicadores`, só gestor (`SoGestor`, item "Indicadores" no menu). Segue o livro *Gestão de Alta Performance*: resultado e não atividade,
