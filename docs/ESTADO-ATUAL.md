@@ -24,7 +24,7 @@
 - `sair_do_desvio` não tira o pedido do aviso com peça ainda em falta e não usa mais a antiga etapa Frete.
 - Migration `20261125153000_falta_espera_separacao.sql`, teste `tests/banco/falta-espera-separacao.test.mjs` (V114).
 
-## Fase 2: login por usuário, papéis e "cada uma vê os seus" (19/11/2026) — **migrations NÃO aplicadas e função Edge NÃO publicada**
+## Fase 2: login por usuário, papéis e "cada uma vê os seus" (19/11/2026) — **aplicada e Edge `equipe-acesso` publicada em 19/11 com o "sim" do Gustavo** (conferido: o único login é gestor ativo e casa com o Time; falta definir o responsável padrão de cada etapa e criar os acessos)
 
 Segunda de quatro fases. Falta o "sim" do Gustavo para `db push` e `supabase functions deploy equipe-acesso`. O código do app
 já está preparado para o banco antigo (sem `membro_atual`, sem `usuario`, sem `responsavel_padrao`: a tela cai em "gestor" e
