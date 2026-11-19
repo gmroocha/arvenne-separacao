@@ -44,7 +44,8 @@ quando o pedido entra numa etapa sem ninguém. **Login por usuário:** o gestor 
 e `supabase/functions/_shared/usuario.ts`, testada igual); o Gustavo entra com o e-mail dele. `membro_atual()` acha a pessoa pelo
 `equipe.user_id` ou, sem ele, pelo e-mail. Nenhum e-mail vai em migration.
 **Métricas decididas:** prazo/atraso, produção por pessoa (`v_producao_pessoa`), mudanças depois de pago e tempo por
-etapa do pedido (`v_tempo_etapas`); nada de histórico clique a clique. Teste principal da esteira:
+etapa do pedido (`v_tempo_etapas`); nada de histórico clique a clique. **Indicadores (Fase 4):** página `/indicadores`, só gestor; toda
+a conta fica nas funções `indicadores_*` e `pontuacao_mes` (fórmula da pontuação em `pontuacao_componentes`), a tela só exibe. Teste principal da esteira:
 `tests/e2e/esteira-ponta-a-ponta.spec.mjs` (precisa continuar passando em celular e PC).
 
 ## Stack

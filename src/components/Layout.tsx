@@ -21,6 +21,7 @@ function titulo(caminho: string) {
   if (caminho.startsWith("/catalogo")) return "Catálogo"
   if (caminho.startsWith("/clube")) return "Clube"
   if (caminho.startsWith("/feedbacks")) return "Feedbacks"
+  if (caminho.startsWith("/indicadores")) return "Indicadores"
   if (caminho.startsWith("/time")) return "Time Arvenne"
   return "Separação"
 }

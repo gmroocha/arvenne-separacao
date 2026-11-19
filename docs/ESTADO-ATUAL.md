@@ -1,5 +1,28 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Fase 4: Indicadores (19/11/2026) — **migration NÃO aplicada** (`20261126140000_indicadores.sql`; falta o "sim" do Gustavo para o `db push`)
+
+- Página `/indicadores`, só gestor (`SoGestor`, item "Indicadores" no menu). Segue o livro *Gestão de Alta Performance*: resultado e não atividade,
+  quantidade ao lado de qualidade, o que antecipa problema (fila e pedido mais antigo), gargalo, defeito pego na etapa mais barata, no máximo 6 números
+  no topo. Seletor Hoje / 7 dias / Mês (fuso São Paulo; Mês = mês corrente). Tudo vem do banco; a tela só exibe (sem cor fora de estados: verde,
+  amarelo e vermelho só na fila, pelo termômetro).
+- Funções `security definer` que começam por `exigir_gestor()` (GRANT só a `authenticated`, anon nada): `indicadores_resumo(de, ate)` (jsonb: % no
+  prazo de 48 h úteis, pedidos e peças enviados, erros a cada 100 peças, problemas na cliente, % de erros pegos antes da cliente, tempo médio por etapa
+  e gargalo), `indicadores_fila()` (por etapa: total, cores do termômetro, pedido mais antigo), `indicadores_pessoas(de, ate)` e `pontuacao_mes(mes)`.
+  `indicadores_passagens` é interna (ninguém logado chama). Definições: **enviado** = `postado_em` no período; **no prazo** = `postado_em <=
+  prazo_envio(pago_em)`; **peças separadas** = peças dos pedidos que saíram da Separação no período; **erro** = `erro_bipagem` + `falta_indevida`
+  não anuladas; **gargalo** = etapa de maior tempo médio (horas úteis) entre as passagens concluídas no período.
+- **Quem fez** = a regra da Fase 3 (autor gravado na peça; senão responsável da etapa; senão quem saiu da etapa, pelo e-mail), em lote, sem chamada por
+  pedido. A tela avisa: "Enquanto as colaboradoras não têm login, quem fez = responsável da etapa."
+- **Pontuação do mês (0 a 100)**, fórmula numa função só, `pontuacao_componentes` (ajustar os pesos e a penalidade lá): 50% qualidade (100 menos 10
+  pontos por ocorrência a cada 100 peças, piso 0), 30% produção (peças por hora sobre a média do time, máx. 100), 20% prazo (% das passagens dentro da
+  meta de `metas_etapa`). Bônus: 85 ou mais e zero problema na cliente. Peças por hora = peças das passagens da pessoa / horas úteis das passagens
+  (inclui a espera na etapa, é o mesmo tempo do termômetro; serve para comparar o time, não para cronometrar uma pessoa).
+- Limites: etapa pulada à mão conta para o responsável; sem gráficos de biblioteca (o `chart` do shadcn pede `recharts`, não instalado): só barras
+  simples em CSS. Antes do `db push` a tela mostra "Atualize o banco para ver esta tela".
+- Testes: `tests/banco/indicadores.test.mjs` (contas à mão, funcionária e anon recusados), `tests/e2e/indicadores.spec.mjs`; o simulador
+  (`scripts/simulacao/rede.mjs`) passou a aceitar as 4 funções como leitura.
+
 ## Fase 3: quem fez cada peça e ocorrências (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (migration `20261126130000_fase3_ocorrencias.sql`)
 
 - **Regra de "quem fez" (decisão do Gustavo):** quem fez o passo = o **responsável da etapa no pedido** (`pedidos.responsaveis ->> etapa`); sem

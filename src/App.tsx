@@ -25,6 +25,7 @@ const Clube = lazy(() => import("@/pages/Clube"))
 const Catalogo = lazy(() => import("@/pages/Catalogo"))
 const Feedbacks = lazy(() => import("@/pages/Feedbacks"))
 const Time = lazy(() => import("@/pages/Time"))
+const Indicadores = lazy(() => import("@/pages/Indicadores"))
 
 function Configure() {
   return (
@@ -66,6 +67,7 @@ export default function App() {
             <Route path="catalogo" element={<Catalogo />} />
             <Route path="feedbacks" element={<Feedbacks />} />
             <Route path="time" element={<Time />} />
+            <Route path="indicadores" element={<Indicadores />} />
           </Route>
         </Route>
       </Route>
