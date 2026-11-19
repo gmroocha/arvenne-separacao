@@ -1,6 +1,6 @@
 # Estado atual (atualizado em 19/11/2026)
 
-## Fase 3: quem fez cada peça e ocorrências (19/11/2026) — **migration `20261126130000_fase3_ocorrencias.sql` NÃO aplicada** (falta o "sim" do Gustavo: `db push --remote --dry-run`, depois `--yes`)
+## Fase 3: quem fez cada peça e ocorrências (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (migration `20261126130000_fase3_ocorrencias.sql`)
 
 - **Regra de "quem fez" (decisão do Gustavo):** quem fez o passo = o **responsável da etapa no pedido** (`pedidos.responsaveis ->> etapa`); sem
   responsável, quem clicou (`membro_atual()`). Está numa função só, `autor_da_etapa(pedido, etapa)`. As colaboradoras ainda não têm login, então

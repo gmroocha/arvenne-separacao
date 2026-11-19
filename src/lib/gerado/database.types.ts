@@ -619,6 +619,111 @@ export type Database = {
           },
         ]
       }
+      ocorrencias: {
+        Row: {
+          anulada_em: string | null
+          anulada_por: string | null
+          conferente_id: string | null
+          created_at: string
+          etapa: string
+          id: string
+          item_id: string | null
+          motivo: string
+          observacao: string | null
+          pedido_id: string
+          registrado_por: string | null
+          responsavel_id: string | null
+          tipo: string
+        }
+        Insert: {
+          anulada_em?: string | null
+          anulada_por?: string | null
+          conferente_id?: string | null
+          created_at?: string
+          etapa: string
+          id?: string
+          item_id?: string | null
+          motivo: string
+          observacao?: string | null
+          pedido_id: string
+          registrado_por?: string | null
+          responsavel_id?: string | null
+          tipo: string
+        }
+        Update: {
+          anulada_em?: string | null
+          anulada_por?: string | null
+          conferente_id?: string | null
+          created_at?: string
+          etapa?: string
+          id?: string
+          item_id?: string | null
+          motivo?: string
+          observacao?: string | null
+          pedido_id?: string
+          registrado_por?: string | null
+          responsavel_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocorrencias_conferente_id_fkey"
+            columns: ["conferente_id"]
+            isOneToOne: false
+            referencedRelation: "equipe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "pedido_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pecas_clube: {
         Row: {
           ativo: boolean
@@ -746,12 +851,15 @@ export type Database = {
         Row: {
           adicional: boolean
           bipado_em: string | null
+          bipado_por: string | null
           conferido_em: string | null
+          conferido_por: string | null
           created_at: string
           devolvido_em: string | null
           entrada: string | null
           etiqueta_previa: boolean
           etiquetado_em: string | null
+          falta_por: string | null
           foto_url: string | null
           id: string
           nome: string
@@ -767,6 +875,7 @@ export type Database = {
           qtd_bipada: number
           reembolsado_shopify_em: string | null
           removido_em: string | null
+          separado_por: string | null
           shopify_line_id: string | null
           shopify_variant_id: number | null
           sku: string | null
@@ -780,12 +889,15 @@ export type Database = {
         Insert: {
           adicional?: boolean
           bipado_em?: string | null
+          bipado_por?: string | null
           conferido_em?: string | null
+          conferido_por?: string | null
           created_at?: string
           devolvido_em?: string | null
           entrada?: string | null
           etiqueta_previa?: boolean
           etiquetado_em?: string | null
+          falta_por?: string | null
           foto_url?: string | null
           id?: string
           nome: string
@@ -801,6 +913,7 @@ export type Database = {
           qtd_bipada?: number
           reembolsado_shopify_em?: string | null
           removido_em?: string | null
+          separado_por?: string | null
           shopify_line_id?: string | null
           shopify_variant_id?: number | null
           sku?: string | null
@@ -814,12 +927,15 @@ export type Database = {
         Update: {
           adicional?: boolean
           bipado_em?: string | null
+          bipado_por?: string | null
           conferido_em?: string | null
+          conferido_por?: string | null
           created_at?: string
           devolvido_em?: string | null
           entrada?: string | null
           etiqueta_previa?: boolean
           etiquetado_em?: string | null
+          falta_por?: string | null
           foto_url?: string | null
           id?: string
           nome?: string
@@ -835,6 +951,7 @@ export type Database = {
           qtd_bipada?: number
           reembolsado_shopify_em?: string | null
           removido_em?: string | null
+          separado_por?: string | null
           shopify_line_id?: string | null
           shopify_variant_id?: number | null
           sku?: string | null
@@ -846,6 +963,27 @@ export type Database = {
           venda_origem_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pedido_itens_bipado_por_fkey"
+            columns: ["bipado_por"]
+            isOneToOne: false
+            referencedRelation: "equipe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_conferido_por_fkey"
+            columns: ["conferido_por"]
+            isOneToOne: false
+            referencedRelation: "equipe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_falta_por_fkey"
+            columns: ["falta_por"]
+            isOneToOne: false
+            referencedRelation: "equipe"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pedido_itens_peca_clube_id_fkey"
             columns: ["peca_clube_id"]
@@ -879,6 +1017,13 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_separado_por_fkey"
+            columns: ["separado_por"]
+            isOneToOne: false
+            referencedRelation: "equipe"
             referencedColumns: ["id"]
           },
           {
@@ -1786,6 +1931,88 @@ export type Database = {
           },
         ]
       }
+      v_ocorrencias: {
+        Row: {
+          anulada_em: string | null
+          ativas_no_pedido: number | null
+          cliente_nome: string | null
+          conferente_id: string | null
+          conferente_nome: string | null
+          created_at: string | null
+          etapa: string | null
+          id: string | null
+          item_id: string | null
+          item_nome: string | null
+          motivo: string | null
+          numero: string | null
+          observacao: string | null
+          pedido_id: string | null
+          registrado_por_nome: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          sku: string | null
+          tipo: string | null
+          variante: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocorrencias_conferente_id_fkey"
+            columns: ["conferente_id"]
+            isOneToOne: false
+            referencedRelation: "equipe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "pedido_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "v_item_liquido"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_parte_somada"
+            referencedColumns: ["venda_id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ocorrencias_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "equipe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_parte_somada: {
         Row: {
           coberto: number | null
@@ -2252,6 +2479,11 @@ export type Database = {
         Args: { p_item: string; p_nota: string }
         Returns: undefined
       }
+      anular_ocorrencia: { Args: { p_id: string }; Returns: undefined }
+      autor_da_etapa: {
+        Args: { p_etapa: string; p_pedido: string }
+        Returns: string
+      }
       avancar_pecas: { Args: { p_pedido: string }; Returns: string }
       bipar: {
         Args: { p_codigo: string; p_item: string; p_pedido: string }
@@ -2319,6 +2551,7 @@ export type Database = {
         Args: { p_antes: string; p_status: string }
         Returns: string
       }
+      etapa_da_ocorrencia: { Args: { p_motivo: string }; Returns: string }
       excluir_membro: { Args: { p_membro: string }; Returns: undefined }
       excluir_pedido: { Args: { p_pedido: string }; Returns: undefined }
       exigir_gestor: { Args: never; Returns: undefined }
@@ -2398,18 +2631,50 @@ export type Database = {
       pode_ver_pedido: { Args: { p_pedido: string }; Returns: boolean }
       prazo_envio: { Args: { pago: string }; Returns: string }
       preencher_responsaveis_padrao: { Args: never; Returns: number }
+      quem_fez_etapas: {
+        Args: { p_pedido: string }
+        Returns: {
+          concluida_em: string
+          etapa: string
+          membro_id: string
+          nome: string
+          ordem: number
+        }[]
+      }
       reavaliar_etapa: { Args: { p_pedido: string }; Returns: undefined }
       reconciliar_acertos: {
         Args: { p_pedido: string; p_priorizar?: string }
         Returns: undefined
       }
+      registrado_por_atual: { Args: never; Returns: string }
       registrar_credito: {
         Args: { p_destino: string; p_troca: string }
         Returns: string
       }
+      registrar_erro_bipagem: {
+        Args: {
+          p_item: string
+          p_motivo: string
+          p_obs?: string
+          p_responsavel?: string
+        }
+        Returns: string
+      }
+      registrar_falta_indevida: { Args: { p_item: string }; Returns: undefined }
       registrar_movimento_troca: {
         Args: { p_anterior: string; p_novo: string; p_troca: string }
         Returns: number
+      }
+      registrar_problema_entrega: {
+        Args: {
+          p_etapa?: string
+          p_item?: string
+          p_motivo: string
+          p_obs?: string
+          p_pedido: string
+          p_responsavel?: string
+        }
+        Returns: string
       }
       registrar_vistoria: { Args: never; Returns: number }
       regras_etapas: { Args: { p: Json }; Returns: Json }
@@ -2418,7 +2683,12 @@ export type Database = {
         Returns: undefined
       }
       responsavel_padrao_de: { Args: { p_etapa: string }; Returns: string }
+      responsavel_sugerido: {
+        Args: { p_etapa: string; p_item?: string; p_pedido: string }
+        Returns: string
+      }
       romaneio_publico: { Args: { p_token: string }; Returns: Json }
+      rotulo_motivo: { Args: { p_motivo: string }; Returns: string }
       sair_do_desvio: { Args: { p_pedido: string }; Returns: string }
       saldo_financeiro: { Args: { p_pedido: string }; Returns: number }
       salvar_modelo_clube: { Args: { p: Json }; Returns: Json }
