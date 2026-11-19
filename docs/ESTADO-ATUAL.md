@@ -8,17 +8,21 @@
   amarelo e vermelho só na fila, pelo termômetro).
 - Funções `security definer` que começam por `exigir_gestor()` (GRANT só a `authenticated`, anon nada): `indicadores_resumo(de, ate)` (jsonb: % no
   prazo de 48 h úteis, pedidos e peças enviados, erros a cada 100 peças, problemas na cliente, % de erros pegos antes da cliente, tempo médio por etapa
-  e gargalo), `indicadores_fila()` (por etapa: total, cores do termômetro, pedido mais antigo), `indicadores_pessoas(de, ate)` e `pontuacao_mes(mes)`.
-  `indicadores_passagens` é interna (ninguém logado chama). Definições: **enviado** = `postado_em` no período; **no prazo** = `postado_em <=
+  e gargalo), `indicadores_fila()` (por etapa: total, cores do termômetro, pedido mais antigo), `indicadores_pessoas(de, ate)` e `pontuacao_mes(mes)` (a coluna de ocorrências por pessoa é `erros_pegos_bipagem`, mostrada como "Erros pegos na bipagem (como quem separou)").
+  `indicadores_passagens` é interna (plpgsql com `exigir_gestor()`, sem GRANT a ninguém, nem service_role). Definições: **enviado** = `postado_em` no período; **no prazo** = `postado_em <=
   prazo_envio(pago_em)`; **peças separadas** = peças dos pedidos que saíram da Separação no período; **erro** = `erro_bipagem` + `falta_indevida`
-  não anuladas; **gargalo** = etapa de maior tempo médio (horas úteis) entre as passagens concluídas no período.
+  não anuladas; **gargalo** = etapa mais acima da meta, ou seja, a maior razão entre o tempo médio (horas úteis) e a meta da etapa, nas passagens concluídas no período (a tela diz o critério). A fila inclui "Aguardando cliente" (sem termômetro, como a Fila) e as proporções das barras (fila, tempo por etapa, ranking) já vêm prontas do banco, assim como `erros_contados` e `sem_movimento`.
 - **Quem fez** = a regra da Fase 3 (autor gravado na peça; senão responsável da etapa; senão quem saiu da etapa, pelo e-mail), em lote, sem chamada por
   pedido. A tela avisa: "Enquanto as colaboradoras não têm login, quem fez = responsável da etapa."
-- **Pontuação do mês (0 a 100)**, fórmula numa função só, `pontuacao_componentes` (ajustar os pesos e a penalidade lá): 50% qualidade (100 menos 10
-  pontos por ocorrência a cada 100 peças, piso 0), 30% produção (peças por hora sobre a média do time, máx. 100), 20% prazo (% das passagens dentro da
-  meta de `metas_etapa`). Bônus: 85 ou mais e zero problema na cliente. Peças por hora = peças das passagens da pessoa / horas úteis das passagens
-  (inclui a espera na etapa, é o mesmo tempo do termômetro; serve para comparar o time, não para cronometrar uma pessoa).
-- Limites: etapa pulada à mão conta para o responsável; sem gráficos de biblioteca (o `chart` do shadcn pede `recharts`, não instalado): só barras
+- **Pontuação do mês (0 a 100), só das funcionárias** (o gestor fica fora do ranking, do bônus e da média do time; ele ainda aparece em "Por colaboradora"), fórmula numa função só, `pontuacao_componentes`
+  (ajustar pesos e penalidade lá). Base: **peças únicas** em que a pessoa trabalhou no mês (cada linha de `pedido_itens` conta uma vez, mesmo que ela
+  tenha mexido em várias etapas do pedido). 50% qualidade (100 menos 10 pontos por ocorrência a cada 100 peças, piso 0), 30% produção (volume de
+  peças únicas sobre a média do time, máx. 100; **não usa horas**, porque elas incluem a espera na etapa), 20% prazo (% das passagens dentro da meta
+  de `metas_etapa`). Componente sem dado (sem peças, sem etapa com meta) fica de fora e os pesos dos outros se redistribuem na mesma proporção.
+  Bônus: 85 ou mais e zero problema na cliente.
+- **Limite de "quem fez":** quando cai no responsável da etapa, vale o responsável ATUAL do pedido; se ele for trocado depois, a passagem antiga passa
+  para o novo (só a Fase 3 grava o autor por peça, e só dos passos novos). Etapa pulada à mão conta para o responsável.
+- Limites: sem gráficos de biblioteca (o `chart` do shadcn pede `recharts`, não instalado): só barras
   simples em CSS. Antes do `db push` a tela mostra "Atualize o banco para ver esta tela".
 - Testes: `tests/banco/indicadores.test.mjs` (contas à mão, funcionária e anon recusados), `tests/e2e/indicadores.spec.mjs`; o simulador
   (`scripts/simulacao/rede.mjs`) passou a aceitar as 4 funções como leitura.

@@ -40,28 +40,25 @@ function Topo({ r }: { r: ResumoIndicadores }) {
       <Numero
         rotulo="Erros a cada 100 peças"
         valor={numero(r.erros_por_100, 1)}
-        nota={r.pecas_separadas ? `${numero(r.erros_bipagem + r.faltas_indevidas)} em ${numero(r.pecas_separadas)} peças separadas` : "Nenhuma peça separada"}
+        nota={r.pecas_separadas ? `${numero(r.erros_contados)} em ${numero(r.pecas_separadas)} peças separadas` : "Nenhuma peça separada"}
       />
       <Numero rotulo="Problemas na cliente" valor={numero(r.problemas_cliente)} nota="Depois do pedido enviado" />
       <Numero rotulo="Erros pegos antes da cliente" valor={percentual(r.pegos_antes_pct)} nota={`${numero(r.erros_bipagem)} na bipagem, ${numero(r.problemas_cliente)} na cliente`} />
       <Numero
         rotulo="Gargalo"
         valor={gargalo ? nomeEtapa(gargalo.etapa) : "—"}
-        nota={gargalo ? `Média de ${horas(gargalo.horas)} úteis${meta ? ` (meta ${horas(meta)})` : ""}` : "Sem etapas concluídas"}
+        nota={gargalo ? `Mais acima da meta: média de ${horas(gargalo.horas)} úteis${meta ? ` para meta de ${horas(meta)}` : ""}` : "Sem etapas concluídas"}
       />
     </section>
   )
 }
 
 // Barra empilhada pelas cores do termômetro; a largura total é proporcional à maior fila.
-function LinhaFila({ e, maior }: { e: EtapaDaFila; maior: number }) {
-  const largura = maior > 0 ? (e.total / maior) * 100 : 0
-  const semCor = e.total - e.verde - e.amarelo - e.vermelho
-  const seg = (n: number) => (e.total > 0 ? `${(n / e.total) * 100}%` : "0%")
+function LinhaFila({ e }: { e: EtapaDaFila }) {
   return (
     <li>
       <Link
-        to={e.etapa === "novo" ? "/?etapa=novo" : `/?etapa=${e.etapa}`}
+        to={`/?etapa=${e.etapa === "novo" ? "fila" : e.etapa}`}
         className="flex min-h-12 flex-col gap-1.5 rounded-lg px-1 py-2 hover:bg-muted/60 focus-visible:outline-2"
         aria-label={`${nomeEtapa(e.etapa)}: ${e.total} pedidos`}
       >
@@ -77,11 +74,11 @@ function LinhaFila({ e, maior }: { e: EtapaDaFila; maior: number }) {
         </div>
         {e.total > 0 && (
           <>
-            <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" style={{ width: `${Math.max(largura, 6)}%` }} aria-hidden>
-              <span className="bg-success" style={{ width: seg(e.verde) }} />
-              <span className="bg-warning" style={{ width: seg(e.amarelo) }} />
-              <span className="bg-destructive" style={{ width: seg(e.vermelho) }} />
-              <span className="bg-muted-foreground/40" style={{ width: seg(semCor) }} />
+            <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" style={{ width: `${Math.max(e.largura, 6)}%` }} aria-hidden>
+              <span className="bg-success" style={{ width: `${e.pct_verde}%` }} />
+              <span className="bg-warning" style={{ width: `${e.pct_amarelo}%` }} />
+              <span className="bg-destructive" style={{ width: `${e.pct_vermelho}%` }} />
+              <span className="bg-muted-foreground/40" style={{ width: `${e.pct_sem_cor}%` }} />
             </div>
             {e.mais_antigo && (
               <p className="text-xs text-muted-foreground">
@@ -96,7 +93,6 @@ function LinhaFila({ e, maior }: { e: EtapaDaFila; maior: number }) {
 }
 
 function Fila({ fila }: { fila: EtapaDaFila[] }) {
-  const maior = Math.max(0, ...fila.map((e) => e.total))
   return (
     <Card>
       <CardHeader>
@@ -106,7 +102,7 @@ function Fila({ fila }: { fila: EtapaDaFila[] }) {
       <CardContent>
         <ul className="flex flex-col divide-y">
           {fila.map((e) => (
-            <LinhaFila key={e.etapa} e={e} maior={maior} />
+            <LinhaFila key={e.etapa} e={e} />
           ))}
         </ul>
       </CardContent>
@@ -116,12 +112,11 @@ function Fila({ fila }: { fila: EtapaDaFila[] }) {
 
 // Tempo médio por etapa: barras simples; a etapa gargalo fica destacada.
 function Tempos({ r }: { r: ResumoIndicadores }) {
-  const maior = Math.max(0, ...r.tempos.map((t) => t.horas))
   return (
     <Card>
       <CardHeader>
         <CardTitle>Tempo por etapa</CardTitle>
-        <CardDescription>Média em horas úteis das etapas concluídas no período.</CardDescription>
+        <CardDescription>Média em horas úteis das etapas concluídas no período. O gargalo é a etapa mais acima da meta.</CardDescription>
       </CardHeader>
       <CardContent>
         {r.tempos.length === 0 ? (
@@ -139,7 +134,7 @@ function Tempos({ r }: { r: ResumoIndicadores }) {
                     {t.meta != null && <span className="text-xs tabular-nums text-muted-foreground">meta {horas(t.meta)}</span>}
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-                    <div className={gargalo ? "h-full rounded-full bg-foreground" : "h-full rounded-full bg-muted-foreground/50"} style={{ width: `${maior > 0 ? (t.horas / maior) * 100 : 0}%` }} />
+                    <div className={gargalo ? "h-full rounded-full bg-foreground" : "h-full rounded-full bg-muted-foreground/50"} style={{ width: `${t.barra}%` }} />
                   </div>
                 </li>
               )
@@ -168,7 +163,7 @@ function Pessoa({ p }: { p: PessoaIndicadores }) {
       </p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
         <div><dt className="text-xs text-muted-foreground">Tempo por peça (separação)</dt><dd className="tabular-nums">{p.minutos_por_peca_separacao == null ? "—" : `${numero(p.minutos_por_peca_separacao, 1)} min`}</dd></div>
-        <div><dt className="text-xs text-muted-foreground">Erros de separação</dt><dd className="tabular-nums">{numero(p.erros_separacao)}</dd></div>
+        <div><dt className="text-xs text-muted-foreground">Erros pegos na bipagem (como quem separou)</dt><dd className="tabular-nums">{numero(p.erros_pegos_bipagem)}</dd></div>
         <div><dt className="text-xs text-muted-foreground">Faltas indevidas</dt><dd className="tabular-nums">{numero(p.faltas_indevidas)}</dd></div>
         <div><dt className="text-xs text-muted-foreground">Problemas na cliente</dt><dd className="tabular-nums">{numero(p.problemas_cliente)}</dd></div>
       </dl>
@@ -211,11 +206,11 @@ function Ranking({ lista }: { lista: Pontuacao[] }) {
             <span className="w-5 text-sm font-semibold tabular-nums text-muted-foreground">{p.posicao}º</span>
             <span className="min-w-0 flex-1 truncate font-medium">{p.nome}</span>
             {p.bonus && <Badge variant="success">Bônus</Badge>}
-            <span className="text-xl font-semibold tabular-nums">{numero(p.pontuacao, 1)}</span>
+            <span className="text-xl font-semibold tabular-nums">{p.pontuacao == null ? "—" : numero(p.pontuacao, 1)}</span>
           </div>
-          <Progress value={p.pontuacao} aria-label={`Pontuação de ${p.nome}`} />
+          <Progress value={p.barra} aria-label={`Pontuação de ${p.nome}`} />
           <p className="text-xs tabular-nums text-muted-foreground">
-            Qualidade {numero(p.qualidade, 1)} · Produção {numero(p.producao, 1)} · Prazo {numero(p.prazo, 1)}
+            Qualidade {numero(p.qualidade, 1)} · Produção {numero(p.producao, 1)} · Prazo {numero(p.prazo, 1)} · {numero(p.pecas)} peças
             {p.problemas_cliente > 0 && ` · ${numero(p.problemas_cliente)} problema(s) na cliente`}
           </p>
         </li>
@@ -231,8 +226,9 @@ function PontuacaoDoMes({ mes }: { mes: string }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Trophy className="size-4" aria-hidden /> Pontuação de {rotuloMes(mes)}</CardTitle>
         <CardDescription>
-          De 0 a 100: 50% qualidade (100 menos 10 pontos por ocorrência a cada 100 peças), 30% produção (peças por hora comparadas à média do time) e
-          20% prazo (etapas dentro da meta). Bônus: 85 pontos ou mais e nenhum problema na cliente.
+          Só funcionárias, de 0 a 100, sobre as peças em que cada uma trabalhou no mês (cada peça conta uma vez): 50% qualidade (100 menos 10 pontos por
+          ocorrência a cada 100 peças), 30% produção (quantidade de peças comparada à média do time, até 100) e 20% prazo (etapas dentro da meta). Sem dado
+          num item, o peso dele se divide entre os outros. Bônus: 85 pontos ou mais e nenhum problema na cliente.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -260,7 +256,6 @@ export default function Indicadores() {
   const pessoas = usePessoasIndicadores(de, ate)
   const erro = resumo.error ?? fila.error ?? pessoas.error
   const r = resumo.data
-  const semMovimento = !!r && r.enviados_pedidos === 0 && r.pecas_separadas === 0 && r.problemas_cliente === 0 && r.erros_bipagem === 0 && r.tempos.length === 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -285,7 +280,7 @@ export default function Indicadores() {
         </div>
       ) : (
         <>
-          {semMovimento && <Vazio icone={ChartNoAxesColumn} titulo="Sem movimento neste período">Os números aparecem assim que houver pedidos enviados ou etapas concluídas.</Vazio>}
+          {r.sem_movimento && <Vazio icone={ChartNoAxesColumn} titulo="Sem movimento neste período">Os números aparecem assim que houver pedidos enviados ou etapas concluídas.</Vazio>}
           <Topo r={r} />
           <div className="grid items-start gap-4 lg:grid-cols-2">
             {fila.data ? <Fila fila={fila.data} /> : <Skeleton className="h-64 w-full" />}
