@@ -50,10 +50,10 @@ export type Ocorrencia = {
   etapa: string
   responsavel_id: string | null
   conferente_id: string | null
-  registrado_por: string | null
   observacao: string | null
   created_at: string
   anulada_em: string | null
+  ativas_no_pedido: number // contagem feita pelo banco
   responsavel_nome: string | null
   conferente_nome: string | null
   registrado_por_nome: string | null

@@ -2178,22 +2178,20 @@ export function useAnularOcorrencia(pedidoId: string) {
   })
 }
 
-// Detalhe de um pedido concluído (Sheet de Concluídos): peças, responsáveis e passagens por etapa. Nada financeiro.
-export type PassagemEtapa = { etapa: string; visita: number; entrou_em: string; saiu_em: string | null; saiu_por: string | null }
+// Detalhe de um pedido concluído (Sheet de Concluídos): peças e quantas linhas o pedido tem (contagem do banco, v_pedidos).
+// Quem fez cada etapa vem de quem_fez_etapas. Nada financeiro.
 export type DetalheConcluido = {
-  responsaveis: Record<string, string>
+  linhas: number
   itens: Pick<Item, "id" | "sku" | "nome" | "variante" | "foto_url" | "qtd" | "status" | "ordem" | "separado_por" | "conferido_por" | "bipado_por">[]
-  passagens: PassagemEtapa[]
 }
 export function useDetalheConcluido(pedidoId: string | undefined) {
   return useQuery({
     queryKey: ["pedido", "concluido", pedidoId],
     enabled: !!pedidoId,
     queryFn: async ({ signal }) => {
-      const [p, i0, t] = await Promise.all([
-        supabase.from("pedidos").select("responsaveis").eq("id", pedidoId!).abortSignal(signal).single(),
+      const [p, i0] = await Promise.all([
+        supabase.from("v_pedidos").select("qtd_linhas").eq("id", pedidoId!).abortSignal(signal).single(),
         supabase.from("pedido_itens").select("id, sku, nome, variante, foto_url, qtd, status, ordem, separado_por, conferido_por, bipado_por").eq("pedido_id", pedidoId!).neq("status", "removido").order("ordem").abortSignal(signal),
-        supabase.from("v_tempo_etapas").select("etapa, visita, entrou_em, saiu_em, saiu_por").eq("pedido_id", pedidoId!).order("entrou_em").abortSignal(signal),
       ])
       // Banco sem a migration da Fase 3 (colunas *_por): lê as peças sem elas.
       const i = i0.error?.code === "42703"
@@ -2201,12 +2199,25 @@ export function useDetalheConcluido(pedidoId: string | undefined) {
         : i0
       if (p.error) throw p.error
       if (i.error) throw i.error
-      if (t.error) throw t.error
-      return {
-        responsaveis: ((p.data as { responsaveis: Record<string, string> | null }).responsaveis ?? {}),
-        itens: i.data as unknown as DetalheConcluido["itens"],
-        passagens: t.data as unknown as PassagemEtapa[],
-      } satisfies DetalheConcluido
+      return { linhas: (p.data as { qtd_linhas: number }).qtd_linhas, itens: i.data as unknown as DetalheConcluido["itens"] } satisfies DetalheConcluido
+    },
+  })
+}
+
+// Quem fez cada etapa do pedido e quando saiu dela (função quem_fez_etapas, que usa a mesma regra de responsavel_sugerido).
+// Banco sem a função: lista vazia.
+export type QuemFezEtapa = { etapa: string; ordem: number; membro_id: string | null; nome: string | null; concluida_em: string | null }
+export function useQuemFezEtapas(pedidoId: string | undefined) {
+  return useQuery({
+    queryKey: ["pedido", "quem-fez", pedidoId],
+    enabled: !!pedidoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("quem_fez_etapas", { p_pedido: pedidoId! })
+      if (error) {
+        if (semFuncao(error)) return [] as QuemFezEtapa[]
+        throw error
+      }
+      return data as unknown as QuemFezEtapa[]
     },
   })
 }

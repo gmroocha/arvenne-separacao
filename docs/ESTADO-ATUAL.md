@@ -13,8 +13,12 @@
   pedido; gravar só pelas funções; sem DELETE; anon nada. View `v_ocorrencias` (security_invoker, com nomes). Funções: `registrar_erro_bipagem`
   (peça volta a pendente, zera conferência/bipagem/autores e o pedido volta sozinho para a Separação; só com o pedido em separação/conferência/bipagem),
   `registrar_problema_entrega` (só pedido `enviado`; etapa sugerida pelo motivo, editável), `responsavel_sugerido`, `anular_ocorrencia` (só gestor),
-  `etapa_da_ocorrencia`. **Falta indevida** sai de dentro de `alterar_item` (vale também para `encontrar_peca`): peça em falta/defeito achada por
-  outra pessoa gera a ocorrência em nome de quem marcou a falta, sem gatilho novo.
+  `etapa_da_ocorrencia`, `quem_fez_etapas(pedido)` (pessoa e data de cada etapa, mesma regra de `responsavel_sugerido`; a tela só exibe).
+  **Falta indevida** sai de dentro de `alterar_item` (vale também para `encontrar_peca`): peça em falta/defeito achada por **outra pessoa que
+  não quem marcou a falta** (quem encontrou = quem clicou, `membro_atual()`) gera a ocorrência em nome de quem marcou, sem gatilho novo. Atenção:
+  enquanto o Gustavo clicar tudo, uma falta marcada em nome de uma responsável e achada por ele gera ocorrência (a métrica será zerada depois).
+  `autor_da_etapa` e `registrar_falta_indevida` conferem `exigir_pedido`. `v_ocorrencias` não expõe `registrado_por` bruto (só o nome) e traz
+  `ativas_no_pedido`; a tela não conta nada.
 - Cópias das funções vigentes: `marcar_pecas` (20261126100000), `alterar_item` e `marcar_falta` (20261125153000, V114 mantido).
 - **Tela:** menu "⋯" da peça na Bipagem ganhou "Erro na peça" (Dialog com motivos, texto para "Outro", "Separada por" sugerido e editável,
   botão Continuar). Concluídos: tocar na linha (ou "Ver detalhes" no menu) abre um Sheet (de baixo no celular, lateral no PC) com peças, "Quem fez",

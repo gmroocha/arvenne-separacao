@@ -52,11 +52,10 @@ export function ListaOcorrencias({ ocorrencias, pedidoId }: { ocorrencias: Ocorr
 export default function CartaoOcorrencias({ pedidoId }: { pedidoId: string }) {
   const { data } = useOcorrencias(pedidoId)
   if (!data?.length) return null
-  const ativas = data.filter((o) => !o.anulada_em).length
   return (
     <Card size="sm" aria-label="Ocorrências do pedido">
       <CardHeader>
-        <CardTitle>Ocorrências ({ativas})</CardTitle>
+        <CardTitle>Ocorrências ({data[0].ativas_no_pedido})</CardTitle>
       </CardHeader>
       <CardContent>
         <ListaOcorrencias ocorrencias={data} pedidoId={pedidoId} />

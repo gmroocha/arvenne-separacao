@@ -460,11 +460,9 @@ type Adicoes = {
         etapa: string | null
         responsavel_id: string | null
         conferente_id: string | null
-        registrado_por: string | null
         observacao: string | null
         created_at: string | null
         anulada_em: string | null
-        anulada_por: string | null
         responsavel_nome: string | null
         conferente_nome: string | null
         registrado_por_nome: string | null
@@ -473,6 +471,7 @@ type Adicoes = {
         sku: string | null
         item_nome: string | null
         variante: string | null
+        ativas_no_pedido: number | null
       }
       Relationships: []
     }
@@ -626,6 +625,7 @@ type Adicoes = {
     membro_atual: { Args: Record<PropertyKey, never>; Returns: string | null }
     pode_ver_pedido: { Args: { p_pedido: string | null }; Returns: boolean | null }
     preencher_responsaveis_padrao: { Args: Record<PropertyKey, never>; Returns: number | null }
+    quem_fez_etapas: { Args: { p_pedido: string | null }; Returns: { etapa: string | null; ordem: number | null; membro_id: string | null; nome: string | null; concluida_em: string | null }[] }
     registrado_por_atual: { Args: Record<PropertyKey, never>; Returns: string | null }
     registrar_erro_bipagem: { Args: { p_item: string | null; p_motivo: string | null; p_obs?: string | null; p_responsavel?: string | null }; Returns: string | null }
     registrar_falta_indevida: { Args: { p_item: string | null }; Returns: undefined | null }

@@ -1,4 +1,4 @@
-const LEITURAS_RPC = new Set(["troca_painel", "sugerir_troca", "troca_valor_pago", "categorias_catalogo", "troca_publica", "romaneio_publico", "pecas_repetidas", "contagem_repetidas", "creditos_do_pedido", "contagens_pedidos", "responsavel_sugerido"])
+const LEITURAS_RPC = new Set(["troca_painel", "sugerir_troca", "troca_valor_pago", "categorias_catalogo", "troca_publica", "romaneio_publico", "pecas_repetidas", "contagem_repetidas", "creditos_do_pedido", "contagens_pedidos", "responsavel_sugerido", "quem_fez_etapas"])
 const TABELAS = new Set([
   "v_pedidos_operacao", "v_pedidos", "pedidos", "pedido_itens", "pedido_eventos", "trocas", "troca_pecas", "troca_opcoes",
   "troca_escolhas", "v_troca_valores", "v_troca_resumo", "v_troca_carrinho", "v_pedido_acerto",

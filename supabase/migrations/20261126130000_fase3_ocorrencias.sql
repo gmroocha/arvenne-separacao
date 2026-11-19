@@ -28,11 +28,13 @@ comment on column public.pedido_itens.falta_por is 'Quem marcou a peça como fal
 
 -- Quem fez um passo do pedido: o responsável da etapa, se houver; senão quem clicou. Nulo para o sistema (cron, gatilhos).
 create or replace function public.autor_da_etapa(p_pedido uuid, p_etapa text) returns uuid
-language sql stable security definer set search_path to 'public','pg_temp' as $$
-  select coalesce(
+language plpgsql stable security definer set search_path to 'public','pg_temp' as $$
+begin
+  perform public.exigir_pedido(p_pedido);
+  return coalesce(
     (select e.id from public.pedidos p join public.equipe e on e.id::text = p.responsaveis ->> p_etapa where p.id = p_pedido),
-    public.membro_atual())
-$$;
+    public.membro_atual());
+end $$;
 revoke all on function public.autor_da_etapa(uuid, text) from public, anon;
 grant execute on function public.autor_da_etapa(uuid, text) to authenticated, service_role;
 
@@ -384,7 +386,7 @@ end $function$
 ;
 
 -- ---------------------------------------------------------------------------------------------------------------
--- Falta indevida: peça em falta/defeito que depois é encontrada por OUTRA pessoa gera a ocorrência em nome de quem marcou a falta.
+-- Falta indevida: peça em falta/defeito que depois é encontrada por OUTRA pessoa (quem clicou, membro_atual) gera a ocorrência em nome de quem marcou a falta.
 -- Chamada só por alterar_item (invoker, sem permissão de gravar em ocorrencias). Quem marcou a falta chega por uma configuração
 -- local da transação, que só alterar_item define; chamada direta, sem ela, não faz nada.
 -- ---------------------------------------------------------------------------------------------------------------
@@ -395,17 +397,19 @@ declare
   v_i public.pedido_itens%rowtype;
   v_p public.pedidos%rowtype;
   v_etapa text;
-  v_autor uuid;
+  v_achou uuid;
 begin
   perform set_config('arvenne.falta_por', '', true);
-  if v_falta is null then return; end if;
   select * into v_i from public.pedido_itens where id = p_item;
-  if not found or v_i.status <> 'encontrado' then return; end if;
+  if not found then return; end if;
+  perform public.exigir_pedido(v_i.pedido_id);
+  if v_falta is null or v_i.status <> 'encontrado' then return; end if;
   select * into v_p from public.pedidos where id = v_i.pedido_id;
   v_etapa := coalesce(public.etapa_da_esteira(v_p.status, v_p.etapa_antes_desvio), 'separacao');
-  v_autor := public.autor_da_etapa(v_p.id, v_etapa);
-  -- Mesma pessoa que marcou a falta (ou ninguém identificado): não é erro dela.
-  if v_autor is null or v_autor::text = v_falta then return; end if;
+  -- Quem encontrou a peça é quem clicou (membro_atual). Se ninguém foi identificado, ou foi a mesma pessoa que marcou a falta,
+  -- não é erro dela.
+  v_achou := public.membro_atual();
+  if v_achou is null or v_achou::text = v_falta then return; end if;
   insert into public.ocorrencias (pedido_id, item_id, tipo, motivo, etapa, responsavel_id, registrado_por)
   values (v_p.id, p_item, 'falta_indevida', 'peca_encontrada', v_etapa, v_falta::uuid, public.registrado_por_atual());
 end $$;
@@ -559,19 +563,55 @@ revoke all on function public.anular_ocorrencia(uuid) from public, anon;
 grant execute on function public.anular_ocorrencia(uuid) to authenticated, service_role;
 
 -- Para a tela: ocorrências com os nomes da equipe e da peça. security_invoker: vale a RLS de quem consulta.
+-- Quem registrou/anulou aparece só pelo nome da equipe (o campo bruto pode ser um e-mail e não sai daqui). `ativas_no_pedido`
+-- é a contagem das ocorrências não anuladas do pedido, calculada no banco (a tela só exibe).
 create or replace view public.v_ocorrencias with (security_invoker = true) as
-select o.id, o.pedido_id, o.item_id, o.tipo, o.motivo, o.etapa, o.responsavel_id, o.conferente_id, o.registrado_por,
-       o.observacao, o.created_at, o.anulada_em, o.anulada_por,
-       r.nome as responsavel_nome, c.nome as conferente_nome, coalesce(g.nome, o.registrado_por) as registrado_por_nome,
-       p.numero, p.cliente_nome, i.sku, i.nome as item_nome, i.variante
+select o.id, o.pedido_id, o.item_id, o.tipo, o.motivo, o.etapa, o.responsavel_id, o.conferente_id,
+       o.observacao, o.created_at, o.anulada_em,
+       r.nome as responsavel_nome, c.nome as conferente_nome, g.nome as registrado_por_nome,
+       p.numero, p.cliente_nome, i.sku, i.nome as item_nome, i.variante,
+       (count(*) filter (where o.anulada_em is null) over (partition by o.pedido_id))::int as ativas_no_pedido
   from public.ocorrencias o
   join public.pedidos p on p.id = o.pedido_id
   left join public.pedido_itens i on i.id = o.item_id
   left join public.equipe r on r.id = o.responsavel_id
   left join public.equipe c on c.id = o.conferente_id
-  left join public.equipe g on g.id::text = o.registrado_por;
+  left join lateral (select e.nome from public.equipe e
+                      where e.id::text = o.registrado_por or lower(btrim(e.email)) = lower(btrim(o.registrado_por))
+                      order by (e.id::text = o.registrado_por) desc limit 1) g on true;
 revoke all on public.v_ocorrencias from public, anon;
 grant select on public.v_ocorrencias to authenticated, service_role;
+
+-- Quem fez cada etapa de um pedido (tela de Concluídos), na ordem da esteira da origem do pedido. A pessoa vem de
+-- responsavel_sugerido (autor gravado nas peças, responsável da etapa, quem saiu da etapa); sem equipe cadastrada, o nome sai
+-- do e-mail do histórico (parte antes do @, nunca o e-mail inteiro). `concluida_em` = quando o pedido saiu da etapa pela última vez.
+create or replace function public.quem_fez_etapas(p_pedido uuid)
+returns table (etapa text, ordem int, membro_id uuid, nome text, concluida_em timestamptz)
+language plpgsql stable security definer set search_path to 'public','pg_temp' as $$
+declare
+  v_origem text;
+begin
+  perform public.exigir_pedido(p_pedido);
+  select origem into v_origem from public.pedidos where id = p_pedido and excluido_em is null;
+  if not found then raise exception 'Pedido não encontrado'; end if;
+  return query
+  select e.etapa, e.ordem, s.id,
+         coalesce(q.nome, (select nullif(split_part(t.saiu_por, '@', 1), '')
+                             from public.v_tempo_etapas t
+                            where t.pedido_id = p_pedido and t.etapa = any (e.equivalentes) and t.saiu_por is not null
+                              and t.saiu_por <> 'sistema' and position('@' in t.saiu_por) > 0
+                            order by t.entrou_em desc limit 1)),
+         (select max(t.saiu_em) from public.v_tempo_etapas t where t.pedido_id = p_pedido and t.etapa = any (e.equivalentes))
+    from (values ('separacao', 1, array['separacao','novo']), ('conferencia', 2, array['conferencia']), ('bipagem', 3, array['bipagem']),
+                 ('faturamento', 4, array['faturamento']), ('embalagem', 5, array['embalagem','frete']),
+                 ('pronto_envio', 6, array['pronto_envio']), ('enviar_rastreio', 7, array['enviar_rastreio'])) as e(etapa, ordem, equivalentes)
+    cross join lateral (select public.responsavel_sugerido(p_pedido, e.etapa) as id) s
+    left join public.equipe q on q.id = s.id
+   where e.etapa <> 'enviar_rastreio' or v_origem <> 'shopify'
+   order by e.ordem;
+end $$;
+revoke all on function public.quem_fez_etapas(uuid) from public, anon;
+grant execute on function public.quem_fez_etapas(uuid) to authenticated, service_role;
 
 -- Permissões das cópias (CREATE OR REPLACE mantém os GRANTs; repetidos por clareza).
 revoke all on function public.marcar_pecas(uuid, jsonb) from public, anon;

@@ -135,35 +135,42 @@ test('erro na bipagem só vale até a Bipagem (depois o pedido precisa voltar de
   await recusa(() => one("select registrar_erro_bipagem($1,'peca_suja')", [a.id]), /se registra na Bipagem/)
 })
 
-test('falta indevida: a mesma pessoa que marcou e achou não gera ocorrência; outra pessoa gera, em nome de quem marcou', async () => {
-  const { ana, bia } = await cenario()
+test('falta indevida: a Ana acha a própria falta e não gera ocorrência', async () => {
+  const { ana } = await cenario()
   const p = await pedidoWhats('separacao')
   await resp(p.id, { separacao: ana })
-  await como(UG)
-  const [a, b] = await itens(p.id)
+  await como(UA)
+  const [a] = await itens(p.id)
   await one('select marcar_falta($1,1)', [a.id])
   assert.equal((await itens(p.id))[0].falta_por, ana, 'quem marcou a falta é a responsável da separação')
   assert.equal(await status(p.id), 'separacao', 'a outra peça ainda está pendente')
   await one('select encontrar_peca($1)', [a.id])
-  assert.equal((await ocorrencias(p.id)).length, 0, 'mesma responsável: sem ocorrência')
-  let [x] = await itens(p.id)
+  assert.equal((await ocorrencias(p.id)).length, 0, 'quem achou é quem marcou: sem ocorrência')
+  const [x] = await itens(p.id)
   assert.deepEqual([x.status, x.falta_por, x.separado_por], ['encontrado', null, ana])
+})
 
-  // Agora a separação passa para a Bia: quem acha é outra pessoa.
-  await lote(p.id, [{ item: a.id, campo: 'status', valor: 'pendente' }])
-  await one('select marcar_falta($1,1,$2)', [a.id, 'defeito'])
-  ;[x] = await itens(p.id)
-  assert.deepEqual([x.status, x.falta_por], ['defeito', ana])
-  await db.exec('reset role')
-  await resp(p.id, { separacao: bia })
+test('falta indevida: a gestora acha a falta da Ana e a ocorrência fica em nome da Ana (falta e defeito)', async () => {
+  const { g, ana } = await cenario()
+  const p = await pedidoWhats('separacao')
+  await resp(p.id, { separacao: ana })
+  const [a, b] = await itens(p.id)
+  await como(UA)
+  await one('select marcar_falta($1,1)', [a.id])
   await como(UG)
   await one('select encontrar_peca($1)', [a.id])
-  const os = await ocorrencias(p.id)
+  let os = await ocorrencias(p.id)
   assert.equal(os.length, 1)
-  assert.deepEqual([os[0].tipo, os[0].motivo, os[0].item_id, os[0].responsavel_id, os[0].etapa], ['falta_indevida', 'peca_encontrada', a.id, ana, 'separacao'])
-  ;[x] = await itens(p.id)
-  assert.deepEqual([x.status, x.falta_por, x.separado_por], ['encontrado', null, bia])
-  assert.ok(b)
+  assert.deepEqual([os[0].tipo, os[0].motivo, os[0].item_id, os[0].responsavel_id, os[0].etapa, os[0].registrado_por], ['falta_indevida', 'peca_encontrada', a.id, ana, 'separacao', g])
+  let [x] = await itens(p.id)
+  assert.deepEqual([x.status, x.falta_por, x.separado_por], ['encontrado', null, ana])
+  // Defeito marcado pela Ana na outra peça e achado pela gestora: mais uma ocorrência.
+  await como(UA)
+  await one('select marcar_falta($1,1,$2)', [b.id, 'defeito'])
+  await como(UG)
+  await one('select encontrar_peca($1)', [b.id])
+  os = await ocorrencias(p.id)
+  assert.deepEqual(os.map((o) => [o.item_id, o.responsavel_id]).sort((x, y) => (x[0] < y[0] ? -1 : 1)), [[a.id, ana], [b.id, ana]].sort((x, y) => (x[0] < y[0] ? -1 : 1)))
 })
 
 test('falta indevida por alterar_item direto e falta parcial: o autor vai para a linha que ficou em falta', async () => {
@@ -340,4 +347,72 @@ test('os motivos de cada tipo e o texto de "outro" são conferidos pelo banco', 
   await grava('problema_entrega', 'outro', 'algo')
   await grava('erro_bipagem', 'peca_incorreta')
   await grava('falta_indevida', 'peca_encontrada')
+})
+
+test('v_ocorrencias: sem o registrado_por bruto, nome pelo id ou pelo e-mail, e a contagem de ativas vem do banco', async () => {
+  const { g, ana } = await cenario()
+  await db.query("update equipe set email='gestora@arvenne.test' where id=$1", [g])
+  const p = await pedidoWhats('separacao')
+  const grava = (por) => db.query("insert into ocorrencias (pedido_id, tipo, motivo, etapa, responsavel_id, registrado_por) values ($1,'problema_entrega','nota_errada','faturamento',$2,$3)", [p.id, ana, por])
+  await grava(g)
+  await grava('gestora@arvenne.test')
+  await grava('desconhecido@arvenne.test')
+  await como(UG)
+  const colunas = (await db.query('select * from v_ocorrencias limit 1')).fields.map((f) => f.name)
+  assert.ok(!colunas.includes('registrado_por') && !colunas.includes('anulada_por'), 'nenhum campo que possa ter e-mail')
+  const linhas = (await db.query('select registrado_por_nome n, ativas_no_pedido a from v_ocorrencias')).rows
+  assert.deepEqual(linhas.map((l) => l.n).sort(), ['Gestora', 'Gestora', null])
+  assert.ok(linhas.every((l) => l.a === 3))
+  const id = (await one('select id from ocorrencias limit 1')).id
+  await one('select anular_ocorrencia($1)', [id])
+  assert.ok((await db.query('select ativas_no_pedido a from v_ocorrencias')).rows.every((l) => l.a === 2))
+})
+
+test('quem_fez_etapas: pessoa e data de cada etapa vêm do banco, coerentes com responsavel_sugerido; Shopify não tem Enviar rastreio', async () => {
+  const { ana, bia } = await cenario()
+  await db.exec('reset role')
+  const carla = await membro('Carla', 'funcionaria', null, 'carla@arvenne.test')
+  const p = await concluido({ faturamento: ana })
+  const [a, b] = await itens(p.id)
+  await db.query('update pedido_itens set bipado_por=$2 where id=$1', [a.id, bia])
+  await db.query('update pedido_itens set bipado_por=$2 where id=$1', [b.id, bia])
+  await db.query('delete from pedido_eventos where pedido_id=$1', [p.id])
+  await db.query(`insert into pedido_eventos (pedido_id, tipo, de, para, usuario_email, created_at) values
+    ($1,'status','faturamento','embalagem','x@arvenne.test', now() - interval '3 hours'),
+    ($1,'status','embalagem','pronto_envio','Carla@Arvenne.test', now() - interval '2 hours'),
+    ($1,'status','pronto_envio','enviar_rastreio','zed@fora.test', now() - interval '1 hour')`, [p.id])
+  await como(UG)
+  const q = (await db.query('select * from quem_fez_etapas($1)', [p.id])).rows
+  assert.deepEqual(q.map((r) => r.etapa), ['separacao', 'conferencia', 'bipagem', 'faturamento', 'embalagem', 'pronto_envio', 'enviar_rastreio'])
+  const por = Object.fromEntries(q.map((r) => [r.etapa, r]))
+  assert.deepEqual([por.faturamento.membro_id, por.faturamento.nome], [ana, 'Ana'])
+  assert.deepEqual([por.bipagem.membro_id, por.bipagem.nome], [bia, 'Bia'])
+  assert.deepEqual([por.embalagem.membro_id, por.embalagem.nome], [carla, 'Carla'], 'quem saiu da etapa, pelo e-mail do histórico')
+  assert.deepEqual([por.pronto_envio.membro_id, por.pronto_envio.nome], [null, 'zed'], 'e-mail sem cadastro: só a parte antes do @')
+  assert.equal(por.embalagem.concluida_em !== null, true)
+  assert.equal(por.separacao.concluida_em, null)
+  for (const e of ['separacao', 'conferencia', 'bipagem', 'faturamento', 'embalagem', 'pronto_envio']) {
+    assert.equal((await one('select responsavel_sugerido($1,$2) r', [p.id, e])).r, por[e].membro_id, e)
+  }
+  await db.exec('reset role')
+  await db.query("update pedidos set origem='shopify', shopify_order_id=7771 where id=$1", [p.id])
+  await como(UG)
+  assert.ok(!(await db.query('select etapa from quem_fez_etapas($1)', [p.id])).rows.some((r) => r.etapa === 'enviar_rastreio'))
+  await como(UB)
+  await recusa(() => one('select * from quem_fez_etapas($1)', [p.id]), /não está com você/)
+  await db.exec('reset role')
+  await db.exec('set local role anon')
+  await recusa(() => one('select * from quem_fez_etapas($1)', [p.id]), /permission denied/)
+})
+
+test('autor_da_etapa e registrar_falta_indevida conferem se a pessoa vê o pedido', async () => {
+  const { ana } = await cenario()
+  const p = await pedidoWhats('separacao')
+  await resp(p.id, { separacao: ana })
+  const [a] = await itens(p.id)
+  await como(UB) // Bia não é responsável de nada neste pedido
+  await recusa(() => one("select autor_da_etapa($1,'separacao')", [p.id]), /não está com você/)
+  await recusa(() => one('select registrar_falta_indevida($1)', [a.id]), /não está com você/)
+  await como(UA)
+  assert.equal((await one("select autor_da_etapa($1,'separacao') a", [p.id])).a, ana)
 })
