@@ -10,19 +10,21 @@
 
 -- Funções de política: opacas e baratas (uma busca por chave), com a pessoa passada de fora para ser calculada UMA vez
 -- por consulta, em `(select membro_atual())`. Mesma regra de pode_ver_pedido(): o `responsaveis` da etapa atual é a pessoa.
+-- São security definer e ficam abertas a quem está logado: por isso só valem para a PRÓPRIA pessoa. Se p_membro não for
+-- quem está logado, devolvem false (ninguém espia o que outra pessoa vê).
 create or replace function public.membro_ve_pedido(p_pedido uuid, p_membro uuid) returns boolean
 language sql stable security definer set search_path to 'public','pg_temp' as $$
-  select exists (select 1 from public.pedidos p
+  select p_membro = (select public.membro_atual()) and exists (select 1 from public.pedidos p
    where p.id = p_pedido and p.responsaveis ->> public.etapa_da_esteira(p.status, p.etapa_antes_desvio) = p_membro::text)
 $$;
 create or replace function public.membro_ve_troca(p_troca uuid, p_membro uuid) returns boolean
 language sql stable security definer set search_path to 'public','pg_temp' as $$
-  select exists (select 1 from public.trocas t join public.pedidos p on p.id = t.pedido_id
+  select p_membro = (select public.membro_atual()) and exists (select 1 from public.trocas t join public.pedidos p on p.id = t.pedido_id
    where t.id = p_troca and p.responsaveis ->> public.etapa_da_esteira(p.status, p.etapa_antes_desvio) = p_membro::text)
 $$;
 create or replace function public.membro_ve_peca_troca(p_peca uuid, p_membro uuid) returns boolean
 language sql stable security definer set search_path to 'public','pg_temp' as $$
-  select exists (select 1 from public.troca_pecas tp join public.trocas t on t.id = tp.troca_id join public.pedidos p on p.id = t.pedido_id
+  select p_membro = (select public.membro_atual()) and exists (select 1 from public.troca_pecas tp join public.trocas t on t.id = tp.troca_id join public.pedidos p on p.id = t.pedido_id
    where tp.id = p_peca and p.responsaveis ->> public.etapa_da_esteira(p.status, p.etapa_antes_desvio) = p_membro::text)
 $$;
 revoke all on function public.membro_ve_pedido(uuid, uuid), public.membro_ve_troca(uuid, uuid), public.membro_ve_peca_troca(uuid, uuid) from public, anon;
@@ -249,7 +251,7 @@ where t.status <> 'cancelada'
   and exists (select 1 from public.troca_pecas tp where tp.troca_id = t.id and tp.concluida_em is not null)
 order by t.pedido_id,coalesce(t.id=p.acerto_troca_id,false) desc, (t.acerto_status = 'pendente') desc nulls last,
          (coalesce(t.acerto_status, '') <> 'sem_diferenca') desc,
-         t.concluida_em desc nulls last, t.created_at desc;
+         t.concluida_em desc nulls last, t.created_at desc, t.id desc;
 revoke all on public.v_troca_alvo from public, anon;
 grant select on public.v_troca_alvo to authenticated, service_role;
 

@@ -7,7 +7,7 @@
 - O que pesava: (1) a RLS da Fase 2 chamava `pode_ver_pedido()` por LINHA em todas as tabelas filhas; (2) `v_cobertura_troca_peca` e `v_item_liquido` tinham
   janelas (`sum() over`), então qualquer consulta por pedido (`troca_painel`, `v_pedidos`, `v_pedido_acerto`, `v_pedido_alteracoes`, `v_troca_resumo`,
   `troca_publica`) recalculava as peças de TODOS os pedidos, conferindo a RLS de cada uma; (3) `prazo_envio` e `horas_uteis` faziam uma consulta por dia, por linha das listas.
-- O que mudou: políticas `(select sou_gestor()) or membro_ve_pedido(pedido_id, (select membro_atual()))` (e `membro_ve_troca`, `membro_ve_peca_troca` para peça, opção e escolha);
+- O que mudou: políticas `(select sou_gestor()) or membro_ve_pedido(pedido_id, (select membro_atual()))` (e `membro_ve_troca`, `membro_ve_peca_troca` para peça, opção e escolha; são security definer e só respondem pela PRÓPRIA pessoa logada: com o id de outra devolvem false);
   rateio da cobertura por peça (`item_coberto`, sem janela); `v_troca_base`, `v_item_pago`, `v_troca_alvo` (views novas) no lugar de CTEs usados duas vezes;
   `v_troca_resumo` com lateral; `prazo_envio`/`horas_uteis` com uma leitura de feriados; `contagens_pedidos` com a comparação barata na frente;
   `pecas_repetidas` com o prazo por pedido; índices `trocas_pedido_recente`, `pedido_eventos_item_tipo`, `pedido_itens_pendentes`; `metas_etapa` com `(select sou_gestor())`.

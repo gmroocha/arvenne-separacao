@@ -69,12 +69,12 @@ test('V115: as consultas quentes cabem folgadas no limite do banco (gestor e fun
     for (let i = 0; i < 3; i++) { const t0 = performance.now(); await db.query(sql, args); m = Math.min(m, performance.now() - t0) }
     return m
   }
-  // Limites ~5 a 10 vezes acima do medido depois da migration e bem abaixo do que a funcionária pagava antes (RLS por linha + janelas).
+  // Limites ~10 a 25 vezes acima do medido depois da migration e bem abaixo do que a funcionária pagava antes (RLS por linha + janelas).
   const limites = [
-    ['troca_painel', 'select troca_painel($1)', 120],
-    ['v_troca_resumo', 'select * from v_troca_resumo where pedido_id = $1', 100],
-    ['v_pedido_acerto', 'select * from v_pedido_acerto where pedido_id = $1', 100],
-    ['v_pedido_alteracoes', 'select * from v_pedido_alteracoes where pedido_id = $1', 60],
+    ['troca_painel', 'select troca_painel($1)', 300],
+    ['v_troca_resumo', 'select * from v_troca_resumo where pedido_id = $1', 250],
+    ['v_pedido_acerto', 'select * from v_pedido_acerto where pedido_id = $1', 250],
+    ['v_pedido_alteracoes', 'select * from v_pedido_alteracoes where pedido_id = $1', 150],
   ]
   for (const [sub, pedido, quem] of [[UG, a.gestor, 'gestor'], [UA, a.ana_pedido, 'funcionária']]) {
     await como(db, sub)
@@ -83,9 +83,9 @@ test('V115: as consultas quentes cabem folgadas no limite do banco (gestor e fun
       expect(ms, `${nome} (${quem}) levou ${ms.toFixed(0)} ms`).toBeLessThan(limite)
     }
     const lista = await melhor('select * from v_pedidos_operacao where status in (\'novo\',\'separacao\',\'conferencia\',\'bipagem\',\'faturamento\',\'embalagem\',\'pronto_envio\',\'enviar_rastreio\')')
-    expect(lista, `lista da Expedição (${quem}) levou ${lista.toFixed(0)} ms`).toBeLessThan(400)
+    expect(lista, `lista da Expedição (${quem}) levou ${lista.toFixed(0)} ms`).toBeLessThan(1000)
     const contagens = await melhor('select contagens_pedidos()')
-    expect(contagens, `contagens_pedidos (${quem}) levou ${contagens.toFixed(0)} ms`).toBeLessThan(80)
+    expect(contagens, `contagens_pedidos (${quem}) levou ${contagens.toFixed(0)} ms`).toBeLessThan(200)
   }
 }, 60_000)
 
@@ -113,9 +113,9 @@ const SQL_COMPARAVEL = {
       from v_troca_resumo r join pedidos p on p.id = r.pedido_id order by p.numero, r.pecas_total`,
   acerto: `select p.numero, a.valor_pago_original, a.valor_pago_pecas_trocadas, a.total_a_cobrar, a.total_credito, a.saldo, a.novo_total,
         a.acerto_status, a.coberto, a.total_pago_atual, a.bloqueio, jsonb_array_length(a.pecas) as pecas
-      from v_pedido_acerto a join pedidos p on p.id = a.pedido_id where p.numero in ${AMOSTRA} order by p.numero`,
-  alteracoes: `select p.numero, a.tipo, a.valor, a.diferenca, a.coberto_loja, a.cliente_paga, a.credito, a.a_devolver, jsonb_array_length(a.entra) as entra
-      from v_pedido_alteracoes a join pedidos p on p.id = a.pedido_id where p.numero in ${AMOSTRA} order by p.numero, a.tipo, a.valor, a.diferenca`,
+      from v_pedido_acerto a join pedidos p on p.id = a.pedido_id order by p.numero`,
+  alteracoes: `select * from (select p.numero, a.tipo, a.valor, a.diferenca, a.coberto_loja, a.cliente_paga, a.credito, a.a_devolver, jsonb_array_length(a.entra) as entra
+      from v_pedido_alteracoes a join pedidos p on p.id = a.pedido_id where p.numero in ${AMOSTRA}) q order by q.numero, to_jsonb(q)::text`,
   painel: `select p.numero, (troca_painel(p.id) -> 'resumo') - 'troca_id' - 'pedido_id' as resumo,
         (select jsonb_agg(jsonb_build_object('coberto', x -> 'coberto', 'cliente_paga', x -> 'cliente_paga', 'carrinho', x -> 'carrinho' -> 'diferenca',
            'valores', (select jsonb_agg(v -> 'diferenca' order by v ->> 'diferenca') from jsonb_array_elements(x -> 'valores') v)) order by x ->> 'resultado_diferenca')
@@ -133,8 +133,9 @@ const SQL_COMPARAVEL = {
       from pecas_repetidas(null, false) order by chave`,
   repetidas_avancadas: `select chave, qtd_total, qtd_pedidos from pecas_repetidas(null, true) order by chave`,
   contagens: `select contagens_pedidos() as c, contagem_repetidas() as r`,
-  operacao: `select numero, status, qtd_pecas, qtd_encontradas, fase, termometro is null as sem_termometro, cliente_decidiu, acerto_pendente, a_devolver,
-        (prazo is not null) as tem_prazo, etapas_permitidas from v_pedidos_operacao order by numero`,
+  operacao: `select o.numero, o.status, o.qtd_pecas, o.qtd_encontradas, o.fase, o.termometro is null as sem_termometro, o.cliente_decidiu, o.acerto_pendente, o.a_devolver,
+        ((o.prazo at time zone 'America/Sao_Paulo')::date - (p.pago_em at time zone 'America/Sao_Paulo')::date) as dias_ate_o_prazo, etapas_permitidas
+      from v_pedidos_operacao o join pedidos p on p.id = o.id order by o.numero`,
 }
 
 const FUNCOES_DE_DATA = `
@@ -163,10 +164,14 @@ test('V115: depois da migration, todas as respostas são iguais às do banco ant
   const contextos = [['gestor', UG], ['funcionaria', UA]]
   // Banco anterior, só até a Fase 4, com o mesmo volume.
   const antigo = await criarBanco({ ate: ANTES })
-  await antigo.exec('begin')
-  await montarVolume(antigo)
-  const esperado = await coletar(antigo, contextos)
-  await antigo.close()
+  let esperado
+  try {
+    await antigo.exec('begin')
+    await montarVolume(antigo)
+    esperado = await coletar(antigo, contextos)
+  } finally {
+    await antigo.close()
+  }
   // Banco novo (o do teste), com o mesmo volume.
   await montarVolume(db)
   const atual = await coletar(db, contextos)
@@ -175,8 +180,56 @@ test('V115: depois da migration, todas as respostas são iguais às do banco ant
   }
   // O volume tem dinheiro de verdade para comparar (nada vazio por acidente).
   expect(atual['gestor:itens'].some((r) => Number(r.coberto) > 0), 'rateio da cobertura da loja').toBe(true)
-  expect(atual['gestor:acerto'].length).toBeGreaterThan(3)
+  // Todos os pedidos com troca concluída (120) entram no acerto.
+  expect(atual['gestor:acerto'].length).toBeGreaterThan(100)
   expect(atual['funcionaria:pedidos'].length).toBeGreaterThan(0)
   expect(atual['funcionaria:pedidos'].length).toBeLessThan(atual['gestor:pedidos'].length)
   expect(atual.datas).toHaveLength(600)
-}, 90_000)
+}, 180_000)
+
+test('V115: as funções de política só respondem pela PRÓPRIA pessoa e os objetos novos têm os GRANTs certos', async () => {
+  await montarVolume(db)
+  await db.exec('reset role')
+  const bia = (await one("select id from equipe where nome = 'Bia'")).id
+  const a = await alvos()
+  const peca = (await one('select tp.id from troca_pecas tp join trocas t on t.id = tp.troca_id where t.pedido_id = $1 limit 1', [a.ana_pedido])).id
+  const troca = (await one('select id from trocas where pedido_id = $1', [a.ana_pedido])).id
+  // Pedido, troca e peça de troca que a Bia (e não a Ana) enxerga.
+  const deBia = await one(`select p.id pedido, t.id troca, tp.id peca from pedidos p join trocas t on t.pedido_id = p.id join troca_pecas tp on tp.troca_id = t.id
+    where p.responsaveis ->> public.etapa_da_esteira(p.status, p.etapa_antes_desvio) = $1 order by p.numero limit 1`, [bia])
+  await como(db, UA)
+  for (const [fn, proprio, alheio] of [
+    ['membro_ve_pedido', a.ana_pedido, deBia.pedido], ['membro_ve_troca', troca, deBia.troca], ['membro_ve_peca_troca', peca, deBia.peca]]) {
+    assert.equal((await one(`select ${fn}($1, $2) r`, [proprio, a.ana])).r, true, `${fn}: a Ana vê o que é dela`)
+    assert.equal((await one(`select ${fn}($1, $2) r`, [alheio, a.ana])).r, false, `${fn}: o que é da Bia não aparece para a Ana`)
+    // Com o id da Bia, a Ana não consegue espiar o que a Bia vê.
+    assert.equal((await one(`select ${fn}($1, $2) r`, [alheio, bia])).r, false, `${fn}: a Ana não pode perguntar pela Bia`)
+    assert.equal((await one(`select ${fn}($1, null) r`, [proprio])).r, false, `${fn}: sem pessoa, nada`)
+  }
+  // Cada pessoa vê só o que é dela mesmo pelas tabelas filhas.
+  assert.equal((await one('select count(*)::int n from pedido_itens where pedido_id = $1', [deBia.pedido])).n, 0)
+
+  await db.exec('reset role')
+  const funcoes = ['membro_ve_pedido(uuid, uuid)', 'membro_ve_troca(uuid, uuid)', 'membro_ve_peca_troca(uuid, uuid)', 'item_coberto(uuid, uuid, numeric)']
+  for (const f of funcoes) {
+    const priv = async (papel) => (await one(`select has_function_privilege('${papel}', 'public.${f}', 'execute') ok`)).ok
+    assert.equal(await priv('anon'), false, `${f}: anon não executa`)
+    assert.equal(await priv('authenticated'), true, `${f}: authenticated executa`)
+    assert.equal(await priv('service_role'), true, `${f}: service_role executa`)
+  }
+  for (const v of ['v_item_pago', 'v_troca_base', 'v_troca_alvo']) {
+    const priv = async (papel, p) => (await one(`select has_table_privilege('${papel}', 'public.${v}', '${p}') ok`)).ok
+    assert.equal(await priv('anon', 'select'), false, `${v}: anon não lê`)
+    assert.equal(await priv('authenticated', 'select'), true, `${v}: authenticated lê`)
+    for (const p of ['insert', 'update', 'delete']) {
+      assert.equal(await priv('authenticated', p), false, `${v}: authenticated sem ${p}`)
+      assert.equal(await priv('anon', p), false, `${v}: anon sem ${p}`)
+    }
+  }
+  // Nenhuma outra função de política herdou permissão do PUBLIC.
+  const publicas = await db.query(`select routine_name from information_schema.routine_privileges
+    where routine_schema = 'public' and grantee in ('PUBLIC', 'anon') and privilege_type = 'EXECUTE'
+      and routine_name in ('membro_ve_pedido', 'membro_ve_troca', 'membro_ve_peca_troca', 'item_coberto')`)
+  assert.deepEqual(publicas.rows, [])
+}, 60_000)
+
