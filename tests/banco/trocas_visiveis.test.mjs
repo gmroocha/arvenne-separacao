@@ -19,9 +19,9 @@ test('V37: falta na Conferência leva ao desvio guardando a origem; sair volta �
   // "Cliente avisada": a origem se mantém.
   await db.query("update pedidos set status = 'aguardando_cliente' where id = $1", [p.id])
   assert.deepEqual(await status(p.id), { status: 'aguardando_cliente', etapa_antes_desvio: 'conferencia' })
-  // Ainda em falta: não volta.
-  assert.equal(await sair(p.id), 'separacao')
-  assert.deepEqual(await status(p.id), { status: 'separacao', etapa_antes_desvio: null })
+  // Ainda em falta: não volta (V114: continua aguardando a cliente, com a origem guardada).
+  assert.equal(await sair(p.id), 'aguardando_cliente')
+  assert.deepEqual(await status(p.id), { status: 'aguardando_cliente', etapa_antes_desvio: 'conferencia' })
 })
 
 test('V37: resolvida a falta, o pedido volta à etapa de origem; peça pendente manda para a Separação', async () => {

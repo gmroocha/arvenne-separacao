@@ -15,9 +15,12 @@ test('V57: a primeira peça encontrada tira da fila na mesma transação, sem de
  await one('select alterar_item($1,$2::jsonb)',[i.id,JSON.stringify({status:"encontrado"})])
  expect(Number((await one("select count(*) n from pedido_eventos where pedido_id=$1 and tipo='status' and para='separacao'",[p.id])).n)).toBe(1)
 })
-test.each(['falta','defeito'])('V57: %s abre o desvio junto com a peça e preserva a etapa de origem',async status=>{
+test.each(['falta','defeito'])('V57/V114: %s abre o desvio quando a última peça pendente é achada e preserva a etapa de origem',async status=>{
  const {p,i}=await montar('separacao')
  await one('select marcar_falta($1,1,$2)',[i.id,status])
+ // V114: o resto da linha ainda está por separar; o pedido espera na Separação.
+ expect((await one('select status from pedidos where id=$1',[p.id])).status).toBe('separacao')
+ await one('select marcar_pecas($1,$2::jsonb)',[p.id,JSON.stringify([{item:i.id,campo:'status',valor:'encontrado'}])])
  expect(await one('select status,etapa_antes_desvio from pedidos where id=$1',[p.id])).toEqual({status:'avisar_cliente',etapa_antes_desvio:'separacao'})
 })
 

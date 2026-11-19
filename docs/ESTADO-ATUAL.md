@@ -1,5 +1,46 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Falta na Separação espera as outras peças (V114, 19/11/2026) — **migration NÃO aplicada**
+
+- Pedido do Gustavo: marcar falta na primeira peça não manda mais o pedido para "Avisar cliente". Ele fica na Separação até
+  todas as outras peças serem encontradas, marcadas em falta ou retiradas; aí vai sozinho para "Avisar cliente". Na
+  Conferência e na Bipagem (todas as peças já achadas) a falta continua abrindo o aviso na hora.
+- `sair_do_desvio` não tira o pedido do aviso com peça ainda em falta e não usa mais a antiga etapa Frete.
+- Migration `20261125153000_falta_espera_separacao.sql`, teste `tests/banco/falta-espera-separacao.test.mjs` (V114).
+
+## Fase 2: login por usuário, papéis e "cada uma vê os seus" (19/11/2026) — **migrations NÃO aplicadas e função Edge NÃO publicada**
+
+Segunda de quatro fases. Falta o "sim" do Gustavo para `db push` e `supabase functions deploy equipe-acesso`. O código do app
+já está preparado para o banco antigo (sem `membro_atual`, sem `usuario`, sem `responsavel_padrao`: a tela cai em "gestor" e
+em lista vazia, sem quebrar), então publicar o app antes do `db push` é seguro; a funcionária só passa a ter menu e pedidos
+restritos depois das migrations.
+
+- **Login por usuário:** `src/lib/loginInterno.ts` (e a cópia `supabase/functions/_shared/usuario.ts`) monta o e-mail interno
+  `usuario` + `@equipe.arvenne.invalid`; `Login.tsx` aceita "Usuário ou e-mail" (sem `@` vira o e-mail interno). Função Edge
+  `supabase/functions/equipe-acesso` (só gestor): `criar`, `trocar_senha`, `bloquear`, `desbloquear`. Time: "Criar acesso" /
+  "Trocar senha" por pessoa; Desativar/Reativar bloqueia/desbloqueia o login; Excluir bloqueia antes de apagar.
+- **Migration `20261126090000_acesso_e_papeis.sql`:** `equipe.usuario` (único, formato) e `equipe.user_id` (único, sem FK para
+  auth); `sou_sistema()`, `membro_atual()` (por `user_id`, senão por e-mail), `sou_gestor()` de volta (pessoa ativa com papel
+  gestor; sem JWT de pessoa vale como sistema); políticas de `equipe` só do gestor; `excluir_membro` só gestor; gatilho do
+  último gestor de volta; tabela `responsavel_padrao`.
+- **Migration `20261126100000_visibilidade_pedidos.sql`:** `etapa_da_esteira()`, `pode_ver_pedido()`, `exigir_*()`; RLS de
+  `pedidos` (gestor vê tudo; funcionária só `responsaveis ->> etapa atual = membro_atual()`; criar pedido só gestor; edição com
+  WITH CHECK livre, porque o pedido pode mudar de etapa na própria edição) e das tabelas filhas (`pedido_itens`,
+  `pedido_eventos`, `bipagens`, `creditos_cliente`, `movimentos_financeiros`, `trocas`, `troca_pecas`, `troca_opcoes`,
+  `troca_escolhas`); `tg_pedidos_antes` preenche o responsável padrão; `preencher_responsaveis_padrao()`; funções definer com
+  conferência no começo (`mover_etapa`, `marcar_pecas` [agora definer], `encontrar_peca`, `substituir_item`, `sair_do_desvio`,
+  `marcar_devolvido`, `corrigir_frete_pedido`, crédito, troca, e gestor-only: `designar`, `excluir_pedido`, `somar_venda`).
+  As demais funções (`marcar_falta`, `alterar_item`, `avancar_pecas`, `bipar`...) são invoker e obedecem à RLS.
+- **Tela:** menu e rotas do gestor atrás de `SoGestor`/`useSouGestor`; funcionária vê só Expedição e `/pedidos/:id`, sem
+  filtro por pessoa, sem Sincronizar e sem escolher responsável; Time ganha Papel, usuário, Criar acesso/Trocar senha e
+  "Quem cuida de cada etapa" (+ "Aplicar aos pedidos de hoje"); "Comigo" usa `membro_atual`.
+- **Testes:** `tests/banco/visibilidade.test.mjs`, `time.test.mjs` (V109 de volta), `tests/unidade/{loginInterno,equipe-acesso}`,
+  `tests/e2e/{login-papeis,time-acesso}.spec.mjs`. O simulador aceita `papel: "gestor" | "funcionaria"` (sem `papel` o login é
+  "livre", como service_role) e atende `/auth/v1/token` e a Edge `equipe-acesso` de mentira. `esteira-ponta-a-ponta` roda como gestor.
+- **Antes de aplicar:** conferir (leitura) que o Gustavo está como `gestor` ativo e com o mesmo e-mail do login. Depois de aplicar,
+  definir o responsável padrão de cada etapa no Time e tocar em "Aplicar aos pedidos de hoje"; criar o acesso de cada colaboradora.
+  `rodada3-time.spec.mjs` (papéis suspensos) saiu; `time-acesso.spec.mjs` o substitui.
+
 ## Fase 1: Embalagem e frete juntas, chave da nota e termômetro de tempo (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo**
 
 Primeira de quatro fases (1 Rápidas, 2 Logins, 3 Erros, 4 Indicadores). As três migrations abaixo foram aplicadas no Supabase em

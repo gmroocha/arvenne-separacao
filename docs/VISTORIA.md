@@ -528,6 +528,12 @@ viria "Há acerto ou devolução pendente" sem o botão Devolvido na tela. Migra
 | V112 | Alta | Ao concluir a última peça da troca com a janela aberta, a consulta da troca voltava vazia antes de a lista de faltas atualizar; o efeito da `TrocaDialog` chamava `garantir_troca` com a peça já trocada (removida) e o banco abria uma troca nova, vazia, em rascunho. Invisível na tela, ela travava o "Concluir etapa". Aconteceu em W0023, W0014, ARV-1281 e ARV-1280. | `garantir_troca` só põe na troca peça em falta ou com defeito e não abre troca sem nenhuma; a tela não recria a troca que já existia; a migration cancela os rascunhos nunca enviados, sem opção e sem peça em falta. `tests/banco/troca-fantasma.test.mjs`. |
 | V113 | Média | `mover_etapa` recusava acerto ou devolução pendente já na Separação, Conferência e Bipagem (e até para voltar etapa), onde o cartão "A devolver"/"Acerto" não aparece; o avanço automático só exige o acerto a partir da Embalagem. | `mover_etapa` exige o acerto só para avançar à Embalagem ou adiante, com mensagem que diz onde resolver; "A devolver à cliente" nos dados diz que o botão Devolvido aparece a partir da Nota fiscal. `tests/banco/troca-fantasma.test.mjs`. |
 
+## Falta na Separação espera as outras peças (V114, 19/11/2026)
+
+| ID | Gravidade | O que acontecia | Correção e proteção |
+| --- | --- | --- | --- |
+| V114 | Média | Na Separação, marcar a primeira peça como falta levava o pedido na hora para "Avisar cliente", antes de a separadora terminar as outras peças. Junto: `sair_do_desvio` ainda tinha a antiga etapa Frete na ordem (vindo da Postagem sem embalagem tentaria voltar para Frete) e, chamado com peça ainda em falta, tirava o pedido do aviso. | O pedido só vai para "Avisar cliente" quando há peça em falta/defeito e nenhuma pendente (`alterar_item`, `marcar_falta`, `avancar_pecas`); com peça pendente fica na Separação. `sair_do_desvio` não sai do aviso com falta e não usa mais Frete. Migration `20261125153000_falta_espera_separacao.sql`, `tests/banco/falta-espera-separacao.test.mjs`. |
+
 ## Referências técnicas consultadas
 
 - A distinção entre total atual, recebido, reembolsado e saldo em aberto de V09 foi conferida na
