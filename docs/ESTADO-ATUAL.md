@@ -1,6 +1,6 @@
 # Estado atual (atualizado em 19/11/2026)
 
-## Falta na Separação espera as outras peças (V114, 19/11/2026) — **migration NÃO aplicada**
+## Falta na Separação espera as outras peças (V114, 19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo**
 
 - Pedido do Gustavo: marcar falta na primeira peça não manda mais o pedido para "Avisar cliente". Ele fica na Separação até
   todas as outras peças serem encontradas, marcadas em falta ou retiradas; aí vai sozinho para "Avisar cliente". Na
