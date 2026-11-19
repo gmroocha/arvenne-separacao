@@ -83,7 +83,20 @@ chave certa via `core.sshCommand` já configurado neste repositório.
 
 ## Como o Gustavo gosta de trabalhar
 
-- Opus planeja (modo plano, com `ExitPlanMode`) e **Sonnet executa**, normalmente por um agente.
+- Opus planeja (modo plano, com `ExitPlanMode`), revisa e aplica; a execução vai para agentes de `.claude/agents/`
+  (decisão de 19/11/2026, pela documentação da Anthropic: esforço ajustado rende mais que trocar de modelo):
+
+  | Tarefa | Quem |
+  | --- | --- |
+  | Correção pequena (1 a 3 arquivos, causa clara) | Opus direto, sem agente (agente começa do zero e relê tudo) |
+  | Funcionalidade bem especificada | `executor` (Sonnet, esforço médio, worktree isolado) |
+  | Permissões/RLS/login, máquina de etapas, dinheiro | `executor-pesado` (Sonnet, esforço alto, worktree isolado) |
+  | Achar onde algo está no código | `buscador` (Haiku, só leitura) |
+  | Revisão antes do merge | `revisor` (Haiku, só leitura) |
+
+  Briefing do agente já com contexto, arquivos e decisões (não mandar reinvestigar). Agentes em paralelo só em worktree
+  isolado. Testes do agente: banco inteiro + e2e da parte mexida + `esteira-ponta-a-ponta` (a suíte e2e completa roda no
+  GitHub). Capturas: 2 por tela (celular claro e escuro). O Opus faz merge, `db push` e deploy com o "sim" do Gustavo.
 - Fonte **Inter Tight** no app inteiro; peso máximo **semibold** (nada de `font-bold`).
 - UX/UI em primeiro lugar, **celular primeiro**, visual minimalista, só componentes de
   `src/components/ui/` (shadcn atual) e tokens do tema. Exceções pedidas por ele: aviso amarelo na
