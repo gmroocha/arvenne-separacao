@@ -6,6 +6,7 @@ import AvatarMembro from "@/components/AvatarMembro"
 import { Badge } from "@/components/ui/badge"
 import { pecasPorEtapa } from "@/lib/etapa"
 import { useEquipe } from "@/lib/api"
+import { quemDoEmail } from "@/lib/historico"
 import { ehDesvio } from "@/lib/selo"
 import { quando } from "@/lib/formato"
 import { ICONE_ETAPA, passoAtual, passoDe, passosDe, type StatusPedido } from "@/lib/status"
@@ -136,7 +137,7 @@ export default function Etapas({ origem, status, etapaAntesDesvio, eventos, resp
       {vistaIdx >= 0 && vistaIdx < atual && (
         <p className="text-sm text-muted-foreground">
           {PASSOS[vistaIdx].nome}:{" "}
-          {detalhe ? `concluída por ${detalhe.usuario_email ?? "sistema"} em ${quando(detalhe.created_at)}` : "sem registro no histórico"}
+          {detalhe ? `concluída por ${quemDoEmail(detalhe.usuario_email)} em ${quando(detalhe.created_at)}` : "sem registro no histórico"}
         </p>
       )}
 

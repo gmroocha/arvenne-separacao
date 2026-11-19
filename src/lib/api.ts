@@ -12,7 +12,7 @@ import { agendarAtualizacaoOperacional } from "@/lib/atualizacaoOperacional"
 import { gravarPeca } from "@/lib/gravarPeca"
 import { enfileirarMarca, type Destino, type RespostaLote } from "@/lib/lotePecas"
 import { NOME_ETAPA, STATUS_DA_FASE, type StatusItem, type StatusPedido } from "@/lib/status"
-import type { AcertoPedido, Membro, ModeloClube, Papel, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
+import type { AcertoPedido, Membro, ModeloClube, Papel, ResponsavelPadrao, CreditoCliente, CreditoDisponivel, DestinoCredito, Alteracao, CategoriaCatalogo, Cliente, EscolhaTroca, Feedback, ClienteShopify, Endereco, Evento, FiltrosSugestao, Item, ModoSugestao, NovoItem, PecaClube, PecaRepetida, PedidoOperacao, Pedido, ResultadoBipagem, Romaneio, Sugestao, Troca, TrocaCarrinho, TrocaEscolha, TrocaOpcao, TrocaPeca, TrocaPublica, TrocaResumo, TrocaValor, ValorPago } from "@/lib/tipos"
 
 const msgCrua = (e: unknown) => (e instanceof Error ? e.message : (e as { message?: string })?.message ?? "Erro inesperado")
 // Tempo limite do banco (57014) vira um aviso compreensível; o resto segue a mensagem do banco.
@@ -209,6 +209,8 @@ export function usePedido(id: string | undefined) {
   return useQuery({
     queryKey: ["pedido", id],
     enabled: !!id,
+    // Pedido que saiu da vista (foi para outra etapa e outra responsável) não volta a aparecer por insistir.
+    retry: (vezes, e) => (e as { code?: string })?.code !== "PGRST116" && vezes < 3,
     queryFn: async ({ signal }) => {
       // Um refoco/reconexão durante a fila não pode apagar as peças já marcadas na tela.
       // Ao esvaziar, a fila agenda uma única leitura do estado confirmado.
@@ -1872,12 +1874,18 @@ export function carrinhoDaPeca(p: TrocaPublica["pecas"][number]): { opcao_id: st
 // ---------------------------------------------------------------------------
 
 // Lista do time. Banco ainda sem a migration (tabela inexistente): lista vazia, sem quebrar a tela.
+// Sem a coluna `usuario` (migration do login por nome ainda não aplicada), lê sem ela.
 export function useEquipe() {
   return useQuery({
     queryKey: ["equipe"],
     staleTime: 10 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("equipe").select("id, nome, email, ativo, papel").order("nome")
+      let r = await supabase.from("equipe").select("id, nome, email, ativo, papel, usuario").order("nome")
+      if (r.error?.code === "42703" || /usuario/i.test(r.error?.message ?? "")) {
+        const sem = await supabase.from("equipe").select("id, nome, email, ativo, papel").order("nome")
+        r = { ...sem, data: sem.data?.map((m) => ({ ...m, usuario: null })) ?? null } as typeof r
+      }
+      const { data, error } = r
       if (error) {
         if (semFuncao(error)) return [] as Membro[]
         throw error
@@ -1889,16 +1897,79 @@ export function useEquipe() {
 
 export function useSalvarMembro() {
   return useAcao(
-    async (m: { id?: string; nome: string; email: string | null; ativo?: boolean; papel?: Papel }) => {
+    async (m: { id?: string; nome: string; email: string | null; ativo?: boolean; papel?: Papel; usuario?: string | null }) => {
       const dados = { nome: m.nome.trim(), email: m.email?.trim() || null, ...(m.ativo === undefined ? {} : { ativo: m.ativo }), ...(m.papel === undefined ? {} : { papel: m.papel }) }
+      // Quem tem acesso por usuário só volta a entrar depois de desbloqueada; o bloqueio vem depois de gravar (o banco
+      // pode recusar, por exemplo desativar o último gestor).
+      const mudaAcesso = !!m.id && m.ativo !== undefined && !!m.usuario
+      if (mudaAcesso && m.ativo) await acessoDoMembro("desbloquear", m.id!)
       const { error } = m.id ? await supabase.from("equipe").update(dados).eq("id", m.id) : await supabase.from("equipe").insert(dados)
       if (error) {
         if (error.code === "23505") throw new Error("Este e-mail já está cadastrado no time")
-        if (error.code === "42501") throw new Error("Sem permissão para mexer no time")
+        if (error.code === "42501") throw new Error("Só o gestor pode mexer no time")
         throw new Error(msgBanco(error))
       }
+      if (mudaAcesso && !m.ativo) await acessoDoMembro("bloquear", m.id!)
     },
     [["equipe"]],
+  )
+}
+
+// Acesso por usuário e senha (função Edge equipe-acesso, só gestor).
+async function acessoDoMembro(acao: "criar" | "trocar_senha" | "bloquear" | "desbloquear", membro_id: string, extra: { usuario?: string; senha?: string } = {}) {
+  try {
+    return await chamarFuncao<{ ok: boolean; usuario?: string }>("equipe-acesso", { acao, membro_id, ...extra })
+  } catch (e) {
+    const texto = msg(e)
+    // Função ainda não publicada: o gateway devolve "Requested function was not found" ou erro de rede.
+    if (/not found|failed to send|fetch/i.test(texto)) throw new Error("O acesso por usuário ainda não está disponível. Fale com quem cuida do sistema.")
+    throw new Error(texto)
+  }
+}
+
+export function useCriarAcesso() {
+  return useAcao((a: { membro: string; usuario: string; senha: string }) => acessoDoMembro("criar", a.membro, { usuario: a.usuario, senha: a.senha }), [["equipe"]])
+}
+
+export function useTrocarSenha() {
+  return useAcao((a: { membro: string; senha: string }) => acessoDoMembro("trocar_senha", a.membro, { senha: a.senha }), [["equipe"]])
+}
+
+// Quem cuida de cada etapa quando o pedido chega nela sem responsável. Banco sem a tabela: sem padrões.
+export function useResponsaveisPadrao() {
+  return useQuery({
+    queryKey: ["responsavel-padrao"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("responsavel_padrao").select("etapa, membro_id")
+      if (error) {
+        if (semFuncao(error)) return [] as ResponsavelPadrao[]
+        throw error
+      }
+      return data as ResponsavelPadrao[]
+    },
+  })
+}
+
+export function useSalvarResponsavelPadrao() {
+  return useAcao(
+    async (a: { etapa: string; membro: string | null }) => {
+      const { error } = await supabase.from("responsavel_padrao").update({ membro_id: a.membro }).eq("etapa", a.etapa)
+      if (error) throw new Error(error.code === "42501" ? "Só o gestor pode mudar quem cuida das etapas" : msgBanco(error))
+    },
+    [["responsavel-padrao"]],
+  )
+}
+
+// Põe o responsável padrão nos pedidos que já estão na esteira sem ninguém na etapa atual. Devolve quantos mudaram.
+export function usePreencherResponsaveisPadrao() {
+  return useAcao(
+    async () => {
+      const { data, error } = await supabase.rpc("preencher_responsaveis_padrao")
+      if (error) throw new Error(msgBanco(error))
+      return Number(data ?? 0)
+    },
+    [["pedidos"], ["pedido"]],
   )
 }
 
@@ -1932,8 +2003,11 @@ export function useSalvarMeta() {
 // Excluir de verdade: a pessoa sai do Time e dos pedidos em que era responsável. Pedidos e histórico ficam.
 export function useExcluirMembro() {
   return useAcao(
-    async (id: string) => {
-      const { error } = await supabase.rpc("excluir_membro", { p_membro: id })
+    async (m: { id: string; usuario?: string | null }) => {
+      // Antes de sumir do Time, tira a permissão de entrar (depois não dá mais para achar o login). Sem o bloqueio, a pessoa
+      // até entra, mas não vê nenhum pedido: o banco só mostra pedidos a quem está no Time.
+      if (m.usuario) await acessoDoMembro("bloquear", m.id).catch(() => undefined)
+      const { error } = await supabase.rpc("excluir_membro", { p_membro: m.id })
       if (error) throw new Error(msgBanco(error))
     },
     [["equipe"], ["pedido"], ["pedidos"]],
@@ -1949,12 +2023,46 @@ function useEmailLogado() {
   })
 }
 
-// A pessoa do time que tem o mesmo e-mail do login (para o filtro "Comigo"); nada se não houver.
+// Id da pessoa do Time que está logada (banco: membro_atual()). `undefined` = ainda carregando ou banco sem a função.
+function useMembroAtualId() {
+  return useQuery({
+    queryKey: ["login", "membro"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("membro_atual")
+      if (error) {
+        if (semFuncao(error)) return undefined
+        throw error
+      }
+      return (data as string | null) ?? null
+    },
+  })
+}
+
+// A pessoa do time que está logada: pelo login por usuário ou pelo e-mail (banco: membro_atual()). Sem a função no banco
+// (migration ainda não aplicada), vale o e-mail do login. Nada se não houver cadastro.
 export function useMeuMembro(): Membro | null {
+  const id = useMembroAtualId().data
   const email = useEmailLogado().data
   const equipe = useEquipe().data
-  if (!email) return null
+  if (id) return equipe?.find((m) => m.id === id) ?? null
+  if (id === null || !email) return null
   return equipe?.find((m) => m.ativo && m.email?.trim().toLowerCase() === email) ?? null
+}
+
+// Sou gestor? `undefined` enquanto carrega. A RLS do banco é quem manda; a tela só esconde o que a pessoa não pode usar.
+// Banco sem a função, ou erro ao perguntar: vale como gestor (o banco recusa o que não puder).
+export function useSouGestor(): boolean | undefined {
+  const { data } = useQuery({
+    queryKey: ["login", "gestor"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("sou_gestor")
+      if (error) return true
+      return data !== false
+    },
+  })
+  return data
 }
 
 // Designa (ou tira, com membro nulo) quem faz uma etapa do pedido. A tela muda na hora e volta atrás se falhar.

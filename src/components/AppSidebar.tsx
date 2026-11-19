@@ -5,7 +5,7 @@ import { Archive, BookOpen, CheckCheck, Gem, LogOut, MessageSquare, Moon, Receip
 import { useTheme } from "next-themes"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
-import { useContagemFeedbacksAbertos, useContagemRepetidas, useContagens, usePendentesRastreio } from "@/lib/api"
+import { useContagemFeedbacksAbertos, useContagemRepetidas, useContagens, useMeuMembro, usePendentesRastreio, useSouGestor } from "@/lib/api"
 import {
   Sidebar,
   SidebarContent,
@@ -29,13 +29,15 @@ export default function AppSidebar() {
   const { data: abertos } = useContagemFeedbacksAbertos()
   const { data: semRastreio } = usePendentesRastreio()
   const [email, setEmail] = useState("")
+  const gestor = useSouGestor() === true
+  const meuMembro = useMeuMembro()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""))
   }, [])
 
   const itens = [
-    { to: "/vendas", nome: "Vendas", icone: Receipt, ativo: pathname.startsWith("/vendas"), badge: contagens?.emAberto },
+    { gestor: true, to: "/vendas", nome: "Vendas", icone: Receipt, ativo: pathname.startsWith("/vendas"), badge: contagens?.emAberto },
     {
       to: "/",
       nome: "Expedição",
@@ -45,13 +47,13 @@ export default function AppSidebar() {
       badge: contagens?.atrasados || semRastreio?.length,
       alerta: contagens?.atrasados ? "vermelho" : "laranja",
     },
-    { to: "/concluidos", nome: "Concluídos", icone: CheckCheck, ativo: pathname === "/concluidos" },
-    { to: "/repetidas", nome: "Peças repetidas", icone: Repeat, ativo: pathname === "/repetidas", badge: repetidas },
-    { to: "/catalogo", nome: "Catálogo", icone: BookOpen, ativo: pathname === "/catalogo" },
-    { to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
-    { to: "/arquivo", nome: "Arquivo", icone: Archive, ativo: pathname === "/arquivo" },
-    { to: "/time", nome: "Time", icone: Users, ativo: pathname === "/time" },
-    { to: "/feedbacks", nome: "Feedbacks", icone: MessageSquare, ativo: pathname === "/feedbacks", badge: abertos },
+    { gestor: true, to: "/concluidos", nome: "Concluídos", icone: CheckCheck, ativo: pathname === "/concluidos" },
+    { gestor: true, to: "/repetidas", nome: "Peças repetidas", icone: Repeat, ativo: pathname === "/repetidas", badge: repetidas },
+    { gestor: true, to: "/catalogo", nome: "Catálogo", icone: BookOpen, ativo: pathname === "/catalogo" },
+    { gestor: true, to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
+    { gestor: true, to: "/arquivo", nome: "Arquivo", icone: Archive, ativo: pathname === "/arquivo" },
+    { gestor: true, to: "/time", nome: "Time", icone: Users, ativo: pathname === "/time" },
+    { gestor: true, to: "/feedbacks", nome: "Feedbacks", icone: MessageSquare, ativo: pathname === "/feedbacks", badge: abertos },
   ]
 
   return (
@@ -63,7 +65,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {itens.map((i) => (
+              {itens.filter((i) => gestor || !i.gestor).map((i) => (
                 <SidebarMenuItem key={i.to}>
                   <SidebarMenuButton asChild isActive={i.ativo} tooltip={i.nome}>
                     <Link to={i.to} onClick={() => setOpenMobile(false)}>
@@ -83,7 +85,7 @@ export default function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="truncate px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">{email}</div>
+            <div className="truncate px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">{meuMembro?.nome ?? (email.endsWith(".invalid") ? "" : email)}</div>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton tooltip="Alternar tema" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>

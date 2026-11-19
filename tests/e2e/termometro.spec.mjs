@@ -10,7 +10,8 @@ const celular = (page) => (page.viewportSize()?.width ?? 0) < 1024
 const CLIENTE = "Cliente de teste"
 
 // Cartão do pedido na Expedição (o da coluna/lista visível).
-const cartao = (page) => page.locator("[data-slot=card]:visible").filter({ hasText: CLIENTE }).first()
+// O cartão é o pai do link (o MenuContexto troca o data-slot do Card por "context-menu-trigger").
+const cartao = (page) => page.getByRole("link").filter({ hasText: CLIENTE }).locator("xpath=..").first()
 // O contorno de 1,5 px do termômetro é um anel (box-shadow) de 1,5 px; o cartão comum tem anel de 1 px.
 const contorno = (page) => cartao(page).evaluate((el) => getComputedStyle(el).boxShadow)
 const antigo = (dias) => sim.banco.query("update pedidos set status_desde = now() - make_interval(days => $2) where id=$1", [sim.pedido.id, dias])
@@ -22,7 +23,7 @@ async function irParaEtapa(page, nome) {
 }
 
 test("Fila: sem contorno colorido e sem ponto, só o texto 'Na fila há'", async ({ page, context, baseURL }, info) => {
-  sim = await criarSimulacao({ status: "novo" })
+  sim = await criarSimulacao({ status: "novo", papel: "gestor" })
   await sim.instalar(context, baseURL)
   await page.goto("/")
   await irParaEtapa(page, "Fila")
@@ -43,8 +44,8 @@ test("Fila: sem contorno colorido e sem ponto, só o texto 'Na fila há'", async
 })
 
 test("Separação: verde sem contorno (só o pontinho) e vermelho com contorno", async ({ page, context, baseURL }, info) => {
-  sim = await criarSimulacao({ status: "novo" })
-  await sim.banco.query("select mover_etapa($1,'separacao')", [sim.pedido.id])
+  sim = await criarSimulacao({ status: "novo", papel: "gestor" })
+  await sim.banco.query("update pedidos set status='separacao', status_desde=now() where id=$1", [sim.pedido.id])
   await sim.instalar(context, baseURL)
   await page.goto("/")
   await irParaEtapa(page, "Separação")
@@ -66,7 +67,7 @@ test("Separação: verde sem contorno (só o pontinho) e vermelho com contorno",
 })
 
 test("Avisar cliente tem termômetro; Aguardando cliente não", async ({ page, context, baseURL }, info) => {
-  sim = await criarSimulacao({ troca: true })
+  sim = await criarSimulacao({ troca: true, papel: "gestor" })
   // O desvio nasce em Aguardando cliente; aqui só trocamos o status (sem gatilhos) para as duas etapas do desvio.
   const para = async (status, dias) => {
     await sim.banco.exec("set session_replication_role = replica")
@@ -92,7 +93,7 @@ test("Avisar cliente tem termômetro; Aguardando cliente não", async ({ page, c
 })
 
 test("Expedição: atalho 'Metas' leva ao Time, na seção de metas", async ({ page, context, baseURL }, info) => {
-  sim = await criarSimulacao({ status: "novo" })
+  sim = await criarSimulacao({ status: "novo", papel: "gestor" })
   await sim.instalar(context, baseURL)
   await page.goto("/")
   await page.getByRole("link", { name: "Metas de tempo por etapa" }).click()
@@ -105,5 +106,14 @@ test("Expedição: atalho 'Metas' leva ao Time, na seção de metas", async ({ p
   await expect(secao).toBeInViewport() // a página rolou até a seção
   await semRolagemLateral(page)
   await capturarTemas(page, "termometro-metas-atalho", info)
+  expect(sim.bloqueadas).toEqual([])
+})
+
+test("Expedição: o atalho 'Metas' só aparece para gestor", async ({ page, context, baseURL }) => {
+  sim = await criarSimulacao({ status: "separacao", papel: "funcionaria" })
+  await sim.instalar(context, baseURL)
+  await page.goto("/")
+  await expect(cartao(page)).toBeVisible() // a página já carregou como funcionária
+  await expect(page.getByRole("link", { name: "Metas de tempo por etapa" })).toHaveCount(0)
   expect(sim.bloqueadas).toEqual([])
 })

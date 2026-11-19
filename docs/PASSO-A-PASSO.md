@@ -188,11 +188,25 @@ O botão "Imprimir todas as etiquetas" fica no topo da Separação de cada pedid
 
 Só depois que a migration estiver aplicada no Supabase (o app avisa quando eu pedir o "sim"):
 
-1. Abra o app e entre em **Time** (menu lateral).
-2. Toque em **Adicionar pessoa** e cadastre cada pessoa: nome e **o mesmo e-mail com que ela entra no app**
-   (o login criado no painel do Supabase). É esse e-mail que faz o filtro **Comigo** da Expedição funcionar.
-   O e-mail é opcional: sem ele a pessoa aparece nas listas, mas não tem "Comigo".
-3. Dentro de cada pedido, o nome da etapa atual (embaixo do número) abre **Quem faz cada etapa**.
+1. Abra o app e entre em **Time** (menu lateral; só o gestor vê).
+2. Toque em **Adicionar pessoa** e cadastre cada pessoa: nome e o **Papel** (Funcionária ou Gestor). O e-mail só serve para quem
+   entra com e-mail (você). Quem entra com usuário e senha não precisa dele.
+
+## Acesso de cada colaboradora, usuário e senha (Fase 2)
+
+Depois de aplicar as migrations `20261126090000_acesso_e_papeis.sql` e `20261126100000_visibilidade_pedidos.sql` e de publicar
+a função `equipe-acesso` (eu peço o "sim" antes):
+
+1. **Time > Quem cuida de cada etapa:** escolha uma pessoa para cada etapa (Separação, Conferência, Bipagem, Nota fiscal,
+   Embalagem e frete, Postagem, Enviar rastreio). Quando um pedido chega numa etapa sem responsável, ele fica com essa pessoa.
+   Depois toque em **Aplicar aos pedidos de hoje** para pôr o responsável nos pedidos que já estão na esteira sem ninguém.
+2. **Time > cada pessoa > Criar acesso:** confira o usuário sugerido (o primeiro nome, sem acento; troque se quiser), crie uma
+   senha de pelo menos 6 caracteres, toque em **Criar acesso** e passe o usuário e a senha para a pessoa.
+3. A pessoa abre o app e entra com **Usuário** e **Senha** (sem e-mail). Ela vê só o menu **Expedição** e só os pedidos da
+   etapa em que é responsável. Quando ela conclui a etapa, o pedido vai para quem cuida da etapa seguinte.
+4. Esqueceu a senha? **Time > Trocar senha**. Desativar a pessoa bloqueia a entrada; Reativar libera de novo.
+5. **Antes de aplicar:** confirme que o seu cadastro no Time tem o **mesmo e-mail** com que você entra e papel **Gestor**; senão
+   você deixaria de ver os pedidos.
 
 ## Token da Storefront (só se precisar)
 

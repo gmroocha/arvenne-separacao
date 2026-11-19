@@ -61,7 +61,10 @@ export type PedidoOperacao = Pick<Pedido, Exclude<keyof Views<'v_pedidos_operaca
 
 // Pessoa do Time Arvenne (tabela equipe). O e-mail liga a pessoa ao login ("Comigo").
 export type Papel = 'gestor' | 'funcionaria'
-export type Membro = Pick<Tables<'equipe'>, 'id' | 'nome' | 'email' | 'ativo'> & { papel: Papel }
+// `usuario` é o nome do login por usuário (nulo: a pessoa não tem acesso por usuário; pode entrar por e-mail). Pode faltar enquanto o banco não tem a migration.
+export type Membro = Pick<Tables<'equipe'>, 'id' | 'nome' | 'email' | 'ativo'> & { papel: Papel; usuario?: string | null }
+// Quem cuida de cada etapa quando o pedido chega nela sem responsável.
+export type ResponsavelPadrao = { etapa: string; membro_id: string | null }
 
 export type Item = Omit<Tables<'pedido_itens'>, 'origem' | 'status'> & { origem: OrigemItem; status: StatusItem }
 

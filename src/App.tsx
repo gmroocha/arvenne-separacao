@@ -6,6 +6,7 @@ import { Spinner } from "@/components/ui/spinner"
 import ErrorBoundary from "@/components/ErrorBoundary"
 const Layout = lazy(() => import("@/components/Layout"))
 const Protegido = lazy(() => import("@/components/Protegido"))
+const SoGestor = lazy(() => import("@/components/SoGestor"))
 
 // Igual a `configurado` de lib/supabase, sem puxar o pacote do Supabase para o início.
 const configurado = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
@@ -52,17 +53,20 @@ export default function App() {
       <Route element={<Protegido />}>
         <Route element={<Layout />}>
           <Route index element={<Expedicao />} />
-          <Route path="vendas" element={<Vendas />} />
-          <Route path="vendas/nova" element={<NovaVenda />} />
-          <Route path="vendas/:id" element={<Venda />} />
           <Route path="pedidos/:id" element={<Pedido />} />
-          <Route path="concluidos" element={<Concluidos />} />
-          <Route path="arquivo" element={<Arquivo />} />
-          <Route path="repetidas" element={<Repetidas />} />
-          <Route path="clube" element={<Clube />} />
-          <Route path="catalogo" element={<Catalogo />} />
-          <Route path="feedbacks" element={<Feedbacks />} />
-          <Route path="time" element={<Time />} />
+          {/* Só o gestor: a funcionária vê a Expedição e o pedido que está com ela. */}
+          <Route element={<SoGestor />}>
+            <Route path="vendas" element={<Vendas />} />
+            <Route path="vendas/nova" element={<NovaVenda />} />
+            <Route path="vendas/:id" element={<Venda />} />
+            <Route path="concluidos" element={<Concluidos />} />
+            <Route path="arquivo" element={<Arquivo />} />
+            <Route path="repetidas" element={<Repetidas />} />
+            <Route path="clube" element={<Clube />} />
+            <Route path="catalogo" element={<Catalogo />} />
+            <Route path="feedbacks" element={<Feedbacks />} />
+            <Route path="time" element={<Time />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -31,3 +31,11 @@ export function admin() {
     auth: { persistSession: false },
   });
 }
+
+// Cliente com o login de quem chamou: as regras do banco (RLS e sou_gestor()) valem como se a pessoa estivesse no app.
+export function comoUsuario(req: Request) {
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+  });
+}

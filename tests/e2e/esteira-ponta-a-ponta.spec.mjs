@@ -14,7 +14,7 @@ test.afterEach(async () => { await sim?.fechar(); sim = null })
 const ORDEM = ["novo", "separacao", "conferencia", "bipagem", "faturamento", "embalagem", "pronto_envio", "enviar_rastreio", "enviado"]
 
 async function montar(context, baseURL, { pecas = 11, origem = "whatsapp" } = {}) {
-  sim = await criarSimulacao({ status: "em_aberto" })
+  sim = await criarSimulacao({ status: "em_aberto", papel: "gestor" })
   await sim.banco.query(`insert into pedido_itens(pedido_id,origem,nome,sku,qtd,preco,ordem)
     select $1,'avulso','Peça '||n,'PC-'||lpad(n::text,2,'0'),1,10,n from generate_series(1,${pecas}) n`, [sim.pedido.id])
   await sim.banco.query(`update pedidos set cliente_telefone='11987654321',cliente_cpf='12345678909',

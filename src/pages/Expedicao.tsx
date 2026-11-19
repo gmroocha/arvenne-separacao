@@ -17,7 +17,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { useDebounce } from "@/lib/useDebounce"
-import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePedidosExpedicao, useSincronizarShopify } from "@/lib/api"
+import { LIMITE_LISTA, useContagens, useEquipe, useMeuMembro, useMudarStatus, usePedidosExpedicao, useSincronizarShopify, useSouGestor } from "@/lib/api"
 import { responsavelDaEtapaAtual } from "@/lib/equipe"
 import { digitos } from "@/lib/formato"
 import { destinoAoConcluir, ETAPAS_EXPEDICAO, ICONE_ETAPA, NOME_ETAPA, type StatusPedido } from "@/lib/status"
@@ -154,6 +154,8 @@ export default function Expedicao() {
   const pessoa = params.get("pessoa")
   const membros = useEquipe().data ?? []
   const meuMembro = useMeuMembro()
+  // A funcionária vê só os pedidos da etapa dela: sem filtro por pessoa e sem sincronizar com a Shopify.
+  const gestor = useSouGestor() === true
   const [busca, setBusca] = useState("")
   const termo = useDebounce(busca, 300)
   const { data, isLoading, isError, isFetching, refetch } = usePedidosExpedicao(termo)
@@ -250,18 +252,21 @@ export default function Expedicao() {
         >
           Atrasados <Badge variant={totalAtrasados ? "destructive" : "secondary"}>{totalAtrasados}</Badge>
         </Toggle>
-        <Button
-          variant="outline"
-          size="toque"
-          aria-label="Sincronizar com a Shopify"
-          className="w-11 shrink-0 px-0 lg:w-auto lg:px-2.5"
-          onClick={() => sincronizar.mutate(undefined)}
-          disabled={sincronizar.isPending}
-        >
-          {sincronizar.isPending ? <Spinner /> : <RefreshCw />} <span className="hidden lg:inline">Sincronizar</span>
-        </Button>
+        {gestor && (
+          <Button
+            variant="outline"
+            size="toque"
+            aria-label="Sincronizar com a Shopify"
+            className="w-11 shrink-0 px-0 lg:w-auto lg:px-2.5"
+            onClick={() => sincronizar.mutate(undefined)}
+            disabled={sincronizar.isPending}
+          >
+            {sincronizar.isPending ? <Spinner /> : <RefreshCw />} <span className="hidden lg:inline">Sincronizar</span>
+          </Button>
+        )}
       </div>
 
+      {gestor && (
       <div className="flex items-center gap-2">
         {membros.length > 0 && (
           <Select value={!pessoa || (pessoa === "eu" && !meuMembro) ? "todos" : pessoa} onValueChange={(v) => atualizar({ pessoa: v === "todos" ? null : v })}>
@@ -284,13 +289,14 @@ export default function Expedicao() {
             </SelectContent>
           </Select>
         )}
-        {/* Atalho para editar as metas de tempo (no Time). TODO Fase 2: mostrar só para quem pode editar (useSouGestor); hoje sou_gestor() vale para todos. */}
+        {/* Atalho para editar as metas de tempo (no Time, que só o gestor abre). */}
         <Button asChild variant="outline" size="toque" className="w-11 shrink-0 px-0 sm:ml-auto lg:w-auto lg:px-2.5">
           <Link to="/time#metas" aria-label="Metas de tempo por etapa" title="Metas de tempo por etapa">
             <Thermometer /> <span className="hidden lg:inline">Metas</span>
           </Link>
         </Button>
       </div>
+      )}
 
       {(data?.length ?? 0) >= LIMITE_LISTA && (
         <p className="text-xs text-muted-foreground">Mostrando os {LIMITE_LISTA} primeiros pedidos da expedição: pode haver mais. Use a busca para achar os outros.</p>

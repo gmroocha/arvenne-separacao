@@ -378,6 +378,8 @@ export type Database = {
           id: string
           nome: string
           papel: string
+          user_id: string | null
+          usuario: string | null
         }
         Insert: {
           ativo?: boolean
@@ -386,6 +388,8 @@ export type Database = {
           id?: string
           nome: string
           papel?: string
+          user_id?: string | null
+          usuario?: string | null
         }
         Update: {
           ativo?: boolean
@@ -394,6 +398,8 @@ export type Database = {
           id?: string
           nome?: string
           papel?: string
+          user_id?: string | null
+          usuario?: string | null
         }
         Relationships: []
       }
@@ -1195,6 +1201,29 @@ export type Database = {
             columns: ["somar_em"]
             isOneToOne: false
             referencedRelation: "v_pedidos_operacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      responsavel_padrao: {
+        Row: {
+          etapa: string
+          membro_id: string | null
+        }
+        Insert: {
+          etapa: string
+          membro_id?: string | null
+        }
+        Update: {
+          etapa?: string
+          membro_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responsavel_padrao_membro_id_fkey"
+            columns: ["membro_id"]
+            isOneToOne: false
+            referencedRelation: "equipe"
             referencedColumns: ["id"]
           },
         ]
@@ -2017,6 +2046,7 @@ export type Database = {
         Row: {
           a_devolver: number | null
           acerto_pendente: boolean | null
+          cliente_decidiu: boolean | null
           cliente_nome: string | null
           cliente_telefone: string | null
           etapa_antes_desvio: string | null
@@ -2042,6 +2072,8 @@ export type Database = {
           status: string | null
           status_desde: string | null
           termometro: string | null
+          troca_decididas: number | null
+          troca_pecas_abertas: number | null
         }
         Relationships: []
       }
@@ -2266,6 +2298,10 @@ export type Database = {
           numero: string
         }[]
       }
+      decisao_troca: {
+        Args: { p_pedido: string; p_status: string }
+        Returns: Json
+      }
       designar: {
         Args: { p_etapa: string; p_membro: string; p_pedido: string }
         Returns: undefined
@@ -2279,8 +2315,24 @@ export type Database = {
       }
       encontrar_peca: { Args: { p_item: string }; Returns: undefined }
       enviar_troca: { Args: { p_troca: string }; Returns: undefined }
+      etapa_da_esteira: {
+        Args: { p_antes: string; p_status: string }
+        Returns: string
+      }
       excluir_membro: { Args: { p_membro: string }; Returns: undefined }
       excluir_pedido: { Args: { p_pedido: string }; Returns: undefined }
+      exigir_gestor: { Args: never; Returns: undefined }
+      exigir_pedido: { Args: { p_pedido: string }; Returns: undefined }
+      exigir_pedido_da_peca_troca: {
+        Args: { p_peca: string }
+        Returns: undefined
+      }
+      exigir_pedido_da_troca: { Args: { p_troca: string }; Returns: undefined }
+      exigir_pedido_do_credito: {
+        Args: { p_credito: string }
+        Returns: undefined
+      }
+      exigir_pedido_do_item: { Args: { p_item: string }; Returns: undefined }
       faltas_para_pagar: { Args: { p: Json }; Returns: string[] }
       fator_pedido: { Args: { p_pedido: string }; Returns: number }
       fechar_financeiro: { Args: { p_pedido: string }; Returns: undefined }
@@ -2316,6 +2368,7 @@ export type Database = {
         Args: { p_credito: string; p_desfazer?: boolean }
         Returns: undefined
       }
+      membro_atual: { Args: never; Returns: string }
       mesma_cliente: {
         Args: {
           a: Database["public"]["Tables"]["pedidos"]["Row"]
@@ -2342,7 +2395,9 @@ export type Database = {
           variante: string
         }[]
       }
+      pode_ver_pedido: { Args: { p_pedido: string }; Returns: boolean }
       prazo_envio: { Args: { pago: string }; Returns: string }
+      preencher_responsaveis_padrao: { Args: never; Returns: number }
       reavaliar_etapa: { Args: { p_pedido: string }; Returns: undefined }
       reconciliar_acertos: {
         Args: { p_pedido: string; p_priorizar?: string }
@@ -2362,6 +2417,7 @@ export type Database = {
         Args: { p_etapa: string; p_pedido: string; p_tudo: boolean }
         Returns: undefined
       }
+      responsavel_padrao_de: { Args: { p_etapa: string }; Returns: string }
       romaneio_publico: { Args: { p_token: string }; Returns: Json }
       sair_do_desvio: { Args: { p_pedido: string }; Returns: string }
       saldo_financeiro: { Args: { p_pedido: string }; Returns: number }
@@ -2377,6 +2433,7 @@ export type Database = {
         Returns: undefined
       }
       sou_gestor: { Args: never; Returns: boolean }
+      sou_sistema: { Args: never; Returns: boolean }
       substituir_item: {
         Args: { p_item: string; p_itens: Json }
         Returns: string
