@@ -1303,10 +1303,12 @@ const TROCAS_TUDO = [["troca"], ["alteracoes"], ["pedido"], ["pedidos"], ["repet
 
 // Troca ativa do pedido (rascunho, enviada ou respondida) com peças, opções, valores e resumo.
 // Todo dinheiro (pago, diferença, crédito) vem de v_troca_valores / v_troca_resumo.
-export function useTroca(pedidoId: string | undefined) {
+// habilitado: só lê quando a tela precisa (peça em falta/defeito). troca_painel é a leitura mais cara do banco e rodava em
+// todo pedido aberto na Separação/Conferência (lentidão de 23/11/2026).
+export function useTroca(pedidoId: string | undefined, habilitado = true) {
   return useQuery({
     queryKey: ["troca", pedidoId],
-    enabled: !!pedidoId,
+    enabled: !!pedidoId && habilitado,
     queryFn: async (): Promise<Troca | null> => {
       // V39: uma viagem só (troca, peças, opções, escolhas, valores, resumo e carrinho juntos).
       const painel = await supabase.rpc("troca_painel", { p_pedido: pedidoId! })

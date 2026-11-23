@@ -448,7 +448,7 @@ function PainelOpcoes({
 // Troca de peças em falta: a equipe monta as opções de cada peça e manda UM link para a cliente.
 export default function TrocaDialog({ aberto, aoMudar, pedido, itens, inicial }: Props) {
   const celular = useIsMobile()
-  const trocaQ = useTroca(pedido.id)
+  const trocaQ = useTroca(pedido.id, aberto || itens.length > 0)
   const troca = trocaQ.data ?? undefined
   const criar = useCriarTroca()
   const { adicionar, remover } = useOpcaoTroca(pedido.id)

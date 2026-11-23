@@ -124,7 +124,7 @@ export default function Problemas({ pedido, acao, aoTrocar }: Props) {
   // Com peça em problema e a cliente ainda não avisada, o cartão já nasce vermelho: não espera o status
   // do pedido mudar (a troca de status vem depois da marcação na tela e fazia o cartão piscar).
   const avisar = problemas.length > 0 && !aguardando
-  const trocaQ = useTroca(pedido.id)
+  const trocaQ = useTroca(pedido.id, problemas.length > 0)
   const troca = trocaQ.data ?? undefined
   const [trocando, setTrocando] = useState<string | null>(null)
   const pecaDe = (i: Item) => troca?.pecas.find((p) => p.item_id === i.id && !p.concluida_em)
