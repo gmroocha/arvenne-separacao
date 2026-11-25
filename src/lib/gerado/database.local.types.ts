@@ -759,6 +759,7 @@ type Adicoes = {
     sou_sistema: { Args: Record<PropertyKey, never>; Returns: boolean | null }
     termometro_etapa: { Args: { p_status: string | null; p_horas: number | null }; Returns: string | null }
     tg_itens_limpa_por: { Args: Record<PropertyKey, never>; Returns: string | null }
+    troca_carrinho_aplicar: { Args: { p_peca: string | null; p_opcao: string | null }; Returns: undefined | null }
   }
 }
 
