@@ -287,18 +287,48 @@ export function useContagemRepetidas() {
 }
 
 // V33: o Clube mostrava só as 30 mais recentes, sem como ver as outras. "limite" cresce com "Carregar mais".
-export function usePecasClube(busca: string, incluirInativas = false, limite = 30) {
+// "catalogo": 'clube' (padrão) ou 'live'; "liveEm" (AAAA-MM-DD) limita a uma live. Banco sem a migration das lives: o Clube
+// lista tudo como sempre e a Live fica vazia.
+export type FiltroCatalogo = { catalogo?: CatalogoClube; liveEm?: string | null }
+export function usePecasClube(busca: string, incluirInativas = false, limite = 30, filtro: FiltroCatalogo = {}) {
+  const catalogo = filtro.catalogo ?? "clube"
+  const liveEm = catalogo === "live" ? (filtro.liveEm ?? null) : null
   return useQuery({
-    queryKey: ["clube", busca, incluirInativas, limite],
+    queryKey: ["clube", busca, incluirInativas, limite, catalogo, liveEm],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let q = supabase.from("pecas_clube").select("*").order("created_at", { ascending: false }).order("id").limit(limite)
-      if (!incluirInativas) q = q.eq("ativo", true)
-      const t = busca.trim().replace(/[%,()]/g, " ")
-      if (t) q = q.or(`codigo.ilike.%${t}%,nome.ilike.%${t}%`)
-      const { data, error } = await q
+      const consulta = (comCatalogo: boolean) => {
+        let q = supabase.from("pecas_clube").select("*").order("created_at", { ascending: false }).order("id").limit(limite)
+        if (comCatalogo) q = q.eq("catalogo", catalogo)
+        if (comCatalogo && liveEm) q = q.eq("live_em", liveEm)
+        if (!incluirInativas) q = q.eq("ativo", true)
+        const t = busca.trim().replace(/[%,()]/g, " ")
+        if (t) q = q.or(`codigo.ilike.%${t}%,nome.ilike.%${t}%`)
+        return q
+      }
+      let { data, error } = await consulta(true)
+      if (error && semFuncao(error)) {
+        if (catalogo === "live") return [] as (PecaClube & { ativo: boolean })[]
+        ;({ data, error } = await consulta(false))
+      }
       if (error) throw error
       return data as (PecaClube & { ativo: boolean })[]
+    },
+  })
+}
+
+export type LiveData = { live_em: string; pecas: number }
+// Datas de live com peças ativas (mais recente primeiro). "semBanco": a migration das lives ainda não foi aplicada.
+export function useLives() {
+  return useQuery({
+    queryKey: ["clube", "lives"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("lives")
+      if (error) {
+        if (semFuncao(error)) return { lives: [] as LiveData[], semBanco: true }
+        throw error
+      }
+      return { lives: (data ?? []) as LiveData[], semBanco: false }
     },
   })
 }
@@ -1145,7 +1175,8 @@ export function useSincronizarShopify() {
   )
 }
 
-export type DadosPecaClube = { codigo: string; nome: string; variante: string | null; preco: number | null; foto_url: string | null }
+export type CatalogoClube = "clube" | "live"
+export type DadosPecaClube = { codigo: string; nome: string; variante: string | null; preco: number | null; foto_url: string | null; catalogo?: CatalogoClube; live_em?: string | null }
 
 export function useCriarPecaClube() {
   return useAcao(
@@ -1171,11 +1202,16 @@ export function useAtualizarPecaClube() {
 }
 
 // Produtos com variantes do Clube (o "pai"). Poucos: vêm todos, e a tela junta as variantes pelo modelo_id.
-export function useModelosClube() {
+export function useModelosClube(catalogo: CatalogoClube = "clube") {
   return useQuery({
-    queryKey: ["clube", "modelos"],
+    queryKey: ["clube", "modelos", catalogo],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clube_modelos").select("*").order("created_at", { ascending: false }).limit(1000)
+      const consulta = (comCatalogo: boolean) => {
+        const q = supabase.from("clube_modelos").select("*").order("created_at", { ascending: false }).limit(1000)
+        return comCatalogo ? q.eq("catalogo", catalogo) : q
+      }
+      let { data, error } = await consulta(true)
+      if (error && semFuncao(error) && catalogo === "clube") ({ data, error } = await consulta(false))
       if (error) {
         if (semFuncao(error)) return [] as ModeloClube[] // banco ainda sem a migration: tudo como peça simples
         throw error
@@ -1207,6 +1243,8 @@ export type ItemModeloClube = {
   foto_url: string | null
   variante?: string | null
   ativo?: boolean
+  catalogo?: CatalogoClube
+  live_em?: string | null
   variantes?: { id?: string; codigo: string; variante: string; preco: number | null }[]
 }
 export type ResultadoModeloClube = { modelo_id: string | null; pecas: PecaClube[] }

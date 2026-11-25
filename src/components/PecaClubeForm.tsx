@@ -11,10 +11,10 @@ import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
 import CampoVariante from "@/components/clube/CampoVariante"
 import EditorVariantes from "@/components/clube/EditorVariantes"
-import { useAtualizarPecaClube, useCriarPecaClube, useSalvarModeloClube } from "@/lib/api"
+import { useAtualizarPecaClube, useCriarPecaClube, useSalvarModeloClube, type CatalogoClube } from "@/lib/api"
 import { errosDoProduto, novaLinhaVariante, variantesParaSalvar, type LinhaVariante } from "@/lib/clubeModelos"
 import { enviarFoto } from "@/lib/foto"
-import { lerNumero, numeroParaTexto } from "@/lib/formato"
+import { hojeISO, lerNumero, numeroParaTexto } from "@/lib/formato"
 import { lerVariante, montarVariante, type ParteVariante } from "@/lib/varianteClube"
 import type { ModeloClube, PecaClube } from "@/lib/tipos"
 
@@ -32,11 +32,15 @@ function mensagem(err: unknown, padrao: string): string {
 // fica, a menos que troque ou remova). Com "produto": edita o produto com variantes (o pai e todas as variantes juntos).
 // Produto com variantes grava tudo numa chamada só (salvar_modelo_clube): se algo falha, nada fica salvo.
 type Produto = { modelo: ModeloClube; pecas: PecaClube[] }
-export default function PecaClubeForm({ peca, produto, aoSalvar }: { peca?: PecaClube; produto?: Produto; aoSalvar: (peca: PecaClube | null) => void }) {
+// "catalogo" 'live': a peça é da Live e leva a data da live (liveInicial, a data escolhida na tela, ou hoje). Ao editar, vale o catálogo da peça.
+export default function PecaClubeForm({ peca, produto, catalogo: catalogoProp, liveInicial, aoSalvar }: { peca?: PecaClube; produto?: Produto; catalogo?: CatalogoClube; liveInicial?: string; aoSalvar: (peca: PecaClube | null) => void }) {
   const criar = useCriarPecaClube()
   const atualizar = useAtualizarPecaClube()
   const salvarModelo = useSalvarModeloClube()
   const base = produto?.modelo ?? peca
+  const catalogo: CatalogoClube = base ? ((base.catalogo as CatalogoClube | undefined) ?? "clube") : (catalogoProp ?? "clube")
+  const naLive = catalogo === "live"
+  const [liveEm, setLiveEm] = useState(() => base?.live_em ?? liveInicial ?? hojeISO())
   const [comVariantes, setComVariantes] = useState(!!produto)
   const [linhas, setLinhas] = useState<LinhaVariante[]>(() =>
     produto
@@ -73,6 +77,7 @@ export default function PecaClubeForm({ peca, produto, aoSalvar }: { peca?: Peca
   async function enviar(e: FormEvent) {
     e.preventDefault()
     const precoLido = preco.trim() ? lerNumero(preco) : null
+    if (naLive && !liveEm) return void toast.error("Informe a data da live")
     if (preco.trim() && precoLido == null) return void toast.error("Preço não entendido. Use, por exemplo, 49,90")
     if (comVariantes) {
       const erros = errosDoProduto({ codigo, nome, preco, linhas })
@@ -95,14 +100,15 @@ export default function PecaClubeForm({ peca, produto, aoSalvar }: { peca?: Peca
         await salvarModelo.mutateAsync({
           ...(produto ? { id: produto.modelo.id } : {}),
           codigo: codigo.trim(), nome: nome.trim(), preco: precoLido, foto_url, variantes: variantesParaSalvar(codigo, linhas),
+          ...(naLive ? { catalogo, live_em: liveEm } : {}),
         })
-        toast.success(produto ? "Produto atualizado" : "Produto salvo no Clube com as variantes")
+        toast.success(produto ? "Produto atualizado" : `Produto salvo ${naLive ? "na Live" : "no Clube"} com as variantes`)
         aoSalvar(null)
         return
       }
-      const dados = { codigo: codigo.trim(), nome: nome.trim(), variante: montarVariante(partes), preco: precoLido, foto_url }
+      const dados = { codigo: codigo.trim(), nome: nome.trim(), variante: montarVariante(partes), preco: precoLido, foto_url, ...(naLive ? { catalogo, live_em: liveEm } : {}) }
       const salva = peca ? await atualizar.mutateAsync({ id: peca.id, ...dados }) : await criar.mutateAsync(dados)
-      toast.success(peca ? "Peça do Clube atualizada" : "Peça salva no Clube")
+      toast.success(naLive ? (peca ? "Peça da Live atualizada" : "Peça salva na Live") : peca ? "Peça do Clube atualizada" : "Peça salva no Clube")
       aoSalvar(salva)
     } catch (err) {
       toast.error(`Não foi possível salvar a peça: ${mensagem(err, "erro desconhecido")}`)
@@ -166,6 +172,12 @@ export default function PecaClubeForm({ peca, produto, aoSalvar }: { peca?: Peca
           <Field orientation="horizontal">
             <Switch id="com-variantes" checked={comVariantes} onCheckedChange={setComVariantes} />
             <FieldLabel htmlFor="com-variantes">Produto com variantes</FieldLabel>
+          </Field>
+        )}
+        {naLive && (
+          <Field>
+            <FieldLabel htmlFor="live-em">Data da live</FieldLabel>
+            <Input id="live-em" type="date" required value={liveEm} onChange={(e) => setLiveEm(e.target.value)} />
           </Field>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

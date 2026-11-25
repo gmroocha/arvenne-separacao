@@ -22,6 +22,7 @@ const Troca = lazy(() => import("@/pages/Troca"))
 const Pedido = lazy(() => import("@/pages/Pedido"))
 const Repetidas = lazy(() => import("@/pages/Repetidas"))
 const Clube = lazy(() => import("@/pages/Clube"))
+const Live = lazy(() => import("@/pages/Live"))
 const Catalogo = lazy(() => import("@/pages/Catalogo"))
 const Feedbacks = lazy(() => import("@/pages/Feedbacks"))
 const Time = lazy(() => import("@/pages/Time"))
@@ -55,6 +56,8 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<Expedicao />} />
           <Route path="pedidos/:id" element={<Pedido />} />
+          {/* Peças da Live: todos (gestor e funcionárias) veem e imprimem etiquetas. */}
+          <Route path="live" element={<Live />} />
           {/* Só o gestor: a funcionária vê a Expedição e o pedido que está com ela. */}
           <Route element={<SoGestor />}>
             <Route path="vendas" element={<Vendas />} />

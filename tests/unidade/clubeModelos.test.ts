@@ -4,7 +4,7 @@ import {
 } from "../../src/lib/clubeModelos"
 import type { ModeloClube } from "../../src/lib/tipos"
 
-const modelo = (id: string, extra: Partial<ModeloClube> = {}): ModeloClube => ({ id, nome: "Anel", foto_url: null, codigo_base: "AN", preco: 10, ativo: true, created_at: "2026-11-18T10:00:00Z", ...extra })
+const modelo = (id: string, extra: Partial<ModeloClube> = {}): ModeloClube => ({ id, nome: "Anel", foto_url: null, codigo_base: "AN", preco: 10, ativo: true, created_at: "2026-11-18T10:00:00Z", catalogo: "clube", live_em: null, ...extra })
 const peca = (id: string, variante: string | null, modelo_id: string | null) => ({ id, variante, modelo_id })
 
 describe("V110: código sugerido da variante", () => {

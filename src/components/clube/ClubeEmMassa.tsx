@@ -9,10 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
-import { useSalvarModeloClube, type ItemModeloClube } from "@/lib/api"
+import { useSalvarModeloClube, type CatalogoClube, type ItemModeloClube } from "@/lib/api"
 import { enviarEmParalelo, errosDoProduto, novaLinhaVariante, variantesParaSalvar, type LinhaVariante } from "@/lib/clubeModelos"
 import { enviarFoto } from "@/lib/foto"
-import { lerNumero } from "@/lib/formato"
+import { hojeISO, lerNumero } from "@/lib/formato"
 import { cn } from "@/lib/utils"
 
 // Uma linha por foto: sobe a foto (no máximo 3 por vez) e a pessoa preenche código, nome, preço e, se quiser, as variantes.
@@ -41,7 +41,10 @@ const textoErro = (e: unknown) => (e instanceof Error ? e.message : "erro descon
 
 // Cadastro em massa do Clube: várias fotos de uma vez, cada uma vira uma linha para preencher, e "Salvar todas" grava tudo numa
 // chamada só (salvar_modelo_clube): se uma linha tem problema, nada fica salvo e a linha aparece marcada.
-export default function ClubeEmMassa({ aoSalvar }: { aoSalvar: () => void }) {
+// Na Live ("catalogo" = 'live'), todas as linhas levam a mesma data da live (liveInicial ou hoje, editável).
+export default function ClubeEmMassa({ aoSalvar, catalogo = "clube", liveInicial }: { aoSalvar: () => void; catalogo?: CatalogoClube; liveInicial?: string }) {
+  const naLive = catalogo === "live"
+  const [liveEm, setLiveEm] = useState(() => liveInicial ?? hojeISO())
   const [linhas, setLinhas] = useState<Linha[]>([])
   const salvar = useSalvarModeloClube()
   const entrada = useRef<HTMLInputElement>(null)
@@ -96,14 +99,15 @@ export default function ClubeEmMassa({ aoSalvar }: { aoSalvar: () => void }) {
       const n = erros.filter((e) => e.length > 0).length
       return void toast.error(`${n} ${n === 1 ? "linha precisa" : "linhas precisam"} de ajuste. Veja os avisos em vermelho.`)
     }
+    if (naLive && !liveEm) return void toast.error("Informe a data da live")
     const itens: ItemModeloClube[] = linhas.map((l) => {
       const preco = l.preco.trim() ? lerNumero(l.preco) : null
-      const base = { codigo: l.codigo.trim(), nome: l.nome.trim(), preco, foto_url: l.fotoUrl }
+      const base = { codigo: l.codigo.trim(), nome: l.nome.trim(), preco, foto_url: l.fotoUrl, ...(naLive ? { catalogo, live_em: liveEm } : {}) }
       return l.comVariantes && l.variantes.length > 0 ? { ...base, variantes: variantesParaSalvar(l.codigo, l.variantes) } : base
     })
     try {
       await salvar.mutateAsync(itens)
-      toast.success(`${itens.length} ${itens.length === 1 ? "peça salva" : "peças salvas"} no Clube`)
+      toast.success(`${itens.length} ${itens.length === 1 ? "peça salva" : "peças salvas"} ${naLive ? "na Live" : "no Clube"}`)
       linhas.forEach((l) => URL.revokeObjectURL(l.previa))
       setLinhas([])
       aoSalvar()
@@ -118,6 +122,12 @@ export default function ClubeEmMassa({ aoSalvar }: { aoSalvar: () => void }) {
   return (
     <div className="flex flex-col gap-4">
       <input ref={entrada} type="file" accept="image/*" multiple className="sr-only" aria-label="Escolher fotos" onChange={(e) => escolher(e.target.files)} />
+      {naLive && (
+        <Field className="max-w-48">
+          <FieldLabel htmlFor="massa-live-em">Data da live</FieldLabel>
+          <Input id="massa-live-em" type="date" required value={liveEm} onChange={(e) => setLiveEm(e.target.value)} />
+        </Field>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant={linhas.length ? "outline" : "default"} size="toque" onClick={() => entrada.current?.click()}>
           <ImagePlus /> {linhas.length ? "Adicionar mais fotos" : "Escolher fotos"}

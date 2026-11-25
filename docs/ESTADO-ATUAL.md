@@ -1,5 +1,13 @@
 # Estado atual (atualizado em 19/11/2026)
 
+## Peças da Live (25/11/2026) — **migration NÃO aplicada** (`20261128090000_pecas_live.sql`)
+
+- Catálogo novo igual ao Clube: `pecas_clube` e `clube_modelos` ganham `catalogo` ('clube' padrão ou 'live') e `live_em` (uma data por peça; check live = tem data). Variantes herdam do pai. A peça da live entra no pedido como origem `clube` com `peca_clube_id`: pedido, trocas e dinheiro não mudam.
+- `salvar_modelo_clube` aceita `catalogo`/`live_em` (sem eles, igual a antes). Função nova `lives()` (datas com peças ativas e contagem), GRANT só authenticated e service_role.
+- Tela: página `/live` para TODOS (gestor e funcionárias; menu "Live"): seletor de data, busca, desativadas, Nova peça, Adicionar em massa, etiquetas por peça (barra fixa) e "Imprimir todas desta live". Aba "Live" na busca de peças da venda. Cartões do Clube extraídos para `src/components/clube/CartoesClube.tsx`.
+- Sem a migration: o Clube funciona como hoje e a Live fica vazia com o aviso "Atualize o banco para usar esta função".
+- Testes: `tests/banco/pecas-live.test.mjs`, `tests/e2e/pecas-live.spec.mjs`.
+
 ## Desempenho V115: banco mais leve (19/11/2026) — **aplicada em 19/11 com o "sim" do Gustavo** (`20261126150000_desempenho.sql`). No banco real, como gestor: acerto 20→6 ms; troca_painel ~125 ms (resumo 41 ms, carrinho 19 ms, valores 16 ms por peça: próximo alvo se voltar a pesar)
 
 - Motivo: no plano gratuito (Nano, CPU compartilhada, 0,5 GB) 6 aparelhos esgotaram o limite de 8 s em 278 consultas. O front já foi corrigido (5 min de

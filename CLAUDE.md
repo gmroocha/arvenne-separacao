@@ -43,6 +43,7 @@ quando o pedido entra numa etapa sem ninguém. **Login por usuário:** o gestor 
 `equipe-acesso`); o app monta o e-mail interno invisível `usuario@equipe.arvenne.invalid` (regra única em `src/lib/loginInterno.ts`
 e `supabase/functions/_shared/usuario.ts`, testada igual); o Gustavo entra com o e-mail dele. `membro_atual()` acha a pessoa pelo
 `equipe.user_id` ou, sem ele, pelo e-mail. Nenhum e-mail vai em migration.
+**Live (25/11/2026):** peças da live são `pecas_clube` com `catalogo = 'live'` e `live_em` (data); página `/live` visível para todos (gestor e funcionárias), com etiquetas; no pedido entram como origem `clube`.
 **Métricas decididas:** prazo/atraso, produção por pessoa (`v_producao_pessoa`), mudanças depois de pago e tempo por
 etapa do pedido (`v_tempo_etapas`); nada de histórico clique a clique. **Indicadores (Fase 4):** página `/indicadores`, só gestor; toda
 a conta fica nas funções `indicadores_*` e `pontuacao_mes` (fórmula da pontuação em `pontuacao_componentes`), a tela só exibe. Teste principal da esteira:

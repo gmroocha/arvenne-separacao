@@ -20,6 +20,7 @@ function titulo(caminho: string) {
   if (caminho.startsWith("/repetidas")) return "Peças repetidas"
   if (caminho.startsWith("/catalogo")) return "Catálogo"
   if (caminho.startsWith("/clube")) return "Clube"
+  if (caminho.startsWith("/live")) return "Peças da Live"
   if (caminho.startsWith("/feedbacks")) return "Feedbacks"
   if (caminho.startsWith("/indicadores")) return "Indicadores"
   if (caminho.startsWith("/time")) return "Time Arvenne"

@@ -7,11 +7,12 @@ import PecaClubeForm from "@/components/PecaClubeForm"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Spinner } from "@/components/ui/spinner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAtualizarCatalogo, useBuscaSite, useAtualizacaoAutomaticaCatalogo, useCatalogoInfo, useModelosClube, usePecasClube } from "@/lib/api"
+import { useAtualizarCatalogo, useBuscaSite, useAtualizacaoAutomaticaCatalogo, useCatalogoInfo, useLives, useModelosClube, usePecasClube, type CatalogoClube } from "@/lib/api"
 import { agruparClube, rotulosDeVariantes } from "@/lib/clubeModelos"
-import { reais } from "@/lib/formato"
+import { diaMes, reais } from "@/lib/formato"
 import { useDebounce } from "@/lib/useDebounce"
 import { itemDoClube, itemDoSite } from "@/lib/itens"
 import type { ModeloClube, NovoItem, PecaClube } from "@/lib/tipos"
@@ -242,23 +243,32 @@ function gruposDoClube(pecas: PecaClube[], modelos: ModeloClube[]): GrupoTamanho
   })
 }
 
-function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoTocar: Tocar } & Marcas) {
+// Clube e Live: mesma aba. Na Live há um seletor com as datas das lives (a mais recente já vem escolhida).
+function AbaClube({ catalogo = "clube", aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { catalogo?: CatalogoClube; aoTocar: Tocar } & Marcas) {
+  const naLive = catalogo === "live"
   const [termo, setTermo] = useState("")
   const [novo, setNovo] = useState(false)
   const [editando, setEditando] = useState<PecaClube | null>(null)
+  const [escolhida, setEscolhida] = useState<string | null>(null)
+  const lives = useLives()
+  const datas = naLive ? (lives.data?.lives ?? []) : []
+  // Sem escolha ainda: a live mais recente (ou todas, se não houver nenhuma).
+  const liveEm = naLive ? (escolhida ?? datas[0]?.live_em ?? "todas") : "todas"
   const busca = useDebounce(termo.trim(), 300)
-  const { data, isFetching } = usePecasClube(busca)
-  const modelos = useModelosClube().data ?? []
+  const { data, isFetching } = usePecasClube(busca, false, 30, { catalogo, liveEm: liveEm === "todas" ? null : liveEm })
+  const modelos = useModelosClube(catalogo).data ?? []
 
   if (novo || editando)
     return (
       <div className="flex flex-col gap-3">
         <Button type="button" variant="ghost" size="sm" className="-ml-2 w-fit text-muted-foreground" onClick={() => (setNovo(false), setEditando(null))}>
-          <ArrowLeft /> Voltar ao Clube
+          <ArrowLeft /> Voltar {naLive ? "à Live" : "ao Clube"}
         </Button>
         <PecaClubeForm
           key={editando?.id ?? "nova"}
           peca={editando ?? undefined}
+          catalogo={catalogo}
+          liveInicial={liveEm === "todas" ? undefined : liveEm}
           aoSalvar={(peca) => {
             // Peça simples nova já entra no carrinho; produto com variantes e a peça editada só voltam para a lista.
             if (peca && !editando) aoTocar(itemDoClube(peca))
@@ -271,9 +281,27 @@ function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noP
 
   return (
     <div className="flex flex-col gap-3">
+      {naLive && (
+        <>
+          <Select value={liveEm} onValueChange={setEscolhida}>
+            <SelectTrigger className="h-11 w-full sm:w-64 lg:h-9" aria-label="Data da live">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as lives</SelectItem>
+              {datas.map((d) => (
+                <SelectItem key={d.live_em} value={d.live_em}>
+                  Live {diaMes(d.live_em)}/{d.live_em.slice(0, 4)} · {d.pecas} {d.pecas === 1 ? "peça" : "peças"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {lives.data?.semBanco && <p className="text-xs text-muted-foreground">Atualize o banco para usar esta função</p>}
+        </>
+      )}
       <Busca valor={termo} aoMudar={setTermo} carregando={isFetching} />
       <Button variant="outline" size="toque" onClick={() => setNovo(true)}>
-        <Plus /> Nova peça do Clube
+        <Plus /> {naLive ? "Nova peça da Live" : "Nova peça do Clube"}
       </Button>
       {!isFetching && data?.length === 0 && <SemResultado />}
       {data && <GradeResultados itens={data.map((p) => itemDoClube(p))} grupos={gruposDoClube(data, modelos)} aoTocar={aoTocar} aoEditar={(i) => setEditando(data.find((p) => p.id === i.peca_clube_id) ?? null)} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} noPedido={noPedido} qtdNoPedido={qtdNoPedido} notaPreco={notaPreco} comPreco={comPreco} />}
@@ -281,19 +309,23 @@ function AbaClube({ aoTocar, quantidade, aoMudarQtd, selecionada, notaPreco, noP
   )
 }
 
-// Busca de peças (abas Site e Clube), reutilizada em "Adicionar peça" e na troca de peça em falta.
+// Busca de peças (abas Site, Clube e Live), reutilizada em "Adicionar peça" e na troca de peça em falta.
 export function BuscaPecas({ aoEscolher, quantidade, aoMudarQtd, selecionada, notaPreco, noPedido, qtdNoPedido, comPreco }: { aoEscolher: Tocar } & Marcas) {
   return (
     <Tabs defaultValue="site">
       <TabsList variant="line">
         <TabsTrigger value="site">Site</TabsTrigger>
         <TabsTrigger value="clube">Clube</TabsTrigger>
+        <TabsTrigger value="live">Live</TabsTrigger>
       </TabsList>
       <TabsContent value="site">
         <AbaSite aoTocar={aoEscolher} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} notaPreco={notaPreco} noPedido={noPedido} qtdNoPedido={qtdNoPedido} comPreco={comPreco} />
       </TabsContent>
       <TabsContent value="clube">
         <AbaClube aoTocar={aoEscolher} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} notaPreco={notaPreco} noPedido={noPedido} qtdNoPedido={qtdNoPedido} comPreco={comPreco} />
+      </TabsContent>
+      <TabsContent value="live">
+        <AbaClube catalogo="live" aoTocar={aoEscolher} quantidade={quantidade} aoMudarQtd={aoMudarQtd} selecionada={selecionada} notaPreco={notaPreco} noPedido={noPedido} qtdNoPedido={qtdNoPedido} comPreco={comPreco} />
       </TabsContent>
     </Tabs>
   )

@@ -4,6 +4,42 @@ import type { Database as Remoto, Json } from './database.types'
 
 type Adicoes = {
   Tables: {
+    clube_modelos: {
+      Row: {
+        id: string
+        nome: string
+        foto_url: string | null
+        codigo_base: string
+        preco: number | null
+        ativo: boolean
+        created_at: string
+        catalogo: string
+        live_em: string | null
+      }
+      Insert: {
+        id?: string
+        nome: string
+        foto_url?: string | null
+        codigo_base: string
+        preco?: number | null
+        ativo?: boolean
+        created_at?: string
+        catalogo?: string
+        live_em?: string | null
+      }
+      Update: {
+        id?: string
+        nome?: string
+        foto_url?: string | null
+        codigo_base?: string
+        preco?: number | null
+        ativo?: boolean
+        created_at?: string
+        catalogo?: string
+        live_em?: string | null
+      }
+      Relationships: []
+    }
     equipe: {
       Row: {
         id: string
@@ -97,6 +133,48 @@ type Adicoes = {
         created_at?: string
         anulada_em?: string | null
         anulada_por?: string | null
+      }
+      Relationships: []
+    }
+    pecas_clube: {
+      Row: {
+        id: string
+        codigo: string
+        nome: string
+        variante: string | null
+        foto_url: string | null
+        preco: number | null
+        ativo: boolean
+        created_at: string
+        modelo_id: string | null
+        catalogo: string
+        live_em: string | null
+      }
+      Insert: {
+        id?: string
+        codigo: string
+        nome: string
+        variante?: string | null
+        foto_url?: string | null
+        preco?: number | null
+        ativo?: boolean
+        created_at?: string
+        modelo_id?: string | null
+        catalogo?: string
+        live_em?: string | null
+      }
+      Update: {
+        id?: string
+        codigo?: string
+        nome?: string
+        variante?: string | null
+        foto_url?: string | null
+        preco?: number | null
+        ativo?: boolean
+        created_at?: string
+        modelo_id?: string | null
+        catalogo?: string
+        live_em?: string | null
       }
       Relationships: []
     }
@@ -661,6 +739,7 @@ type Adicoes = {
     indicadores_pessoas: { Args: { p_de: string | null; p_ate: string | null }; Returns: { pessoa_id: string | null; nome: string | null; separacao: number | null; conferencia: number | null; bipagem: number | null; faturamento: number | null; embalagem: number | null; pronto_envio: number | null; enviar_rastreio: number | null; minutos_por_peca_separacao: number | null; erros_pegos_bipagem: number | null; faltas_indevidas: number | null; problemas_cliente: number | null }[] }
     indicadores_resumo: { Args: { p_de: string | null; p_ate: string | null }; Returns: Json | null }
     item_coberto: { Args: { p_item: string | null; p_origem: string | null; p_valor: number | null }; Returns: number | null }
+    lives: { Args: Record<PropertyKey, never>; Returns: { live_em: string | null; pecas: number | null }[] }
     membro_atual: { Args: Record<PropertyKey, never>; Returns: string | null }
     membro_ve_peca_troca: { Args: { p_peca: string | null; p_membro: string | null }; Returns: boolean | null }
     membro_ve_pedido: { Args: { p_pedido: string | null; p_membro: string | null }; Returns: boolean | null }

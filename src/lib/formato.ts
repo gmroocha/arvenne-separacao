@@ -125,3 +125,9 @@ export function formatarPrazo(prazo: string | null, horasUteis: number | null, a
 
 // Texto de campo de dinheiro: "1.234,50" (pt-BR, sempre 2 casas, sem o R$). Só formatação.
 export const reaisTexto = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// Data de hoje no formato do banco (AAAA-MM-DD), no fuso do aparelho.
+export const hojeISO = () => new Date().toLocaleDateString("sv-SE")
+
+// "2026-11-24" -> "24/11".
+export const diaMes = (iso: string | null | undefined) => (iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : "")

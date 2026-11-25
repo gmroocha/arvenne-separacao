@@ -143,7 +143,7 @@ export default function AdicionarPecas({ aberto, aoMudar, aoAdicionar, comPreco,
 
   return (
     <>
-      <RespDialog aberto={aberto} aoMudar={mudou} titulo="Adicionar peça" descricao="Busque no site ou no catálogo do Clube e monte o carrinho" largo>
+      <RespDialog aberto={aberto} aoMudar={mudou} titulo="Adicionar peça" descricao="Busque no site, no Clube ou nas peças da Live e monte o carrinho" largo>
         {celular ? (
           <div className="flex flex-col gap-3">
             {abas}
