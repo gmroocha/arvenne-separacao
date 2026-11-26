@@ -32,6 +32,8 @@
     --color-pac: var(--pac);
     --color-rastreio: var(--rastreio);
     --color-rastreio-foreground: var(--rastreio-foreground);
+    --color-quantidade: var(--quantidade);
+    --color-quantidade-foreground: var(--quantidade-foreground);
     --color-sedex: var(--sedex);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
@@ -80,6 +82,9 @@
     /* Etapa "Enviar rastreio": laranja, distinto do amarelo (aguardando) e do vermelho (avisar cliente). */
     --rastreio: oklch(0.55 0.17 40);
     --rastreio-foreground: oklch(0.985 0 0);
+    /* Quantidade da peça (2×, 50×) na separação, conferência e bipagem: laranja cheio para não passar batido. */
+    --quantidade: oklch(0.6 0.19 45);
+    --quantidade-foreground: oklch(0.99 0 0);
     --sedex: oklch(0.596 0.145 163.225);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
@@ -127,6 +132,8 @@
     --pac: oklch(0.75 0.183 55.934);
     --rastreio: oklch(0.78 0.16 55);
     --rastreio-foreground: oklch(0.2 0.04 55);
+    --quantidade: oklch(0.74 0.17 52);
+    --quantidade-foreground: oklch(0.18 0.04 50);
     --sedex: oklch(0.765 0.177 163.223);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);

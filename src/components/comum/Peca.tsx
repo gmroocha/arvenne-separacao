@@ -1,3 +1,4 @@
+import { SeloQtd } from "@/components/comum/SeloQtd"
 import type { ReactNode } from "react"
 import Foto from "@/components/Foto"
 import { detalheDoItem } from "@/lib/detalhePeca"
@@ -77,9 +78,7 @@ export function LinhaPeca({ item, tamanho = "md", destaque, esmaecida, riscada, 
       {(qtd > 1 || item.origem === "clube") && (
         <div className="mt-1 flex gap-1">
           {qtd > 1 && (
-            <Badge variant="secondary" className="tabular-nums">
-              {qtd}×
-            </Badge>
+            <SeloQtd qtd={qtd} className="h-6 px-2 text-sm" />
           )}
           {item.origem === "clube" && <Badge variant="outline">Clube</Badge>}
         </div>

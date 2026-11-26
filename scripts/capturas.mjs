@@ -56,7 +56,7 @@ const sessao = ".playwright/sessao.json"
 async function entrar(ctx) {
   const pag = await ctx.newPage()
   await pag.goto(`${base}/login`)
-  await pag.fill("#email", env.E2E_EMAIL)
+  await pag.fill("#usuario", env.E2E_EMAIL)
   await pag.fill("#senha", env.E2E_SENHA)
   await pag.click("button[type=submit]")
   await pag.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 15000 })

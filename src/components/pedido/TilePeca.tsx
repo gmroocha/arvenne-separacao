@@ -1,3 +1,4 @@
+import { SeloQtd } from "@/components/comum/SeloQtd"
 import { useState, type ReactNode } from "react"
 import { Check, ChevronDown, MoreHorizontal, Printer, Undo2 } from "lucide-react"
 import { MarcaCheck } from "@/components/comum/Bolha"
@@ -62,7 +63,7 @@ export function TilePeca({ item, instrucao, contador, piscando, esmaecida, child
       <div className="flex min-w-0 flex-col gap-0.5 px-0.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 font-mono text-lg leading-tight font-semibold break-all">{item.sku ?? "sem código"}</div>
-          {item.qtd > 1 && <Badge variant="secondary" className="h-6 shrink-0 px-2 text-sm font-medium tabular-nums">{item.qtd}×</Badge>}
+          {item.qtd > 1 && <SeloQtd qtd={item.qtd} />}
         </div>
         {item.variante && <div className="text-sm leading-tight font-medium">{item.variante}</div>}
         <div className="line-clamp-1 text-xs text-muted-foreground">{item.nome}</div>
@@ -116,7 +117,7 @@ export function TileModelo({ itens, children }: { itens: Item[]; children?: Reac
       <div className="flex min-w-0 flex-col gap-1 px-0.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 font-mono text-lg leading-tight font-semibold break-all">{codigoModelo(ordenados.map((i) => i.sku)) ?? "sem código"}</div>
-          <Badge variant="secondary" className="h-6 shrink-0 px-2 text-sm font-medium tabular-nums">{total}×</Badge>
+          <SeloQtd qtd={total} />
         </div>
         {variacao && <div className="text-sm leading-tight font-medium">{variacao}</div>}
         <div className="flex flex-wrap gap-1">
