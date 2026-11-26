@@ -319,6 +319,14 @@ export function usePecasClube(busca: string, incluirInativas = false, limite = 3
 
 export type LiveData = { live_em: string; pecas: number }
 // Datas de live com peças ativas (mais recente primeiro). "semBanco": a migration das lives ainda não foi aplicada.
+// Etiqueta "para a live": preço cheio e preço com desconto de cada peça, calculados no banco (precos_etiqueta_live).
+// Peça sem preço não volta.
+export async function precosEtiquetaLive(ids: string[], pct: number) {
+  const { data, error } = await supabase.rpc("precos_etiqueta_live", { p_ids: ids, p_pct: pct })
+  if (error) throw error
+  return (data ?? []) as { id: string; codigo: string; preco: number; preco_desconto: number }[]
+}
+
 export function useLives() {
   return useQuery({
     queryKey: ["clube", "lives"],

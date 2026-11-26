@@ -70,3 +70,17 @@ test('Live: a peça da live entra no pedido como origem clube e o dinheiro não 
   expect(item.peca_clube_id).toBe(v.id)
   expect(Number((await one('select subtotal from v_pedidos where id=$1', [p.id])).subtotal)).toBe(50 + 30 + 70)
 })
+
+test('Etiqueta da live: o banco calcula o preço com desconto (arredondado ao centavo) e recusa desconto inválido', async () => {
+  await entrar()
+  const [a, b] = await salvar([
+    { codigo: 'LV-E1', nome: 'Colar', preco: 60, catalogo: 'live', live_em: '2026-11-26' },
+    { codigo: 'LV-E2', nome: 'Brinco', preco: 33.33, catalogo: 'live', live_em: '2026-11-26' },
+  ])
+  const sem = await salvar({ codigo: 'LV-E3', nome: 'Sem preço', catalogo: 'live', live_em: '2026-11-26' })
+  const ids = [a.pecas[0].id, b.pecas[0].id, sem[0].pecas[0].id]
+  const r = (await db.query('select codigo, preco::float8 p, preco_desconto::float8 d from precos_etiqueta_live($1::uuid[], 15) order by codigo', [ids])).rows
+  expect(r).toEqual([{ codigo: 'LV-E1', p: 60, d: 51 }, { codigo: 'LV-E2', p: 33.33, d: 28.33 }]) // sem preço fica de fora
+  for (const pct of [0, 100, -5]) await recusa(() => one('select * from precos_etiqueta_live($1::uuid[], $2)', [ids, pct]), /desconto precisa/)
+  expect((await one("select has_function_privilege('anon','public.precos_etiqueta_live(uuid[],numeric)','execute') x")).x).toBe(false)
+})

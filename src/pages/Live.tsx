@@ -1,7 +1,8 @@
 import { useState } from "react"
-import { Images, Plus, Printer, Video } from "lucide-react"
+import { Images, Plus, Printer, Tag, Video } from "lucide-react"
 import ClubeEmMassa from "@/components/clube/ClubeEmMassa"
 import { CartaoProduto, CartaoSimples, EditarProduto, type Peca } from "@/components/clube/CartoesClube"
+import ImprimirParaLive from "@/components/clube/ImprimirParaLive"
 import { useExcluirPeca } from "@/components/clube/useExcluirPeca"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
@@ -42,20 +43,22 @@ export default function Live() {
   const [editando, setEditando] = useState<PecaClube | null>(null)
   const [editandoProduto, setEditandoProduto] = useState<ModeloClube | null>(null)
   const grupos = agruparClube(data ?? [], modelos)
-  const { zebra, imprimindo, dialogo, imprimir } = useImprimirEtiquetas()
+  const { zebra, imprimindo, dialogo, imprimir, imprimirEtiquetas } = useImprimirEtiquetas()
+  // "Imprimir para a live": peças (e quantas etiquetas de cada) do diálogo do desconto; null = fechado.
+  const [paraLive, setParaLive] = useState<{ peca: PecaClube; qtd: number }[] | null>(null)
   // Peças escolhidas para etiqueta: id -> código e quantidade.
-  const [escolhidas, setEscolhidas] = useState<Map<string, { codigo: string; qtd: number }>>(new Map())
+  const [escolhidas, setEscolhidas] = useState<Map<string, { peca: PecaClube; qtd: number }>>(new Map())
   const etiquetas = {
     qtd: (id: string) => escolhidas.get(id)?.qtd ?? 0,
     aoMudar: (peca: PecaClube, n: number) =>
       setEscolhidas((atual) => {
         const novoMapa = new Map(atual)
-        if (n > 0) novoMapa.set(peca.id, { codigo: peca.codigo, qtd: n })
+        if (n > 0) novoMapa.set(peca.id, { peca, qtd: n })
         else novoMapa.delete(peca.id)
         return novoMapa
       }),
   }
-  const listaEtiquetas: Etiqueta[] = [...escolhidas.values()].flatMap(({ codigo, qtd }) => Array.from({ length: qtd }, () => ({ tipo: "peca" as const, sku: codigo.trim() })))
+  const listaEtiquetas: Etiqueta[] = [...escolhidas.values()].flatMap(({ peca, qtd }) => Array.from({ length: qtd }, () => ({ tipo: "peca" as const, sku: peca.codigo.trim() })))
   const daLive = todasDaLive.data ?? []
   const filtrar = (f: () => void) => {
     f()
@@ -90,6 +93,9 @@ export default function Live() {
           onClick={() => imprimir([{ numero: `Live ${diaMes(filtroLive)}`, cliente: null, etiquetas: daLive.map((p) => ({ tipo: "peca" as const, sku: p.codigo.trim() })), itemIds: [] }])}
         >
           {imprimindo ? <Spinner /> : <Printer />} Imprimir todas desta live
+        </Button>
+        <Button variant="outline" size="toque" disabled={!filtroLive || daLive.length === 0 || imprimindo} onClick={() => setParaLive(daLive.map((peca) => ({ peca, qtd: 1 })))}>
+          <Tag /> Imprimir para a live
         </Button>
         <Button variant="outline" size="toque" onClick={() => setEmMassa(true)}>
           <Images /> Adicionar em massa
@@ -142,12 +148,15 @@ export default function Live() {
 
       {escolhidas.size > 0 && (
         // Barra presa no rodapé enquanto houver peça escolhida (igual ao Catálogo).
-        <div className="sticky bottom-0 z-10 -mb-3 flex items-center gap-2 border-t bg-background py-3 sm:-mb-4 sm:pb-4">
-          <span className="min-w-0 flex-1 text-sm tabular-nums">
+        <div className="sticky bottom-0 z-10 -mb-3 flex flex-wrap items-center gap-2 border-t bg-background py-3 sm:-mb-4 sm:pb-4">
+          <span className="min-w-0 basis-full text-sm sm:flex-1 sm:basis-auto tabular-nums">
             {escolhidas.size} {escolhidas.size === 1 ? "peça" : "peças"} · {listaEtiquetas.length} {listaEtiquetas.length === 1 ? "etiqueta" : "etiquetas"}
           </span>
           <Button variant="ghost" size="toque" onClick={() => setEscolhidas(new Map())}>
             Limpar
+          </Button>
+          <Button variant="outline" size="xl" disabled={imprimindo} onClick={() => setParaLive([...escolhidas.values()])}>
+            <Tag /> Para a live
           </Button>
           <Button size="xl" disabled={!listaEtiquetas.length || imprimindo} onClick={() => imprimir([{ numero: "Live", cliente: null, etiquetas: listaEtiquetas, itemIds: [] }])}>
             {imprimindo ? <Spinner /> : <Printer />} Imprimir{zebra && <span className="font-normal opacity-80"> · Zebra</span>}
@@ -155,6 +164,7 @@ export default function Live() {
         </div>
       )}
       {dialogo}
+      <ImprimirParaLive aberto={paraLive !== null} aoMudar={(a) => !a && setParaLive(null)} pecas={paraLive ?? []} aoImprimir={imprimirEtiquetas} />
 
       <RespDialog aberto={novo} aoMudar={setNovo} titulo="Nova peça da Live" largo teclado>
         <PecaClubeForm catalogo="live" liveInicial={filtroLive ?? undefined} aoSalvar={() => setNovo(false)} />

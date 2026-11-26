@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
-import type { Etiqueta } from "@/lib/etiquetas"
+import { textoEtiqueta, type Etiqueta } from "@/lib/etiquetas"
 
 type Props = { etiquetas: Etiqueta[]; aoPronta: () => void; aoErro: (mensagem: string) => void }
 
@@ -47,6 +47,17 @@ export default function FolhaEtiquetas({ etiquetas, aoPronta, aoErro }: Props) {
             <div className="etiqueta-titulo">{e.titulo}</div>
             <div className="etiqueta-subtitulo">{e.subtitulo}</div>
             <div className="etiqueta-faixa" />
+          </div>
+        ) : e.tipo === "live" ? (
+          <div key={n} className="etiqueta etiqueta-live">
+            <div className="etiqueta-sku">{e.sku}</div>
+            <div className="etiqueta-de">
+              <span>De {textoEtiqueta(e.preco)}</span>
+              <span className="etiqueta-pct">-{e.pct}%</span>
+            </div>
+            <div className="etiqueta-por" style={{ fontSize: e.precoDesconto.length <= 8 ? "22pt" : e.precoDesconto.length <= 10 ? "18pt" : "15pt" }}>
+              {textoEtiqueta(e.precoDesconto)}
+            </div>
           </div>
         ) : (
           <div key={n} className="etiqueta">

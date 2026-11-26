@@ -32,8 +32,8 @@ export function useImprimirEtiquetas() {
       toast.info("Nada para imprimir: falta o código (SKU) da peça")
       return
     }
-    const ruim = t.etiquetas.find((e) => e.tipo === "peca" && !skuImprimivel(e.sku))
-    if (ruim && ruim.tipo === "peca") {
+    const ruim = t.etiquetas.find((e) => e.tipo !== "separador" && !skuImprimivel(e.sku))
+    if (ruim && ruim.tipo !== "separador") {
       toast.error(`O código "${ruim.sku}" tem acento ou símbolo que a etiqueta não aceita. Corrija o SKU da peça antes de imprimir.`)
       return
     }
@@ -92,5 +92,7 @@ export function useImprimirEtiquetas() {
     dialogo,
     imprimir: (grupos: GrupoEtiquetas[]) => executar(montar(grupos)),
     imprimirTeste: () => executar(montar([], [ETIQUETA_TESTE])),
+    // Etiquetas já montadas (ex.: "para a live"), sem separador de pedido.
+    imprimirEtiquetas: (etiquetas: Etiqueta[]) => executar(montar([], etiquetas)),
   }
 }

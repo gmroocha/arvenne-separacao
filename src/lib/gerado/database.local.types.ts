@@ -841,6 +841,7 @@ type Adicoes = {
     pode_ver_pedido: { Args: { p_pedido: string | null }; Returns: boolean | null }
     pontuacao_componentes: { Args: { p_ocorrencias: number | null; p_pecas: number | null; p_media_pecas: number | null; p_prazo_pct: number | null }; Returns: { qualidade: number | null; producao: number | null; prazo: number | null; total: number | null }[] }
     pontuacao_mes: { Args: { p_mes: string | null }; Returns: { posicao: number | null; pessoa_id: string | null; nome: string | null; pecas: number | null; ocorrencias: number | null; problemas_cliente: number | null; ocorrencias_por_100: number | null; prazo_pct: number | null; qualidade: number | null; producao: number | null; prazo: number | null; pontuacao: number | null; barra: number | null; bonus: boolean | null }[] }
+    precos_etiqueta_live: { Args: { p_ids: (string)[] | null; p_pct: number | null }; Returns: { id: string | null; codigo: string | null; preco: number | null; preco_desconto: number | null }[] }
     preencher_responsaveis_padrao: { Args: Record<PropertyKey, never>; Returns: number | null }
     quem_fez_etapas: { Args: { p_pedido: string | null }; Returns: { etapa: string | null; ordem: number | null; membro_id: string | null; nome: string | null; concluida_em: string | null }[] }
     registrado_por_atual: { Args: Record<PropertyKey, never>; Returns: string | null }

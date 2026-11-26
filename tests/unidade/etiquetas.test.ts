@@ -25,3 +25,12 @@ test("SKU não injeta comandos na impressora", () => {
   expect(texto).toContain("AN_5EXA_7EJS_5F1")
   expect(skuImprimivel("ANÉL")).toBe(false)
 })
+test("etiqueta da live: sem código de barras, com SKU, preço cheio, selo do desconto e preço com desconto", () => {
+  const texto = zpl([{ tipo: "live", sku: "LV-BR-1", preco: "R$\u00a040,00", precoDesconto: "R$\u00a034,00", pct: 15 }])
+  expect(texto).not.toContain("^BC")
+  expect(texto).toContain("^FDLV-BR-1^FS")
+  expect(texto).toContain("^FDDe R$ 40,00^FS")
+  expect(texto).toContain("^FD-15%^FS")
+  expect(texto).toContain("^A0N,72,72^FH_^FDR$ 34,00^FS")
+  expect(texto.match(/\^XA/g)).toHaveLength(1)
+})

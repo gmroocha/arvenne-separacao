@@ -4,6 +4,8 @@ import type { Item } from "@/lib/tipos"
 export type Etiqueta =
   | { tipo: "peca"; sku: string; itemId?: string }
   | { tipo: "separador"; titulo: string; subtitulo: string }
+  // Etiqueta "para a live": sem código de barras; SKU, preço cheio e preço com desconto (contas do banco, já em texto).
+  | { tipo: "live"; sku: string; preco: string; precoDesconto: string; pct: number }
 
 export type GrupoEtiquetas = {
   numero: string
@@ -81,7 +83,25 @@ export const skuImprimivel = (sku: string) => /^[\x20-\x7E]+$/.test(sku)
 
 const corta = (t: string, max: number) => t.slice(0, max)
 
+// Preço grande da etiqueta da live: menor quanto mais longo, para caber nos 352 pontos úteis.
+export const tamanhoPrecoLive = (texto: string) => (texto.length <= 8 ? 72 : texto.length <= 10 ? 58 : 46)
+
+// "R$ 60,00" do Intl vem com espaço não separável: na etiqueta vai espaço comum.
+export const textoEtiqueta = (t: string) => t.replace(/\s/g, " ")
+
 function zplEtiqueta(e: Etiqueta): string {
+  if (e.tipo === "live") {
+    const t = tamanhoPrecoLive(e.precoDesconto)
+    return [
+      "^XA^CI28^PW400^LL240^LH0,0",
+      `^FO24,22^A0N,34,34^FH_^FD${escapar(corta(e.sku, 20))}^FS`,
+      `^FO24,78^A0N,30,30^FH_^FDDe ${escapar(textoEtiqueta(e.preco))}^FS`,
+      // Selo do desconto: texto branco num bloco preto, à direita.
+      `^FO280,70^GB96,44,44^FS^FO280,78^FR^FB96,1,0,C^A0N,30,30^FH_^FD-${e.pct}%^FS`,
+      `^FO24,${212 - t}^A0N,${t},${t}^FH_^FD${escapar(textoEtiqueta(e.precoDesconto))}^FS`,
+      "^XZ",
+    ].join("")
+  }
   if (e.tipo === "separador") {
     return [
       "^XA^CI28^PW400^LL240^LH0,0",

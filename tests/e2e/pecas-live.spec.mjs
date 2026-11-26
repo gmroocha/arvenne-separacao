@@ -12,7 +12,8 @@ const FOTO = "https://simulacao.supabase.test/storage/v1/object/public/fotos/clu
 async function espiarImpressao(page) {
   await page.addInitScript(() => {
     window.__impressoes = []
-    window.print = () => window.__impressoes.push([...document.querySelectorAll("#folha-etiquetas .etiqueta-sku")].map((e) => e.textContent.trim()))
+    window.print = () => window.__impressoes.push([...document.querySelectorAll("#folha-etiquetas .etiqueta")].map((e) =>
+      e.classList.contains("etiqueta-live") ? [...e.children].map((c) => c.textContent.trim().replace(/\s+/g, " ")).join(" | ") : e.querySelector(".etiqueta-sku").textContent.trim()))
   })
 }
 
@@ -74,12 +75,38 @@ test("Live: a página gera a folha de etiquetas das peças escolhidas e de todas
   await page.getByRole("button", { name: "Etiquetar LV-BR-1" }).click()
   await page.getByRole("button", { name: /^Aumentar/ }).click()
   await expect(page.getByText(/1 peça · 2 etiquetas/)).toBeVisible()
+  await semRolagemLateral(page)
   await page.getByRole("button", { name: "Imprimir", exact: true }).click()
   await expect.poll(() => page.evaluate(() => window.__impressoes.length)).toBe(1)
   expect(await page.evaluate(() => window.__impressoes[0])).toEqual(["SKU: LV-BR-1", "SKU: LV-BR-1"])
   await page.getByRole("button", { name: "Imprimir todas desta live" }).click()
   await expect.poll(() => page.evaluate(() => window.__impressoes.length)).toBe(2)
   expect((await page.evaluate(() => window.__impressoes[1])).sort()).toEqual(["SKU: LV-BR-1", "SKU: LV-CO-2"])
+  expect(sim.bloqueadas).toEqual([])
+})
+
+test("Live: imprimir para a live escolhe o desconto e sai SKU, preço cheio e preço com desconto, sem código de barras", async ({ page, context, baseURL }, info) => {
+  sim = await criarSimulacao({ status: "novo" })
+  await semear()
+  await espiarImpressao(page)
+  await sim.instalar(context, baseURL)
+  await page.goto("/live")
+  await page.getByRole("button", { name: "Imprimir para a live" }).click()
+  const dialogo = page.getByRole("dialog", { name: "Imprimir para a live" })
+  await dialogo.getByRole("radio", { name: "15%" }).click()
+  await expect(dialogo.getByLabel("Outro valor (%)")).toHaveValue("15")
+  await capturarTemas(page, "live-imprimir-para-live", info)
+  await dialogo.getByRole("button", { name: "Imprimir 2 etiquetas" }).click()
+  await expect.poll(() => page.evaluate(() => window.__impressoes.length)).toBe(1)
+  expect((await page.evaluate(() => window.__impressoes[0])).sort()).toEqual([
+    "LV-BR-1 | De R$ 40,00-15% | R$ 34,00",
+    "LV-CO-2 | De R$ 60,00-15% | R$ 51,00",
+  ])
+  expect(await page.locator("#folha-etiquetas svg").count()).toBe(0)
+  // Desconto fora da faixa não deixa imprimir.
+  await page.getByRole("button", { name: "Imprimir para a live" }).click()
+  await dialogo.getByLabel("Outro valor (%)").fill("100")
+  await expect(dialogo.getByRole("button", { name: /^Imprimir \d/ })).toBeDisabled()
   expect(sim.bloqueadas).toEqual([])
 })
 

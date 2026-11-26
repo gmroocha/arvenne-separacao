@@ -258,6 +258,28 @@
     height: 15mm;
     margin-top: 2mm;
   }
+  #folha-etiquetas .etiqueta-live .etiqueta-sku {
+    font-size: 12pt;
+  }
+  #folha-etiquetas .etiqueta-de {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2mm;
+    font-size: 11pt;
+  }
+  #folha-etiquetas .etiqueta-pct {
+    padding: 0.5mm 1.5mm;
+    background: #000;
+    color: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #folha-etiquetas .etiqueta-por {
+    margin-top: 1.5mm;
+    line-height: 1;
+    white-space: nowrap;
+  }
   #folha-etiquetas .etiqueta-separador {
     padding: 0;
     display: flex;
