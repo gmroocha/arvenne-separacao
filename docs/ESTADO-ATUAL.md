@@ -1,6 +1,6 @@
 # Estado atual (atualizado em 19/11/2026)
 
-## Pedido de venda da LR direto no Bling (26/11/2026) — **migration NÃO aplicada** (`20261129090000_bling.sql`); função Edge `bling` **NÃO publicada**
+## Pedido de venda da LR direto no Bling (26/11/2026) — **aplicada e função `bling` publicada em 26/11 com o "sim" do Gustavo** (`20261129090000_bling.sql`)
 
 - O passo 2 da etapa Nota fiscal ("Pedido de venda LR") ganhou o botão **Gerar no Bling** (abre uma janela com as peças do pedido: código, quantidade e preço editáveis, tirar/incluir linha, colar lista). E existe a página **PDV LR** (`/pdv-lr`, só gestor, menu "PDV LR"): mesmo montador, vazio, para qualquer pedido manual, mais a conexão com o Bling, os últimos pedidos gerados e os códigos lembrados. O fluxo manual (copiar SKUs, digitar o nº) continua igual.
 - Fluxo: **Conferir no Bling** (`preparar`: aplica o código lembrado SKU do app → código no Bling, busca os produtos numa chamada só, devolve nome, preço do cadastro e o **total**; a tela não soma) → **Gerar pedido no Bling** (confirmação com cliente, peças e total). Qualquer edição pede conferir de novo. Código não achado fica em destaque; código trocado oferece "Lembrar para as próximas". Pedido que já tem um gerado só repete confirmando. Com pedido, o nº do Bling vai para `pedido_fornecedor_numero` e marca `pedido_fornecedor_em` com o **login da pessoa** (vale a RLS, o histórico e o avanço automático da etapa); quem pode: quem vê o pedido (a RLS responde); sem pedido (aba), só o gestor.
@@ -11,7 +11,7 @@
 - Sem a migration o botão some e a página mostra "Atualize o banco para usar esta função".
 - Testes: `tests/unidade/bling-shared.test.ts` e `bling-edge.test.mjs` (Bling e Supabase de mentira: permissões, token, fluxo), `bling-lista.test.ts` (`lerLista`), `tests/banco/bling.test.mjs`, `tests/e2e/bling.spec.mjs` (a função `bling` é respondida de mentira por `scripts/simulacao/bling.mjs`, ligada em `scripts/simulacao/banco.mjs`; nenhuma chamada real).
 
-## Peças da Live (25/11/2026) — **migration NÃO aplicada** (`20261128090000_pecas_live.sql`)
+## Peças da Live (25/11/2026) — **aplicada em 26/11 com o "sim" do Gustavo** (`20261128090000_pecas_live.sql`)
 
 - Catálogo novo igual ao Clube: `pecas_clube` e `clube_modelos` ganham `catalogo` ('clube' padrão ou 'live') e `live_em` (uma data por peça; check live = tem data). Variantes herdam do pai. A peça da live entra no pedido como origem `clube` com `peca_clube_id`: pedido, trocas e dinheiro não mudam.
 - `salvar_modelo_clube` aceita `catalogo`/`live_em` (sem eles, igual a antes). Função nova `lives()` (datas com peças ativas e contagem), GRANT só authenticated e service_role.
