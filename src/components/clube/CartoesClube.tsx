@@ -1,13 +1,11 @@
-import { Pencil, Printer } from "lucide-react"
+import { Pencil, Printer, Trash2 } from "lucide-react"
 import Foto from "@/components/Foto"
 import PecaClubeForm from "@/components/PecaClubeForm"
 import { Quantidade } from "@/components/comum/Quantidade"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
-import { Switch } from "@/components/ui/switch"
 import { usePecasDoModelo } from "@/lib/api"
 import { rotulosDeVariantes, type GrupoClube } from "@/lib/clubeModelos"
 import { diaMes, reais } from "@/lib/formato"
@@ -15,7 +13,7 @@ import type { ModeloClube, PecaClube } from "@/lib/tipos"
 
 export type Peca = PecaClube & { ativo: boolean }
 
-// Edita o produto inteiro (o pai e as variantes, ativas ou não): busca as variantes e abre o formulário.
+// Edita o produto inteiro (o pai e as variantes que não foram excluídas): busca as variantes e abre o formulário.
 export function EditarProduto({ modelo, aoSalvar }: { modelo: ModeloClube; aoSalvar: () => void }) {
   const { data } = usePecasDoModelo(modelo.id)
   if (!data) return <div className="flex justify-center py-10"><Spinner /></div>
@@ -40,15 +38,14 @@ function EscolherEtiqueta({ peca, etiquetas }: { peca: PecaClube; etiquetas: Eti
   )
 }
 
-// Cartão de um produto com variantes: o pai (foto, código, nome, preço) e uma linha por variante com o botão de ativar e o lápis.
-export function CartaoProduto({ grupo, aoEditarProduto, aoEditarPeca, aoAtivar, etiquetas }: { grupo: GrupoClube<Peca>; aoEditarProduto: () => void; aoEditarPeca: (p: Peca) => void; aoAtivar: (p: Peca, ativo: boolean) => void; etiquetas?: Etiquetas }) {
+// Cartão de um produto com variantes: o pai (foto, código, nome, preço) e uma linha por variante com o lápis e a lixeira.
+export function CartaoProduto({ grupo, aoEditarProduto, aoEditarPeca, aoExcluir, etiquetas }: { grupo: GrupoClube<Peca>; aoEditarProduto: () => void; aoEditarPeca: (p: Peca) => void; aoExcluir: (p: Peca) => void; etiquetas?: Etiquetas }) {
   const primeira = grupo.pecas[0]
   const rotulos = rotulosDeVariantes(grupo.pecas.map((p) => p.variante))
   const codigo = grupo.modelo?.codigo_base ?? primeira.codigo
   const preco = grupo.modelo?.preco ?? primeira.preco
-  const todasInativas = grupo.pecas.every((p) => !p.ativo)
   return (
-    <Card className={todasInativas ? "opacity-50" : ""} aria-label={`Produto ${codigo}`}>
+    <Card aria-label={`Produto ${codigo}`}>
       <CardContent className="flex flex-col gap-3">
         <Foto url={grupo.modelo?.foto_url ?? primeira.foto_url} alt={grupo.modelo?.nome ?? primeira.nome} ampliar />
         <div>
@@ -59,14 +56,16 @@ export function CartaoProduto({ grupo, aoEditarProduto, aoEditarPeca, aoAtivar, 
         </div>
         <ul className="flex flex-col gap-1.5" aria-label="Variantes">
           {grupo.pecas.map((p, i) => (
-            <li key={p.id} className={`flex flex-wrap items-center gap-2 ${p.ativo ? "" : "opacity-50"}`}>
+            <li key={p.id} className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="shrink-0">{rotulos[i]}</Badge>
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={p.codigo}>{p.codigo}</span>
               {p.preco != null && p.preco !== preco && <span className="text-xs font-medium tabular-nums">{reais(p.preco)}</span>}
-              {etiquetas && p.ativo && <EscolherEtiqueta peca={p} etiquetas={etiquetas} />}
-              <Switch size="sm" checked={p.ativo} aria-label={`Ativa ${p.codigo}`} onCheckedChange={(a) => aoAtivar(p, a)} />
+              {etiquetas && <EscolherEtiqueta peca={p} etiquetas={etiquetas} />}
               <Button variant="ghost" size="icon-xs" aria-label={`Editar variante ${p.codigo}`} onClick={() => aoEditarPeca(p)}>
                 <Pencil />
+              </Button>
+              <Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={`Excluir variante ${p.codigo}`} onClick={() => aoExcluir(p)}>
+                <Trash2 />
               </Button>
             </li>
           ))}
@@ -82,10 +81,10 @@ export function CartaoProduto({ grupo, aoEditarProduto, aoEditarPeca, aoAtivar, 
 }
 
 
-// Cartão de uma peça simples (sem produto pai): foto, código, nome, variante, preço, editar e ativar.
-export function CartaoSimples({ peca, aoEditar, aoAtivar, etiquetas }: { peca: Peca; aoEditar: () => void; aoAtivar: (ativo: boolean) => void; etiquetas?: Etiquetas }) {
+// Cartão de uma peça simples (sem produto pai): foto, código, nome, variante, preço, editar e excluir.
+export function CartaoSimples({ peca, aoEditar, aoExcluir, etiquetas }: { peca: Peca; aoEditar: () => void; aoExcluir: () => void; etiquetas?: Etiquetas }) {
   return (
-    <Card className={peca.ativo ? "" : "opacity-50"}>
+    <Card>
       <CardContent className="flex flex-col gap-3">
         <Foto url={peca.foto_url} alt={peca.nome} ampliar />
         <div>
@@ -95,7 +94,7 @@ export function CartaoSimples({ peca, aoEditar, aoAtivar, etiquetas }: { peca: P
           <div className="text-sm font-medium tabular-nums">{reais(peca.preco)}</div>
           <SeloLive liveEm={peca.live_em} />
         </div>
-        {etiquetas && peca.ativo && (
+        {etiquetas && (
           <div className="flex justify-start">
             <EscolherEtiqueta peca={peca} etiquetas={etiquetas} />
           </div>
@@ -104,10 +103,9 @@ export function CartaoSimples({ peca, aoEditar, aoAtivar, etiquetas }: { peca: P
           <Button variant="ghost" size="sm" className="mr-auto -ml-2 text-muted-foreground" onClick={aoEditar}>
             <Pencil /> Editar
           </Button>
-          <Label htmlFor={`a-${peca.id}`} className="text-xs">
-            Ativa
-          </Label>
-          <Switch id={`a-${peca.id}`} checked={peca.ativo} onCheckedChange={aoAtivar} />
+          <Button variant="ghost" size="sm" className="-mr-2 text-muted-foreground" onClick={aoExcluir}>
+            <Trash2 /> Excluir
+          </Button>
         </div>
       </CardContent>
     </Card>

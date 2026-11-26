@@ -1227,7 +1227,7 @@ export function usePecasDoModelo(modeloId: string | null) {
     queryKey: ["clube", "pecas-do-modelo", modeloId],
     enabled: !!modeloId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("pecas_clube").select("*").eq("modelo_id", modeloId!).order("created_at").order("id")
+      const { data, error } = await supabase.from("pecas_clube").select("*").eq("modelo_id", modeloId!).eq("ativo", true).order("created_at").order("id")
       if (error) throw error
       return data as PecaClube[]
     },

@@ -37,10 +37,12 @@ test("V110: o Clube agrupa as variantes de um produto e deixa a peça solta sozi
   await expect(page.getByText("AN-SOL-14", { exact: true })).toBeVisible()
   await semRolagemLateral(page)
   await capturarTemas(page, "clube-produto", info)
-  // Desativar uma variante (ex.: acabou o tamanho) não mexe nas outras.
-  await produto.getByRole("switch", { name: "Ativa AN-SOL-16" }).click()
+  // Excluir uma variante (ex.: acabou o tamanho) não mexe nas outras e ela some do cartão.
+  await produto.getByRole("button", { name: "Excluir variante AN-SOL-16" }).click()
+  await page.getByRole("button", { name: "Excluir", exact: true }).click()
   await expect.poll(async () => (await sim.one("select ativo from pecas_clube where codigo='AN-SOL-16'")).ativo).toBe(false)
   expect((await sim.one("select count(*)::int n from pecas_clube where modelo_id is not null and ativo")).n).toBe(2)
+  await expect(produto.getByRole("list", { name: "Variantes" }).getByRole("listitem")).toHaveCount(2)
   expect(sim.bloqueadas).toEqual([])
 })
 

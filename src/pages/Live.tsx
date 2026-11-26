@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Images, Plus, Printer, Video } from "lucide-react"
 import ClubeEmMassa from "@/components/clube/ClubeEmMassa"
 import { CartaoProduto, CartaoSimples, EditarProduto, type Peca } from "@/components/clube/CartoesClube"
+import { useExcluirPeca } from "@/components/clube/useExcluirPeca"
 import { CampoBusca } from "@/components/comum/CampoBusca"
 import { ErroConsulta } from "@/components/comum/ErroConsulta"
 import { useImprimirEtiquetas } from "@/components/etiquetas/useImprimirEtiquetas"
@@ -9,12 +10,10 @@ import PecaClubeForm from "@/components/PecaClubeForm"
 import RespDialog from "@/components/RespDialog"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { Switch } from "@/components/ui/switch"
-import { useAtivarPecaClube, useLives, useModelosClube, usePecasClube } from "@/lib/api"
+import { useLives, useModelosClube, usePecasClube } from "@/lib/api"
 import { agruparClube, type GrupoClube } from "@/lib/clubeModelos"
 import type { Etiqueta } from "@/lib/etiquetas"
 import { diaMes } from "@/lib/formato"
@@ -34,13 +33,12 @@ export default function Live() {
   const [busca, setBusca] = useState("")
   const [novo, setNovo] = useState(false)
   const [emMassa, setEmMassa] = useState(false)
-  const [inativas, setInativas] = useState(false)
   const [limite, setLimite] = useState(PASSO)
-  const { data, isLoading, isError, isFetching, refetch } = usePecasClube(busca, inativas, limite, { catalogo: "live", liveEm: filtroLive })
+  const { data, isLoading, isError, isFetching, refetch } = usePecasClube(busca, false, limite, { catalogo: "live", liveEm: filtroLive })
   // Todas as peças ativas da live escolhida, para "Imprimir todas desta live".
   const todasDaLive = usePecasClube("", false, 1000, { catalogo: "live", liveEm: filtroLive })
   const modelos = useModelosClube("live").data ?? []
-  const ativar = useAtivarPecaClube()
+  const excluir = useExcluirPeca()
   const [editando, setEditando] = useState<PecaClube | null>(null)
   const [editandoProduto, setEditandoProduto] = useState<ModeloClube | null>(null)
   const grupos = agruparClube(data ?? [], modelos)
@@ -84,11 +82,7 @@ export default function Live() {
       </div>
       {lives.data?.semBanco && <p className="text-sm text-muted-foreground">Atualize o banco para usar esta função</p>}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-auto flex items-center gap-2">
-          <Switch id="inativas-live" checked={inativas} onCheckedChange={(v) => filtrar(() => setInativas(v))} />
-          <Label htmlFor="inativas-live">Mostrar desativadas</Label>
-        </div>
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         <Button
           variant="outline"
           size="toque"
@@ -132,10 +126,10 @@ export default function Live() {
                 etiquetas={etiquetas}
                 aoEditarProduto={() => g.modelo && setEditandoProduto(g.modelo)}
                 aoEditarPeca={setEditando}
-                aoAtivar={(p, ativo) => ativar.mutate({ id: p.id, ativo })}
+                aoExcluir={excluir.pedir}
               />
             ) : (
-              <CartaoSimples key={g.chave} peca={g.pecas[0] as Peca} etiquetas={etiquetas} aoEditar={() => setEditando(g.pecas[0])} aoAtivar={(ativo) => ativar.mutate({ id: g.pecas[0].id, ativo })} />
+              <CartaoSimples key={g.chave} peca={g.pecas[0] as Peca} etiquetas={etiquetas} aoEditar={() => setEditando(g.pecas[0])} aoExcluir={() => excluir.pedir(g.pecas[0])} />
             ),
           )}
         </div>
@@ -173,6 +167,8 @@ export default function Live() {
       <RespDialog aberto={!!editando} aoMudar={(a) => !a && setEditando(null)} titulo="Editar peça da Live" largo teclado>
         {editando && <PecaClubeForm key={editando.id} peca={editando} aoSalvar={() => setEditando(null)} />}
       </RespDialog>
+
+      {excluir.dialogo}
 
       <RespDialog aberto={!!editandoProduto} aoMudar={(a) => !a && setEditandoProduto(null)} titulo="Editar produto da Live" largo teclado>
         {editandoProduto && <EditarProduto modelo={editandoProduto} aoSalvar={() => setEditandoProduto(null)} />}
