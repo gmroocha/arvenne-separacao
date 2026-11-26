@@ -28,3 +28,12 @@ test.each([
   expect(permitirLeitura(opcoes.supabaseUrl + path, 'PATCH', opcoes)).toBe(false)
   expect(permitirLeitura('https://outro.test' + path, metodo, opcoes)).toBe(false)
 })
+
+test('Bling: a função Edge e a conexão continuam bloqueadas; só a situação e as listas são leitura', () => {
+  expect(permitirLeitura(opcoes.supabaseUrl + '/functions/v1/bling', 'POST', opcoes)).toBe(false)
+  expect(permitirLeitura(opcoes.supabaseUrl + '/rest/v1/bling_conexao', 'GET', opcoes)).toBe(false)
+  expect(permitirLeitura(opcoes.supabaseUrl + '/rest/v1/bling_pedidos', 'POST', opcoes)).toBe(false)
+  expect(permitirLeitura(opcoes.supabaseUrl + '/rest/v1/bling_codigos', 'DELETE', opcoes)).toBe(false)
+  expect(permitirLeitura(opcoes.supabaseUrl + '/rest/v1/rpc/bling_situacao', 'POST', opcoes)).toBe(true)
+  expect(permitirLeitura(opcoes.supabaseUrl + '/rest/v1/bling_pedidos?select=*', 'GET', opcoes)).toBe(true)
+})

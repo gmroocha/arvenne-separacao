@@ -4,6 +4,99 @@ import type { Database as Remoto, Json } from './database.types'
 
 type Adicoes = {
   Tables: {
+    bling_codigos: {
+      Row: {
+        sku: string
+        codigo_bling: string
+        atualizado_por: string | null
+        atualizado_em: string
+      }
+      Insert: {
+        sku: string
+        codigo_bling: string
+        atualizado_por?: string | null
+        atualizado_em?: string
+      }
+      Update: {
+        sku?: string
+        codigo_bling?: string
+        atualizado_por?: string | null
+        atualizado_em?: string
+      }
+      Relationships: []
+    }
+    bling_conexao: {
+      Row: {
+        id: boolean
+        access_token: string | null
+        refresh_token: string | null
+        expira_em: string | null
+        estado_oauth: string | null
+        estado_expira: string | null
+        contato_id: number | null
+        contato_nome: string | null
+        conectado_por: string | null
+        conectado_em: string | null
+      }
+      Insert: {
+        id?: boolean
+        access_token?: string | null
+        refresh_token?: string | null
+        expira_em?: string | null
+        estado_oauth?: string | null
+        estado_expira?: string | null
+        contato_id?: number | null
+        contato_nome?: string | null
+        conectado_por?: string | null
+        conectado_em?: string | null
+      }
+      Update: {
+        id?: boolean
+        access_token?: string | null
+        refresh_token?: string | null
+        expira_em?: string | null
+        estado_oauth?: string | null
+        estado_expira?: string | null
+        contato_id?: number | null
+        contato_nome?: string | null
+        conectado_por?: string | null
+        conectado_em?: string | null
+      }
+      Relationships: []
+    }
+    bling_pedidos: {
+      Row: {
+        id: string
+        pedido_id: string | null
+        bling_id: number
+        bling_numero: string | null
+        itens: Json
+        total: number
+        criado_por: string | null
+        criado_em: string
+      }
+      Insert: {
+        id?: string
+        pedido_id?: string | null
+        bling_id: number
+        bling_numero?: string | null
+        itens?: Json
+        total?: number
+        criado_por?: string | null
+        criado_em?: string
+      }
+      Update: {
+        id?: string
+        pedido_id?: string | null
+        bling_id?: number
+        bling_numero?: string | null
+        itens?: Json
+        total?: number
+        criado_por?: string | null
+        criado_em?: string
+      }
+      Relationships: []
+    }
     clube_modelos: {
       Row: {
         id: string
@@ -725,6 +818,7 @@ type Adicoes = {
   Functions: {
     anular_ocorrencia: { Args: { p_id: string | null }; Returns: undefined | null }
     autor_da_etapa: { Args: { p_pedido: string | null; p_etapa: string | null }; Returns: string | null }
+    bling_situacao: { Args: Record<PropertyKey, never>; Returns: { conectado: boolean | null; contato_definido: boolean | null; contato_nome: string | null; expira_em: string | null }[] }
     decisao_troca: { Args: { p_pedido: string | null; p_status: string | null }; Returns: Json | null }
     etapa_da_esteira: { Args: { p_status: string | null; p_antes: string | null }; Returns: string | null }
     etapa_da_ocorrencia: { Args: { p_motivo: string | null }; Returns: string | null }

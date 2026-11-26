@@ -23,6 +23,7 @@ function titulo(caminho: string) {
   if (caminho.startsWith("/live")) return "Peças da Live"
   if (caminho.startsWith("/feedbacks")) return "Feedbacks"
   if (caminho.startsWith("/indicadores")) return "Indicadores"
+  if (caminho.startsWith("/pdv-lr")) return "PDV LR"
   if (caminho.startsWith("/time")) return "Time Arvenne"
   return "Separação"
 }

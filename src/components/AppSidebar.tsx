@@ -1,7 +1,7 @@
 import { useSidebar } from "@/components/ui/sidebar-context"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router"
-import { Archive, BookOpen, ChartNoAxesColumn, CheckCheck, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Sun, Truck, Users, Video } from "lucide-react"
+import { Archive, BookOpen, ChartNoAxesColumn, CheckCheck, Gem, LogOut, MessageSquare, Moon, Receipt, Repeat, Store, Sun, Truck, Users, Video } from "lucide-react"
 import { useTheme } from "next-themes"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
@@ -53,6 +53,7 @@ export default function AppSidebar() {
     { gestor: true, to: "/clube", nome: "Clube", icone: Gem, ativo: pathname === "/clube" },
     { to: "/live", nome: "Live", icone: Video, ativo: pathname === "/live" },
     { gestor: true, to: "/arquivo", nome: "Arquivo", icone: Archive, ativo: pathname === "/arquivo" },
+    { gestor: true, to: "/pdv-lr", nome: "PDV LR", icone: Store, ativo: pathname === "/pdv-lr" },
     { gestor: true, to: "/indicadores", nome: "Indicadores", icone: ChartNoAxesColumn, ativo: pathname === "/indicadores" },
     { gestor: true, to: "/time", nome: "Time", icone: Users, ativo: pathname === "/time" },
     { gestor: true, to: "/feedbacks", nome: "Feedbacks", icone: MessageSquare, ativo: pathname === "/feedbacks", badge: abertos },

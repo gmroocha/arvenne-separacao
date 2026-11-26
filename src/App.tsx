@@ -27,6 +27,7 @@ const Catalogo = lazy(() => import("@/pages/Catalogo"))
 const Feedbacks = lazy(() => import("@/pages/Feedbacks"))
 const Time = lazy(() => import("@/pages/Time"))
 const Indicadores = lazy(() => import("@/pages/Indicadores"))
+const PdvLr = lazy(() => import("@/pages/PdvLr"))
 
 function Configure() {
   return (
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="feedbacks" element={<Feedbacks />} />
             <Route path="time" element={<Time />} />
             <Route path="indicadores" element={<Indicadores />} />
+            <Route path="pdv-lr" element={<PdvLr />} />
           </Route>
         </Route>
       </Route>

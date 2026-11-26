@@ -2,7 +2,7 @@
 -- NÃO RODAR sem o "sim" do Gustavo, na hora. Antes: ajustar o segredo SHOPIFY_IMPORTAR_DESDE
 -- (painel do Supabase → Edge Functions → Secrets, ou `npx supabase secrets set`) para a data de
 -- início, senão o próximo Sincronizar traz de volta os pedidos antigos da Shopify.
--- Apaga: créditos da cliente, ocorrências (Fase 3), pedidos, peças, eventos, bipagens, trocas (com opções e carrinho), movimentos financeiros,
+-- Apaga: créditos da cliente, ocorrências (Fase 3), registros de pedidos gerados no Bling (bling_pedidos; mantém a conexão e os códigos lembrados), pedidos, peças, eventos, bipagens, trocas (com opções e carrinho), movimentos financeiros,
 -- feedbacks e clientes. Mantém: catalogo_site, catalogo_sincronizacao, pecas_clube, feriados,
 -- vistoria_execucoes e as fotos do bucket.
 -- TRUNCATE (e não DELETE) porque os movimentos financeiros são imutáveis por gatilho de linha e
@@ -20,6 +20,7 @@ truncate table
   public.bipagens,
   public.ocorrencias,
   public.feedbacks,
+  public.bling_pedidos,
   public.pedido_eventos,
   public.pedido_itens,
   public.pedidos,

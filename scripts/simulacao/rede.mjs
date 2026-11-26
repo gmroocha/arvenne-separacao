@@ -1,8 +1,8 @@
-const LEITURAS_RPC = new Set(["troca_painel", "sugerir_troca", "troca_valor_pago", "categorias_catalogo", "troca_publica", "romaneio_publico", "pecas_repetidas", "contagem_repetidas", "creditos_do_pedido", "contagens_pedidos", "responsavel_sugerido", "quem_fez_etapas", "indicadores_resumo", "indicadores_fila", "indicadores_pessoas", "pontuacao_mes", "lives"])
+const LEITURAS_RPC = new Set(["troca_painel", "sugerir_troca", "troca_valor_pago", "categorias_catalogo", "troca_publica", "romaneio_publico", "pecas_repetidas", "contagem_repetidas", "creditos_do_pedido", "contagens_pedidos", "responsavel_sugerido", "quem_fez_etapas", "indicadores_resumo", "indicadores_fila", "indicadores_pessoas", "pontuacao_mes", "lives", "bling_situacao"])
 const TABELAS = new Set([
   "v_pedidos_operacao", "v_pedidos", "pedidos", "pedido_itens", "pedido_eventos", "trocas", "troca_pecas", "troca_opcoes",
   "troca_escolhas", "v_troca_valores", "v_troca_resumo", "v_troca_carrinho", "v_pedido_acerto",
-  "v_pedido_alteracoes", "v_pecas_em_varios_pedidos", "catalogo_site", "catalogo_sincronizacao", "pecas_clube", "clientes", "feedbacks", "v_vistoria_resumo", "v_creditos_cliente", "v_ocorrencias", "v_tempo_etapas",
+  "v_pedido_alteracoes", "v_pecas_em_varios_pedidos", "catalogo_site", "catalogo_sincronizacao", "pecas_clube", "clientes", "feedbacks", "v_vistoria_resumo", "v_creditos_cliente", "v_ocorrencias", "v_tempo_etapas", "bling_codigos", "bling_pedidos",
 ])
 
 export function permitirLeitura(url, metodo, { baseUrl, supabaseUrl }) {

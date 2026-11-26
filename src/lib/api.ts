@@ -21,7 +21,7 @@ export const msg = (e: unknown) =>
   /statement timeout/i.test(msgCrua(e)) ? "O banco demorou para responder e nada foi gravado. Tente de novo." : msgCrua(e)
 
 // Banco ainda sem a migration de uma função/tabela nova: mensagem clara em vez do erro cru.
-const semFuncao = (e: unknown) => /could not find the function|could not find the table|does not exist|schema cache|relationship/i.test(`${msg(e)} ${(e as { details?: string })?.details ?? ""}`)
+export const semFuncao = (e: unknown) => /could not find the function|could not find the table|does not exist|schema cache|relationship/i.test(`${msg(e)} ${(e as { details?: string })?.details ?? ""}`)
 export const msgBanco = (e: unknown) => (semFuncao(e) ? "Atualize o banco para usar esta função" : msg(e))
 
 export type PedidoLista = Pedido

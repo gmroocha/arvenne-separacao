@@ -1,5 +1,6 @@
 import { criarBanco } from "../../tests/banco/suporte.mjs"
 import { instalarRedeSemGravacao } from "./rede.mjs"
+import { criarEstadoBling, responderBling } from "./bling.mjs"
 
 export const SUPABASE_FICTICIO = "https://simulacao.supabase.test"
 export const CHAVE_FICTICIA = "chave-publica-ficticia-sem-acesso"
@@ -65,6 +66,8 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
       await banco.query("update pedidos set responsaveis = jsonb_build_object(public.etapa_da_esteira(status, etapa_antes_desvio), $2::text) where id = $1", [p.id, eu.id])
   }
   const tentativasLogin = [], chamadasAcesso = []
+  const bling = criarEstadoBling() // função Edge `bling` de mentira (scripts/simulacao/bling.mjs)
+  bling.papel = papel
   const senhas = new Map(Object.entries(logins ?? { [user.email]: "senha-ficticia" }))
   const exp = Math.floor(Date.now() / 1000) + 3600
   const jwt = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"), Buffer.from(JSON.stringify({ ...user, sub: user.id, exp })).toString("base64url"), "ficticio"].join(".")
@@ -114,6 +117,12 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
       chamadasAcesso.push(dados)
       if (dados.acao === "criar") await banco.query("update equipe set usuario = $2, user_id = gen_random_uuid() where id = $1", [dados.membro_id, dados.usuario])
       return { status: 200, json: { ok: true, usuario: dados.usuario }, headers: cors }
+    }
+    // Função Edge bling (pedido de venda da LR): respondida de mentira, sem chamar o Bling.
+    if (url.pathname === "/functions/v1/bling") {
+      const cors = { ...headers, "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" }
+      if (req.method() === "OPTIONS") return { status: 204, body: "", headers: cors }
+      return responderBling(req.postDataJSON?.() ?? {}, { banco, estado: bling, cors })
     }
     // Formulário de entrada: só aceita os logins fictícios combinados; o resto continua bloqueado pela barreira.
     if (url.pathname === "/auth/v1/token" && req.method() === "POST" && url.searchParams.get("grant_type") === "password") {
@@ -197,7 +206,7 @@ export async function criarSimulacao({ status = "novo", troca = false, aviso = f
     }
   }
   return {
-    pedido: p, item: i, troca: t, vendaSomada, banco, one, requisicoes, bloqueadas, tentativasLogin, chamadasAcesso, ocioso: () => fila,
+    pedido: p, item: i, troca: t, vendaSomada, banco, one, requisicoes, bloqueadas, tentativasLogin, chamadasAcesso, bling, ocioso: () => fila,
     falharProximaEscolha: () => { falharEscolha = true },
     fechar: () => banco.close(),
     async instalar(context, baseUrl, { logado = true } = {}) {

@@ -23,13 +23,14 @@ test("zerar-testes.sql apaga pedidos, trocas e movimentos e mantém catálogo e 
     await b.query(`insert into movimentos_financeiros (pedido_id, troca_id, tipo, valor)
       values ($1, $2, 'troca_recebida', 20)`, [ped.id, troca.id])
     await b.query(`insert into creditos_cliente (troca_id, pedido_id, destino, valor) values ($1, $2, 'reembolso', 20)`, [troca.id, ped.id])
+    await b.query("insert into bling_pedidos (pedido_id, bling_id, bling_numero) values ($1, 1, '100')", [ped.id])
     await b.query("select nextval('pedido_whatsapp_seq')")
     const feriados = Number((await um("select count(*) n from feriados")).n)
 
     await b.exec(readFileSync("scripts/zerar-testes.sql", "utf8"))
 
     for (const t of ["creditos_cliente", "movimentos_financeiros", "troca_escolhas", "troca_opcoes", "troca_pecas", "trocas",
-      "bipagens", "ocorrencias", "feedbacks", "pedido_eventos", "pedido_itens", "pedidos", "clientes"]) {
+      "bipagens", "ocorrencias", "feedbacks", "bling_pedidos", "pedido_eventos", "pedido_itens", "pedidos", "clientes"]) {
       expect(Number((await um(`select count(*) n from ${t}`)).n), t).toBe(0)
     }
     expect(Number((await um("select count(*) n from feriados")).n)).toBe(feriados)

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { Check, ChevronDown, Copy, ExternalLink, FileText, StickyNote, Store, TriangleAlert } from "lucide-react"
 import CampoReais from "@/components/CampoReais"
+import GerarNoBling from "@/components/bling/GerarNoBling"
+import type { LinhaInicial } from "@/components/bling/MontarPedidoLr"
 import { LinhaPeca } from "@/components/comum/Peca"
 import Foto from "@/components/Foto"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -390,6 +392,14 @@ export default function NotaFrete({ pedido, patch }: Props) {
   // código somando as quantidades. "Copiar SKUs" copia só a lista sem nota.
   const comNota = itens.filter((i) => i.nota)
   const skusLr = [...itens.filter((i) => !i.nota).reduce((m, i) => m.set(i.sku ?? i.nome, (m.get(i.sku ?? i.nome) ?? 0) + i.qtd), new Map<string, number>())]
+  // Peças do pedido de venda da LR para o botão "Gerar no Bling": as sem nota somadas por código; as com nota, uma linha cada (com o recado).
+  const linhasBling: LinhaInicial[] = [
+    ...skusLr.map(([cod, qtd]) => {
+      const i = itens.find((x) => !x.nota && (x.sku ?? x.nome) === cod)
+      return { sku: i?.sku ?? null, qtd, nome: i?.nome, variante: i?.variante, foto_url: i?.foto_url }
+    }),
+    ...comNota.map((i) => ({ sku: i.sku, qtd: i.qtd, nome: i.nome, variante: i.variante, foto_url: i.foto_url, nota: i.nota })),
+  ]
   const textoSkus = skusLr.map(([sku, qtd]) => `${sku} x${qtd}`).join("\n")
   const { marcas, mudar: marcar } = useMarcasLr(pedido.id)
   const chaveSku = (sku: string) => `s:${sku}`
@@ -461,6 +471,7 @@ export default function NotaFrete({ pedido, patch }: Props) {
       </Passo>
 
       <Passo numero={2} icone={<Store />} titulo="Pedido de venda LR" feito={lr} feitoEm={pedido.pedido_fornecedor_em} aoDesfazer={() => patch({ pedido_fornecedor_em: null })} textoDesfazer="Desfazer pedido LR feito">
+        <GerarNoBling pedidoId={pedido.id} linhas={linhasBling} />
         {comNota.length > 0 && (
           <Alert aria-label="Peças com nota">
             <StickyNote />
